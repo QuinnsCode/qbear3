@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+
+  runtime                = "workerd"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "ts"
+
+  output          = "../generated/prisma"
+  previewFeatures = ["queryCompiler", "driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String      @id @default(uuid()) // User ID (UUID-based)
+  username    String      @unique
+  createdAt   DateTime    @default(now())
+  orderNotes OrderNote[]
+
+  credentials Credential[] // Relationship: One user can have many credentials
+}
+
+model Credential {
+  id            String   @id @default(uuid()) // Internal DB ID
+  userId        String   @unique // Every credential is linked to a specific user
+  user          User     @relation(fields: [userId], references: [id])
+  createdAt     DateTime @default(now())
+  credentialId  String   @unique // WebAuthn credential identifier
+  publicKey     Bytes
+  counter       Int      @default(0)
+  
+  @@index([credentialId])
+  @@index([userId])
+}
+
+model Order {
+  id            Int      @id @default(autoincrement())
+  orderNumber   String   @unique
+  shipstationId Int      @unique
+  orderData     String   // JSON blob of full ShipStation order
+  status       String    @default("")
+  storeId       Int?     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // For your internal notes/updates (for later)
+  notes         OrderNote[]
+  
+  @@index([orderNumber])
+  @@index([shipstationId])
+}
+
+model OrderNote {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  userId    String?  // <- Change from Int? to String?
+  content   String
+  isInternal Boolean @default(false)
+  createdAt DateTime @default(now())
+  
+  order     Order    @relation(fields: [orderId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model ShipstationWebhookResponse {
+  id           String      @id @default(uuid()) 
+  resourceUrl  String   // URL to fetch the actual data
+  resourceType String   // ORDER_NOTIFY, SHIP_NOTIFY, etc.
+  orderData    String?  // JSON blob from fetching resource_url
+  processed    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([resourceType])
+  @@index([processed])
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "swankyflare-v2",
+  "main": "src/worker.tsx",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SESSION_DURABLE_OBJECT",
+        "class_name": "SessionDurableObject"
+      },
+      {
+        "name": "REALTIME_DURABLE_OBJECT",
+        "class_name": "RealtimeDurableObject",
+      }
+    ]
+  },
+  "vars": {
+    "WEBAUTHN_APP_NAME": "swankyflare-v2"
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SessionDurableObject", "RealtimeDurableObject"]
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "swankyflare-db2",
+      "database_id": "aa2bfa61-2367-43bb-bffb-2909b6f21f82"
+    }
+  ]
+}
