@@ -40,6 +40,25 @@ export default function OrderNotesSection({
     if (!newNote.trim() || !currentUser || isSubmitting) return;
 
     setIsSubmitting(true);
+    
+    // Create optimistic note with temporary ID
+    const optimisticNote: OrderNote = {
+      id: Date.now(), // Temporary ID (will be replaced)
+      content: newNote.trim(),
+      isInternal,
+      createdAt: new Date().toISOString(),
+      user: currentUser
+    };
+
+    // Immediately add to UI (optimistic update)
+    setNotes(prev => [optimisticNote, ...prev]);
+    
+    // Clear form immediately for better UX
+    const noteContent = newNote.trim();
+    const noteIsInternal = isInternal;
+    setNewNote('');
+    setIsInternal(false);
+
     try {
       const response = await fetch(`/api/orders/${orderDbId}/notes`, {
         method: 'POST',
@@ -47,8 +66,8 @@ export default function OrderNotesSection({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: newNote.trim(),
-          isInternal
+          content: noteContent,
+          isInternal: noteIsInternal
         })
       });
 
@@ -56,16 +75,33 @@ export default function OrderNotesSection({
         throw new Error('Failed to save note');
       }
 
-      // Don't manually update notes - let realtime handle it
-      setNewNote('');
-      setIsInternal(false);
+      const savedNote = await response.json();
+      
+      // Replace optimistic note with real note from server
+      setNotes(currentNotes => 
+        currentNotes.map(note => 
+          note.id === optimisticNote.id ? savedNote : note
+        )
+      );
+
+      console.log('✅ Note saved successfully:', savedNote.id);
     } catch (error) {
       console.error('Error saving note:', error);
+      
+      // Remove optimistic note on error
+      setNotes(currentNotes => 
+        currentNotes.filter(note => note.id !== optimisticNote.id)
+      );
+      
+      // Restore form values
+      setNewNote(noteContent);
+      setIsInternal(noteIsInternal);
+      
       alert('Failed to save note. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  }, [newNote, isInternal, currentUser, orderDbId, isSubmitting]);
+  }, [newNote, isInternal, currentUser, orderDbId, isSubmitting, notes, setNotes]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -110,6 +146,12 @@ export default function OrderNotesSection({
                 placeholder="Enter your note here..."
                 className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md resize-vertical min-h-[80px] bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100"
                 disabled={isSubmitting}
+                onKeyDown={(e) => {
+                  // Allow Ctrl/Cmd + Enter to submit
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    handleSubmitNote();
+                  }
+                }}
               />
               
               <div className="flex items-center justify-between mt-3">
@@ -140,6 +182,10 @@ export default function OrderNotesSection({
                   {isSubmitting ? 'Saving...' : 'Add Note'}
                 </button>
               </div>
+              
+              <div className="text-xs text-gray-500 mt-2">
+                Tip: Press Ctrl+Enter to submit quickly
+              </div>
             </div>
           )}
 
@@ -154,10 +200,12 @@ export default function OrderNotesSection({
                 <div
                   key={note.id}
                   className={cn(
-                    "p-4 rounded-lg border",
+                    "p-4 rounded-lg border transition-all duration-200",
                     note.isInternal
                       ? "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800"
-                      : "bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-gray-600"
+                      : "bg-gray-50 dark:bg-slate-700 border-gray-200 dark:border-gray-600",
+                    // Add a subtle indicator for optimistic notes (temporary IDs are timestamps)
+                    note.id > 1000000000000 ? "ring-2 ring-blue-200 dark:ring-blue-800" : ""
                   )}
                 >
                   {/* Note Header */}
@@ -184,6 +232,12 @@ export default function OrderNotesSection({
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
                       <span>{formatDate(note.createdAt)}</span>
+                      {/* Show "saving..." indicator for optimistic notes */}
+                      {note.id > 1000000000000 && (
+                        <span className="text-blue-600 dark:text-blue-400 text-xs ml-1">
+                          (saving...)
+                        </span>
+                      )}
                     </div>
                   </div>
                   

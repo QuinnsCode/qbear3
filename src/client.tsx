@@ -49,7 +49,19 @@ function shouldUseRealtime(pathname: string): boolean {
 
 // Conditionally initialize realtime
 if (shouldUseRealtime(window.location.pathname)) {
+  console.log('🔌 Initializing realtime for:', window.location.pathname);
+  
   initRealtimeClient({
     key: window.location.pathname,
+  }).then(() => {
+    console.log('✅ Realtime client initialized successfully');
+  }).catch((error) => {
+    console.warn('⚠️ Realtime initialization failed (this is normal in dev mode):', error);
+    
+    // In development, continue without WebSocket
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📝 Development mode: Continuing without realtime WebSocket');
+      console.log('💡 Optimistic updates will provide immediate UI feedback');
+    }
   });
 }

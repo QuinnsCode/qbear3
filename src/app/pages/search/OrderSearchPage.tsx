@@ -12,6 +12,9 @@ interface OrderSearchPageProps {
 }
 
 export async function OrderSearchPage({ orderNumber, currentUser }: OrderSearchPageProps) {
+  const renderTimestamp = new Date().toISOString();
+  console.log('🏗️ OrderSearchPage rendering at:', renderTimestamp);
+  
   try {
     // Fetch order data from ShipStation
     const orderData = await searchOrderNumber(orderNumber);

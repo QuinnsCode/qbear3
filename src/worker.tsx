@@ -27,28 +27,34 @@ export default defineApp([
     await setupDb(env);
     setupSessionStore(env);
 
+    console.log('🔍 Session middleware - URL:', request.url);
+    
     try {
       ctx.session = await sessions.load(request);
+      console.log('✅ Session loaded:', ctx.session?.userId ? 'User logged in' : 'No session');
     } catch (error) {
+      console.log('❌ Session error:', error);
+      
       if (error instanceof ErrorResponse && error.code === 401) {
+        // Don't redirect during realtime updates
+        if (request.url.includes('__realtime')) {
+          console.log('⏭️ Skipping redirect for realtime request');
+          ctx.session = null;
+          return; // Continue without session for realtime
+        }
+        
         await sessions.remove(request, headers);
         headers.set("Location", "/user/login");
-
-        return new Response(null, {
-          status: 302,
-          headers,
-        });
+        return new Response(null, { status: 302, headers });
       }
-
       throw error;
     }
 
     if (ctx.session?.userId) {
       ctx.user = await db.user.findUnique({
-        where: {
-          id: ctx.session.userId,
-        },
+        where: { id: ctx.session.userId },
       });
+      console.log('👤 User found:', ctx.user?.username || 'Not found');
     }
   },
   route("/api/orders/:orderDbId/notes", async ({ request, params, ctx }) => {
@@ -84,22 +90,22 @@ export default defineApp([
     });
     
     if (order) {
-      // Trigger realtime update for all clients viewing this order
-      console.log('Triggering realtime update for key:', `/search/${order.orderNumber}`);
-  
-      // Trigger realtime update for all clients viewing this order
+      console.log('🚀 Calling renderRealtimeClients with key:', `/search/${order.orderNumber}`);
+      console.log('Current pathname should be:', `/search/${order.orderNumber}`);
+      
       await renderRealtimeClients({
         durableObjectNamespace: env.REALTIME_DURABLE_OBJECT,
         key: `/search/${order.orderNumber}`,
       });
       
-      console.log('Realtime update triggered successfully');
+      console.log('✅ renderRealtimeClients completed');
     }
     
     return new Response(JSON.stringify(note), {
       headers: { "Content-Type": "application/json" }
     });
   }),
+    realtimeRoute(() => env.REALTIME_DURABLE_OBJECT),
   render(Document, [
     // 🚫 NON-REALTIME ROUTES (auth, simple pages)
     // These run BEFORE realtimeRoute, so they won't use WebSockets
@@ -124,7 +130,6 @@ export default defineApp([
     ]),
 
     // 🔄 ENABLE REALTIME for everything below this point
-    realtimeRoute(() => env.REALTIME_DURABLE_OBJECT),
     
     // ⚡ REALTIME ROUTES (live updates, interactive features)
     // These run AFTER realtimeRoute, so they can use WebSockets
