@@ -1,9 +1,8 @@
 // @/app/components/OrderSearchPage.tsx
 import { db } from "@/db";
 import { searchOrderNumber } from "@/app/services/shipstation/searchOrderNumber";
-// import { OrderPageWrapper } from "@/app/components/OrderPageWrapper";
-// import OrderNotesSection from "@/app/components/Shipstation/OrderNotesSection";
 import OrderNotesRealtimeSync from "@/app/components/Shipstation/OrderNotesRealtimeSync";
+import PresenceClient from "@/app/components/Presence/PresenceClient";
 import { type User } from "@/db";
 
 interface OrderSearchPageProps {
@@ -14,7 +13,7 @@ interface OrderSearchPageProps {
 export async function OrderSearchPage({ orderNumber, currentUser }: OrderSearchPageProps) {
   const renderTimestamp = new Date().toISOString();
   console.log('🏗️ OrderSearchPage rendering at:', renderTimestamp);
-  
+
   try {
     // Fetch order data from ShipStation
     const orderData = await searchOrderNumber(orderNumber);
@@ -26,8 +25,6 @@ export async function OrderSearchPage({ orderNumber, currentUser }: OrderSearchP
     } else {
       singleOrder = orderData;
     }
-    
-    // We don't need these anymore since we're not using the wrapper
 
     // Database functionality - check if order exists and get notes
     let existingOrder: any = null;
@@ -70,6 +67,9 @@ export async function OrderSearchPage({ orderNumber, currentUser }: OrderSearchP
       <div className="container mx-auto p-4">
         <h1>v1.00</h1>
         <h1 className="text-2xl font-bold mb-6">Search Results for Order: {orderNumber}</h1>
+        
+        {/* Add the presence component here */}
+        <PresenceClient currentUser={currentUser} />
         
         {/* Debug Info - Remove this later */}
         <div className="mt-4 p-4 bg-yellow-100 border rounded mb-6">

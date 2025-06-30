@@ -27,7 +27,7 @@ interface OrderNotesSectionProps {
 
 export default function OrderNotesSection({ 
   notes, 
-  setNotes, 
+  setNotes,
   orderDbId, 
   currentUser 
 }: OrderNotesSectionProps) {

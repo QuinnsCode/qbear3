@@ -9,14 +9,22 @@ import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
-import { type User, db, setupDb } from "@/db";
+import { type User, type Organization, db, setupDb } from "@/db";
+import AdminPage from "@/app/pages/admin/Admin";
+import HomePage from "@/app/pages/home/HomePage";
+import { initializeServices, setupOrganizationContext, setupSessionContext, getAuthInstance, extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
 import { env } from "cloudflare:workers";
+import CreateOrgPage from "@/app/pages/orgs/CreateOrgPage";
+
 export { SessionDurableObject } from "./session/durableObject";
-export { RealtimeDurableObject } from "rwsdk/realtime/durableObject";
+export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
 
 export type AppContext = {
   session: Session | null;
   user: User | null;
+  organization: Organization | null;
+  userRole: string | null;
+  orgError: 'ORG_NOT_FOUND' | 'NO_ACCESS' | 'ERROR' | null;
 };
 
 export default defineApp([
@@ -24,99 +32,292 @@ export default defineApp([
   
   // 🔧 SHARED MIDDLEWARE - runs for all routes
   async ({ ctx, request, headers }) => {
-    await setupDb(env);
-    setupSessionStore(env);
-
-    console.log('🔍 Session middleware - URL:', request.url);
+    await initializeServices();
+    await setupSessionContext(ctx, request);
+    await setupOrganizationContext(ctx, request);
     
-    try {
-      ctx.session = await sessions.load(request);
-      console.log('✅ Session loaded:', ctx.session?.userId ? 'User logged in' : 'No session');
-    } catch (error) {
-      console.log('❌ Session error:', error);
+    // Handle organization errors for frontend routes
+    if (ctx.orgError && !request.url.includes('/api/') && !request.url.includes('/__realtime')) {
+      const url = new URL(request.url);
       
-      if (error instanceof ErrorResponse && error.code === 401) {
-        // Don't redirect during realtime updates
-        if (request.url.includes('__realtime')) {
-          console.log('⏭️ Skipping redirect for realtime request');
-          ctx.session = null;
-          return; // Continue without session for realtime
-        }
+      // if (ctx.orgError === 'ORG_NOT_FOUND') {
+      //   // Redirect to main domain without subdomain
+      //   const mainDomain = url.hostname.includes('localhost') 
+      //     ? 'localhost:5173' 
+      //     : url.hostname.split('.').slice(-2).join('.'); // Get main domain (remove subdomain)
         
-        await sessions.remove(request, headers);
-        headers.set("Location", "/user/login");
-        return new Response(null, { status: 302, headers });
+      //   return new Response(null, {
+      //     status: 302,
+      //     headers: { Location: `${url.protocol}//${mainDomain}/org-not-found?slug=${extractOrgFromSubdomain(request)}` },
+      //   });
+      // }
+      
+      if (ctx.orgError === 'NO_ACCESS') {
+        // Redirect to main domain without subdomain
+        const mainDomain = url.hostname.includes('localhost') 
+          ? 'localhost:5173' 
+          : url.hostname.split('.').slice(-2).join('.'); // Get main domain (remove subdomain)
+        
+        return new Response(null, {
+          status: 302,
+          headers: { Location: `${url.protocol}//${mainDomain}/no-access?slug=${extractOrgFromSubdomain(request)}` },
+        });
       }
-      throw error;
-    }
-
-    if (ctx.session?.userId) {
-      ctx.user = await db.user.findUnique({
-        where: { id: ctx.session.userId },
-      });
-      console.log('👤 User found:', ctx.user?.username || 'Not found');
     }
   },
-  route("/api/orders/:orderDbId/notes", async ({ request, params, ctx }) => {
-    if (request.method !== "POST") {
-      return new Response(null, { status: 405 });
+
+  // 🔌 REALTIME ROUTES - Handle WebSocket and presence
+  route("/__realtime/presence", async ({ request }) => {
+    // Forward presence requests to the Durable Object
+    // Use the same key as the realtime connection
+    let key = '/default';
+    
+    if (request.method === 'POST') {
+      try {
+        // Clone the request so we can read the body without consuming it
+        const clonedRequest = request.clone();
+        const body = await clonedRequest.json() as { pathname?: string; userId?: string; username?: string; action?: string };
+        key = body?.pathname || '/default';
+      } catch (e) {
+        // If JSON parsing fails, use default key
+      }
+    } else if (request.method === 'GET') {
+      // For GET requests, get the key from query params
+      const url = new URL(request.url);
+      key = url.searchParams.get('key') || '/default';
     }
     
-    if (!ctx.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { 
-        status: 401,
+    console.log('🔑 Using presence key:', key);
+    
+    const durableObjectId = (env.REALTIME_DURABLE_OBJECT as any).idFromName(key);
+    const durableObject = (env.REALTIME_DURABLE_OBJECT as any).get(durableObjectId);
+    
+    return durableObject.fetch(request);
+  }),
+
+  route("/__realtime", async ({ request }) => {
+    // Handle WebSocket upgrades with key-based routing
+    if (request.headers.get("Upgrade") === "websocket") {
+      // Get the key from query parameters
+      const url = new URL(request.url);
+      const key = url.searchParams.get('key') || '/default';
+      
+      console.log('🔌 WebSocket connecting with key:', key);
+      
+      const durableObjectId = (env.REALTIME_DURABLE_OBJECT as any).idFromName(key);
+      const durableObject = (env.REALTIME_DURABLE_OBJECT as any).get(durableObjectId);
+      
+      return durableObject.fetch(request);
+    }
+    
+    // For non-WebSocket requests, return a 400 error or handle appropriately
+    return new Response("WebSocket upgrade required", { status: 400 });
+  }),
+
+  realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
+
+  // 🚀 API ROUTES - All API endpoints
+  prefix("/api", [
+    // Specific API routes first (highest priority)
+    route("/orders/:orderDbId/notes", async ({ request, params, ctx }) => {
+      if (request.method !== "POST") {
+        return new Response(null, { status: 405 });
+      }
+      
+      if (!ctx.user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { 
+          status: 401,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      
+      const body = await request.json() as { content: string; isInternal?: boolean };
+      const { content, isInternal = false } = body;
+      const orderDbId = parseInt(params.orderDbId);
+      
+      const note = await db.orderNote.create({
+        data: {
+          orderId: orderDbId,
+          userId: ctx.user.id,
+          content,
+          isInternal
+        },
+        include: { user: true }
+      });
+      
+      // Get the order number to construct the realtime key
+      const order = await db.order.findUnique({
+        where: { id: orderDbId },
+        select: { orderNumber: true }
+      });
+      
+      if (order) {
+        console.log('🚀 Calling renderRealtimeClients with key:', `/search/${order.orderNumber}`);
+        console.log('Current pathname should be:', `/search/${order.orderNumber}`);
+        
+        await renderRealtimeClients({
+          durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+          key: `/search/${order.orderNumber}`,
+        });
+        
+        console.log('✅ renderRealtimeClients completed');
+      }
+      
+      return new Response(JSON.stringify(note), {
         headers: { "Content-Type": "application/json" }
       });
-    }
-    
-    const body = await request.json() as { content: string; isInternal?: boolean };
-    const { content, isInternal = false } = body;
-    const orderDbId = parseInt(params.orderDbId);
-    
-    const note = await db.orderNote.create({
-      data: {
-        orderId: orderDbId,
-        userId: ctx.user.id,
-        content,
-        isInternal
-      },
-      include: { user: true }
-    });
-    
-    // Get the order number to construct the realtime key
-    const order = await db.order.findUnique({
-      where: { id: orderDbId },
-      select: { orderNumber: true }
-    });
-    
-    if (order) {
-      console.log('🚀 Calling renderRealtimeClients with key:', `/search/${order.orderNumber}`);
-      console.log('Current pathname should be:', `/search/${order.orderNumber}`);
-      
-      await renderRealtimeClients({
-        durableObjectNamespace: env.REALTIME_DURABLE_OBJECT,
-        key: `/search/${order.orderNumber}`,
+    }),
+
+    route("/auth/*", async ({ request }) => {
+      const authInstance = getAuthInstance();
+      return authInstance.handler(request);
+    }),
+
+    route("/protected", async ({ request, ctx }) => {
+      const authInstance = getAuthInstance();
+      const session = await authInstance.api.getSession({
+        headers: request.headers
       });
+      if (!session) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+      return new Response(`Hello ${session.user.name}!`);
+    }),
+
+    route("/webhooks/:service", async ({ request, params, ctx }) => {
+      const webhookPath = params.service;
+      console.log('📦 API Service:', webhookPath);
+      console.log('📦 Organization:', ctx.organization?.slug);
       
-      console.log('✅ renderRealtimeClients completed');
+      if (webhookPath === 'shipstation') {
+        // Verify we have org context for webhook processing
+        if (!ctx.organization) {
+          console.error('❌ No organization context for API webhook');
+          return Response.json({ error: "Organization not found" }, { status: 404 });
+        }
+        
+        // Direct import instead of dynamic
+        const { default: handler } = await import('@/app/api/webhooks/shipstation-wh');
+        return handler({ request, params, ctx }); // Pass ctx instead of organization
+      }
+      
+      return Response.json({ error: "Webhook not supported" }, { status: 404 });
+    }),
+
+    // 🎯 CATCH-ALL API ROUTE - handles dynamic API routes from /api folder
+    route("/*", async ({ request, params, ctx }) => {
+      const apiPath = params["*"]; // Gets the remaining path after /api/
+      
+      if (!apiPath) {
+        return new Response(
+          JSON.stringify({ error: "API endpoint not specified" }), 
+          { 
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+      }
+
+      try {
+        // Dynamic import from your app/api folder
+        // Example: /api/users/profile -> imports from @/app/api/users/profile
+        const handler = await import(`@/app/api/${apiPath}`);
+        
+        // Call the default export with context
+        return await handler.default({ 
+          request, 
+          ctx,
+          params: params, // Pass through any route params
+          method: request.method 
+        });
+      } catch (error) {
+        console.error(`API route not found: /api/${apiPath}`, error);
+        
+        // Check if it's a module not found error
+        if (error.message?.includes('Cannot resolve module')) {
+          return new Response(
+            JSON.stringify({ 
+              error: "API endpoint not found",
+              path: `/api/${apiPath}`
+            }), 
+            { 
+              status: 404,
+              headers: { "Content-Type": "application/json" }
+            }
+          );
+        }
+        
+        // Other errors (like handler throwing an error)
+        return new Response(
+          JSON.stringify({ 
+            error: "Internal server error",
+            message: error.message 
+          }), 
+          { 
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+          }
+        );
+      }
+    })
+  ]),
+
+  // 🔗 DIRECT WEBHOOK ROUTES - Handle legacy webhook URLs
+  route("/webhooks/:service", async ({ request, params, ctx }) => {
+    const webhookPath = params.service;
+    console.log('📦 Direct Webhook Service:', webhookPath);
+    console.log('📦 Organization:', ctx.organization?.slug);
+    
+    if (webhookPath === 'shipstation') {
+      const { default: handler } = await import('@/app/api/webhooks/shipstation-wh');
+      return handler({ request, params, ctx }); // Pass ctx
     }
     
-    return new Response(JSON.stringify(note), {
-      headers: { "Content-Type": "application/json" }
-    });
+    return Response.json({ error: "Webhook not supported" }, { status: 404 });
   }),
-    realtimeRoute(() => env.REALTIME_DURABLE_OBJECT),
+
+  // 🎨 FRONTEND ROUTES - Pages and UI
   render(Document, [
+    // 🚫 ERROR PAGES - Handle org access issues
+    route("/org-not-found", ({ request }) => {
+      const url = new URL(request.url);
+      const slug = url.searchParams.get('slug');
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <h1>Organization Not Found</h1>
+          <p>The organization "{slug}" doesn't exist.</p>
+          <a href="/">Return to Home</a>
+        </div>
+      );
+    }),
+    
+    route("/no-access", ({ request }) => {
+      const url = new URL(request.url);
+      const slug = url.searchParams.get('slug');
+      return (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <h1>Access Denied</h1>
+          <p>You don't have access to the organization "{slug}".</p>
+          <a href="/">Return to Home</a>
+        </div>
+      );
+    }),
+
     // 🚫 NON-REALTIME ROUTES (auth, simple pages)
-    // These run BEFORE realtimeRoute, so they won't use WebSockets
-    route("/", () => new Response("Hello, World!")),
+    route("/", HomePage),
+    route("/admin", AdminPage),
+    
     route("/client-test", () => (
       <div style={{ padding: '20px' }}>
         <h1>Testing Client Component</h1>
         <TestButtonClient />
       </div>
     )),
+
+    route("/orgs/new", CreateOrgPage),
+
     prefix("/user", userRoutes), // 🔑 AUTH ROUTES - NO REALTIME
+    
     route("/protected", [
       ({ ctx }) => {
         if (!ctx.user) {
@@ -130,13 +331,11 @@ export default defineApp([
     ]),
 
     // 🔄 ENABLE REALTIME for everything below this point
-    
+    // this is configured in client.tsx
     // ⚡ REALTIME ROUTES (live updates, interactive features)
-    // These run AFTER realtimeRoute, so they can use WebSockets
     route("/search/:orderNumber", async function ({ params, ctx }) {
       return <OrderSearchPage orderNumber={params.orderNumber} currentUser={ctx.user} />;
     }),
-    
     // Add other routes that need realtime here
   ]),
 ]);

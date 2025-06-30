@@ -1,22 +1,28 @@
 import { route } from "rwsdk/router";
-import  { Login } from "./Login";
 import { sessions } from "@/session/store";
-import Signup from "./Signup";
+import LoginPage from "./Login";
+import BetterAuthSignup from "./BetterAuthSignup";
+import { getAuthInstance } from "@/lib/middlewareFunctions";
+import type { AppContext } from "@/worker";
 
-  // route("/login", [Login]),
-  //  this was a problem with bundling
-  //  when we have single item in array => drop the brackets 
 export const userRoutes = [
-  route("/login", Login),
-  route("/logout", async function ({ request }) {
-    const headers = new Headers();
-    await sessions.remove(request, headers);
-    headers.set("Location", "/");
-
-    return new Response(null, {
-      status: 302,
-      headers,
-    });
+  route("/login", ({ ctx, request }: { ctx: AppContext; request: Request }) => {
+    // ctx is available here!
+    console.log("Current user:", ctx.user);
+    console.log("Current org:", ctx.organization?.name);
+    
+    // No need to redirect here since LoginPage handles it
+    return LoginPage({ ctx });
   }),
-  route("/signup", Signup),
+  
+  route("/logout", async function ({ request, ctx }: { request: Request; ctx: AppContext }) {
+    // Use the proper auth logout instead of sessions
+    const authInstance = getAuthInstance();
+    return authInstance.handler(request); // This handles the logout
+  }),
+  
+  route("/signup", ({ ctx, request }: { ctx: AppContext; request: Request }) => {
+    // No need to redirect here since BetterAuthSignup can handle it
+    return BetterAuthSignup({ ctx });
+  }),
 ];

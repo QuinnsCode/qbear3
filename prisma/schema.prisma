@@ -22,65 +22,297 @@ datasource db {
 }
 
 model User {
-  id          String      @id @default(uuid()) // User ID (UUID-based)
-  username    String      @unique
-  createdAt   DateTime    @default(now())
-  orderNotes OrderNote[]
+  id        String   @id @default(uuid()) // User ID (UUID-based)
+  username  String?  @unique // Make nullable since Better Auth doesn't require it
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  credentials Credential[] // Relationship: One user can have many credentials
+  // Better Auth required fields - make them nullable
+  name          String?
+  email         String? @unique
+  emailVerified Boolean @default(false)
+  image         String?
+
+  // Relationships
+  credentials Credential[]
+  sessions    Session[]
+  accounts    Account[]
+
+  OrderNote  OrderNote[]
+  notes       Note[]
+  role       String?
+  banned     Boolean?
+  banReason  String?
+  banExpires DateTime?
+
+  members     Member[]
+  invitations Invitation[]
+
+  apikeys Apikey[]
+
+  @@map("user")
 }
 
 model Credential {
-  id            String   @id @default(uuid()) // Internal DB ID
-  userId        String   @unique // Every credential is linked to a specific user
-  user          User     @relation(fields: [userId], references: [id])
-  createdAt     DateTime @default(now())
-  credentialId  String   @unique // WebAuthn credential identifier
-  publicKey     Bytes
-  counter       Int      @default(0)
-  
+  id           String   @id @default(uuid()) // Internal DB ID
+  userId       String   @unique // Every credential is linked to a specific user
+  user         User     @relation(fields: [userId], references: [id])
+  createdAt    DateTime @default(now())
+  credentialId String   @unique // WebAuthn credential identifier
+  publicKey    Bytes
+  counter      Int      @default(0)
+
   @@index([credentialId])
   @@index([userId])
 }
 
+model Session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  impersonatedBy String?
+
+  activeOrganizationId String?
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+// Your existing models (add these back if you need them)
+
 model Order {
-  id            Int      @id @default(autoincrement())
-  orderNumber   String   @unique
-  shipstationId Int      @unique
-  orderData     String   // JSON blob of full ShipStation order
-  status       String    @default("")
-  storeId       Int?     @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  id            Int         @id @default(autoincrement())
+  orderNumber   String      @unique
+  shipstationId Int         @unique
+  orderData     String // JSON blob of full ShipStation order
+  status        String      @default("")
+  storeId       Int?        @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   // For your internal notes/updates (for later)
   notes         OrderNote[]
-  
+
   @@index([orderNumber])
   @@index([shipstationId])
 }
 
 model OrderNote {
-  id        Int      @id @default(autoincrement())
-  orderId   Int
-  userId    String?  // <- Change from Int? to String?
-  content   String
-  isInternal Boolean @default(false)
-  createdAt DateTime @default(now())
-  
-  order     Order    @relation(fields: [orderId], references: [id])
-  user      User?    @relation(fields: [userId], references: [id])
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  userId     String? // Changed to String to match User.id
+  content    String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  order      Order    @relation(fields: [orderId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
 }
 
 model ShipstationWebhookResponse {
-  id           String      @id @default(uuid()) 
-  resourceUrl  String   // URL to fetch the actual data
-  resourceType String   // ORDER_NOTIFY, SHIP_NOTIFY, etc.
-  orderData    String?  // JSON blob from fetching resource_url
+  id           String   @id @default(uuid())
+  resourceUrl  String // URL to fetch the actual data
+  resourceType String // ORDER_NOTIFY, SHIP_NOTIFY, etc.
+  orderData    String? // JSON blob from fetching resource_url
   processed    Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  
+
   @@index([resourceType])
   @@index([processed])
+}
+
+model Organization {
+  id          String       @id
+  name        String
+  slug        String?      @unique
+  logo        String?
+  createdAt   DateTime
+  metadata    String?
+  
+  // Relations
+  members     Member[]
+  invitations Invitation[]
+  teams       Team[]
+  apikeys     Apikey[]
+  
+  // Org-scoped data relations
+  shipStationOrders   ShipStationOrder[]
+  shipStationWebhooks ShipStationWebhook[]
+  notes              Note[]
+
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String
+  createdAt      DateTime
+
+  teamId String?
+
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String
+  expiresAt      DateTime
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  teamId String?
+
+  @@map("invitation")
+}
+
+model Team {
+  id             String       @id
+  name           String
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime
+  updatedAt      DateTime?
+
+  @@map("team")
+}
+
+model Apikey {
+  id                  String        @id
+  organizationId      String?       @map("organization_id") // 🔑 Add org scoping (nullable for now)
+  organization        Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  name                String?       // "ShipStation API", "Amazon MWS", etc.
+  service             String?       // "shipstation", "amazon", "shopify"
+  keyType             String?       // "api_key", "api_secret", "access_token"
+  start               String?
+  prefix              String?
+  key                 String
+  userId              String?       // Make nullable since org keys might not have a user
+  user                User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refillInterval      Int?
+  refillAmount        Int?
+  lastRefillAt        DateTime?
+  enabled             Boolean?      @default(true)
+  rateLimitEnabled    Boolean?
+  rateLimitTimeWindow Int?
+  rateLimitMax        Int?
+  requestCount        Int?
+  remaining           Int?
+  lastRequest         DateTime?
+  expiresAt           DateTime?
+  createdAt           DateTime
+  updatedAt           DateTime
+  permissions         String?
+  metadata            String?
+
+  @@index([organizationId])
+  @@index([service, keyType])
+  @@map("apikey")
+}
+
+model ShipStationOrder {
+  id             String        @id @default(uuid())
+  organizationId String?       @map("organization_id") // 🔑 Add org scoping (nullable for now)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  orderId     Int      @map("order_id") // ShipStation's order ID
+  orderNumber String?  @map("order_number")
+  orderStatus String?  @map("order_status")
+  rawData     String   @map("raw_data") // Full JSON from ShipStation
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  notes       Note[] @relation("ShipStationOrderNotes")
+
+  @@index([organizationId])
+  @@index([orderId])
+  @@index([orderNumber])
+  @@index([orderStatus])
+  @@map("shipstation_orders")
+}
+
+model ShipStationWebhook {
+  id             String        @id @default(uuid())
+  organizationId String?       @map("organization_id") // 🔑 Add org scoping (nullable for now)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  resourceUrl  String   @map("resource_url")
+  resourceType String   @map("resource_type")
+  rawData      String?  @map("raw_data") // Full webhook payload
+  processed    Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@index([resourceType])
+  @@index([processed])
+  @@map("shipstation_webhooks")
+}
+
+model Note {
+  id             String        @id @default(uuid())
+  organizationId String?       @map("organization_id") // 🔑 Add org scoping (nullable for now)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  entityType String   @map("entity_type") // "shipstation_order", "amazon_order", "product", "customer", etc.
+  entityId   String   @map("entity_id")   // The ID of whatever entity this note is for
+  userId     String?  @map("user_id")
+  user       User?    @relation(fields: [userId], references: [id])
+  content    String
+  isInternal Boolean  @default(false) @map("is_internal")
+  metadata   String?  // JSON for extra data like tags, priority, etc.
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Specific relations for type safety
+  shipstationOrder ShipStationOrder? @relation("ShipStationOrderNotes", fields: [entityId], references: [id])
+
+  @@index([organizationId])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("notes")
 }
