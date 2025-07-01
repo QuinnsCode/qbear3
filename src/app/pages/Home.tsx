@@ -1,6 +1,8 @@
 import { RequestInfo } from "rwsdk/worker";
 
-export function Home({ ctx }: RequestInfo) {
+export function Home(requestInfo: RequestInfo) {
+  const { ctx } = requestInfo;  // Destructure ctx from requestInfo
+  
   return (
     <div>
       <p>Organization: {ctx.organization?.name}</p>

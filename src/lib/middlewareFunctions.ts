@@ -3,27 +3,58 @@ import { type User, type Organization, db, setupDb } from "@/db";
 import type { AppContext } from "@/worker";
 import { env } from "cloudflare:workers";
 
+// @/lib/middlewareFunctions.ts - Fully org-scoped approach
+
 export function extractOrgFromSubdomain(request: Request): string | null { 
   const url = new URL(request.url);
   const hostname = url.hostname;
   
-  // Handle different environments
-  if (hostname.includes('workers.dev') || hostname.includes('localhost')) {
-    // For localhost subdomains like "test1.localhost"
+  console.log('🔍 Checking hostname for org:', hostname);
+  
+  // Handle different environments - ONLY check hostname, ignore pathname
+  if (hostname.includes('localhost')) {
+    // For localhost subdomains like "myorg.localhost:5173"
     const parts = hostname.split('.');
     if (parts.length >= 2 && parts[1] === 'localhost') {
-      return parts[0]; // Return "test1"
+      const orgSlug = parts[0];
+      // Validate org slug format
+      if (/^[a-z0-9-]+$/.test(orgSlug) && orgSlug.length > 0) {
+        console.log(`✅ Found org from localhost subdomain: "${orgSlug}"`);
+        return orgSlug;
+      }
     }
-    // Development: use path-based for testing
-    return url.pathname.split('/')[1];
+    
+    // No subdomain on localhost = main domain
+    console.log('🏠 Main domain (no subdomain)');
+    return null;
   }
   
-  // Production: subdomain-based
+  if (hostname.includes('workers.dev')) {
+    // For workers.dev like "myorg.myapp.workers.dev"
+    const parts = hostname.split('.');
+    if (parts.length >= 4) {
+      const orgSlug = parts[0];
+      if (/^[a-z0-9-]+$/.test(orgSlug) && orgSlug.length > 0) {
+        console.log(`✅ Found org from workers.dev subdomain: "${orgSlug}"`);
+        return orgSlug;
+      }
+    }
+    
+    console.log('🏠 Main workers.dev domain');
+    return null;
+  }
+  
+  // Production: custom domain like "myorg.myapp.com"
   const parts = hostname.split('.');
   if (parts.length >= 3) {
-    return parts[0];
+    const orgSlug = parts[0];
+    if (/^[a-z0-9-]+$/.test(orgSlug) && orgSlug.length > 0) {
+      console.log(`✅ Found org from production subdomain: "${orgSlug}"`);
+      return orgSlug;
+    }
   }
   
+  console.log('🏠 Main production domain');
   return null;
 }
 
@@ -36,7 +67,7 @@ export async function getOrgShipStationCredentials(organizationId: string): Prom
     where: {
       organizationId,
       service: 'shipstation',
-      keyType: 'basic_auth', // Store the full auth string
+      keyType: 'basic_auth',
       enabled: true
     }
   });
@@ -53,10 +84,8 @@ export async function setOrgShipStationCredentials(
   credentials: ShipStationCredentials,
   userId?: string
 ) {
-  // Store the complete basic auth string
   await db.apikey.upsert({
     where: { 
-      // We'll need a unique constraint for this, or use findFirst + create/update
       id: `${organizationId}-shipstation-auth`
     },
     update: {
@@ -102,7 +131,6 @@ export async function initializeServices() {
   }
 }
 
-// Export function to get auth instance (for use in routes)
 export function getAuthInstance() {
   if (!authInstance) {
     throw new Error("Auth instance not initialized. Call initializeServices() first.");
@@ -148,7 +176,7 @@ export async function setupOrganizationContext(ctx: AppContext, request: Request
       console.log('🏢 Found org:', org?.name, 'Members for user:', org?.members?.length);
       
       if (!org) {
-        // Organization doesn't exist
+        // Organization doesn't exist - redirect to main domain with error
         ctx.organization = null;
         ctx.userRole = null;
         ctx.orgError = 'ORG_NOT_FOUND';
@@ -156,24 +184,34 @@ export async function setupOrganizationContext(ctx: AppContext, request: Request
         return;
       }
       
-      // Only set org context if user is a member (or if no user - for webhooks)
-      if (org.members.length > 0 || !ctx.user) {
+      // For webhooks and API calls, allow access without user context
+      if (!ctx.user && (request.url.includes('/api/') || request.url.includes('/webhooks/'))) {
+        ctx.organization = org as Organization;
+        ctx.userRole = null;
+        ctx.orgError = null;
+        console.log('🔗 API/Webhook access to org:', org.name);
+        return;
+      }
+      
+      // For regular pages, check user membership
+      if (org.members.length > 0) {
         ctx.organization = org as Organization;
         ctx.userRole = org.members[0]?.role || null;
         ctx.orgError = null;
-        console.log('✅ Set org context:', org.name, 'Role:', ctx.userRole);
+        console.log('✅ User has access to org:', org.name, 'Role:', ctx.userRole);
       } else {
-        // User is not a member of this organization
-        ctx.organization = null;
+        // User is not a member - they should join or be invited
+        ctx.organization = org as Organization; // Still set org so login page can show org name
         ctx.userRole = null;
-        ctx.orgError = 'NO_ACCESS';
-        console.log('❌ No org access - User:', !!ctx.user, 'Org exists but user not a member');
+        ctx.orgError = ctx.user ? 'NO_ACCESS' : null; // Only error if user is logged in but not a member
+        console.log('❌ User not a member of org:', org.name);
       }
     } else {
+      // No org context (main domain)
       ctx.organization = null;
       ctx.userRole = null;
       ctx.orgError = null;
-      console.log('🚫 No org slug detected');
+      console.log('🏠 Main domain - no org context');
     }
   } catch (error) {
     console.error("Organization context error:", error);

@@ -6,9 +6,7 @@ import { RoleToggleButton } from "@/app/pages/user/RoleToggleButton";
 import { extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
 import { OrganizationSelector } from "@/app/components/Organizations/OrganizationSelector";
 
-export default function HomePage(requestInfo: RequestInfo) {
-  const { ctx, request } = requestInfo;
-  
+export default function HomePage({ ctx, request }: RequestInfo) {
   const attemptedOrgSlug = extractOrgFromSubdomain(request);
   
   // Get the main domain without subdomain
@@ -136,6 +134,7 @@ export default function HomePage(requestInfo: RequestInfo) {
           <BetterAuthLogin 
             organizationName={attemptedOrgSlug} 
             showOrgWarning={true}
+            forceSignUp={true}
           />
           <div className="mt-4 text-center">
             <a 

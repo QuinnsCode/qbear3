@@ -12,9 +12,12 @@ import { Session } from "./session/durableObject";
 import { type User, type Organization, db, setupDb } from "@/db";
 import AdminPage from "@/app/pages/admin/Admin";
 import HomePage from "@/app/pages/home/HomePage";
+import OrgDashboard from "@/app/components/Organizations/OrgDashboard";
+import OrgLanding from "@/app/pages/orgs/OrgLanding";
 import { initializeServices, setupOrganizationContext, setupSessionContext, getAuthInstance, extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
 import { env } from "cloudflare:workers";
 import CreateOrgPage from "@/app/pages/orgs/CreateOrgPage";
+
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -40,27 +43,26 @@ export default defineApp([
     if (ctx.orgError && !request.url.includes('/api/') && !request.url.includes('/__realtime')) {
       const url = new URL(request.url);
       
-      // if (ctx.orgError === 'ORG_NOT_FOUND') {
-      //   // Redirect to main domain without subdomain
-      //   const mainDomain = url.hostname.includes('localhost') 
-      //     ? 'localhost:5173' 
-      //     : url.hostname.split('.').slice(-2).join('.'); // Get main domain (remove subdomain)
-        
-      //   return new Response(null, {
-      //     status: 302,
-      //     headers: { Location: `${url.protocol}//${mainDomain}/org-not-found?slug=${extractOrgFromSubdomain(request)}` },
-      //   });
-      // }
-      
-      if (ctx.orgError === 'NO_ACCESS') {
-        // Redirect to main domain without subdomain
+      if (ctx.orgError === 'ORG_NOT_FOUND') {
+        // Redirect to main domain with org creation option
         const mainDomain = url.hostname.includes('localhost') 
           ? 'localhost:5173' 
-          : url.hostname.split('.').slice(-2).join('.'); // Get main domain (remove subdomain)
+          : url.hostname.split('.').slice(-2).join('.');
         
+        const orgSlug = extractOrgFromSubdomain(request);
         return new Response(null, {
           status: 302,
-          headers: { Location: `${url.protocol}//${mainDomain}/no-access?slug=${extractOrgFromSubdomain(request)}` },
+          headers: { 
+            Location: `${url.protocol}//${mainDomain}/orgs/new?suggested=${orgSlug}` 
+          },
+        });
+      }
+      
+      if (ctx.orgError === 'NO_ACCESS') {
+        // User is logged in but not a member - show join page
+        return new Response(null, {
+          status: 302,
+          headers: { Location: `/user/login` }, // Changed to use existing user routes
         });
       }
     }
@@ -303,8 +305,25 @@ export default defineApp([
       );
     }),
 
-    // 🚫 NON-REALTIME ROUTES (auth, simple pages)
-    route("/", HomePage),
+    // 🏠 MAIN DOMAIN ROUTES
+    route("/", [
+      ({ ctx }) => {
+        if (ctx.organization && (!ctx.user || !ctx.userRole)) {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: "/user/login" },
+          });
+        }
+      },
+      (requestInfo) => {
+        const { ctx } = requestInfo;
+        console.log(ctx)
+        if (!ctx.organization) {
+          return <HomePage {...requestInfo} />;
+        }
+        return <OrgLanding {...requestInfo} />;
+      },
+    ]),
     route("/admin", AdminPage),
     
     route("/client-test", () => (
@@ -330,10 +349,21 @@ export default defineApp([
       Home,
     ]),
 
+    // 🏢 ORG-SPECIFIC ROUTES - Add a simple dashboard for when users are on org subdomains
+    route("/dashboard", OrgDashboard),
+
     // 🔄 ENABLE REALTIME for everything below this point
     // this is configured in client.tsx
     // ⚡ REALTIME ROUTES (live updates, interactive features)
-    route("/search/:orderNumber", async function ({ params, ctx }) {
+    route("/search/:orderNumber", async ({ params, ctx }) => {
+      // Check org access for search
+      if (ctx.organization && (!ctx.user || !ctx.userRole)) {
+        return new Response(null, {
+          status: 302,
+          headers: { Location: "/user/login" }
+        });
+      }
+      
       return <OrderSearchPage orderNumber={params.orderNumber} currentUser={ctx.user} />;
     }),
     // Add other routes that need realtime here

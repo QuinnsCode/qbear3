@@ -3,12 +3,32 @@
 import { useState, useTransition, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 
-export function BetterAuthLogin({ organizationName, showOrgWarning }: { organizationName?: string; showOrgWarning?: boolean } = {}) {
+interface BetterAuthLoginProps {
+  organizationName?: string;
+  showOrgWarning?: boolean;
+  forceSignUp?: boolean;
+  onAuthSuccess?: (user: any) => void; // Callback for when auth succeeds
+  redirectOnSuccess?: boolean; // Whether to redirect or not
+  redirectPath?: string; // Custom redirect path
+  showDevTools?: boolean; // Whether to show dev utilities
+  className?: string; // Custom container classes
+}
+
+export function BetterAuthLogin({ 
+  organizationName, 
+  showOrgWarning, 
+  forceSignUp = false,
+  onAuthSuccess,
+  redirectOnSuccess = true,
+  redirectPath = "/",
+  showDevTools = true,
+  className = "max-w-[400px] w-full mx-auto px-10"
+}: BetterAuthLoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [result, setResult] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(forceSignUp);
   const [isPending, startTransition] = useTransition();
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -16,6 +36,20 @@ export function BetterAuthLogin({ organizationName, showOrgWarning }: { organiza
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  const handleAuthSuccess = (user: any, message: string) => {
+    setResult(message);
+    
+    if (onAuthSuccess) {
+      // Call custom callback if provided
+      onAuthSuccess(user);
+    } else if (redirectOnSuccess) {
+      // Default redirect behavior
+      setTimeout(() => {
+        window.location.pathname = redirectPath;
+      }, 1500);
+    }
+  };
 
   const handleSignIn = async () => {
     try {
@@ -30,10 +64,7 @@ export function BetterAuthLogin({ organizationName, showOrgWarning }: { organiza
         return;
       }
 
-      setResult("Login successful!");
-      setTimeout(() => {
-        window.location.pathname = "/";
-      }, 1500);
+      handleAuthSuccess(data?.user, "Login successful!");
     } catch (err) {
       setResult(`Login failed: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
@@ -53,10 +84,15 @@ export function BetterAuthLogin({ organizationName, showOrgWarning }: { organiza
         return;
       }
 
-      setResult("Account created successfully! You can now sign in.");
-      // Switch to sign in mode
-      setIsSignUp(false);
-      setName("");
+      if (redirectOnSuccess || onAuthSuccess) {
+        // If we need to handle success immediately (like for org creation)
+        handleAuthSuccess(data?.user, "Account created successfully!");
+      } else {
+        // Default behavior: switch to sign in mode
+        setResult("Account created successfully! You can now sign in.");
+        setIsSignUp(false);
+        setName("");
+      }
     } catch (err) {
       setResult(`Sign up failed: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
@@ -110,8 +146,17 @@ export function BetterAuthLogin({ organizationName, showOrgWarning }: { organiza
       : (isSignUp ? "Sign Up" : "Sign In");
   };
 
+  const getSubtitle = () => {
+    if (showOrgWarning && organizationName) {
+      return `Create your account to set up the "${organizationName}" organization.`;
+    }
+    return isSignUp 
+      ? "Create a new account below." 
+      : "Enter your credentials below to sign in.";
+  };
+
   return (
-    <div className="max-w-[400px] w-full mx-auto px-10">
+    <div className={className}>
       {showOrgWarning && organizationName && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
           <div className="flex">
@@ -136,10 +181,7 @@ export function BetterAuthLogin({ organizationName, showOrgWarning }: { organiza
         {getTitle()}
       </h1>
       <p className="py-6 text-gray-600 text-center">
-        {isSignUp 
-          ? "Create a new account below." 
-          : "Enter your credentials below to sign in."
-        }
+        {getSubtitle()}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -202,41 +244,46 @@ export function BetterAuthLogin({ organizationName, showOrgWarning }: { organiza
         </button>
       </form>
 
-      <div className="mt-4 text-center">
-        <button
-          type="button"
-          onClick={() => {
-            setIsSignUp(!isSignUp);
-            setResult("");
-          }}
-          className="text-blue-500 hover:text-blue-600 text-sm"
-        >
-          {isSignUp 
-            ? "Already have an account? Sign in" 
-            : "Don't have an account? Sign up"
-          }
-        </button>
-      </div>
-
-      {/* Development utilities */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <div className="flex flex-col gap-2">
+      {/* Only show toggle if not forced to signup */}
+      {!forceSignUp && (
+        <div className="mt-4 text-center">
           <button
             type="button"
-            onClick={getCurrentUser}
-            className="text-sm bg-gray-100 text-gray-700 py-1 px-3 rounded hover:bg-gray-200"
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setResult("");
+            }}
+            className="text-blue-500 hover:text-blue-600 text-sm"
           >
-            Check Current Session
-          </button>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="text-sm bg-red-100 text-red-700 py-1 px-3 rounded hover:bg-red-200"
-          >
-            Sign Out
+            {isSignUp 
+              ? "Already have an account? Sign in" 
+              : "Don't have an account? Sign up"
+            }
           </button>
         </div>
-      </div>
+      )}
+
+      {/* Development utilities */}
+      {showDevTools && (
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={getCurrentUser}
+              className="text-sm bg-gray-100 text-gray-700 py-1 px-3 rounded hover:bg-gray-200"
+            >
+              Check Current Session
+            </button>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="text-sm bg-red-100 text-red-700 py-1 px-3 rounded hover:bg-red-200"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
 
       {result && (
         <div className={`mt-4 p-3 rounded text-sm ${
