@@ -1,5 +1,6 @@
 // @/lib/middlewareFunctions.ts
 import { type User, type Organization, db, setupDb } from "@/db";
+import { auth } from "@/lib/auth";
 import type { AppContext } from "@/worker";
 import { env } from "cloudflare:workers";
 
@@ -153,8 +154,6 @@ export async function setupSessionContext(ctx: AppContext, request: Request) {
     
     console.log('🔍 Setting up session context for:', new URL(request.url).pathname);
     
-    // Import auth directly when needed, not globally
-    const { auth } = await import("@/lib/auth");
     const session = await auth.api.getSession({
       headers: request.headers
     });

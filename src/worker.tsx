@@ -9,6 +9,7 @@ import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
+import { auth } from "@/lib/auth";
 import { type User, type Organization, db, setupDb } from "@/db";
 import AdminPage from "@/app/pages/admin/Admin";
 import HomePage from "@/app/pages/home/HomePage";
@@ -18,7 +19,6 @@ import {
   initializeServices, 
   setupOrganizationContext, 
   setupSessionContext, 
-  getAuthInstance, 
   extractOrgFromSubdomain,
   shouldSkipMiddleware 
 } from "@/lib/middlewareFunctions";
@@ -29,7 +29,7 @@ export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
 
 export type AppContext = {
-  session: Session | null;
+  session: any | null;
   user: User | null;
   organization: Organization | null;
   userRole: string | null;
@@ -143,8 +143,6 @@ export default defineApp([
         // Initialize database
         await initializeServices();
         
-        // Import auth instance directly (not from global)
-        const { auth } = await import("@/lib/auth");
         console.log('🔍 Auth instance imported successfully');
         
         // Call the auth handler
@@ -157,14 +155,13 @@ export default defineApp([
         console.error('🚨 Auth route error:', error);
         return new Response(JSON.stringify({ 
           error: 'Auth failed', 
-          message: error.message 
+          message: error?.message || String(error)
         }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
         });
       }
     }),
-
     // Other API routes follow...
     route("/orders/:orderDbId/notes", async ({ request, params, ctx }) => {
       if (request.method !== "POST") {
@@ -214,7 +211,7 @@ export default defineApp([
     }),
 
     route("/protected", async ({ request, ctx }) => {
-      const authInstance = getAuthInstance();
+      const authInstance = auth;
       const session = await authInstance.api.getSession({
         headers: request.headers
       });

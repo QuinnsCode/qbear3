@@ -45,8 +45,12 @@ export const auth = betterAuth({
     
     // Add CORS for your domains
     trustedOrigins: [
-        "https://quinncodes.com",
-        "https://*.quinncodes.com",
+      "quinncodes.com",           // Protocol-agnostic for main domain
+      "*.quinncodes.com",         // Protocol-agnostic for all quinncodes subdomains
+      "localhost:5173",           // Protocol-agnostic for localhost
+      "*.localhost:5173",         // Protocol-agnostic for all localhost subdomains
+      "localhost:8787",           // For wrangler dev
+      "*.localhost:8787",         // For wrangler dev subdomains
     ],
 });
 
