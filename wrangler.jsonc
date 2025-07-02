@@ -7,6 +7,10 @@
   "assets": {
     "binding": "ASSETS"
   },
+  "routes": [
+    "quinncodes.com/*",
+    "*.quinncodes.com/*"
+  ],
   "observability": {
     "enabled": true
   },
@@ -23,7 +27,8 @@
     ]
   },
   "vars": {
-    "WEBAUTHN_APP_NAME": "swankyflare-v2"
+    "WEBAUTHN_APP_NAME": "swankyflare-v2",
+    "BETTER_AUTH_URL": "https://quinncodes.com"
   },
   "migrations": [
     {

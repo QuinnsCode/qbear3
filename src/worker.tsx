@@ -14,10 +14,16 @@ import AdminPage from "@/app/pages/admin/Admin";
 import HomePage from "@/app/pages/home/HomePage";
 import OrgDashboard from "@/app/components/Organizations/OrgDashboard";
 import OrgLanding from "@/app/pages/orgs/OrgLanding";
-import { initializeServices, setupOrganizationContext, setupSessionContext, getAuthInstance, extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
+import { 
+  initializeServices, 
+  setupOrganizationContext, 
+  setupSessionContext, 
+  getAuthInstance, 
+  extractOrgFromSubdomain,
+  shouldSkipMiddleware 
+} from "@/lib/middlewareFunctions";
 import { env } from "cloudflare:workers";
 import CreateOrgPage from "@/app/pages/orgs/CreateOrgPage";
-
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -33,9 +39,18 @@ export type AppContext = {
 export default defineApp([
   setCommonHeaders(),
   
-  // 🔧 SHARED MIDDLEWARE - runs for all routes
+  // 🔧 CONDITIONAL MIDDLEWARE - Only runs for non-auth routes
   async ({ ctx, request, headers }) => {
+    // Always initialize services
     await initializeServices();
+    
+    // Skip middleware setup for auth routes
+    if (shouldSkipMiddleware(request)) {
+      console.log('🔍 Skipping middleware for:', new URL(request.url).pathname);
+      return;
+    }
+    
+    // Setup context for other routes
     await setupSessionContext(ctx, request);
     await setupOrganizationContext(ctx, request);
     
@@ -62,7 +77,7 @@ export default defineApp([
         // User is logged in but not a member - show join page
         return new Response(null, {
           status: 302,
-          headers: { Location: `/user/login` }, // Changed to use existing user routes
+          headers: { Location: `/user/login` },
         });
       }
     }
@@ -70,13 +85,10 @@ export default defineApp([
 
   // 🔌 REALTIME ROUTES - Handle WebSocket and presence
   route("/__realtime/presence", async ({ request }) => {
-    // Forward presence requests to the Durable Object
-    // Use the same key as the realtime connection
     let key = '/default';
     
     if (request.method === 'POST') {
       try {
-        // Clone the request so we can read the body without consuming it
         const clonedRequest = request.clone();
         const body = await clonedRequest.json() as { pathname?: string; userId?: string; username?: string; action?: string };
         key = body?.pathname || '/default';
@@ -84,7 +96,6 @@ export default defineApp([
         // If JSON parsing fails, use default key
       }
     } else if (request.method === 'GET') {
-      // For GET requests, get the key from query params
       const url = new URL(request.url);
       key = url.searchParams.get('key') || '/default';
     }
@@ -98,9 +109,7 @@ export default defineApp([
   }),
 
   route("/__realtime", async ({ request }) => {
-    // Handle WebSocket upgrades with key-based routing
     if (request.headers.get("Upgrade") === "websocket") {
-      // Get the key from query parameters
       const url = new URL(request.url);
       const key = url.searchParams.get('key') || '/default';
       
@@ -112,7 +121,6 @@ export default defineApp([
       return durableObject.fetch(request);
     }
     
-    // For non-WebSocket requests, return a 400 error or handle appropriately
     return new Response("WebSocket upgrade required", { status: 400 });
   }),
 
@@ -120,7 +128,44 @@ export default defineApp([
 
   // 🚀 API ROUTES - All API endpoints
   prefix("/api", [
-    // Specific API routes first (highest priority)
+    
+    // 🔐 AUTH ROUTES - HIGHEST PRIORITY, NO MIDDLEWARE INTERFERENCE
+    route("/debug", async () => {
+      return new Response("Debug route works!", { status: 200 });
+    }),
+    // Replace your auth route with this:
+    route("/auth/*", async ({ request }) => {
+      try {
+        console.log('🔍 === AUTH ROUTE START ===');
+        console.log('🔍 URL:', request.url);
+        console.log('🔍 Method:', request.method);
+        
+        // Initialize database
+        await initializeServices();
+        
+        // Import auth instance directly (not from global)
+        const { auth } = await import("@/lib/auth");
+        console.log('🔍 Auth instance imported successfully');
+        
+        // Call the auth handler
+        const response = await auth.handler(request);
+        console.log('🔍 Auth handler completed, status:', response.status);
+        
+        return response;
+        
+      } catch (error) {
+        console.error('🚨 Auth route error:', error);
+        return new Response(JSON.stringify({ 
+          error: 'Auth failed', 
+          message: error.message 
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }),
+
+    // Other API routes follow...
     route("/orders/:orderDbId/notes", async ({ request, params, ctx }) => {
       if (request.method !== "POST") {
         return new Response(null, { status: 405 });
@@ -147,7 +192,6 @@ export default defineApp([
         include: { user: true }
       });
       
-      // Get the order number to construct the realtime key
       const order = await db.order.findUnique({
         where: { id: orderDbId },
         select: { orderNumber: true }
@@ -155,7 +199,6 @@ export default defineApp([
       
       if (order) {
         console.log('🚀 Calling renderRealtimeClients with key:', `/search/${order.orderNumber}`);
-        console.log('Current pathname should be:', `/search/${order.orderNumber}`);
         
         await renderRealtimeClients({
           durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
@@ -170,11 +213,6 @@ export default defineApp([
       });
     }),
 
-    route("/auth/*", async ({ request }) => {
-      const authInstance = getAuthInstance();
-      return authInstance.handler(request);
-    }),
-
     route("/protected", async ({ request, ctx }) => {
       const authInstance = getAuthInstance();
       const session = await authInstance.api.getSession({
@@ -183,32 +221,29 @@ export default defineApp([
       if (!session) {
         return new Response("Unauthorized", { status: 401 });
       }
-      return new Response(`Hello ${session.user.name}!`);
+      return new Response(`Hello ${session?.user?.name}!`);
     }),
 
     route("/webhooks/:service", async ({ request, params, ctx }) => {
       const webhookPath = params.service;
       console.log('📦 API Service:', webhookPath);
-      console.log('📦 Organization:', ctx.organization?.slug);
       
       if (webhookPath === 'shipstation') {
-        // Verify we have org context for webhook processing
         if (!ctx.organization) {
           console.error('❌ No organization context for API webhook');
           return Response.json({ error: "Organization not found" }, { status: 404 });
         }
         
-        // Direct import instead of dynamic
         const { default: handler } = await import('@/app/api/webhooks/shipstation-wh');
-        return handler({ request, params, ctx }); // Pass ctx instead of organization
+        return handler({ request, params, ctx });
       }
       
       return Response.json({ error: "Webhook not supported" }, { status: 404 });
     }),
 
-    // 🎯 CATCH-ALL API ROUTE - handles dynamic API routes from /api folder
+    // 🎯 CATCH-ALL API ROUTE
     route("/*", async ({ request, params, ctx }) => {
-      const apiPath = params["*"]; // Gets the remaining path after /api/
+      const apiPath = params["*"];
       
       if (!apiPath) {
         return new Response(
@@ -221,21 +256,17 @@ export default defineApp([
       }
 
       try {
-        // Dynamic import from your app/api folder
-        // Example: /api/users/profile -> imports from @/app/api/users/profile
         const handler = await import(`@/app/api/${apiPath}`);
         
-        // Call the default export with context
         return await handler.default({ 
           request, 
           ctx,
-          params: params, // Pass through any route params
+          params: params,
           method: request.method 
         });
       } catch (error) {
         console.error(`API route not found: /api/${apiPath}`, error);
         
-        // Check if it's a module not found error
         if (error.message?.includes('Cannot resolve module')) {
           return new Response(
             JSON.stringify({ 
@@ -249,7 +280,6 @@ export default defineApp([
           );
         }
         
-        // Other errors (like handler throwing an error)
         return new Response(
           JSON.stringify({ 
             error: "Internal server error",
@@ -264,23 +294,21 @@ export default defineApp([
     })
   ]),
 
-  // 🔗 DIRECT WEBHOOK ROUTES - Handle legacy webhook URLs
+  // 🔗 DIRECT WEBHOOK ROUTES
   route("/webhooks/:service", async ({ request, params, ctx }) => {
     const webhookPath = params.service;
     console.log('📦 Direct Webhook Service:', webhookPath);
-    console.log('📦 Organization:', ctx.organization?.slug);
     
     if (webhookPath === 'shipstation') {
       const { default: handler } = await import('@/app/api/webhooks/shipstation-wh');
-      return handler({ request, params, ctx }); // Pass ctx
+      return handler({ request, params, ctx });
     }
     
     return Response.json({ error: "Webhook not supported" }, { status: 404 });
   }),
 
-  // 🎨 FRONTEND ROUTES - Pages and UI
+  // 🎨 FRONTEND ROUTES
   render(Document, [
-    // 🚫 ERROR PAGES - Handle org access issues
     route("/org-not-found", ({ request }) => {
       const url = new URL(request.url);
       const slug = url.searchParams.get('slug');
@@ -305,7 +333,6 @@ export default defineApp([
       );
     }),
 
-    // 🏠 MAIN DOMAIN ROUTES
     route("/", [
       ({ ctx }) => {
         if (ctx.organization && (!ctx.user || !ctx.userRole)) {
@@ -317,25 +344,22 @@ export default defineApp([
       },
       (requestInfo) => {
         const { ctx } = requestInfo;
-        console.log(ctx)
         if (!ctx.organization) {
           return <HomePage {...requestInfo} />;
         }
         return <OrgLanding {...requestInfo} />;
       },
     ]),
-    route("/admin", AdminPage),
     
+    route("/admin", AdminPage),
     route("/client-test", () => (
       <div style={{ padding: '20px' }}>
         <h1>Testing Client Component</h1>
         <TestButtonClient />
       </div>
     )),
-
     route("/orgs/new", CreateOrgPage),
-
-    prefix("/user", userRoutes), // 🔑 AUTH ROUTES - NO REALTIME
+    prefix("/user", userRoutes),
     
     route("/protected", [
       ({ ctx }) => {
@@ -349,14 +373,9 @@ export default defineApp([
       Home,
     ]),
 
-    // 🏢 ORG-SPECIFIC ROUTES - Add a simple dashboard for when users are on org subdomains
     route("/dashboard", OrgDashboard),
 
-    // 🔄 ENABLE REALTIME for everything below this point
-    // this is configured in client.tsx
-    // ⚡ REALTIME ROUTES (live updates, interactive features)
     route("/search/:orderNumber", async ({ params, ctx }) => {
-      // Check org access for search
       if (ctx.organization && (!ctx.user || !ctx.userRole)) {
         return new Response(null, {
           status: 302,
@@ -366,6 +385,5 @@ export default defineApp([
       
       return <OrderSearchPage orderNumber={params.orderNumber} currentUser={ctx.user} />;
     }),
-    // Add other routes that need realtime here
   ]),
 ]);
