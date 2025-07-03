@@ -64,7 +64,7 @@ export async function OrderSearchPage({ orderNumber, currentUser }: OrderSearchP
     }
 
     return (
-      <div className="container mx-auto p-4">
+      <div className="container mx-auto p-4 mt-12">
         <h1>v1.00</h1>
         <h1 className="text-2xl font-bold mb-6">Search Results for Order: {orderNumber}</h1>
         
@@ -141,7 +141,7 @@ export async function OrderSearchPage({ orderNumber, currentUser }: OrderSearchP
           <OrderNotesRealtimeSync
             initialNotes={orderNotes}
             orderDbId={existingOrder?.id || 0}
-            currentUser={currentUser}
+            currentUser={currentUser as any}
           />
         )}
       </div>

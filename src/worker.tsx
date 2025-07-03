@@ -1,4 +1,4 @@
-import { defineApp, ErrorResponse } from "rwsdk/worker";
+import { defineApp, ErrorResponse, requestInfo } from "rwsdk/worker";
 import { realtimeRoute, renderRealtimeClients } from "rwsdk/realtime/worker";
 import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
@@ -9,12 +9,14 @@ import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
-import { auth } from "@/lib/auth";
+import { auth, initAuth } from "@/lib/auth";
 import { type User, type Organization, db, setupDb } from "@/db";
 import AdminPage from "@/app/pages/admin/Admin";
 import HomePage from "@/app/pages/home/HomePage";
 import OrgDashboard from "@/app/components/Organizations/OrgDashboard";
 import OrgLanding from "@/app/pages/orgs/OrgLanding";
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
 import { 
   initializeServices, 
   setupOrganizationContext, 
@@ -30,7 +32,7 @@ export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects
 
 export type AppContext = {
   session: any | null;
-  user: User | null;
+  user: any | null; // Change from User | null to any | null
   organization: Organization | null;
   userRole: string | null;
   orgError: 'ORG_NOT_FOUND' | 'NO_ACCESS' | 'ERROR' | null;
@@ -55,7 +57,12 @@ export default defineApp([
     await setupOrganizationContext(ctx, request);
     
     // Handle organization errors for frontend routes
-    if (ctx.orgError && !request.url.includes('/api/') && !request.url.includes('/__realtime')) {
+   if (ctx.orgError && 
+      !request.url.includes('/api/') && 
+      !request.url.includes('/__realtime') &&
+      !request.url.includes('/user/') &&
+      !request.url.includes('/orgs/new')) {
+
       const url = new URL(request.url);
       
       if (ctx.orgError === 'ORG_NOT_FOUND') {
@@ -127,30 +134,166 @@ export default defineApp([
   realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
 
   // 🚀 API ROUTES - All API endpoints
+  // 🚀 API ROUTES - All API endpoints
   prefix("/api", [
     
     // 🔐 AUTH ROUTES - HIGHEST PRIORITY, NO MIDDLEWARE INTERFERENCE
     route("/debug", async () => {
       return new Response("Debug route works!", { status: 200 });
     }),
-    // Replace your auth route with this:
+
+    route("/auth/test-db", async () => {
+      try {
+        // Test basic database operations
+        const userCount = await db.user.count();
+        console.log('User count:', userCount);
+        
+        // Test creating a simple user directly with Prisma
+        const testUser = await db.user.create({
+          data: {
+            id: "test-" + Date.now(),
+            email: "test@example.com",
+            name: "Test User",
+            emailVerified: false,
+          }
+        });
+        
+        return new Response(JSON.stringify({ 
+          userCount, 
+          testUser: testUser.id 
+        }));
+      } catch (error) {
+        return new Response(JSON.stringify({ 
+          error: error.message 
+        }), { status: 500 });
+      }
+    }),
+    route("/auth/test-main-instance", async ({ request }) => {
+      try {
+        await initializeServices();
+        const authInstance = initAuth();
+        
+        const uniqueEmail = `test-${Date.now()}@example.com`;
+        
+        const result = await authInstance.api.signUpEmail({
+          body: {
+            email: uniqueEmail,
+            password: "password123", 
+            name: "Test User"
+          },
+          headers: request.headers
+        });
+        
+        return new Response(JSON.stringify(result));
+        
+      } catch (error) {
+        return new Response(JSON.stringify({ 
+          error: error.message,
+          stack: error.stack,
+        }), { status: 500 });
+      }
+    }),
+   route("/auth/test-signup", async ({ request }) => {
+      try {
+        const { admin } = await import("better-auth/plugins");
+        const { organization } = await import("better-auth/plugins");
+        const { apiKey } = await import("better-auth/plugins");
+        const { multiSession } = await import("better-auth/plugins");
+        
+        const testAuth = betterAuth({
+          database: prismaAdapter(db, {
+            provider: "sqlite",
+          }),
+          secret: env.BETTER_AUTH_SECRET,
+          baseURL: env.BETTER_AUTH_URL,
+          emailAndPassword: {
+            enabled: true,
+            requireEmailVerification: false,
+          },
+          plugins: [
+            admin({
+              defaultRole: "admin",
+              adminRoles: ["admin"],
+              defaultBanReason: "Violated terms of service",
+              defaultBanExpiresIn: 60 * 60 * 24 * 7,
+              impersonationSessionDuration: 60 * 60,
+            }),
+            organization(),
+            apiKey(),
+            multiSession({
+              maximumSessions: 3
+            }),
+          ],
+          session: {
+            expiresIn: 60 * 60 * 24 * 7,
+            updateAge: 60 * 60 * 24,
+          },
+          trustedOrigins: [
+            "quinncodes.com",
+            "*.quinncodes.com",
+            "localhost:5173",
+            "*.localhost:5173",
+            "localhost:8787",
+            "*.localhost:8787",
+          ],
+        });
+        
+        const uniqueEmail = `test-${Date.now()}@example.com`;
+        
+        const result = await testAuth.api.signUpEmail({
+          body: {
+            email: uniqueEmail,
+            password: "password123", 
+            name: "Test User"
+          },
+          headers: request.headers
+        });
+        
+        return new Response(JSON.stringify(result));
+        
+      } catch (error) {
+        return new Response(JSON.stringify({ 
+          error: error.message,
+          stack: error.stack,
+        }), { status: 500 });
+      }
+    }),
+    route("/auth/debug-main", async ({ request }) => {
+      try {
+        console.log('🔍 About to import main auth...');
+        
+        const authModule = await import("@/lib/auth");
+        console.log('🔍 Auth module imported:', !!authModule);
+        console.log('🔍 Auth instance exists:', !!authModule.auth);
+        console.log('🔍 Auth instance type:', typeof authModule.auth);
+        
+        // Try to access auth properties
+        console.log('🔍 Auth.api exists:', !!authModule.auth?.api);
+        console.log('🔍 Auth.api.signUpEmail exists:', !!authModule.auth?.api?.signUpEmail);
+        
+        return new Response(JSON.stringify({
+          hasAuth: !!authModule.auth,
+          hasApi: !!authModule.auth?.api,
+          hasSignUp: !!authModule.auth?.api?.signUpEmail,
+          authType: typeof authModule.auth,
+        }));
+        
+      } catch (error) {
+        console.error('🚨 Error importing main auth:', error);
+        return new Response(JSON.stringify({ 
+          error: error.message,
+          stack: error.stack,
+        }), { status: 500 });
+      }
+    }),
+
     route("/auth/*", async ({ request }) => {
       try {
-        console.log('🔍 === AUTH ROUTE START ===');
-        console.log('🔍 URL:', request.url);
-        console.log('🔍 Method:', request.method);
+        await initializeServices(); // Sets up db
+        const authInstance = initAuth(); // Now creates auth with valid db
         
-        // Initialize database
-        await initializeServices();
-        
-        console.log('🔍 Auth instance imported successfully');
-        
-        // Call the auth handler
-        const response = await auth.handler(request);
-        console.log('🔍 Auth handler completed, status:', response.status);
-        
+        const response = await authInstance.handler(request);
         return response;
-        
       } catch (error) {
         console.error('🚨 Auth route error:', error);
         return new Response(JSON.stringify({ 
@@ -162,6 +305,7 @@ export default defineApp([
         });
       }
     }),
+
     // Other API routes follow...
     route("/orders/:orderDbId/notes", async ({ request, params, ctx }) => {
       if (request.method !== "POST") {
@@ -238,7 +382,7 @@ export default defineApp([
       return Response.json({ error: "Webhook not supported" }, { status: 404 });
     }),
 
-    // 🎯 CATCH-ALL API ROUTE
+    // 🎯 CATCH-ALL API ROUTE - MUST BE LAST
     route("/*", async ({ request, params, ctx }) => {
       const apiPath = params["*"];
       
@@ -304,6 +448,15 @@ export default defineApp([
     return Response.json({ error: "Webhook not supported" }, { status: 404 });
   }),
 
+  route("/debug-env", async () => {
+    return new Response(JSON.stringify({
+      hasSecret: !!env.BETTER_AUTH_SECRET,
+      secretLength: env.BETTER_AUTH_SECRET?.length,
+      baseURL: env.BETTER_AUTH_URL,
+      hasDB: !!env.DB,
+    }));
+  }),
+
   // 🎨 FRONTEND ROUTES
   render(Document, [
     route("/org-not-found", ({ request }) => {
@@ -331,7 +484,18 @@ export default defineApp([
     }),
 
     route("/", [
-      ({ ctx }) => {
+      ({ ctx, request }) => {
+        const orgSlug = extractOrgFromSubdomain(request);
+        
+        // If no subdomain, redirect to a landing page
+        if (!orgSlug) {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: "/landing" }, // or wherever you want main domain to go
+          });
+        }
+        
+        // If we have an organization but user isn't logged in or doesn't have role
         if (ctx.organization && (!ctx.user || !ctx.userRole)) {
           return new Response(null, {
             status: 302,
@@ -339,14 +503,11 @@ export default defineApp([
           });
         }
       },
-      (requestInfo) => {
-        const { ctx } = requestInfo;
-        if (!ctx.organization) {
-          return <HomePage {...requestInfo} />;
-        }
-        return <OrgLanding {...requestInfo} />;
-      },
+      OrgDashboard, // Only renders for subdomain requests
     ]),
+
+    // Add a landing route for main domain
+    route("/landing", HomePage),
     
     route("/admin", AdminPage),
     route("/client-test", () => (

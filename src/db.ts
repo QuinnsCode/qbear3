@@ -1,3 +1,4 @@
+// @/db.ts
 import { PrismaClient } from "@generated/prisma";
 import { PrismaD1 } from "@prisma/adapter-d1";
 
