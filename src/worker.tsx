@@ -26,6 +26,7 @@ import {
 } from "@/lib/middlewareFunctions";
 import { env } from "cloudflare:workers";
 import CreateOrgPage from "@/app/pages/orgs/CreateOrgPage";
+import { settingsRoutes } from "./app/pages/settings/settingsRoutes";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -286,7 +287,6 @@ export default defineApp([
         }), { status: 500 });
       }
     }),
-
     route("/auth/*", async ({ request }) => {
       try {
         await initializeServices(); // Sets up db
@@ -506,7 +506,7 @@ export default defineApp([
       OrgDashboard, // Only renders for subdomain requests
     ]),
 
-    // Add a landing route for main domain
+    //different that home page
     route("/landing", HomePage),
     
     route("/admin", AdminPage),
@@ -543,5 +543,8 @@ export default defineApp([
       
       return <OrderSearchPage orderNumber={params.orderNumber} currentUser={ctx.user} />;
     }),
+
+    prefix("/settings", settingsRoutes)
+
   ]),
 ]);

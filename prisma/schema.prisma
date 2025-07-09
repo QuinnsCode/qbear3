@@ -169,6 +169,7 @@ model Organization {
   invitations Invitation[]
   teams       Team[]
   apikeys     Apikey[]
+  thirdPartyApiKeys ThirdPartyApiKey[]
   
   // Org-scoped data relations
   shipStationOrders   ShipStationOrder[]
@@ -219,12 +220,13 @@ model Team {
   @@map("team")
 }
 
+//these are for giving out access to shippycloud to other apps
 model Apikey {
   id                  String        @id
   organizationId      String?       @map("organization_id") // 🔑 Add org scoping (nullable for now)
   organization        Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   
-  name                String?       // "ShipStation API", "Amazon MWS", etc.
+  name                String?       // "ShipStation API", "Amazon", etc.
   service             String?       // "shipstation", "amazon", "shopify"
   keyType             String?       // "api_key", "api_secret", "access_token"
   start               String?
@@ -251,6 +253,26 @@ model Apikey {
   @@index([organizationId])
   @@index([service, keyType])
   @@map("apikey")
+}
+
+model ThirdPartyApiKey {
+  id             String        @id @default(uuid())
+  organizationId String?       @map("organization_id")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  name           String        // "ShipStation Production", "Amazon Seller Central"
+  service        String        // "shipstation", "amazon", "shopify"
+  authType       String        // "basic", "bearer", "api_key", "oauth"
+  encryptedAuth  String        @map("encrypted_auth") // Full auth string encrypted
+  enabled        Boolean       @default(true)
+  lastUsed       DateTime?     @map("last_used")
+  metadata       String?       // JSON for service-specific config
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@index([service])
+  @@map("third_party_api_keys")
 }
 
 model ShipStationOrder {
