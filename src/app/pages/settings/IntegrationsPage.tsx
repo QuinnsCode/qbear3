@@ -59,7 +59,10 @@ export default async function IntegrationsPage({ ctx, request }: RequestInfo) {
           </div>
 
           {/* Add Key Form */}
-          <AddThirdPartyApiKeyForm createThirdPartyApiKey={createThirdPartyApiKey} />
+          <AddThirdPartyApiKeyForm
+            createThirdPartyApiKey={createThirdPartyApiKey}
+            organizationId={ctx.organization.id}
+          />
 
           {/* API Keys List */}
           <ThirdPartyApiKeysList 

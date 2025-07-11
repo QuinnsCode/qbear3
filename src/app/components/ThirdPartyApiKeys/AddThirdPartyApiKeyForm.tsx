@@ -2,14 +2,17 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 interface AddThirdPartyApiKeyFormProps {
   createThirdPartyApiKey: (formData: FormData) => Promise<{ success: boolean }>;
+  organizationId: string;
 }
 
-export function AddThirdPartyApiKeyForm({ createThirdPartyApiKey }: AddThirdPartyApiKeyFormProps) {
+export function AddThirdPartyApiKeyForm({ createThirdPartyApiKey, organizationId }: AddThirdPartyApiKeyFormProps) {
   const [isAddingKey, setIsAddingKey] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -17,25 +20,36 @@ export function AddThirdPartyApiKeyForm({ createThirdPartyApiKey }: AddThirdPart
 
     try {
       const formData = new FormData(e.currentTarget);
+      // Add organization ID to form data
+      formData.append('organizationId', organizationId);
+      
       const result = await createThirdPartyApiKey(formData);
       
       if (result.success) {
         setIsAddingKey(false);
+        setShowPassword(false); // Reset password visibility when form is closed
         e.currentTarget.reset();
+      } else {
+        console.error('Server error:', result.error);
+        alert(`Failed to create API key: ${result.error || 'Unknown server error'}`);
       }
     } catch (error) {
       console.error('Error creating API key:', error);
-      alert('Failed to create API key. Please try again.');
+      alert('Failed to create API key. Please check your network connection and try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
     <>
       {/* Add Button */}
       {!isAddingKey && (
-        <div className="p-6 border-b border-gray-200 flex justify-end">
+        <div className="p-6 border-b border-gray-200 inline-flex w-full justify-center items-center">
           <button
             onClick={() => setIsAddingKey(true)}
             className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
@@ -101,13 +115,23 @@ export function AddThirdPartyApiKeyForm({ createThirdPartyApiKey }: AddThirdPart
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Authentication String
               </label>
-              <input
-                type="password"
-                name="authString"
-                placeholder="e.g., Basic dXNlcjpwYXNz or Bearer abc123"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="authString"
+                  placeholder="e.g., Basic dXNlcjpwYXNz or Bearer abc123"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
               <p className="text-xs text-gray-500 mt-1">
                 Enter the complete auth string as you would use it in the Authorization header
               </p>
@@ -136,7 +160,10 @@ export function AddThirdPartyApiKeyForm({ createThirdPartyApiKey }: AddThirdPart
               </button>
               <button
                 type="button"
-                onClick={() => setIsAddingKey(false)}
+                onClick={() => {
+                  setIsAddingKey(false);
+                  setShowPassword(false); // Reset password visibility when canceling
+                }}
                 className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
               >
                 Cancel

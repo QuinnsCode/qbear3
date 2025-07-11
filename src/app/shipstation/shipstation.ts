@@ -1,3 +1,5 @@
+import { db } from "@/db";
+import { decrypt } from '@/app/components/ThirdPartyApiKeys/thirdPartyApiKeyFunctions';
 interface ShipStationOrder {
   orderId: number;
   orderNumber: string;
@@ -197,9 +199,26 @@ export class ShipStationAPI {
   }
 }
 
-// Helper function to create ShipStation API instance
-export const createShipStationAPI = (env: any): ShipStationAPI => {
-  return new ShipStationAPI(
-    env.SHIPSTATION_API_KEY,
-  );
+export const createShipStationAPIFromOrg = async (organizationId: string) => {
+  const apiKey = await db.thirdPartyApiKey.findFirst({
+    where: {
+      organizationId,
+      service: 'shipstation',
+      enabled: true
+    }
+  });
+
+  if (!apiKey) {
+    throw new Error(`No enabled ShipStation API key found for organization ${organizationId}`);
+  }
+
+  const decryptedAuth = decrypt(apiKey.encryptedAuth);
+  
+  // Update last used
+  await db.thirdPartyApiKey.update({
+    where: { id: apiKey.id },
+    data: { lastUsed: new Date() }
+  });
+
+  return new ShipStationAPI(decryptedAuth);
 };

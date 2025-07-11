@@ -1,6 +1,6 @@
 // @/app/components/OrderSearchPage.tsx
 import { db } from "@/db";
-import { searchOrderNumber } from "@/app/services/shipstation/searchOrderNumber";
+import { searchOrgShipstationOrderNumber } from "@/app/services/shipstation/searchOrderNumber";
 import OrderNotesRealtimeSync from "@/app/components/Shipstation/OrderNotesRealtimeSync";
 import PresenceClient from "@/app/components/Presence/PresenceClient";
 import { type User } from "@/db";
@@ -8,15 +8,16 @@ import { type User } from "@/db";
 interface OrderSearchPageProps {
   orderNumber: string;
   currentUser: User | null;
+  organizationId: string;
 }
 
-export async function OrderSearchPage({ orderNumber, currentUser }: OrderSearchPageProps) {
+export async function OrderSearchPage({ orderNumber, currentUser, organizationId }: OrderSearchPageProps) {
   const renderTimestamp = new Date().toISOString();
   console.log('🏗️ OrderSearchPage rendering at:', renderTimestamp);
 
   try {
     // Fetch order data from ShipStation
-    const orderData = await searchOrderNumber(orderNumber);
+    const orderData = await searchOrgShipstationOrderNumber(orderNumber, organizationId);
     
     // Transform the data
     let singleOrder;

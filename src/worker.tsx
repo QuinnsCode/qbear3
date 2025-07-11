@@ -541,7 +541,15 @@ export default defineApp([
         });
       }
       
-      return <OrderSearchPage orderNumber={params.orderNumber} currentUser={ctx.user} />;
+      if (!ctx.organization) {
+        return new Response("Organization not found", { status: 404 });
+      }
+      
+      return <OrderSearchPage 
+        orderNumber={params.orderNumber} 
+        currentUser={ctx.user} 
+        organizationId={ctx.organization.id}
+      />;
     }),
 
     prefix("/settings", settingsRoutes)

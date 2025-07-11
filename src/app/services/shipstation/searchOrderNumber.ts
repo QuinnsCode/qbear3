@@ -1,9 +1,10 @@
-import { env } from "cloudflare:workers";
-import { createShipStationAPI } from "@/app/shipstation/shipstation";
+import { createShipStationAPIFromOrg } from "@/app/shipstation/shipstation";
 import { db } from "@/db";
 
-export const searchOrderNumber = async (orderNumber: string) => {
+export const searchOrgShipstationOrderNumber = async (orderNumber: string, organizationId: string) => {
   try {
+
+    console.log(`🔍 Searching org ${organizationId} for order ${orderNumber}`);
     // First, check D1 for existing order
     const existingOrder = await db.order.findUnique({
       where: { orderNumber },
@@ -26,7 +27,7 @@ export const searchOrderNumber = async (orderNumber: string) => {
     }
 
     // Data is stale or doesn't exist - fetch fresh from ShipStation API
-    const shipstation = createShipStationAPI(env);
+    const shipstation = await createShipStationAPIFromOrg(organizationId);
     const freshOrder = await shipstation.getOrderByNumber(orderNumber);
     
     if (freshOrder) {
