@@ -3,6 +3,7 @@ import { type AppContext } from "@/worker";
 import { BetterAuthLogin } from "./BetterAuthLogin";
 import { LogoutButton } from "./LoginButton";
 import { RoleToggleButton } from "./RoleToggleButton";
+import { env } from "cloudflare:workers";
 
 export default function LoginPage({ ctx }: { ctx: AppContext }) {
   // If user is already logged in, redirect to home
@@ -58,7 +59,12 @@ export default function LoginPage({ ctx }: { ctx: AppContext }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full">
-        <BetterAuthLogin organizationName={ctx.organization?.name} />
+        {typeof window !== 'undefined' && (
+          <BetterAuthLogin
+            organizationName={ctx.organization?.name} 
+            turnstileSiteKey={env.TURNSTILE_SITE_KEY}
+          />
+        )}
       </div>
     </div>
   );

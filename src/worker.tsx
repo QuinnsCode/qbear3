@@ -7,14 +7,14 @@ import { OrderSearchPage } from "@/app/pages/search/OrderSearchPage";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
-import { sessions, setupSessionStore } from "./session/store";
-import { Session } from "./session/durableObject";
+// import { sessions, setupSessionStore } from "./session/store";
+// import { Session } from "./session/durableObject";
 import { auth, initAuth } from "@/lib/auth";
 import { type User, type Organization, db, setupDb } from "@/db";
 import AdminPage from "@/app/pages/admin/Admin";
 import HomePage from "@/app/pages/home/HomePage";
 import OrgDashboard from "@/app/components/Organizations/OrgDashboard";
-import OrgLanding from "@/app/pages/orgs/OrgLanding";
+// import OrgLanding from "@/app/pages/orgs/OrgLanding";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { 
@@ -26,7 +26,9 @@ import {
 } from "@/lib/middlewareFunctions";
 import { env } from "cloudflare:workers";
 import CreateOrgPage from "@/app/pages/orgs/CreateOrgPage";
+import AsanaPage from "@/app/pages/asana/AsanaPage";
 import { settingsRoutes } from "./app/pages/settings/settingsRoutes";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -289,6 +291,32 @@ export default defineApp([
     }),
     route("/auth/*", async ({ request }) => {
       try {
+        // Check if this is a signup request and verify Turnstile
+        if (request.url.includes('/sign-up') && request.method === 'POST') {
+          const body = await request.clone().json();
+          console.log('📋 Full signup request body:', JSON.stringify(body, null, 2));
+          
+          const { turnstileToken } = body;
+          console.log('🔍 Extracted turnstileToken:', turnstileToken);
+          
+          if (turnstileToken) {
+            console.log('🔒 Turnstile token received, verifying...');
+            const isValid = await verifyTurnstileToken(turnstileToken);
+            if (!isValid) {
+              console.log('❌ Turnstile verification FAILED');
+              return new Response(JSON.stringify({ 
+                error: 'Bot protection verification failed' 
+              }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            console.log('✅ Turnstile verification PASSED');
+          } else {
+            console.log('⚠️ No Turnstile token provided in signup request');
+          }
+        }
+        
         await initializeServices(); // Sets up db
         const authInstance = initAuth(); // Now creates auth with valid db
         
@@ -509,6 +537,7 @@ export default defineApp([
     //different that home page
     route("/landing", HomePage),
     
+    route("/asana", AsanaPage),
     route("/admin", AdminPage),
     route("/client-test", () => (
       <div style={{ padding: '20px' }}>

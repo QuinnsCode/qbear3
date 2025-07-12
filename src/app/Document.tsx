@@ -15,6 +15,11 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
     <body>
       <div id="root">{children}</div>
       <script>import("/src/client.tsx")</script>
+      <script 
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
+        async 
+        defer
+      />
     </body>
   </html>
 );
