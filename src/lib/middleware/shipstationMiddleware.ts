@@ -1,4 +1,5 @@
 import { db } from "@/db";
+import { decrypt, encrypt } from "@/lib/encrypt"; // Add encrypt import
 
 export interface ShipStationCredentials {
   authString: string;
@@ -20,7 +21,10 @@ export async function getOrgShipStationCredentials(organizationId: string): Prom
     throw new Error(`ShipStation credentials not configured for organization ${organizationId}`);
   }
   
-  return { authString: credential.encryptedAuth };
+  // Decrypt the stored credential using Web Crypto API
+  const decryptedAuth = await decrypt(credential.encryptedAuth);
+  
+  return { authString: decryptedAuth };
 }
 
 export async function setOrgShipStationCredentials(
@@ -28,12 +32,15 @@ export async function setOrgShipStationCredentials(
   credentials: ShipStationCredentials,
   userId?: string
 ) {
+  // Encrypt the auth string before storing
+  const encryptedAuth = await encrypt(credentials.authString);
+  
   await db.thirdPartyApiKey.upsert({
     where: { 
       id: `${organizationId}-shipstation-auth`
     },
     update: {
-      encryptedAuth: credentials.authString,
+      encryptedAuth: encryptedAuth, // Store encrypted version
       updatedAt: new Date()
     },
     create: {
@@ -42,7 +49,7 @@ export async function setOrgShipStationCredentials(
       service: 'shipstation',
       authType: 'basic',
       name: 'ShipStation Basic Auth',
-      encryptedAuth: credentials.authString,
+      encryptedAuth: encryptedAuth, // Store encrypted version
       enabled: true,
       createdAt: new Date(),
       updatedAt: new Date()
