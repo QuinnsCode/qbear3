@@ -22,8 +22,8 @@ export function shouldSkipMiddleware(request: Request): boolean {
     return true;
   }
   
-  // Skip for webhooks and realtime
-  if (pathname.includes('/webhooks/') || pathname.includes('/__realtime')) {
+  // Skip for realtime
+  if (pathname.includes('/__realtime')) {
     console.log('🔍 Skipping middleware for webhook/realtime:', pathname);
     return true;
   }
