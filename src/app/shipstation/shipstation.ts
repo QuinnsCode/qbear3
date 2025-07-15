@@ -1,133 +1,14 @@
+// @/app/shipstation/shipstation.ts
 import { db } from "@/db";
 import { decrypt } from '@/app/components/ThirdPartyApiKeys/thirdPartyApiKeyFunctions';
-interface ShipStationOrder {
-  orderId: number;
-  orderNumber: string;
-  orderKey: string;
-  orderDate: string;
-  orderStatus: string;
-  customerUsername: string;
-  customerEmail: string;
-  billTo: {
-    name: string;
-    company: string;
-    street1: string;
-    street2: string;
-    street3: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
-    phone: string;
-  };
-  shipTo: {
-    name: string;
-    company: string;
-    street1: string;
-    street2: string;
-    street3: string;
-    city: string;
-    state: string;
-    postalCode: string;
-    country: string;
-    phone: string;
-  };
-  items: Array<{
-    orderItemId: number;
-    lineItemKey: string;
-    sku: string;
-    name: string;
-    imageUrl: string;
-    weight: {
-      value: number;
-      units: string;
-    };
-    quantity: number;
-    unitPrice: number;
-    taxAmount: number;
-    shippingAmount: number;
-    warehouseLocation: string;
-  }>;
-  orderTotal: number;
-  amountPaid: number;
-  taxAmount: number;
-  shippingAmount: number;
-  customerNotes: string;
-  internalNotes: string;
-  gift: boolean;
-  giftMessage: string;
-  paymentMethod: string;
-  requestedShippingService: string;
-  carrierCode: string;
-  serviceCode: string;
-  packageCode: string;
-  confirmation: string;
-  shipDate: string;
-  holdUntilDate: string;
-  weight: {
-    value: number;
-    units: string;
-  };
-  dimensions: {
-    units: string;
-    length: number;
-    width: number;
-    height: number;
-  };
-  insuranceOptions: {
-    provider: string;
-    insureShipment: boolean;
-    insuredValue: number;
-  };
-  internationalOptions: {
-    contents: string;
-    customsItems: Array<{
-      customsItemId: number;
-      description: string;
-      quantity: number;
-      value: number;
-      harmonizedTariffCode: string;
-      countryOfOrigin: string;
-    }>;
-    nonDelivery: string;
-  };
-  advancedOptions: {
-    warehouseId: number;
-    nonMachinable: boolean;
-    saturdayDelivery: boolean;
-    containsAlcohol: boolean;
-    storeId: number;
-    customField1: string;
-    customField2: string;
-    customField3: string;
-    source: string;
-    mergedOrSplit: boolean;
-    mergedIds: number[];
-    parentId: number;
-    billToParty: string;
-    billToAccount: string;
-    billToPostalCode: string;
-    billToCountryCode: string;
-    billToMyOtherAccount: string;
-  };
-  tagIds: number[];
-  userId: string;
-  externallyFulfilled: boolean;
-  externallyFulfilledBy: string;
-}
-
-interface ShipStationSearchOrderNumberResponse {
-  orders: ShipStationOrder[];
-  total: number;
-  page: number;
-  pages: number;
-}
+import { ShipStationOrder, ShipStationSearchOrderNumberResponse,ShipStationResponse } from "@/app/types/Shipstation/shipment"; 
+import { ShipStationProductsResponse } from "@/app/types/Shipstation/product";
 
 export class ShipStationAPI {
   private apiKey: string;
   private baseUrl: string;
 
-  constructor(apiKey: string, baseUrl: string = 'https://ssapi6.shipstation.com/') {
+  constructor(apiKey: string, baseUrl: string = 'https://ssapi.shipstation.com/') {
     this.apiKey = apiKey;
     this.baseUrl = baseUrl;
   }
@@ -197,6 +78,95 @@ export class ShipStationAPI {
       throw error;
     }
   }
+
+  async getShipments(params: {
+    includeShipmentItems?: boolean;
+    sortBy?: string;
+    sortDir?: string;
+    shipDateStart?: string;
+    shipDateEnd?: string;
+    page?: number;
+    pageSize?: number;
+  } = {}): Promise<ShipStationResponse> {
+    const queryParams = new URLSearchParams();
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        queryParams.append(key, value.toString());
+      }
+    });
+
+    try {
+      const response = await fetch(`${this.baseUrl}/shipments?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': this.getAuthHeader(),
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`ShipStation API error: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching shipments from ShipStation:', error);
+      throw error;
+    }
+  }
+
+  async getProducts(params: {
+  sku?: string;
+  name?: string;
+  productCategoryId?: number;
+  productTypeId?: number;
+  tagId?: number;
+  startDate?: string;
+  endDate?: string;
+  showInactive?: boolean;
+  sortBy?: string;
+  sortDir?: string;
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<ShipStationProductsResponse> {
+  const queryParams = new URLSearchParams();
+  
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined) {
+      queryParams.append(key, value.toString());
+    }
+  });
+
+  console.log('🔍 Fetching products with params:', params);
+
+  console.log(this.baseUrl);
+
+  try {
+    // const reqStr = `${this.baseUrl}/products?${queryParams.toString()}`;
+
+    const reqStr = `${this.baseUrl}/products?pageSize=100`;
+
+    `${this.baseUrl}/products?${queryParams.toString()}`
+    console.log('🔍 Requesting:', reqStr);
+    const response = await fetch(reqStr, {
+      method: 'GET',
+      headers: {
+        'Authorization': this.getAuthHeader(),
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`ShipStation API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching products from ShipStation:', error);
+    throw error;
+  }
+}
 }
 
 export const createShipStationAPIFromOrg = async (organizationId: string) => {

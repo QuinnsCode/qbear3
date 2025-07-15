@@ -1,4 +1,6 @@
-import { Order } from "./shipstationTypes";
+// @/app/api/shipstation/shipstation.ts
+import { Order } from "./shipstationTypes"; 
+import { ShipStationResponse } from "@/app/types/Shipstation/shipment";
 import { env } from "cloudflare:workers";
 
 // ShipStation API utilities

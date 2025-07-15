@@ -14,7 +14,6 @@ import { type User, type Organization, db, setupDb } from "@/db";
 import AdminPage from "@/app/pages/admin/Admin";
 import HomePage from "@/app/pages/home/HomePage";
 import OrgDashboard from "@/app/components/Organizations/OrgDashboard";
-// import OrgLanding from "@/app/pages/orgs/OrgLanding";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { 
@@ -29,6 +28,7 @@ import CreateOrgPage from "@/app/pages/orgs/CreateOrgPage";
 import AsanaPage from "@/app/pages/asana/AsanaPage";
 import { settingsRoutes } from "./app/pages/settings/settingsRoutes";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import ShipstationPage from "./app/pages/shipstation/ShipstationPage";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -536,29 +536,32 @@ export default defineApp([
 
     //different that home page
     route("/landing", HomePage),
-    
+    route("/shipstation", ShipstationPage),
+    // route("/shipstation/*", ShipstationPage),
+    route("/shipstation/dashboard", ShipstationPage),
+    route("/shipstation-dashboard", ShipstationPage),
     route("/asana", AsanaPage),
     route("/admin", AdminPage),
-    route("/client-test", () => (
-      <div style={{ padding: '20px' }}>
-        <h1>Testing Client Component</h1>
-        <TestButtonClient />
-      </div>
-    )),
+    // route("/client-test", () => (
+    //   <div style={{ padding: '20px' }}>
+    //     <h1>Testing Client Component</h1>
+    //     <TestButtonClient />
+    //   </div>
+    // )),
     route("/orgs/new", CreateOrgPage),
     prefix("/user", userRoutes),
     
-    route("/protected", [
-      ({ ctx }) => {
-        if (!ctx.user) {
-          return new Response(null, {
-            status: 302,
-            headers: { Location: "/user/login" },
-          });
-        }
-      },
-      Home,
-    ]),
+    // route("/protected", [
+    //   ({ ctx }) => {
+    //     if (!ctx.user) {
+    //       return new Response(null, {
+    //         status: 302,
+    //         headers: { Location: "/user/login" },
+    //       });
+    //     }
+    //   },
+    //   Home,
+    // ]),
 
     route("/dashboard", OrgDashboard),
 

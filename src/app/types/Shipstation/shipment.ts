@@ -30,20 +30,20 @@ interface InsuranceOptions {
   insuredValue: number;
 }
 
-interface ShipmentItem {
-  orderItemId: number;
-  lineItemKey: string | null;
-  sku: string;
-  name: string;
-  imageUrl: string | null;
-  weight: Weight | null;
-  quantity: number;
-  unitPrice: number;
-  warehouseLocation: string | null;
-  options: any | null;
-  productId: number;
-  fulfillmentSku: string | null;
-}
+// interface ShipmentItem {
+//   orderItemId: number;
+//   lineItemKey: string | null;
+//   sku: string;
+//   name: string;
+//   imageUrl: string | null;
+//   weight: Weight | null;
+//   quantity: number;
+//   unitPrice: number;
+//   warehouseLocation: string | null;
+//   options: any | null;
+//   productId: number;
+//   fulfillmentSku: string | null;
+// }
 
 interface AdvancedOptions {
   warehouseId?: number;
@@ -139,3 +139,183 @@ export type ConfirmationType =
   | 'signature'
   | 'adult_signature'
   | string;
+
+export interface ShipStationOrder {
+  orderId: number;
+  orderNumber: string;
+  orderKey: string;
+  orderDate: string;
+  orderStatus: string;
+  customerUsername: string;
+  customerEmail: string;
+  billTo: {
+    name: string;
+    company: string;
+    street1: string;
+    street2: string;
+    street3: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    phone: string;
+  };
+  shipTo: {
+    name: string;
+    company: string;
+    street1: string;
+    street2: string;
+    street3: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    phone: string;
+  };
+  items: Array<{
+    orderItemId: number;
+    lineItemKey: string;
+    sku: string;
+    name: string;
+    imageUrl: string;
+    weight: {
+      value: number;
+      units: string;
+    };
+    quantity: number;
+    unitPrice: number;
+    taxAmount: number;
+    shippingAmount: number;
+    warehouseLocation: string;
+  }>;
+  orderTotal: number;
+  amountPaid: number;
+  taxAmount: number;
+  shippingAmount: number;
+  customerNotes: string;
+  internalNotes: string;
+  gift: boolean;
+  giftMessage: string;
+  paymentMethod: string;
+  requestedShippingService: string;
+  carrierCode: string;
+  serviceCode: string;
+  packageCode: string;
+  confirmation: string;
+  shipDate: string;
+  holdUntilDate: string;
+  weight: {
+    value: number;
+    units: string;
+  };
+  dimensions: {
+    units: string;
+    length: number;
+    width: number;
+    height: number;
+  };
+  insuranceOptions: {
+    provider: string;
+    insureShipment: boolean;
+    insuredValue: number;
+  };
+  internationalOptions: {
+    contents: string;
+    customsItems: Array<{
+      customsItemId: number;
+      description: string;
+      quantity: number;
+      value: number;
+      harmonizedTariffCode: string;
+      countryOfOrigin: string;
+    }>;
+    nonDelivery: string;
+  };
+  advancedOptions: {
+    warehouseId: number;
+    nonMachinable: boolean;
+    saturdayDelivery: boolean;
+    containsAlcohol: boolean;
+    storeId: number;
+    customField1: string;
+    customField2: string;
+    customField3: string;
+    source: string;
+    mergedOrSplit: boolean;
+    mergedIds: number[];
+    parentId: number;
+    billToParty: string;
+    billToAccount: string;
+    billToPostalCode: string;
+    billToCountryCode: string;
+    billToMyOtherAccount: string;
+  };
+  tagIds: number[];
+  userId: string;
+  externallyFulfilled: boolean;
+  externallyFulfilledBy: string;
+}
+
+export interface ShipStationSearchOrderNumberResponse {
+  orders: ShipStationOrder[];
+  total: number;
+  page: number;
+  pages: number;
+}
+
+export interface ShipmentItem {
+  orderItemId: number;
+  lineItemKey: string | null;
+  sku: string;
+  name: string;
+  imageUrl: string | null;
+  weight: {
+    value: number;
+    units: string;
+  } | null;
+  quantity: number;
+  unitPrice: number;
+  warehouseLocation: string | null;
+  productId: number;
+  fulfillmentSku: string | null;
+}
+
+export interface Shipment {
+  shipmentId: number;
+  orderId: number;
+  orderKey: string;
+  orderNumber: string;
+  createDate: string;
+  shipDate: string;
+  shipmentCost: number;
+  insuranceCost: number;
+  trackingNumber: string;
+  carrierCode: string;
+  serviceCode: string;
+  packageCode: string;
+  confirmation: string;
+  warehouseId: number;
+  voided: boolean;
+  shipTo: {
+    name: string;
+    company: string;
+    street1: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    phone: string;
+  };
+  weight: {
+    value: number;
+    units: string;
+  };
+  shipmentItems: ShipmentItem[];
+}
+
+export interface ShipStationResponse {
+  shipments: Shipment[];
+  total: number;
+  page: number;
+  pages: number;
+}

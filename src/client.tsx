@@ -106,10 +106,10 @@ async function initRealtimeWithPresence(pathname: string) {
     console.warn('⚠️ Realtime initialization failed (this is normal in dev mode):', error);
     
     // In development, continue without WebSocket
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📝 Development mode: Continuing without realtime WebSocket');
-      console.log('💡 Optimistic updates will provide immediate UI feedback');
-    }
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log('📝 Development mode: Continuing without realtime WebSocket');
+    //   console.log('💡 Optimistic updates will provide immediate UI feedback');
+    // }
   }
 }
 

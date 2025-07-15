@@ -2,7 +2,7 @@ import { Webhook, WebhookResourceType } from "@/app/api/shipstation/shipstationT
 import { getOrder } from "@/app/api/shipstation/shipstation";
 import { db } from "@/db";
 import { type AppContext } from "@/worker";
-import { getOrgShipStationCredentials } from "@/lib/middlewareFunctions";
+import { getOrgShipStationCredentials } from "@/lib/middleware/shipstationMiddleware";
 
 // Webhook handler for /api/webhooks/shipstation-wh.ts
 export default async function handler({ 
