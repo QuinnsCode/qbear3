@@ -224,6 +224,9 @@ async function processWebhook(
 
 // Function to fetch from arbitrary ShipStation URLs
 async function fetchShipStationUrl(url: string, apiCredentials: any) {
+  console.log('🔑 Auth string being used:', apiCredentials.authString?.substring(0, 20) + '...');
+  console.log('🔑 Auth string starts with "Basic":', apiCredentials.authString?.startsWith('Basic'));
+  
   const headers = {
     'Authorization': apiCredentials.authString, // Use the authString from credentials
     'Content-Type': 'application/json'
