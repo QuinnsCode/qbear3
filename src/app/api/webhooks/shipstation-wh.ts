@@ -39,18 +39,27 @@ export default async function handler({
       );
     }
 
-    // Store webhook in D1 with optional org scoping
+    // Require organization context for webhook processing
+    if (!ctx.organization?.id) {
+      console.error('❌ No organization context provided - cannot process webhook without org');
+      return Response.json(
+        { error: "Organization context required for webhook processing" },
+        { status: 400 }
+      );
+    }
+
+    // Store webhook in D1 with required org scoping
     const webhook = await db.shipStationWebhook.create({
       data: {
-        organizationId: ctx.organization?.id || null, // Nullable for now
-        resourceUrl: webhookData.resource_url,
-        resourceType: webhookData.resource_type,
-        rawData: JSON.stringify(webhookData),
+        organizationId: ctx.organization.id, // Maps to organization_id column
+        resourceUrl: webhookData.resource_url, // Maps to resource_url column
+        resourceType: webhookData.resource_type, // Maps to resource_type column
+        rawData: JSON.stringify(webhookData), // Maps to raw_data column
         processed: false
       }
     });
 
-    console.log('✅ Webhook stored in D1:', webhook.id, 'for org:', ctx.organization?.slug || 'no-org');
+    console.log('✅ Webhook stored in D1:', webhook.id, 'for org:', ctx.organization.slug);
 
     // Process the webhook and fetch order data
     await processWebhook(webhookData, webhook.id, ctx.organization);
@@ -66,7 +75,7 @@ export default async function handler({
       message: "Webhook processed successfully",
       event_type: webhookData.resource_type,
       webhook_id: webhook.id,
-      organization: ctx.organization?.slug || 'no-org'
+      organization: ctx.organization.slug
     });
 
   } catch (error) {
@@ -85,16 +94,10 @@ export default async function handler({
 async function processWebhook(
   webhookData: Webhook, 
   webhookId: string,
-  organization?: { id: string; slug: string | null; name: string; } | null
+  organization: { id: string; slug: string | null; name: string; } // Required now
 ) {
   try {
-    console.log(`🔍 Processing ${webhookData.resource_type} for URL ${webhookData.resource_url} in org ${organization?.slug || 'no-org'}`);
-
-    // Require organization context for webhook processing
-    if (!organization?.id) {
-      console.error('❌ No organization context provided - cannot process webhook without org');
-      throw new Error('Organization context required for webhook processing');
-    }
+    console.log(`🔍 Processing ${webhookData.resource_type} for URL ${webhookData.resource_url} in org ${organization.slug || 'no-org'}`);
 
     // Get org-specific credentials - this is required, no fallback
     let apiCredentials;
@@ -102,14 +105,8 @@ async function processWebhook(
       apiCredentials = await getOrgShipStationCredentials(organization.id);
       console.log('✅ Using org-specific ShipStation credentials');
     } catch (error) {
-      console.error('❌ No ShipStation credentials found for organization:', organization.slug, error.message);
+      console.error('❌ No ShipStation credentials found for organization:', organization.slug, error);
       throw new Error(`No ShipStation API credentials configured for organization: ${organization.slug}`);
-    }
-
-    // Validate that we have the required credentials
-    if (!apiCredentials?.apiKey) {
-      console.error('❌ Invalid ShipStation credentials for organization:', organization.slug);
-      throw new Error(`Invalid ShipStation API credentials for organization: ${organization.slug}`);
     }
 
     // Check if this is a batch import URL or a single order URL
@@ -120,9 +117,6 @@ async function processWebhook(
     if (isBatchImport) {
       // For batch imports, we need to fetch from the exact URL provided
       console.log('📥 Batch import detected, fetching orders from:', webhookData.resource_url);
-      
-      // You'll need to create a function to fetch from arbitrary ShipStation URLs
-      // or modify your existing getOrder function to handle URLs with query params
       response = await fetchShipStationUrl(webhookData.resource_url, apiCredentials);
     } else {
       // For single order webhooks, extract the order ID and use existing logic
@@ -166,55 +160,56 @@ async function processWebhook(
 
     // Process each order in the response
     for (const orderData of response.orders) {
-      console.log(`📋 Processing order ${orderData.orderId} (${orderData.orderNumber}) for org ${organization?.slug || 'no-org'}`);
+      console.log(`📋 Processing order ${orderData.orderId} (${orderData.orderNumber}) for org ${organization.slug || 'no-org'}`);
       
-      // Check if order already exists for this org (or globally if no org)
+      // Check if order already exists for this org
       const existingOrder = await db.shipStationOrder.findFirst({
         where: { 
-          orderId: orderData.orderId,
-          organizationId: organization?.id || null
+          orderId: orderData.orderId, // Maps to order_id column
+          organizationId: organization.id // Maps to organization_id column
         }
       });
 
       if (existingOrder) {
-        // Update existing order
+        // Update existing order - note: schema uses rawData not orderData
         await db.shipStationOrder.update({
           where: { id: existingOrder.id },
           data: {
-            orderNumber: orderData.orderNumber,
-            orderStatus: orderData.orderStatus,
-            rawData: JSON.stringify(orderData),
-            updatedAt: new Date()
+            orderNumber: orderData.orderNumber, // Maps to order_number column
+            orderStatus: orderData.orderStatus, // Maps to order_status column
+            rawData: JSON.stringify(orderData), // Maps to raw_data column (STRING, not JSON type)
+            updatedAt: new Date() // Maps to updated_at column
           }
         });
+        
+        console.log('🔄 Updated existing order:', orderData.orderId);
       } else {
-        // Create new order
+        // Create new order - note: schema uses rawData not orderData
         await db.shipStationOrder.create({
           data: {
-            organizationId: organization?.id || null,
-            orderId: orderData.orderId,
-            orderNumber: orderData.orderNumber,
-            orderStatus: orderData.orderStatus,
-            rawData: JSON.stringify(orderData)
+            organizationId: organization.id, // Maps to organization_id column
+            orderId: orderData.orderId, // Maps to order_id column
+            orderNumber: orderData.orderNumber, // Maps to order_number column
+            orderStatus: orderData.orderStatus, // Maps to order_status column
+            rawData: JSON.stringify(orderData) // Maps to raw_data column (STRING, not JSON type)
           }
         });
+        
+        console.log('✅ Created new order:', orderData.orderId);
       }
 
-      console.log('✅ Order stored/updated in D1:', {
-        org: organization?.slug || 'no-org',
-        orderId: orderData.orderId,
-        orderNumber: orderData.orderNumber,
-        status: orderData.orderStatus
-      });
-
-      // Handle specific webhook types if needed
+      // Handle specific webhook types with access to full order data
       switch (webhookData.resource_type) {
         case 'SHIP_NOTIFY':
-          console.log('🚚 Order shipped:', orderData.orderNumber, 'for org:', organization?.slug || 'no-org');
-          // TODO: Send shipping notification email
+          console.log('🚚 Order shipped:', orderData.orderNumber, 'for org:', organization.slug);
+          console.log('📅 Ship date:', orderData.shipDate);
+          console.log('📦 Tracking:', orderData.trackingNumber || 'No tracking');
+          // TODO: Send shipping notification email with tracking info
           break;
         case 'ORDER_NOTIFY':
-          console.log('📦 Order updated:', orderData.orderNumber, 'for org:', organization?.slug || 'no-org');
+          console.log('📦 Order updated:', orderData.orderNumber, 'for org:', organization.slug);
+          console.log('📊 Status:', orderData.orderStatus);
+          console.log('💰 Total:', orderData.orderTotal);
           // TODO: Handle order status changes
           break;
         // Add other cases as needed
@@ -222,20 +217,15 @@ async function processWebhook(
     }
 
   } catch (error) {
-    console.error('❌ Error processing webhook for org', organization?.slug || 'no-org', ':', error);
+    console.error('❌ Error processing webhook for org', organization.slug || 'no-org', ':', error);
     throw error;
   }
 }
 
-// New function to fetch from arbitrary ShipStation URLs
+// Function to fetch from arbitrary ShipStation URLs
 async function fetchShipStationUrl(url: string, apiCredentials: any) {
-  // Validate credentials are provided
-  if (!apiCredentials?.apiKey) {
-    throw new Error('ShipStation API credentials are required');
-  }
-
   const headers = {
-    'Authorization': apiCredentials.apiKey, // Already contains "Basic <encoded-string>"
+    'Authorization': apiCredentials.authString, // Use the authString from credentials
     'Content-Type': 'application/json'
   };
 
