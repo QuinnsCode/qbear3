@@ -90,8 +90,11 @@ export async function setupOrganizationContext(ctx: AppContext, request: Request
     }
 
     //dont allow www for an orgslug because www.yoursite.com is technically a subdomain of yoursite.com
-    if (orgSlug === 'www') {
-      return;
+    if (orgSlug === 'www' || orgSlug === 'api') {
+      ctx.organization = null;
+      ctx.userRole = null;
+      ctx.orgError = null;
+      return; // ✅ This properly sets context to null
     }
     
     try {
