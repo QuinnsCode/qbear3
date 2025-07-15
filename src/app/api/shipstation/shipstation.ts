@@ -49,7 +49,7 @@ export async function getOrder(orderId: string, credentials?: { authString: stri
   const response = await fetch(`https://ssapi.shipstation.com/orders/${orderId}`, {
     method: 'GET',
     headers: {
-      'Authorization': `Basic ${authHeader}`,
+      'Authorization': authHeader, 
       'Content-Type': 'application/json'
     }
   });

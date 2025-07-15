@@ -28,22 +28,21 @@ export async function setOrgShipStationCredentials(
   credentials: ShipStationCredentials,
   userId?: string
 ) {
-  await db.apikey.upsert({
+  await db.thirdPartyApiKey.upsert({
     where: { 
       id: `${organizationId}-shipstation-auth`
     },
     update: {
-      key: credentials.authString,
+      encryptedAuth: credentials.authString,
       updatedAt: new Date()
     },
     create: {
       id: `${organizationId}-shipstation-auth`,
       organizationId,
       service: 'shipstation',
-      keyType: 'basic_auth',
+      authType: 'basic',
       name: 'ShipStation Basic Auth',
-      key: credentials.authString,
-      userId,
+      encryptedAuth: credentials.authString,
       enabled: true,
       createdAt: new Date(),
       updatedAt: new Date()

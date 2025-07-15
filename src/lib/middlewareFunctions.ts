@@ -88,6 +88,11 @@ export async function setupOrganizationContext(ctx: AppContext, request: Request
       ctx.orgError = null;
       return;
     }
+
+    //dont allow www for an orgslug because www.yoursite.com is technically a subdomain of yoursite.com
+    if (orgSlug === 'www') {
+      return;
+    }
     
     try {
       // Find the organization
