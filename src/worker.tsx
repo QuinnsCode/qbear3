@@ -513,13 +513,21 @@ export default defineApp([
 
     route("/", [
       ({ ctx, request }) => {
+        const url = new URL(request.url);
+        const pathname = url.pathname;
+        
+        // Don't process redirects if we're already on user routes
+        if (pathname.startsWith('/user/')) {
+          return; // Let user routes handle themselves
+        }
+        
         const orgSlug = extractOrgFromSubdomain(request);
         
         // If no subdomain, redirect to a landing page
         if (!orgSlug) {
           return new Response(null, {
             status: 302,
-            headers: { Location: "/landing" }, // or wherever you want main domain to go
+            headers: { Location: "/landing" },
           });
         }
         
@@ -531,7 +539,7 @@ export default defineApp([
           });
         }
       },
-      OrgDashboard, // Only renders for subdomain requests
+      OrgDashboard,
     ]),
 
     //different that home page

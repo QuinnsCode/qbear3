@@ -22,7 +22,7 @@ export function shouldSkipMiddleware(request: Request): boolean {
     return true;
   }
   
-  // Skip for realtime
+  // Skip for webhooks and realtime
   if (pathname.includes('/__realtime')) {
     console.log('🔍 Skipping middleware for webhook/realtime:', pathname);
     return true;
@@ -87,14 +87,6 @@ export async function setupOrganizationContext(ctx: AppContext, request: Request
       ctx.userRole = null;
       ctx.orgError = null;
       return;
-    }
-
-    //dont allow www for an orgslug because www.yoursite.com is technically a subdomain of yoursite.com
-    if (orgSlug === 'www' || orgSlug === 'api') {
-      ctx.organization = null;
-      ctx.userRole = null;
-      ctx.orgError = null;
-      return; // ✅ This properly sets context to null
     }
     
     try {
