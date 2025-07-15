@@ -51,10 +51,10 @@ export default async function handler({
     // Store webhook in D1 with required org scoping
     const webhook = await db.shipStationWebhook.create({
       data: {
-        organizationId: ctx.organization.id, // Maps to organization_id column
-        resourceUrl: webhookData.resource_url, // Maps to resource_url column
-        resourceType: webhookData.resource_type, // Maps to resource_type column
-        rawData: JSON.stringify(webhookData), // Maps to raw_data column
+        organizationId: ctx.organization.id, 
+        resourceUrl: webhookData.resource_url,
+        resourceType: webhookData.resource_type,
+        rawData: JSON.stringify(webhookData),
         processed: false
       }
     });
