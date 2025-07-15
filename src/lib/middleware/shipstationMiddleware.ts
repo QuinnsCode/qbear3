@@ -5,20 +5,22 @@ export interface ShipStationCredentials {
 }
 
 export async function getOrgShipStationCredentials(organizationId: string): Promise<ShipStationCredentials> {
-  const credential = await db.apikey.findFirst({
+  const credential = await db.thirdPartyApiKey.findFirst({
     where: {
       organizationId,
       service: 'shipstation',
-      keyType: 'basic_auth',
       enabled: true
+    },
+    orderBy: {
+      updatedAt: 'desc'  // Most recently updated first
     }
   });
   
-  if (!credential?.key) {
+  if (!credential?.encryptedAuth) {
     throw new Error(`ShipStation credentials not configured for organization ${organizationId}`);
   }
   
-  return { authString: credential.key };
+  return { authString: credential.encryptedAuth };
 }
 
 export async function setOrgShipStationCredentials(
