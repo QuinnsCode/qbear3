@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 
 interface BetterAuthLoginProps {
@@ -12,18 +12,6 @@ interface BetterAuthLoginProps {
   redirectPath?: string;
   showDevTools?: boolean;
   className?: string;
-  turnstileSiteKey?: string; // Pass from server
-}
-
-declare global {
-  interface Window {
-    turnstile: {
-      render: (element: HTMLElement, options: any) => string;
-      execute: (widgetId: string) => void;
-      reset: (widgetId: string) => void;
-      remove: (widgetId: string) => void;
-    };
-  }
 }
 
 export function BetterAuthLogin({ 
@@ -34,8 +22,7 @@ export function BetterAuthLogin({
   redirectOnSuccess = true,
   redirectPath = "/",
   showDevTools = true,
-  className = "max-w-[400px] w-full mx-auto px-10",
-  turnstileSiteKey
+  className = "max-w-[400px] w-full mx-auto px-10"
 }: BetterAuthLoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,48 +31,10 @@ export function BetterAuthLogin({
   const [isSignUp, setIsSignUp] = useState(forceSignUp);
   const [isPending, startTransition] = useTransition();
   const [isHydrated, setIsHydrated] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string>("");
-  
-  const turnstileRef = useRef<HTMLDivElement>(null);
-  const turnstileWidgetId = useRef<string | null>(null);
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
-
-  // Initialize Turnstile when component mounts and when switching between sign up/sign in
-  useEffect(() => {
-    if (!isHydrated || !window.turnstile || !turnstileRef.current || !turnstileSiteKey) return;
-
-    // Clear previous widget if it exists
-    if (turnstileWidgetId.current) {
-      window.turnstile.remove(turnstileWidgetId.current);
-      turnstileWidgetId.current = null;
-    }
-
-    // Only show Turnstile for sign up
-    if (isSignUp) {
-      turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
-        sitekey: turnstileSiteKey,
-        mode: 'invisible',
-        callback: (token: string) => {
-          console.log('Turnstile token received');
-          setTurnstileToken(token);
-        },
-        'error-callback': () => {
-          console.error('Turnstile error');
-          setResult("Bot protection verification failed. Please try again.");
-        }
-      });
-    }
-
-    return () => {
-      if (turnstileWidgetId.current) {
-        window.turnstile?.remove(turnstileWidgetId.current);
-        turnstileWidgetId.current = null;
-      }
-    };
-  }, [isHydrated, isSignUp, turnstileSiteKey]);
 
   const handleAuthSuccess = (user: any, message: string) => {
     setResult(message);
@@ -121,32 +70,15 @@ export function BetterAuthLogin({
   const handleSignUp = async () => {
     try {
       setResult("");
-      
-      // For sign up, execute Turnstile challenge first
-      if (window.turnstile && turnstileWidgetId.current) {
-        window.turnstile.execute(turnstileWidgetId.current);
-        
-        // Wait a moment for the token to be set
-        if (!turnstileToken) {
-          setResult("Please complete the security verification...");
-          return;
-        }
-      }
 
       const { data, error } = await authClient.signUp.email({
         email,
         password,
         name,
-        turnstileToken, // Pass the token to your backend
       });
 
       if (error) {
         setResult(`Sign up failed: ${error.message}`);
-        // Reset Turnstile on error
-        if (window.turnstile && turnstileWidgetId.current) {
-          window.turnstile.reset(turnstileWidgetId.current);
-          setTurnstileToken("");
-        }
         return;
       }
 
@@ -159,11 +91,6 @@ export function BetterAuthLogin({
       }
     } catch (err) {
       setResult(`Sign up failed: ${err instanceof Error ? err.message : "Unknown error"}`);
-      // Reset Turnstile on error
-      if (window.turnstile && turnstileWidgetId.current) {
-        window.turnstile.reset(turnstileWidgetId.current);
-        setTurnstileToken("");
-      }
     }
   };
 
@@ -223,9 +150,6 @@ export function BetterAuthLogin({
 
   return (
     <div className={className}>
-      {/* Turnstile widget container - invisible */}
-      <div ref={turnstileRef} style={{ display: 'none' }}></div>
-      
       {showOrgWarning && organizationName && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
           <div className="flex">

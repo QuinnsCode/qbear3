@@ -59,12 +59,9 @@ export default function LoginPage({ ctx }: { ctx: AppContext }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full">
-        {typeof window !== 'undefined' && (
-          <BetterAuthLogin
-            organizationName={ctx.organization?.name} 
-            turnstileSiteKey={env.TURNSTILE_SITE_KEY}
-          />
-        )}
+        <BetterAuthLogin
+          organizationName={ctx.organization?.name}
+        />
       </div>
     </div>
   );
