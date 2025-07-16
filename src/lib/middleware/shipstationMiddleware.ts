@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { decrypt, encrypt } from "@/lib/encrypt"; // Add encrypt import
+import { decrypt, encrypt } from "@/app/components/ThirdPartyApiKeys/thirdPartyApiKeyFunctions";
 
 export interface ShipStationCredentials {
   authString: string;
