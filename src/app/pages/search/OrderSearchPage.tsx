@@ -65,9 +65,16 @@ export async function OrderSearchPage({ orderNumber, currentUser, organizationId
     }
 
     return (
-      <div className="container mx-auto p-4 mt-12">
-        <h1>v1.00</h1>
-        <h1 className="text-2xl font-bold mb-6">Search Results for Order: {orderNumber}</h1>
+      <div className="container mx-auto p-4 mt-4">
+        {/* <h1>v1.00</h1> */}
+        <div className="w-full inline-flex justify-between items-center mb-6 ">
+          <h1 className="text-2xl font-bold items-center justify-center">Search Results for Order: {orderNumber}</h1>
+          <a href="/" className=" items-center">
+            <div className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+              Home
+            </div>
+          </a>
+        </div>
         
         {/* Add the presence component here */}
         <PresenceClient currentUser={currentUser} />

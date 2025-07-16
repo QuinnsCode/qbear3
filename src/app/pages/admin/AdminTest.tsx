@@ -53,8 +53,10 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     setError(null);
     try {
       const result = await listUsers({ limit: 20 });
+      console.log('Users result:', result); // Add this line
       setUsers(result);
     } catch (err) {
+      console.error('Error loading users:', err); // Add this line
       setError(err instanceof Error ? err.message : "Failed to load users");
     } finally {
       setLoading(false);
@@ -200,24 +202,42 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     }
   };
 
+  //bounce em if they are not logged in or an admin
+  if (!currentUser || currentUser.role !== 'admin') {
+    return (
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          Access denied. Admin privileges required.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <div className="w-full inline-flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Admin Panel</h1>
+          <a href="/" className="">
+            <div className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+              Home
+            </div>
+          </a>
+        </div>
         <div className="space-x-2">
-          <button
+          {/* <button
             onClick={handleStopImpersonating}
             className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
           >
             Stop Impersonating
-          </button>
-          {currentUser && (
+          </button> */}
+          {/* {currentUser && (
             <RoleToggleButton 
               currentRole={currentUser.role || "user"}
               userId={currentUser.id}
               className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
             />
-          )}
+          )} */}
         </div>
       </div>
 
@@ -275,7 +295,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
       {/* Users List */}
       <div className="bg-white border rounded-lg p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Users ({users?.total || 0})</h2>
+          <h2 className="text-xl font-semibold">Users ({users?.data?.total || 0})</h2>
           <button
             onClick={loadUsers}
             disabled={loading}
@@ -285,7 +305,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
           </button>
         </div>
 
-        {users && users.users?.length > 0 ? (
+       {users && users.data?.users?.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse border border-gray-300">
               <thead>
@@ -298,7 +318,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
                 </tr>
               </thead>
               <tbody>
-                {users.users.map((user) => (
+                {users.data.users.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="border border-gray-300 px-4 py-2">{user.name || "N/A"}</td>
                     <td className="border border-gray-300 px-4 py-2">{user.email}</td>

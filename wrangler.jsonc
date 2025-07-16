@@ -5,12 +5,9 @@
   "compatibility_date": "2024-09-23",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "directory": "public"
   },
-  "routes": [
-    "quinncodes.com/*",
-    "*.quinncodes.com/*"
-  ],
   "observability": {
     "enabled": true
   },
@@ -22,7 +19,7 @@
       },
       {
         "name": "REALTIME_DURABLE_OBJECT",
-        "class_name": "RealtimeDurableObject",
+        "class_name": "RealtimeDurableObject"
       }
     ]
   },

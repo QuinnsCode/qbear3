@@ -1,7 +1,7 @@
 // @/app/api/shipstation/shipstation.ts
 import { Order } from "./shipstationTypes"; 
 import { ShipStationResponse } from "@/app/types/Shipstation/shipment";
-import { env } from "cloudflare:workers";
+import { getOrgShipStationCredentials } from "@/lib/middleware/shipstationMiddleware";
 
 // ShipStation API utilities
 const SHIPSTATION_API_BASE = "https://ssapi.shipstation.com";
@@ -14,68 +14,126 @@ interface ShipStationOrderResponse {
   pages: number;
 }
 
-async function shipstationRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const apiKey = env.SHIPSTATION_API_KEY;
-  
-  if (!apiKey) {
-    throw new Error("SHIPSTATION_API_KEY environment variable is required");
+// Unified ShipStation HTTP Client
+class ShipStationClient {
+  private organizationId: string;
+  private credentials: { authString: string } | null = null;
+
+  constructor(organizationId: string) {
+    this.organizationId = organizationId;
   }
 
-  const response = await fetch(`${SHIPSTATION_API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      'Authorization': apiKey,
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`ShipStation API Error: ${response.status} - ${errorText}`);
-  }
-
-  return response.json();
-}
-
-// ShipStation API methods
-export async function getOrder(orderId: string, credentials?: { authString: string }) {
-  const authHeader = credentials?.authString || env.SHIPSTATION_API_KEY;
-  
-  if (!authHeader) {
-    throw new Error('ShipStation authentication not configured');
-  }
-
-  const response = await fetch(`https://ssapi.shipstation.com/orders/${orderId}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': authHeader, 
-      'Content-Type': 'application/json'
+  // Get and cache credentials for this client instance
+  private async getCredentials() {
+    if (!this.credentials) {
+      this.credentials = await getOrgShipStationCredentials(this.organizationId);
+      
+      if (!this.credentials?.authString) {
+        throw new Error(`No ShipStation credentials configured for organization: ${this.organizationId}`);
+      }
     }
-  });
-
-  if (!response.ok) {
-    throw new Error(`ShipStation API error: ${response.status} ${response.statusText}`);
+    return this.credentials;
   }
 
-  return await response.json();
+  // Unified HTTP request method
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const credentials = await this.getCredentials();
+    
+    const response = await fetch(`${SHIPSTATION_API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        'Authorization': credentials.authString,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`ShipStation API Error: ${response.status} - ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  // Fetch from arbitrary ShipStation URLs (for webhook batch imports)
+  async fetchUrl(url: string): Promise<any> {
+    const credentials = await this.getCredentials();
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': credentials.authString,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`ShipStation API error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  // API Methods
+  async getOrder(orderId: string) {
+    return this.request(`/orders/${orderId}`);
+  }
+
+  async listOrders(params?: Record<string, any>): Promise<ShipStationOrderResponse> {
+    const searchParams = new URLSearchParams(params);
+    return this.request<ShipStationOrderResponse>(
+      `/orders${searchParams.toString() ? `?${searchParams}` : ''}`
+    );
+  }
+
+  async createOrder(orderData: Partial<Order>): Promise<Order> {
+    return this.request<Order>('/orders/createorder', {
+      method: 'POST',
+      body: JSON.stringify(orderData),
+    });
+  }
 }
 
-export async function listOrders(params?: Record<string, any>): Promise<ShipStationOrderResponse> {
-  const searchParams = new URLSearchParams(params);
-  return shipstationRequest<ShipStationOrderResponse>(`/orders${searchParams.toString() ? `?${searchParams}` : ''}`);
+// Legacy function exports for backwards compatibility
+export async function getOrder(orderId: string, organizationId: string) {
+  const client = new ShipStationClient(organizationId);
+  return client.getOrder(orderId);
 }
 
-export async function createOrder(orderData: Partial<Order>): Promise<Order> {
-  return shipstationRequest<Order>('/orders/createorder', {
-    method: 'POST',
-    body: JSON.stringify(orderData),
-  });
+export async function listOrders(
+  organizationId: string,
+  params?: Record<string, any>
+): Promise<ShipStationOrderResponse> {
+  const client = new ShipStationClient(organizationId);
+  return client.listOrders(params);
 }
+
+export async function createOrder(
+  organizationId: string,
+  orderData: Partial<Order>
+): Promise<Order> {
+  const client = new ShipStationClient(organizationId);
+  return client.createOrder(orderData);
+}
+
+// Export the client class for direct use
+export { ShipStationClient };
 
 // Main handler for /api/shipstation/*
 export default async function handler({ request, params, ctx }) {
   try {
+    // Require organization context
+    if (!ctx.organization?.id) {
+      return Response.json(
+        { error: "Organization context required for ShipStation API access" },
+        { status: 400 }
+      );
+    }
+
+    // Create client instance for this organization
+    const client = new ShipStationClient(ctx.organization.id);
+
     // Extract path from URL params
     const apiPath = params["*"]; // This captures everything after /api/shipstation/
     
@@ -111,7 +169,7 @@ export default async function handler({ request, params, ctx }) {
 
         switch (request.method) {
           case 'GET':
-            const order = await getOrder(resourceId);
+            const order = await client.getOrder(resourceId);
             return Response.json(order);
 
           default:
@@ -126,12 +184,12 @@ export default async function handler({ request, params, ctx }) {
           case 'GET':
             const url = new URL(request.url);
             const queryParams = Object.fromEntries(url.searchParams);
-            const orders = await listOrders(queryParams);
+            const orders = await client.listOrders(queryParams);
             return Response.json(orders);
 
           case 'POST':
             const orderData = await request.json();
-            const newOrder = await createOrder(orderData);
+            const newOrder = await client.createOrder(orderData);
             return Response.json(newOrder);
 
           default:

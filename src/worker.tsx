@@ -516,24 +516,36 @@ export default defineApp([
         const url = new URL(request.url);
         const pathname = url.pathname;
         
-        // Don't redirect if already on auth/user routes
         if (pathname.startsWith('/user/') || pathname.startsWith('/auth/')) {
-          return; // Let auth routes handle themselves
+          return;
         }
         
-        // Only process this logic for the exact root path
         if (pathname !== '/') {
-          return; // Let other routes handle non-root paths
+          return;
         }
         
         const orgSlug = extractOrgFromSubdomain(request);
         
-        // If no subdomain, redirect to a landing page
+        // 🔍 ADD DEBUG LOGGING
+        console.log('🔍 Debug info:', {
+          orgSlug,
+          hasOrganization: !!ctx.organization,
+          hasUser: !!ctx.user,
+          userRole: ctx.userRole,
+          orgError: ctx.orgError
+        });
+        
         if (!orgSlug) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/landing" },
           });
+        }
+        
+        // 🚨 FIX: Handle org errors properly
+        if (ctx.orgError) {
+          // Let the middleware handle the org error redirects
+          return;
         }
         
         // If we have an organization but user isn't logged in or doesn't have role

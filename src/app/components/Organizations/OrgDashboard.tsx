@@ -1,5 +1,6 @@
 // @/app/pages/orgs/OrgDashboard.tsx
 import type { RequestInfo } from "rwsdk/worker";
+import ActivityFeed from "@/app/components/ActivityFeed/ActivityFeed";
 
 export default function OrgDashboard({ ctx, request }: RequestInfo) {
   // Redirect if no org context
@@ -19,6 +20,10 @@ export default function OrgDashboard({ ctx, request }: RequestInfo) {
   }
 
   const { organization, user, userRole } = ctx;
+  
+  // Check if realtime is enabled via URL parameter
+  const url = new URL(request.url);
+  const enableRealtime = url.searchParams.get('realtime') === 'true';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -33,8 +38,32 @@ export default function OrgDashboard({ ctx, request }: RequestInfo) {
               <span className="ml-3 inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
                 {userRole}
               </span>
+              {/* Real-time indicator */}
+              {enableRealtime && (
+                <div className="ml-3 flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-gray-600">Live</span>
+                </div>
+              )}
             </div>
             <div className="flex items-center space-x-4">
+              {/* Realtime toggle */}
+              {!enableRealtime ? (
+                <a 
+                  href="?realtime=true"
+                  className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
+                >
+                  🔴 Enable Live Updates
+                </a>
+              ) : (
+                <a 
+                  href="?"
+                  className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Disable Live Updates
+                </a>
+              )}
+              
               <span className="text-sm text-gray-700">
                 {user.name || user.email}
               </span>
@@ -139,7 +168,7 @@ export default function OrgDashboard({ ctx, request }: RequestInfo) {
                 </div>
                 <div className="mt-4">
                   <a 
-                    href="/settings/team" 
+                    href="/admin" 
                     className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                   >
                     Manage Team
@@ -234,23 +263,11 @@ export default function OrgDashboard({ ctx, request }: RequestInfo) {
           
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
-          </div>
-          <div className="p-6">
-            <div className="text-center py-12">
-              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-              <h3 className="mt-4 text-sm font-medium text-gray-900">No recent activity</h3>
-              <p className="mt-2 text-sm text-gray-500">
-                Start by searching for orders or setting up integrations.
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Real-time Activity Feed - Replacing the placeholder */}
+        <ActivityFeed 
+          organizationId={organization.id}
+          enableRealtime={enableRealtime}
+        />
       </div>
     </div>
   );

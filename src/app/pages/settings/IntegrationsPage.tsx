@@ -43,7 +43,19 @@ export default async function IntegrationsPage({ ctx, request }: RequestInfo) {
             <span>→</span>
             <span className="text-gray-900">Integrations</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Integrations</h1>
+          <div className="w-full inline-flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Integrations</h1>
+          <a 
+            href="/" 
+            className=""
+          >
+            <div
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Home
+            </div>
+          </a>
+        </div>
           <p className="mt-2 text-gray-600">
             Manage your third-party API keys and integrations for {ctx.organization.name}
           </p>
