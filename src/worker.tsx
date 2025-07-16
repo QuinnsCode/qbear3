@@ -516,9 +516,14 @@ export default defineApp([
         const url = new URL(request.url);
         const pathname = url.pathname;
         
-        // Don't process redirects if we're already on user routes
-        if (pathname.startsWith('/user/')) {
-          return; // Let user routes handle themselves
+        // Don't redirect if already on auth/user routes
+        if (pathname.startsWith('/user/') || pathname.startsWith('/auth/')) {
+          return; // Let auth routes handle themselves
+        }
+        
+        // Only process this logic for the exact root path
+        if (pathname !== '/') {
+          return; // Let other routes handle non-root paths
         }
         
         const orgSlug = extractOrgFromSubdomain(request);

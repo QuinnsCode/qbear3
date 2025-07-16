@@ -153,6 +153,10 @@ export function extractOrgFromSubdomain(request: Request): string | null {
     const parts = hostname.split('.');
     if (parts.length >= 2 && parts[1] === 'localhost') {
       const orgSlug = parts[0];
+      // Don't treat 'www' as an org slug
+      if (orgSlug === 'www') {
+        return null;
+      }
       if (/^[a-z0-9-]+$/.test(orgSlug) && orgSlug.length > 0) {
         return orgSlug;
       }
@@ -164,6 +168,10 @@ export function extractOrgFromSubdomain(request: Request): string | null {
     const parts = hostname.split('.');
     if (parts.length >= 4) {
       const orgSlug = parts[0];
+      // Don't treat 'www' as an org slug
+      if (orgSlug === 'www') {
+        return null;
+      }
       if (/^[a-z0-9-]+$/.test(orgSlug) && orgSlug.length > 0) {
         return orgSlug;
       }
@@ -174,6 +182,10 @@ export function extractOrgFromSubdomain(request: Request): string | null {
   const parts = hostname.split('.');
   if (parts.length >= 3) {
     const orgSlug = parts[0];
+    // Don't treat 'www' as an org slug
+    if (orgSlug === 'www') {
+      return null;
+    }
     if (/^[a-z0-9-]+$/.test(orgSlug) && orgSlug.length > 0) {
       return orgSlug;
     }
