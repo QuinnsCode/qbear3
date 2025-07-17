@@ -21,8 +21,8 @@ export function RealtimeActivityClient({ organizationId, initialActivities }: Re
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Initialize realtime client with organization-specific key
-    const realtimeKey = `/activity/${organizationId}`;
+    
+    const realtimeKey = `/dashboard`;
     
     const connectRealtime = async () => {
       try {
