@@ -535,6 +535,7 @@ export default defineApp([
           orgError: ctx.orgError
         });
         
+        //send to landing page with logins if no org
         if (!orgSlug) {
           return new Response(null, {
             status: 302,
@@ -555,8 +556,16 @@ export default defineApp([
             headers: { Location: "/user/login" },
           });
         }
+
+        if (ctx.organization && ctx.user && ctx.userRole) {
+          console.log('✅ Redirecting authenticated user to dashboard');
+          return new Response(null, {
+            status: 302,
+            headers: { Location: "/dashboard" },
+          });
+        }
       },
-      OrgDashboard,
+      HomePage,
     ]),
 
     //different that home page
