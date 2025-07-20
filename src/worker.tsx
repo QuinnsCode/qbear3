@@ -2,13 +2,8 @@ import { defineApp, ErrorResponse, requestInfo } from "rwsdk/worker";
 import { realtimeRoute, renderRealtimeClients } from "rwsdk/realtime/worker";
 import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
-import TestButtonClient from "@/app/TestButtonClient";
-import { OrderSearchPage } from "@/app/pages/search/OrderSearchPage";
-import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
-// import { sessions, setupSessionStore } from "./session/store";
-// import { Session } from "./session/durableObject";
 import { auth, initAuth } from "@/lib/auth";
 import { type User, type Organization, db, setupDb } from "@/db";
 import AdminPage from "@/app/pages/admin/Admin";
@@ -25,10 +20,7 @@ import {
 } from "@/lib/middlewareFunctions";
 import { env } from "cloudflare:workers";
 import CreateOrgPage from "@/app/pages/orgs/CreateOrgPage";
-import AsanaPage from "@/app/pages/asana/AsanaPage";
-import { settingsRoutes } from "./app/pages/settings/settingsRoutes";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import ShipstationPage from "./app/pages/shipstation/ShipstationPage";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -232,8 +224,8 @@ export default defineApp([
             updateAge: 60 * 60 * 24,
           },
           trustedOrigins: [
-            "quinncodes.com",
-            "*.quinncodes.com",
+            "qntbr.com",
+            "*.qntbr.com",
             "localhost:5173",
             "*.localhost:5173",
             "localhost:8787",
@@ -380,17 +372,6 @@ export default defineApp([
       return new Response(JSON.stringify(note), {
         headers: { "Content-Type": "application/json" }
       });
-    }),
-
-    route("/protected", async ({ request, ctx }) => {
-      const authInstance = auth;
-      const session = await authInstance.api.getSession({
-        headers: request.headers
-      });
-      if (!session) {
-        return new Response("Unauthorized", { status: 401 });
-      }
-      return new Response(`Hello ${session?.user?.name}!`);
     }),
 
     route("/webhooks/:service", async ({ request, params, ctx }) => {
@@ -570,34 +551,9 @@ export default defineApp([
 
     //different that home page
     route("/landing", HomePage),
-    route("/shipstation", ShipstationPage),
-    // route("/shipstation/*", ShipstationPage),
-    route("/shipstation/dashboard", ShipstationPage),
-    route("/shipstation-dashboard", ShipstationPage),
-    route("/asana", AsanaPage),
     route("/admin", AdminPage),
     route("/orgs/new", CreateOrgPage),
     prefix("/user", userRoutes),
     route("/dashboard", OrgDashboard),
-    route("/search/:orderNumber", async ({ params, ctx }) => {
-      if (ctx.organization && (!ctx.user || !ctx.userRole)) {
-        return new Response(null, {
-          status: 302,
-          headers: { Location: "/user/login" }
-        });
-      }
-      
-      if (!ctx.organization) {
-        return new Response("Organization not found", { status: 404 });
-      }
-      
-      return <OrderSearchPage 
-        orderNumber={params.orderNumber} 
-        currentUser={ctx.user} 
-        organizationId={ctx.organization.id}
-      />;
-    }),
-    prefix("/settings", settingsRoutes)
-
   ]),
 ]);

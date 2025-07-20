@@ -131,12 +131,12 @@ export function CreateOrgClient({ initialUser }: CreateOrgClientProps) {
                   placeholder="acme-corp"
                 />
                 <span className="inline-flex blur-xs items-center px-3 py-2 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 rounded-r-md text-sm">
-                  .quinncodes.com
+                  .qntbr.com
                 </span>
               </div>
               <p className="mt-2 text-sm text-gray-500">
                 <div className="inline-flex">Your organization will be available at: https://[subdomain]</div>
-                <div className="inline-flex blur-xs mx-1">.quinncodes.com</div>
+                <div className="inline-flex blur-xs mx-1">.qntbr.com</div>
               </p>
             </div>
 

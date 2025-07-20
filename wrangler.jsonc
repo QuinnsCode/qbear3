@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "swankyflare-v2",
+  "name": "qntbr",
   "main": "src/worker.tsx",
   "compatibility_date": "2024-09-23",
   "compatibility_flags": ["nodejs_compat"],
@@ -9,8 +9,8 @@
     "directory": "public"
   },
   "routes": [
-    "quinncodes.com/*",
-    "*.quinncodes.com/*"
+    "qntbr.com/*",
+    "*.qntbr.com/*"
   ],
   "observability": {
     "enabled": true
@@ -28,8 +28,8 @@
     ]
   },
   "vars": {
-    "WEBAUTHN_APP_NAME": "swankyflare-v2",
-    "BETTER_AUTH_URL": "https://quinncodes.com"
+    "WEBAUTHN_APP_NAME": "qntbr",
+    "BETTER_AUTH_URL": "https://qntbr.com"
   },
   "migrations": [
     {
@@ -40,8 +40,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "swankyflare-db2",
-      "database_id": "11428efa-213f-41da-82b5-213972b04aae"
+      "database_name": "qntbr-db1",
+      "database_id": "75b80f5a-6013-48cf-ba65-38ea0c97f275"
     }
   ]
 }

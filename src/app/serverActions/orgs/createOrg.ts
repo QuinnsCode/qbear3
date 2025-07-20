@@ -24,8 +24,8 @@ function getRedirectUrl(slug: string, request: Request): string {
     return `${protocol}//${slug}.${workerDomain}/dashboard`;
   }
   
-  // Production (quinncodes.com)
-  return `${protocol}//${slug}.quinncodes.com/dashboard`;
+  // Production (qntbr.com)
+  return `${protocol}//${slug}.qntbr.com/dashboard`;
 }
 
 export async function createOrganization(formData: FormData) {

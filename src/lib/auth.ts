@@ -38,8 +38,8 @@ export const createAuth = () => {
       updateAge: 60 * 60 * 24,
     },
     trustedOrigins: [
-      "quinncodes.com",
-      "*.quinncodes.com", 
+      "qntbr.com",
+      "*.qntbr.com", 
       "localhost:5173",
       "*.localhost:5173",
       "localhost:8787",
