@@ -576,29 +576,9 @@ export default defineApp([
     route("/shipstation-dashboard", ShipstationPage),
     route("/asana", AsanaPage),
     route("/admin", AdminPage),
-    // route("/client-test", () => (
-    //   <div style={{ padding: '20px' }}>
-    //     <h1>Testing Client Component</h1>
-    //     <TestButtonClient />
-    //   </div>
-    // )),
     route("/orgs/new", CreateOrgPage),
     prefix("/user", userRoutes),
-    
-    // route("/protected", [
-    //   ({ ctx }) => {
-    //     if (!ctx.user) {
-    //       return new Response(null, {
-    //         status: 302,
-    //         headers: { Location: "/user/login" },
-    //       });
-    //     }
-    //   },
-    //   Home,
-    // ]),
-
     route("/dashboard", OrgDashboard),
-
     route("/search/:orderNumber", async ({ params, ctx }) => {
       if (ctx.organization && (!ctx.user || !ctx.userRole)) {
         return new Response(null, {
@@ -617,7 +597,6 @@ export default defineApp([
         organizationId={ctx.organization.id}
       />;
     }),
-
     prefix("/settings", settingsRoutes)
 
   ]),

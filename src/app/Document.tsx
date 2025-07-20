@@ -14,7 +14,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
     </head>
     <body>
       <div id="root">{children}</div>
-      <script>import("/src/client.tsx")</script>
+      <script type="module" src="/src/client.tsx"></script>  {/* 👈 Change this line */}
       <script 
         src="https://challenges.cloudflare.com/turnstile/v0/api.js" 
         async 

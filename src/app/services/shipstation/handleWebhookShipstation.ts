@@ -1,4 +1,6 @@
 import { db } from "@/db";
+import { extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
+import { getOrgShipStationCredentialsFromOrgSlug } from "@/lib/middleware/shipstationMiddleware";
 
 interface ShipStationWebhookPayload {
   resource_url: string;
@@ -50,15 +52,28 @@ export const handleWebhookShipstation = async (request: Request, env: any) => {
       },
     });
 
-    // Fetch the actual data from ShipStation using Basic Auth
-    const authHeader = `${env.SHIPSTATION_API_KEY}`;
+    const orgSlug = extractOrgFromSubdomain(request);
+    if (!orgSlug) {
+      console.error('❌ No organization context for API webhook');
+      return Response.json({ error: "Organization not found" }, { status: 404 });
+    }
+    const { authString } = await getOrgShipStationCredentialsFromOrgSlug(orgSlug);
 
-    
+    if (!authString) {
+      console.error('❌ No ShipStation credentials found for organization:', orgSlug);
+      return Response.json({ error: "ShipStation credentials not found" }, { status: 404 });
+    }
+
+    if (authString.slice(0, 5) !== "Basic")  { 
+      console.error('❌ ShipStation credentials not found for organization:', orgSlug);
+      return Response.json({ error: "ShipStation credentials not found" }, { status: 404 });
+    }
+
     console.log('Fetching data from:', payload.resource_url);
     
     const response = await fetch(payload.resource_url, {
       headers: {
-        'Authorization': authHeader,
+        'Authorization': authString,
         'Content-Type': 'application/json',
       },
     });

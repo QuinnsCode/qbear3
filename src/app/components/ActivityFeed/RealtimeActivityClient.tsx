@@ -1,12 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { initRealtimeClient } from "rwsdk/realtime/client";
-
-interface RealtimeActivityClientProps {
-  organizationId: string;
-  initialActivities: ActivityItem[];
-}
 
 interface ActivityItem {
   id: string;
@@ -15,47 +9,53 @@ interface ActivityItem {
   [key: string]: any;
 }
 
+interface RealtimeActivityClientProps {
+  organizationId: string;
+  initialActivities: ActivityItem[];
+}
+
+
 export function RealtimeActivityClient({ organizationId, initialActivities }: RealtimeActivityClientProps) {
   const [activities, setActivities] = useState<ActivityItem[]>(initialActivities);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // useEffect(() => {
     
-    const realtimeKey = `/dashboard`;
+  //   const realtimeKey = `/dashboard`;
     
-    const connectRealtime = async () => {
-      try {
-        console.log('🔌 Connecting to realtime with key:', realtimeKey);
+  //   const connectRealtime = async () => {
+  //     try {
+  //       console.log('🔌 Connecting to realtime with key:', realtimeKey);
         
-        await initRealtimeClient({
-          key: realtimeKey
-        });
+  //       await initRealtimeClient({
+  //         key: realtimeKey
+  //       });
         
-        setIsConnected(true);
-        setConnectionError(null);
-        console.log('✅ Realtime client connected');
+  //       setIsConnected(true);
+  //       setConnectionError(null);
+  //       console.log('✅ Realtime client connected');
         
-      } catch (error) {
-        console.error('🚨 Failed to connect realtime client:', error);
-        setConnectionError('Failed to connect to real-time updates');
-        setIsConnected(false);
+  //     } catch (error) {
+  //       console.error('🚨 Failed to connect realtime client:', error);
+  //       setConnectionError('Failed to connect to real-time updates');
+  //       setIsConnected(false);
         
-        // Retry connection after a delay
-        setTimeout(() => {
-          console.log('🔄 Retrying realtime connection...');
-          connectRealtime();
-        }, 3000);
-      }
-    };
+  //       // Retry connection after a delay
+  //       setTimeout(() => {
+  //         console.log('🔄 Retrying realtime connection...');
+  //         connectRealtime();
+  //       }, 3000);
+  //     }
+  //   };
 
-    connectRealtime();
+  //   connectRealtime();
 
-    // The rwsdk realtime client will automatically trigger re-renders
-    // when renderRealtimeClients() is called on the server side
-    // So this component will re-render with fresh data automatically
+  //   // The rwsdk realtime client will automatically trigger re-renders
+  //   // when renderRealtimeClients() is called on the server side
+  //   // So this component will re-render with fresh data automatically
 
-  }, [organizationId]);
+  // }, [organizationId]);
 
   // Since rwsdk handles the real-time updates by re-rendering the server component,
   // we don't need to manually handle WebSocket messages here.

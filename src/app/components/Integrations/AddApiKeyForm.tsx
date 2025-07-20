@@ -2,9 +2,8 @@
 "use client";
 
 import { useState } from "react";
-
 interface AddApiKeyFormProps {
-  createApiKey: (formData: FormData) => Promise<void>;
+  createApiKey: (formData: FormData) => Promise<{ success: boolean }>;
 }
 
 export function AddApiKeyForm({ createApiKey }: AddApiKeyFormProps) {
@@ -17,9 +16,12 @@ export function AddApiKeyForm({ createApiKey }: AddApiKeyFormProps) {
 
     try {
       const formData = new FormData(e.currentTarget);
-      await createApiKey(formData);
-      setIsAddingKey(false);
-      e.currentTarget.reset();
+      const result = await createApiKey(formData);
+      
+      if (result.success) {
+        setIsAddingKey(false);
+        e.currentTarget.reset();
+      }
     } catch (error) {
       console.error('Error creating API key:', error);
       alert('Failed to create API key. Please try again.');

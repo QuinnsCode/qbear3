@@ -7,9 +7,4 @@ export default defineConfig({
     ssr: {},
   },
   plugins: [redwood(), tailwindcss()],
-  build: {
-    rollupOptions: {
-      external: ['react-dom/client', 'react-dom/server']
-    }
-  }
 });

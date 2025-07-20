@@ -3,6 +3,19 @@ import { decrypt, encrypt } from "@/app/components/ThirdPartyApiKeys/thirdPartyA
 
 export interface ShipStationCredentials {
   authString: string;
+} 
+
+export async function getOrgShipStationCredentialsFromOrgSlug(orgSlug: string): Promise<ShipStationCredentials> {
+  const organization = await db.organization.findUnique({
+    where: { slug: orgSlug },
+    select: { id: true }
+  });
+  
+  if (!organization) {
+    throw new Error(`Organization not found: ${orgSlug}`);
+  }
+  
+  return getOrgShipStationCredentials(organization.id);
 }
 
 export async function getOrgShipStationCredentials(organizationId: string): Promise<ShipStationCredentials> {

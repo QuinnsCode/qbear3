@@ -8,6 +8,10 @@
     "binding": "ASSETS",
     "directory": "public"
   },
+  "routes": [
+    "quinncodes.com/*",
+    "*.quinncodes.com/*"
+  ],
   "observability": {
     "enabled": true
   },
@@ -21,7 +25,7 @@
         "name": "REALTIME_DURABLE_OBJECT",
         "class_name": "RealtimeDurableObject"
       }
-    ] 
+    ]
   },
   "vars": {
     "WEBAUTHN_APP_NAME": "swankyflare-v2",
