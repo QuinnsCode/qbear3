@@ -181,33 +181,8 @@ export default function OrgDashboard({ ctx, request }: RequestInfo) {
 
         {/* Quick Actions Grid - Layer 2*/}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-           {/* Search Orders */}
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-6">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-medium text-gray-900">Search Orders</h3>
-                  <p className="text-sm text-gray-500">Find and manage orders</p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <a 
-                  href="/search/425100" 
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  Open Search
-                </a>
-              </div>
-            </div>
-          </div>
-          {/* Asana */}
+           
+          {/* Game1 */}
           <div className="bg-white overflow-hidden shadow rounded-lg">
             <div className="p-6">
               <div className="flex items-center">
@@ -219,16 +194,16 @@ export default function OrgDashboard({ ctx, request }: RequestInfo) {
                   </div>
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-lg font-medium text-gray-900">Asana</h3>
-                  <p className="text-sm text-gray-500">Asana integration</p>
+                  <h3 className="text-lg font-medium text-gray-900">2210v1</h3>
+                  <p className="text-sm text-gray-500">2210v1 integration</p>
                 </div>
               </div>
               <div className="mt-4">
                 <a 
-                  href="/asana" 
+                  href="/game" 
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700"
                 >
-                  Open Asana
+                  Open 2210v1
                 </a>
               </div>
             </div>

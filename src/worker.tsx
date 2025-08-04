@@ -4,6 +4,8 @@ import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
+import { gameRoutes } from "@/app/pages/game/gameRoutes";
+import { realtimeRoutes } from "@/app/pages/realtime/realtimeRoutes";
 import { auth, initAuth } from "@/lib/auth";
 import { type User, type Organization, db, setupDb } from "@/db";
 import AdminPage from "@/app/pages/admin/Admin";
@@ -21,9 +23,12 @@ import {
 import { env } from "cloudflare:workers";
 import CreateOrgPage from "@/app/pages/orgs/CreateOrgPage";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import { uniqueNamesGenerator, adjectives, colors, animals } from "unique-names-generator";
+import GamePage from "@/app/pages/game/GamePage";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
+export { GameStateDO } from "./gameDurableObject";
 
 export type AppContext = {
   session: any | null;
@@ -86,49 +91,10 @@ export default defineApp([
   },
 
   // 🔌 REALTIME ROUTES - Handle WebSocket and presence
-  route("/__realtime/presence", async ({ request }) => {
-    let key = '/default';
-    
-    if (request.method === 'POST') {
-      try {
-        const clonedRequest = request.clone();
-        const body = await clonedRequest.json() as { pathname?: string; userId?: string; username?: string; action?: string };
-        key = body?.pathname || '/default';
-      } catch (e) {
-        // If JSON parsing fails, use default key
-      }
-    } else if (request.method === 'GET') {
-      const url = new URL(request.url);
-      key = url.searchParams.get('key') || '/default';
-    }
-    
-    console.log('🔑 Using presence key:', key);
-    
-    const durableObjectId = (env.REALTIME_DURABLE_OBJECT as any).idFromName(key);
-    const durableObject = (env.REALTIME_DURABLE_OBJECT as any).get(durableObjectId);
-    
-    return durableObject.fetch(request);
-  }),
-
-  route("/__realtime", async ({ request }) => {
-    if (request.headers.get("Upgrade") === "websocket") {
-      const url = new URL(request.url);
-      const key = url.searchParams.get('key') || '/default';
-      
-      console.log('🔌 WebSocket connecting with key:', key);
-      
-      const durableObjectId = (env.REALTIME_DURABLE_OBJECT as any).idFromName(key);
-      const durableObject = (env.REALTIME_DURABLE_OBJECT as any).get(durableObjectId);
-      
-      return durableObject.fetch(request);
-    }
-    
-    return new Response("WebSocket upgrade required", { status: 400 });
-  }),
-
+  prefix("/__realtime", realtimeRoutes),
+  prefix("/__gsync", gameRoutes),
   realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
 
-  // 🚀 API ROUTES - All API endpoints
   // 🚀 API ROUTES - All API endpoints
   prefix("/api", [
     
@@ -457,15 +423,6 @@ export default defineApp([
     return Response.json({ error: "Webhook not supported" }, { status: 404 });
   }),
 
-  route("/debug-env", async () => {
-    return new Response(JSON.stringify({
-      hasSecret: !!env.BETTER_AUTH_SECRET,
-      secretLength: env.BETTER_AUTH_SECRET?.length,
-      baseURL: env.BETTER_AUTH_URL,
-      hasDB: !!env.DB,
-    }));
-  }),
-
   // 🎨 FRONTEND ROUTES
   render(Document, [
     route("/org-not-found", ({ request }) => {
@@ -555,5 +512,20 @@ export default defineApp([
     route("/orgs/new", CreateOrgPage),
     prefix("/user", userRoutes),
     route("/dashboard", OrgDashboard),
+    route("/game", () => {
+      const randomName = uniqueNamesGenerator({
+        dictionaries: [adjectives, colors, animals],
+        separator: "-",
+        length: 3,
+      });
+
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: `/game/${randomName}`,
+        },
+      });
+    }),
+    route("/game/:gameId", GamePage),
   ]),
 ]);

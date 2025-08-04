@@ -20,6 +20,8 @@ const REALTIME_ROUTES = [
   '/search',
   '/orders/',
   '/dashboard',
+  '/game',
+  '/game/',
 ];
 
 function shouldUseRealtime(pathname: string): boolean {
@@ -69,9 +71,17 @@ async function initRealtimeWithPresence(pathname: string) {
   const userInfo = getUserInfo();
   
   try {
+
+    let realtimeKey = pathname;
+    // For game routes, use the specific game ID as key
+    if (pathname.startsWith('/game/')) {
+      realtimeKey = pathname; // This will be "/game/abc123" which matches renderRealtimeClients
+    }
+
     // Initialize the standard realtime client
     await initRealtimeClient({
-      key: pathname,
+      //we need to differ between game routes and other routes
+      key: realtimeKey, // Now matches your server action keys
     });
     
     console.log('✅ Realtime client initialized successfully');

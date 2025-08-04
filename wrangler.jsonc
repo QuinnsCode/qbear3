@@ -24,6 +24,10 @@
       {
         "name": "REALTIME_DURABLE_OBJECT",
         "class_name": "RealtimeDurableObject"
+      },
+      {
+        "name": "GAME_STATE_DO",
+        "class_name": "GameStateDO"
       }
     ]
   },
@@ -35,6 +39,10 @@
     {
       "tag": "v1",
       "new_sqlite_classes": ["SessionDurableObject", "RealtimeDurableObject"]
+    },
+    {
+      "tag": "v2", 
+      "new_sqlite_classes": ["GameStateDO"]
     }
   ],
   "d1_databases": [
