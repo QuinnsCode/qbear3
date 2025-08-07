@@ -1,11 +1,21 @@
+// app/components/Game/MobileGameUI.tsx
 // Enhanced MobileGameUI.tsx - FIXED AI INDICATOR POSITIONING
 'use client'
-
+import BuildHireOverlay from '@/app/components/Game/GamePhases/BuildHireOverlay';
+import { 
+  submitBid,
+  startYearTurns,
+  purchaseCommander, 
+  placeCommanderInGame, 
+  purchaseSpaceBaseGame, 
+  placeSpaceBaseInGame,
+  advanceFromBuildHire
+} from '@/app/serverActions/gameActions';
 import React, { useState } from 'react';
 import { useGameSync } from '@/app/hooks/useGameSync';
 import BiddingOverlay from '@/app/components/Game/GameBidding/BiddingOverlay';
 import CollectDeployOverlay from '@/app/components/Game/GamePhases/CollectDeployOverlay';
-import { submitBid, startYearTurns } from '@/app/serverActions/gameActions';
+
 
 import { 
   Settings, 
@@ -296,6 +306,20 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
         
         return // Exit early for setup phases
       }
+
+      if (gameState.status === 'playing' && gameState.currentPhase === 2) {
+        if (!isMyTurn) {
+          alert("It's not your turn!");
+          return;
+        }
+        
+        // Build & Hire phase is handled by the overlay
+        // Territory clicks during placement mode will be handled by the overlay
+        if (action === 'info') {
+          setSelectedTerritory(selectedTerritory === territoryId ? null : territoryId);
+        }
+        return; // Exit early for Build & Hire phase
+      }
       
       // Regular game phase handling (existing code)
       switch (action) {
@@ -431,6 +455,71 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       throw error
     }
   }
+
+  const handlePurchaseCommander = async (commanderType: string, cost: number) => {
+    try {
+      console.log(`🛒 Purchasing ${commanderType} commander for ${cost} energy`);
+      await purchaseCommander(gameId, currentUserId, commanderType as any, cost);
+      console.log('✅ Commander purchase completed - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Commander purchase failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to purchase commander: ${errorMessage}`);
+      throw error;
+    }
+  };
+
+  const handlePlaceCommander = async (territoryId: string, commanderType: string) => {
+    try {
+      console.log(`📍 Placing ${commanderType} commander on territory ${territoryId}`);
+      await placeCommanderInGame(gameId, currentUserId, territoryId, commanderType as any);
+      console.log('✅ Commander placement completed - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Commander placement failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to place commander: ${errorMessage}`);
+      throw error;
+    }
+  };
+
+  const handlePurchaseSpaceBase = async (cost: number) => {
+    try {
+      console.log(`🏰 Purchasing space base for ${cost} energy`);
+      await purchaseSpaceBaseGame(gameId, currentUserId, cost);
+      console.log('✅ Space base purchase completed - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Space base purchase failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to purchase space base: ${errorMessage}`);
+      throw error;
+    }
+  };
+
+  const handlePlaceSpaceBase = async (territoryId: string) => {
+    try {
+      console.log(`🏰 Placing space base on territory ${territoryId}`);
+      await placeSpaceBaseInGame(gameId, currentUserId, territoryId);
+      console.log('✅ Space base placement completed - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Space base placement failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to place space base: ${errorMessage}`);
+      throw error;
+    }
+  };
+
+  const handleAdvanceFromBuildHire = async () => {
+    try {
+      console.log('🎯 Advancing from Build & Hire to Buy Cards phase');
+      await advanceFromBuildHire(gameId, currentUserId);
+      console.log('✅ Phase advance completed - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Phase advance failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to advance phase: ${errorMessage}`);
+      throw error;
+    }
+  };
 
   
 
@@ -780,6 +869,16 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
               color="green"
             />
             
+            {/* Build & Hire - Phase 2 */}
+            <GameActionButton
+              icon={Castle}
+              label="Build"
+              active={interactionMode === 'build'}
+              disabled={!isMyTurn || gameState?.currentPhase !== 2}
+              onClick={() => handleModeChange('build')}
+              color="purple"
+            />
+            
             {/* Attack - Phase 5 */}
             <GameActionButton
               icon={Sword}
@@ -880,7 +979,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
       {/* Settings Panel - Z-index 50 - ALWAYS ACCESSIBLE */}
       {showSettings && (
-        <div className="absolute inset-y-0 right-0 w-80 bg-black/50 backdrop-blur-sm z-50 p-4">
+        <div className="absolute inset-y-0 right-0 w-80 bg-black/50 backdrop-blur-sm z-80 p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-white font-bold">Settings</h2>
             <button
@@ -936,6 +1035,19 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           onCollectAndStartDeploy={handleCollectAndStartDeploy}
           onPlaceUnit={handlePlaceUnitFromOverlay}
           onConfirmDeploymentComplete={handleConfirmDeploymentComplete}
+        />
+      )}
+
+      {/* 🎯 Build & Hire overlay - Z-index 60 (highest priority) */}
+      {gameState?.status === 'playing' && gameState?.currentPhase === 2 && (
+        <BuildHireOverlay
+          gameState={gameState}
+          currentUserId={currentUserId}
+          onPurchaseCommander={handlePurchaseCommander}
+          onPlaceCommander={handlePlaceCommander}
+          onPurchaseSpaceBase={handlePurchaseSpaceBase}
+          onPlaceSpaceBase={handlePlaceSpaceBase}
+          onAdvanceToNextPhase={handleAdvanceFromBuildHire}
         />
       )}
     </div>

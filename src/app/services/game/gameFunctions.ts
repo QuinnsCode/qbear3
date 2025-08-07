@@ -63,6 +63,80 @@ export const TERRITORY_DATA = [
   { id: 54, name: "Akara", connections: [41, 53], type: 'water' } //
 ]
 
+
+export const RAW_CARD_DATA = [
+  // Space Command Cards - will leave out in v1
+  // { qty: 1, cardTitle: 'Energy Extraction', cardPhase: 0, cardCost: 0, cardText: "If you occupy all the the lunar or asteroid territories in a region of space at the end of this turn, collect 7 energy" },
+  // { qty: 2, cardTitle: 'Orbital Mines', cardPhase: 1, cardCost: 2, cardText: "Your opponent must destroy half the units in the invading territory. Round up." },
+  // { qty: 2, cardTitle: 'Colony Influence', cardPhase: 2, cardCost: 0, cardText: "If your Space Commander is still alive, move your score marker ahead 3 spaces" },
+  // { qty: 3, cardTitle: 'Invade Earth', cardPhase: 0, cardCost: 0, cardText: "Choose a planet. Turn over land territory cards for that planet until you turn over a territory you do not occupy. During this turn you may attack this land territory from any surrounding lunar or asteroid territories you occupy" },
+  // { qty: 3, cardTitle: 'Assemble MODs', cardPhase: 0, cardCost: 1, cardText: "Place 3 MODs on any one moon or asteroid territory you control." },
+  // { qty: 4, cardTitle: 'Stealth MODs', cardPhase: 1, cardCost: 0, cardText: "Place 3 additional defending MODs in the defending lunar or asteroid territory" },
+  // { qty: 2, cardTitle: 'Frequency Jam', cardPhase: 0, cardCost: 0, cardText: "Choose a player. The chosen player cannot play command cards during your turn." },
+  // { qty: 3, cardTitle: 'Reinforcements', cardPhase: 0, cardCost: 0, cardText: "Place 3 MODS, one each on 3 different space territories you occupy" },
+
+  // Diplomat Command Cards
+  { qty: 4, cardTitle: 'Colony Influence', cardPhase: 2, cardCost: 0, cardText: "If your Diplomat Commander is still alive, move your score marker ahead 3 spaces" },
+  { qty: 2, cardTitle: 'Decoys Revealed', cardPhase: 0, cardCost: 0, cardText: "Move any number of your commanders to any number of territories you control." },
+  { qty: 2, cardTitle: 'Evacuation', cardPhase: 1, cardCost: 0, cardText: "Move all units from the attacked territory to any territory you occupy." },
+  { qty: 3, cardTitle: 'Territorial Station', cardPhase: 0, cardCost: 1, cardText: "Place a space station on any land territory you occupy." },
+  { qty: 2, cardTitle: 'MOD Reduction', cardPhase: 0, cardCost: 2, cardText: "All of your opponents must remove 4 MODs in turn order. Then you remove 2 MODs" },
+  { qty: 3, cardTitle: 'Redeployment', cardPhase: 3, cardCost: 0, cardText: "Take an extra free move this turn. You may only take this free move after you have finished attacking" },
+  { qty: 2, cardTitle: 'Cease Fire', cardPhase: 1, cardCost: 2, cardText: "Prevent the invasion. The attacking player cannot attack any of your territories for the rest of his/her turn." },
+  { qty: 2, cardTitle: 'Energy Crisis', cardPhase: 0, cardCost: 0, cardText: "Collect one energy from each opponent." },
+
+  // Naval Command Cards
+  { qty: 5, cardTitle: 'Hidden Energy', cardPhase: 0, cardCost: 0, cardText: "Draw a water or lava territory card. If you occupy this water or lava territory at the end of your turn, collect 4 energy. Discard the territory card at the end of this turn." },
+  { qty: 3, cardTitle: 'Assemble MODs', cardPhase: 0, cardCost: 1, cardText: "Place 3 MODS on any one water or lava territory you occupy" },
+  { qty: 5, cardTitle: 'Stealth MODs', cardPhase: 1, cardCost: 0, cardText: "Place 3 additional defending MODS in the defending water or lava territory." },
+  { qty: 2, cardTitle: 'Colony Influence', cardPhase: 2, cardCost: 0, cardText: "If your Naval Commander is still alive, move your score marker ahead 3 spaces" },
+  { qty: 1, cardTitle: 'Water Death Trap', cardPhase: 1, cardCost: 3, cardText: "Your opponent must destroy half the units in the invading territory. Round up." },
+  { qty: 2, cardTitle: 'Reinforcements', cardPhase: 0, cardCost: 0, cardText: "Place 3 MODS, one each on 3 different water or lava territories you occupy" },
+  { qty: 2, cardTitle: 'Frequency Jam', cardPhase: 0, cardCost: 0, cardText: "Choose a player. The chosen player cannot play command cards during your turn." },
+
+  // Land Command Cards
+  { qty: 5, cardTitle: 'Stealth MODs', cardPhase: 1, cardCost: 0, cardText: "Place 3 additional defending MODS in the defending land territory" },
+  { qty: 2, cardTitle: 'Colony Influence', cardPhase: 2, cardCost: 0, cardText: "If your Land Commander is still alive, move your score marker ahead 3 spaces." },
+  { qty: 3, cardTitle: 'Assemble MODs', cardPhase: 0, cardCost: 1, cardText: "Place 3 MODS on any one land territory you occupy." },
+  { qty: 3, cardTitle: 'Reinforcements', cardPhase: 0, cardCost: 0, cardText: "Place 3 MODS, one each on 3 different land territories you occupy." },
+  { qty: 3, cardTitle: 'Scout Forces', cardPhase: 0, cardCost: 0, cardText: "Draw a land territory card and secretly place it facedown in front of you. Place 5 MODS on this card. When you occupy this territory immediately place the MODS. Discard the territory card." },
+  { qty: 2, cardTitle: 'Frequency Jam', cardPhase: 0, cardCost: 0, cardText: "Choose a player. The chosen player cannot play command cards during your turn." },
+  { qty: 1, cardTitle: 'Stealth Station', cardPhase: 1, cardCost: 0, cardText: "Place a space station in the defending land territory." },
+  { qty: 1, cardTitle: 'Land Death Trap', cardPhase: 1, cardCost: 3, cardText: "Your opponent must destroy half the units in the invading territory. Round up." },
+
+  // Nuclear Command Cards
+  { qty: 3, cardTitle: 'Assassin Bomb', cardPhase: 0, cardCost: 1, cardText: "Choose an opponent's commander. Roll an 8-sided die. If you roll a 3 or higher destroy the chosen commander." },
+  { qty: 3, cardTitle: 'Scatter Bomb Land', cardPhase: 0, cardCost: 1, cardText: "Choose a planet and turn over 3 land territory cards for that planet. Destroy half the opponents' units on territories drawn. Round up." },
+  { qty: 2, cardTitle: 'Scatter Bomb Water', cardPhase: 0, cardCost: 1, cardText: "Choose a planet and turn over 2 water or lava territory cards for that planet. Destroy half the opponents' units on territories drawn. Round up." },
+  { qty: 2, cardTitle: 'Scatter Bomb Moon', cardPhase: 0, cardCost: 1, cardText: "Choose a lunar or asteroid region and turn over 2 lunar or asteroid territory cards for that planet. Destroy half the opponents' units on territories drawn. Round up." },
+  { qty: 2, cardTitle: 'Rocket Strike Water', cardPhase: 0, cardCost: 2, cardText: "Choose any opponent's water or lava territory. Roll a 6-sided die. Your opponent must destroy units equal to the number rolled in the chosen territory." },
+  { qty: 2, cardTitle: 'Rocket Strike Land', cardPhase: 0, cardCost: 2, cardText: "Choose any opponent's land territory. Roll a 6-sided die. Your opponent must destroy units equal to the number rolled in the chosen territory." },
+  { qty: 2, cardTitle: 'Rocket Strike Moon', cardPhase: 0, cardCost: 2, cardText: "Choose any opponent's moon or asteroid territory. Roll a 6-sided die. Your opponent must destroy units equal to the number rolled in the chosen territory." },
+  { qty: 1, cardTitle: 'Aqua Brother', cardPhase: 0, cardCost: 3, cardText: "Choose a planet, then roll a 6-sided die. Consult the table to see the water/lava zone(s) affected. Destroy one unit in each territory in the zone(s) rolled." },
+  { qty: 1, cardTitle: 'Nicky Boy', cardPhase: 0, cardCost: 3, cardText: "Choose a planet, then roll a 6-sided die. Consult the table to see the lunar or asteroid zone(s) affected. Destroy one unit in each territory in the zone(s) rolled." },
+  { qty: 1, cardTitle: 'The Mother', cardPhase: 0, cardCost: 3, cardText: "Choose a planet, then roll a 6-sided die. Consult the table to see the land zone(s) affected. Destroy one unit in each territory in the zone(s) rolled." },
+  { qty: 1, cardTitle: 'Armageddon', cardPhase: 0, cardCost: 4, cardText: "All players, in turn order, may play any number of nuclear command cards without paying the energy cost." }
+];
+//when to play card enum key
+//0,before invasions
+//1,opponent invades
+//2,end game
+//3,end of turn
+
+export function buildDeck(cardData: Array<{ qty: number, cardTitle: string, cardPhase: number, cardCost: number, cardText: string }>): string[] {
+  const deck: string[] = [];
+
+  cardData.forEach(card => {
+    for (let i = 0; i < card.qty; i++) {
+      deck.push(card.cardTitle);
+    }
+  });
+
+  return deck;
+}
+
+
+
 // Updated Continent Definitions
 export const CONTINENTS = {
   'North America': {

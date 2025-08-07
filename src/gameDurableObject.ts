@@ -44,8 +44,8 @@
  */
 import { GAME_CONFIG } from '@/app/services/game/gameSetup'
 import { DurableObject } from "cloudflare:workers";
-import type { GameState, GameAction, Player, Territory } from '@/app/lib/GameState'
-import { setupNewGame, advanceSetupTurn } from '@/app/services/game/gameSetup'
+import type { GameState, GameAction, Player, Territory, CommanderType, PurchaseStrategy } from '@/app/lib/GameState'
+import { setupNewGame } from '@/app/services/game/gameSetup'
 import { globalAIController } from '@/app/services/game/ADai'
 
 // ✅ IMPORT EXTRACTED SETUP FUNCTIONS (only the ones we actually use)
@@ -470,55 +470,66 @@ export class GameStateDO extends DurableObject {
     )
   }
 
+  // ✅ FIXED: handleMainGamePhaseProgression to match setup pattern exactly
   private async handleMainGamePhaseProgression(action: any): Promise<void> {
     if (!this.gameState || this.gameState.status !== 'playing') return
 
+    // ✅ CRITICAL: Clear ALL AI timeouts first (just like setup)
+    this.aiTurnTimeouts.forEach((timeout, playerId) => {
+      clearTimeout(timeout)
+    })
+    this.aiTurnTimeouts.clear()
+
     const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex]
-  
-    // ✅ ADD THIS: Check if AI needs to start when first entering playing mode
-    if (action.type === 'start_year_turns' && globalAIController.isAIPlayer(currentPlayer.id)) {
-      console.log(`🎮 Just entered playing mode - scheduling AI for ${currentPlayer.name}`)
-      setTimeout(() => {
-        this.doAIMainGameAction()
-      }, this.AI_TURN_SPEED_MS * 3)
-      return // Exit early since this is initial setup, not progression
+    
+    console.log(`📍 Main game progression - Turn: ${this.gameState.currentYear}, Phase: ${this.gameState.currentPhase}, Player: ${currentPlayer.name}, Action: ${action.type}`)
+    
+    // ✅ CRITICAL: Don't auto-schedule AI if human just started Phase 1
+    if (action.type === 'start_year_turns') {
+      console.log(`🎮 Year turns just started - checking first player`)
+      if (globalAIController.isAIPlayer(currentPlayer.id)) {
+        console.log(`🤖 First player is AI - scheduling turn`)
+        setTimeout(() => {
+          this.doAIMainGameAction()
+        }, this.AI_TURN_SPEED_MS * 2)
+      } else {
+        console.log(`👤 First player is human - they should see CollectDeployOverlay`)
+      }
+      return
     }
 
-    let shouldAdvancePhase = false
-    let shouldAdvanceTurn = false
-    
-    console.log(`📍 Handling main game progression - Turn: ${this.gameState.currentYear}, Phase: ${this.gameState.currentPhase}, Player: ${currentPlayer.name}`)
-    
+    // ✅ Check if player completed their phase based on action type
     let phaseCompleted = false
     
     switch (this.gameState.currentPhase) {
       case 1: // Collect & Deploy
-        if (action.type === 'collect_energy' || action.type === 'deploy_mods' || action.type === 'advance_player_phase') {
+        // ✅ Phase 1 is complete when advance_player_phase is called with deploymentComplete
+        if (action.type === 'advance_player_phase' && action.data?.deploymentComplete) {
           phaseCompleted = true
         }
         break
       case 2: // Build & Hire  
-        if (action.type === 'hire_commander' || action.type === 'build_station' || action.type === 'advance_player_phase') {
+        if (action.type === 'advance_player_phase' && action.data?.phaseComplete) {  // ✅ ADD: Check for phaseComplete flag
           phaseCompleted = true
         }
         break
       case 3: // Buy Cards
-        if (action.type === 'buy_card' || action.type === 'advance_player_phase') {
+        if (action.type === 'advance_player_phase') {
           phaseCompleted = true
         }
         break
       case 4: // Play Cards
-        if (action.type === 'play_card' || action.type === 'advance_player_phase') {
+        if (action.type === 'advance_player_phase') {
           phaseCompleted = true
         }
         break
       case 5: // Invade
-        if (action.type === 'attack_territory' || action.type === 'advance_player_phase') {
+        if (action.type === 'advance_player_phase') {
           phaseCompleted = true
         }
         break
       case 6: // Fortify
-        if (action.type === 'fortify_territory' || action.type === 'advance_player_phase') {
+        if (action.type === 'advance_player_phase') {
           phaseCompleted = true
         }
         break
@@ -530,26 +541,45 @@ export class GameStateDO extends DurableObject {
       if (this.gameState.currentPhase === 6) {
         console.log(`🎯 ${currentPlayer.name} completed all phases - advancing to next player`)
         this.advanceToNextMainGamePlayer()
-        shouldAdvanceTurn = true
       } else {
         this.gameState.currentPhase = (this.gameState.currentPhase + 1) as any
         const phaseInfo = GAME_CONFIG.PLAYER_PHASES[this.gameState.currentPhase]
-        console.log(`📋 ${currentPlayer.name} advanced to Phase ${this.gameState.currentPhase}: ${phaseInfo.name}`)
-        shouldAdvancePhase = true
+        console.log(`📋 ${currentPlayer.name} advanced to Phase ${this.gameState.currentPhase}: ${phaseInfo?.name || 'Unknown Phase'}`)
       }
-    }
-
-    if (shouldAdvancePhase || shouldAdvanceTurn) {
+      
+      // ✅ ALWAYS broadcast when state changes (just like setup)
       console.log(`📡 Broadcasting state update after main game progression`)
       this.broadcast({ type: 'state_update', state: this.gameState })
       
-      const newCurrentPlayer = this.gameState.players[this.gameState.currentPlayerIndex]
-      if (newCurrentPlayer && globalAIController.isAIPlayer(newCurrentPlayer.id)) {
-        console.log(`🤖 Scheduling AI turn for ${newCurrentPlayer.name}`)
-        setTimeout(() => {
+      // ✅ FIXED: Check if SAME player is AI and schedule their NEXT phase
+      // (not the next player - the same player's next phase)
+      const updatedCurrentPlayer = this.gameState.players[this.gameState.currentPlayerIndex]
+      if (updatedCurrentPlayer && globalAIController.isAIPlayer(updatedCurrentPlayer.id)) {
+        // ✅ FIXED: This is for the AI's NEXT phase, not a different player
+        console.log(`🤖 Scheduling AI turn for ${updatedCurrentPlayer.name} in Phase ${this.gameState.currentPhase}`)
+        
+        const timeoutId = setTimeout(() => {
           this.doAIMainGameAction()
-        }, 1000)
+        }, this.AI_TURN_SPEED_MS)
+        
+        this.aiTurnTimeouts.set(updatedCurrentPlayer.id, timeoutId)
+      } else if (updatedCurrentPlayer) {
+        // ✅ FIXED: This is for the HUMAN's NEXT phase
+        console.log(`👤 Next phase for human: ${updatedCurrentPlayer.name} - Phase ${this.gameState.currentPhase}`)
+        
+        // ✅ Log what should happen for human players in their NEXT phase
+        if (this.gameState.currentPhase === 1) {
+          console.log(`👤 Human should see CollectDeployOverlay`)
+        } else if (this.gameState.currentPhase === 2) {
+          console.log(`👤 Human should see BuildHireOverlay`)
+        } else if (this.gameState.currentPhase === 3) {
+          console.log(`👤 Human should see Buy Cards UI (not implemented yet)`)
+        } else {
+          console.log(`👤 Human should see Phase ${this.gameState.currentPhase} UI`)
+        }
       }
+    } else {
+      console.log(`⏳ ${currentPlayer.name} action ${action.type} did not complete Phase ${this.gameState.currentPhase}`)
     }
   }
 
@@ -648,6 +678,8 @@ export class GameStateDO extends DurableObject {
     }, this.AI_TURN_SPEED_MS)
   }
 
+  
+
   private checkAndTriggerAIBidding(): void {
     if (!this.gameState || this.gameState.status !== 'bidding') return
 
@@ -729,6 +761,8 @@ export class GameStateDO extends DurableObject {
 
   // ✅ FIXED: advanceMainGameTurn() method in gameDurableObject.ts
   // Replace your current advanceMainGameTurn() method with this:
+  // ✅ ALSO FIX: Update advanceMainGameTurn to NOT auto-collect for human players
+  // 2. ✅ FIXED: advanceMainGameTurn method
   private advanceMainGameTurn(): void {
     if (!this.gameState) return
     
@@ -748,8 +782,8 @@ export class GameStateDO extends DurableObject {
     this.gameState.currentPlayerIndex = firstPlayerIndex
     this.gameState.players[firstPlayerIndex].isActive = true
     
-    // ✅ FIXED: Only auto-collect energy for AI players
-    // Human players will manually collect energy in Phase 1 via CollectDeployOverlay
+    // ✅ CRITICAL: Only auto-collect energy for AI players
+    // Human players MUST manually collect via CollectDeployOverlay
     this.gameState.activeTurnOrder.forEach(playerId => {
       const player = this.gameState?.players.find(p => p.id === playerId)
       if (player && globalAIController.isAIPlayer(player.id)) {
@@ -758,14 +792,19 @@ export class GameStateDO extends DurableObject {
         console.log(`💰 ${player.name} auto-collected ${income} energy (AI)`)
       } else if (player) {
         console.log(`⏳ ${player.name} will manually collect energy in Phase 1 (Human)`)
+        // ✅ CRITICAL: Clear any previous placement counters for human players
+        player.unitsToPlaceThisTurn = 0
+        player.unitsPlacedThisTurn = 0
       }
     })
     
     const firstPlayer = this.gameState.players[firstPlayerIndex]
     console.log(`🎯 Turn ${this.gameState.currentYear} begins! ${firstPlayer.name} starts Phase 1`)
     
-    // ✅ NEW: If first player is human, they need to manually collect energy
-    if (!globalAIController.isAIPlayer(firstPlayer.id)) {
+    // ✅ CRITICAL: Log what should happen next
+    if (globalAIController.isAIPlayer(firstPlayer.id)) {
+      console.log(`🤖 ${firstPlayer.name} is AI - will auto-collect and deploy`)
+    } else {
       console.log(`👤 ${firstPlayer.name} is human - CollectDeployOverlay should appear`)
     }
   }
@@ -796,7 +835,7 @@ export class GameStateDO extends DurableObject {
     
     console.log(`🤖 AI ${currentPlayer.name} doing Collect & Deploy phase`)
     
-    // ✅ Step 1: Calculate income and units (fresh calculation at start of turn)
+    // ✅ Calculate fresh values for AI turn
     const energyIncome = this.calculateTurnIncome(currentPlayer, this.gameState)
     const unitsToPlace = this.calculateUnitsToPlace(currentPlayer, this.gameState)
     
@@ -805,7 +844,7 @@ export class GameStateDO extends DurableObject {
     setTimeout(async () => {
       if (!this.gameState || this.gameState.status !== 'playing') return
       
-      // ✅ Step 2: Collect energy and start deployment
+      // ✅ STEP 1: Collect energy and set up deployment
       console.log(`🤖 AI collecting energy and starting deployment`)
       await this.applyAction({
         type: 'collect_energy',
@@ -813,7 +852,7 @@ export class GameStateDO extends DurableObject {
         data: { amount: energyIncome, unitsToPlace }
       })
       
-      // ✅ Step 3: Place units one by one
+      // ✅ STEP 2: Start unit placement sequence
       this.doAIUnitPlacement(currentPlayer.id, unitsToPlace)
       
     }, this.AI_TURN_SPEED_MS)
@@ -897,42 +936,289 @@ export class GameStateDO extends DurableObject {
     setTimeout(placeNextUnit, this.AI_TURN_SPEED_MS)
   }
 
+  // private doAIBuildAndHire(): void {
+  //   setTimeout(async () => {
+  //     if (this.gameState) {
+  //       await this.applyAction({
+  //         type: 'advance_player_phase',
+  //         playerId: this.gameState.players[this.gameState.currentPlayerIndex].id,
+  //         data: {}
+  //       })
+  //     }
+  //   }, this.AI_TURN_SPEED_MS)
+  // }
+
   private doAIBuildAndHire(): void {
-    setTimeout(() => {
-      if (this.gameState) {
-        this.handleMainGamePhaseProgression({ type: 'advance_player_phase', playerId: this.gameState.players[this.gameState.currentPlayerIndex].id })
+    if (!this.gameState) return;
+    
+    const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+    if (!currentPlayer || !globalAIController.isAIPlayer(currentPlayer.id)) return;
+    
+    console.log(`🤖 AI ${currentPlayer.name} doing Build & Hire phase (${currentPlayer.energy} energy)`);
+    
+    // ✅ STEP 1: Calculate purchase strategy (like calculateTurnIncome)
+    const strategy = this.calculateAIPurchaseStrategy(currentPlayer, this.gameState);
+    
+    console.log(`🤖 AI strategy:`, strategy);
+    
+    setTimeout(async () => {
+      if (!this.gameState || this.gameState.status !== 'playing') return;
+      
+      // ✅ STEP 2: Execute purchases in sequence (like doAIUnitPlacement)
+      this.executeAIPurchases(currentPlayer.id, strategy);
+      
+    }, this.AI_TURN_SPEED_MS);
+  }
+
+  // 🎯 NEW: Calculate what AI should buy (matches calculateTurnIncome pattern)
+  private calculateAIPurchaseStrategy(player: Player, gameState: GameState): PurchaseStrategy {
+    const availableEnergy = player.energy;
+    const ownedCommanders = this.getOwnedCommanders(player, gameState.territories);
+    const spaceBaseCount = this.getSpaceBaseCount(player, gameState.territories);
+    
+    const missingCommanders = (['land', 'diplomat', 'naval', 'nuclear'] as CommanderType[])
+      .filter(cmd => !ownedCommanders.includes(cmd));
+    
+    let strategy: PurchaseStrategy = {
+      commanders: [],
+      spaceBases: 0,
+      totalCost: 0,
+      priority: 'mixed'
+    };
+    
+    let remainingEnergy = availableEnergy;
+    
+    // AI Priority: Get 1-2 commanders first, then space bases
+    const commandersToGet = Math.min(2, missingCommanders.length);
+    
+    for (let i = 0; i < commandersToGet && remainingEnergy >= 3; i++) {
+      const commander = missingCommanders[i];
+      strategy.commanders.push(commander);
+      remainingEnergy -= 3;
+      strategy.totalCost += 3;
+    }
+    
+    // Then buy space bases with remaining energy (max 1-2)
+    const maxSpaceBases = Math.min(2, Math.floor(remainingEnergy / 5));
+    if (maxSpaceBases > 0 && spaceBaseCount < 2) {
+      strategy.spaceBases = Math.min(maxSpaceBases, 2 - spaceBaseCount);
+      strategy.totalCost += strategy.spaceBases * 5;
+    }
+    
+    return strategy;
+  }
+
+  // 🎯 NEW: Execute purchases sequentially (matches doAIUnitPlacement pattern)
+  private executeAIPurchases(playerId: string, strategy: PurchaseStrategy): void {
+    if (!this.gameState) return;
+    
+    const player = this.gameState.players.find(p => p.id === playerId);
+    if (!player || !globalAIController.isAIPlayer(player.id)) return;
+    
+    let purchaseIndex = 0;
+    const totalPurchases = strategy.commanders.length + strategy.spaceBases;
+    
+    if (totalPurchases === 0) {
+      // No purchases - advance immediately
+      console.log(`🤖 AI ${player.name} has nothing to buy - advancing phase`);
+      setTimeout(() => this.completeAIBuildHire(playerId), this.AI_TURN_SPEED_MS);
+      return;
+    }
+    
+    const makeNextPurchase = async () => {
+      if (!this.gameState || this.gameState.status !== 'playing') {
+        console.log(`🤖 Game state changed, stopping AI purchases`);
+        return;
       }
-    }, this.AI_TURN_SPEED_MS)
+      
+      if (purchaseIndex >= totalPurchases) {
+        // All purchases complete
+        console.log(`🤖 AI ${player.name} completed all purchases`);
+        setTimeout(() => this.completeAIBuildHire(playerId), this.AI_TURN_SPEED_MS);
+        return;
+      }
+      
+      try {
+        if (purchaseIndex < strategy.commanders.length) {
+          // Buy and place commander
+          const commander = strategy.commanders[purchaseIndex];
+          console.log(`🤖 AI purchasing commander ${purchaseIndex + 1}/${strategy.commanders.length}: ${commander}`);
+          
+          await this.applyAction({
+            type: 'purchase_commander',
+            playerId: player.id,
+            data: { commanderType: commander, cost: 3 }
+          });
+          
+          // Place it after a short delay
+          setTimeout(async () => {
+            await this.placeAIPurchasedCommander(playerId, commander);
+            purchaseIndex++;
+            // Continue to next purchase
+            setTimeout(makeNextPurchase, this.AI_TURN_SPEED_MS);
+          }, this.AI_TURN_SPEED_MS);
+          
+        } else {
+          // Buy and place space base
+          const spaceBaseIndex = purchaseIndex - strategy.commanders.length + 1;
+          console.log(`🤖 AI purchasing space base ${spaceBaseIndex}/${strategy.spaceBases}`);
+          
+          await this.applyAction({
+            type: 'purchase_space_base',
+            playerId: player.id,
+            data: { cost: 5 }
+          });
+          
+          // Place it after a short delay
+          setTimeout(async () => {
+            await this.placeAIPurchasedSpaceBase(playerId);
+            purchaseIndex++;
+            // Continue to next purchase
+            setTimeout(makeNextPurchase, this.AI_TURN_SPEED_MS);
+          }, this.AI_TURN_SPEED_MS);
+        }
+        
+      } catch (error) {
+        console.error(`🤖 AI purchase error:`, error);
+        // Skip this purchase and continue
+        purchaseIndex++;
+        setTimeout(makeNextPurchase, this.AI_TURN_SPEED_MS);
+      }
+    };
+    
+    // Start the purchase sequence
+    setTimeout(makeNextPurchase, this.AI_TURN_SPEED_MS);
+  }
+
+  private async placeAIPurchasedCommander(playerId: string, commanderType: CommanderType): Promise<void> {
+    if (!this.gameState) return;
+    
+    const player = this.gameState.players.find(p => p.id === playerId);
+    if (!player) return;
+    
+    const availableTerritories = player.territories.filter(tId => {
+      const territory = this.gameState?.territories[tId];
+      return territory?.ownerId === playerId;
+    });
+    
+    if (availableTerritories.length > 0) {
+      const randomTerritory = availableTerritories[Math.floor(Math.random() * availableTerritories.length)];
+      
+      await this.applyAction({
+        type: 'place_commander_game',
+        playerId,
+        data: { territoryId: randomTerritory, commanderType }
+      });
+      
+      console.log(`🤖 AI placed ${commanderType} commander on ${randomTerritory}`);
+    }
+  }
+
+  private async placeAIPurchasedSpaceBase(playerId: string): Promise<void> {
+    if (!this.gameState) return;
+    
+    const player = this.gameState.players.find(p => p.id === playerId);
+    if (!player) return;
+    
+    const availableTerritories = player.territories.filter(tId => {
+      const territory = this.gameState?.territories[tId];
+      return territory?.ownerId === playerId && !territory.spaceBase;
+    });
+    
+    if (availableTerritories.length > 0) {
+      const randomTerritory = availableTerritories[Math.floor(Math.random() * availableTerritories.length)];
+      
+      await this.applyAction({
+        type: 'place_space_base_game',
+        playerId,
+        data: { territoryId: randomTerritory }
+      });
+      
+      console.log(`🤖 AI placed space base on ${randomTerritory}`);
+    }
+  }
+
+  // 🎯 Complete AI Build & Hire phase
+  private completeAIBuildHire(playerId: string): void {
+    setTimeout(async () => {
+      if (this.gameState && this.gameState.status === 'playing' && this.gameState.currentPhase === 2) {
+        console.log(`🤖 AI completing Build & Hire phase`);
+        await this.applyAction({
+          type: 'advance_player_phase',
+          playerId,
+          data: { phaseComplete: true }
+        });
+      }
+    }, this.AI_TURN_SPEED_MS);
+  }
+
+  
+
+  // 🎯 Helper methods (add to your Durable Object)
+  private getOwnedCommanders(player: Player, territories: Record<string, Territory>): CommanderType[] {
+    const owned: CommanderType[] = [];
+    
+    player.territories.forEach(tId => {
+      const territory = territories[tId];
+      if (territory?.landCommander === player.id) owned.push('land');
+      if (territory?.diplomatCommander === player.id) owned.push('diplomat');
+      if (territory?.navalCommander === player.id) owned.push('naval');
+      if (territory?.nuclearCommander === player.id) owned.push('nuclear');
+    });
+    
+    return owned;
+  }
+
+  private getSpaceBaseCount(player: Player, territories: Record<string, Territory>): number {
+    return player.territories.filter(tId => 
+      territories[tId]?.spaceBase === player.id
+    ).length;
   }
 
   private doAIBuyCards(): void {
-    setTimeout(() => {
+    setTimeout(async () => {
       if (this.gameState) {
-        this.handleMainGamePhaseProgression({ type: 'advance_player_phase', playerId: this.gameState.players[this.gameState.currentPlayerIndex].id })
+        await this.applyAction({
+          type: 'advance_player_phase',
+          playerId: this.gameState.players[this.gameState.currentPlayerIndex].id,
+          data: {}
+        })
       }
     }, this.AI_TURN_SPEED_MS)
   }
 
   private doAIPlayCards(): void {
-    setTimeout(() => {
+    setTimeout(async () => {
       if (this.gameState) {
-        this.handleMainGamePhaseProgression({ type: 'advance_player_phase', playerId: this.gameState.players[this.gameState.currentPlayerIndex].id })
+        await this.applyAction({
+          type: 'advance_player_phase',
+          playerId: this.gameState.players[this.gameState.currentPlayerIndex].id,
+          data: {}
+        })
       }
     }, this.AI_TURN_SPEED_MS)
   }
 
   private doAIInvade(): void {
-    setTimeout(() => {
+    setTimeout(async () => {
       if (this.gameState) {
-        this.handleMainGamePhaseProgression({ type: 'advance_player_phase', playerId: this.gameState.players[this.gameState.currentPlayerIndex].id })
+        await this.applyAction({
+          type: 'advance_player_phase',
+          playerId: this.gameState.players[this.gameState.currentPlayerIndex].id,
+          data: {}
+        })
       }
     }, this.AI_TURN_SPEED_MS)
   }
 
   private doAIFortify(): void {
-    setTimeout(() => {
+    setTimeout(async () => {
       if (this.gameState) {
-        this.handleMainGamePhaseProgression({ type: 'advance_player_phase', playerId: this.gameState.players[this.gameState.currentPlayerIndex].id })
+        await this.applyAction({
+          type: 'advance_player_phase',
+          playerId: this.gameState.players[this.gameState.currentPlayerIndex].id,
+          data: {}
+        })
       }
     }, this.AI_TURN_SPEED_MS)
   }
@@ -1007,21 +1293,48 @@ export class GameStateDO extends DurableObject {
       return newState
     }
     
-    // ✅ ENHANCED: Check deployment completion for Phase 1
-    if (newState.currentPhase === 1 && action.data?.deploymentComplete) {
+    // ✅ ENHANCED: Special handling for Phase 1 deployment completion
+    if (newState.currentPhase === 1) {
+      const deploymentComplete = action.data?.deploymentComplete
       const unitsToPlace = player.unitsToPlaceThisTurn || 0
       const unitsPlaced = player.unitsPlacedThisTurn || 0
       
-      if (unitsPlaced < unitsToPlace) {
-        console.log(`❌ Cannot advance - must place all units (${unitsPlaced}/${unitsToPlace})`)
+      console.log('🎯 Phase 1 advancement check:', {
+        playerId: player.id,
+        playerName: player.name,
+        deploymentComplete,
+        unitsToPlace,
+        unitsPlaced,
+        canAdvance: deploymentComplete && unitsPlaced >= unitsToPlace
+      })
+      
+      if (deploymentComplete) {
+        if (unitsToPlace > 0 && unitsPlaced < unitsToPlace) {
+          console.log(`❌ Cannot advance - must place all units (${unitsPlaced}/${unitsToPlace})`)
+          return newState
+        }
+        
+        // ✅ Reset placement counters when advancing from Phase 1
+        player.unitsToPlaceThisTurn = 0
+        player.unitsPlacedThisTurn = 0
+        console.log(`✅ ${player.name} completed deployment, resetting counters`)
+      } else if (!deploymentComplete) {
+        console.log(`❌ Cannot advance from Phase 1 without deployment completion flag`)
         return newState
       }
-      
-      // ✅ Reset placement counters
-      player.unitsToPlaceThisTurn = 0
-      player.unitsPlacedThisTurn = 0
+    }
+
+    // ✅ ADD PHASE-SPECIFIC SAFEGUARDS
+    if (newState.currentPhase === 2) {
+      // Build & Hire phase completion
+      if (!action.data?.phaseComplete) {
+        console.log('❌ Cannot advance from Phase 2 without phaseComplete flag')
+        return newState
+      }
+      console.log(`✅ ${player.name} completed Build & Hire phase`)
     }
     
+    // ✅ Advance to next phase or next player
     if (newState.currentPhase === 6) {
       console.log(`✅ ${currentPlayer.name} completed all 6 phases`)
       return this.advanceToNextPlayer(newState)
@@ -1032,7 +1345,7 @@ export class GameStateDO extends DurableObject {
       console.log(`📋 ${currentPlayer.name} advanced to Phase ${newState.currentPhase}: ${phaseInfo.name}`)
     }
     
-    return newState
+    return newState  
   }
 
   private advanceToNextPlayer(gameState: GameState): GameState {
@@ -1106,8 +1419,6 @@ export class GameStateDO extends DurableObject {
     
     return Math.max(baseIncome, territoryIncome + continentalBonus)
   }
-
-  
 
   async restartGame(data: { player1Id: string, player2Id: string, nukeCount: number }): Promise<GameState> {
     const gameId = this.ctx.id.toString()
@@ -1272,11 +1583,14 @@ export class GameStateDO extends DurableObject {
   // The issue is in your collectEnergy method in gameDurableObject.ts
   // It's immediately calling confirmDeploymentComplete instead of waiting for unit placement
   // ✅ FIX: Update your collectEnergy method to NOT auto-advance:
+  // ✅ FIXED: collectEnergy method in gameDurableObject.ts
   private collectEnergy(gameState: GameState, action: GameAction): GameState {
     console.log('🎯 collectEnergy method called with:', {
       actionType: action.type,
       playerId: action.playerId,
-      actionData: action.data
+      actionData: action.data,
+      gameStatus: gameState.status,
+      currentPhase: gameState.currentPhase
     })
     
     const { amount, unitsToPlace } = action.data
@@ -1288,36 +1602,44 @@ export class GameStateDO extends DurableObject {
       return newState
     }
     
-    // Calculate income fresh at start of turn
-    const actualIncome = this.calculateTurnIncome(player, newState)
-    const energyToAdd = amount || actualIncome
+    // ✅ CRITICAL FIX: Calculate values fresh for playing mode
+    let energyToAdd = amount
+    let unitsToPlaceThisTurn = unitsToPlace
     
+    if (newState.status === 'playing') {
+      // For main game Phase 1, always calculate fresh values
+      if (energyToAdd === undefined || energyToAdd === null) {
+        energyToAdd = this.calculateTurnIncome(player, newState)
+        console.log('🎯 Calculated fresh energy income:', energyToAdd)
+      }
+      
+      if (unitsToPlaceThisTurn === undefined || unitsToPlaceThisTurn === null) {
+        unitsToPlaceThisTurn = this.calculateUnitsToPlace(player, newState)
+        console.log('🎯 Calculated fresh units to place:', unitsToPlaceThisTurn)
+      }
+    }
+    
+    // Add energy to player
     player.energy += energyToAdd
     
-    // ✅ CRITICAL DEBUG: Log what's happening with unit placement
-    console.log('🎯 Setting up unit placement:', {
-      unitsToPlace,
-      playerBefore: {
-        unitsToPlaceThisTurn: player.unitsToPlaceThisTurn,
-        unitsPlacedThisTurn: player.unitsPlacedThisTurn
-      }
-    })
-    
-    if (unitsToPlace !== undefined) {
-      player.unitsToPlaceThisTurn = unitsToPlace
+    // ✅ CRITICAL: Set up unit placement counters for playing mode
+    if (newState.status === 'playing' && newState.currentPhase === 1) {
+      player.unitsToPlaceThisTurn = unitsToPlaceThisTurn || 0
       player.unitsPlacedThisTurn = 0
       
-      console.log('🎯 Unit placement set up:', {
+      console.log('🎯 Phase 1 unit placement setup:', {
+        playerId: player.id,
+        playerName: player.name,
         unitsToPlaceThisTurn: player.unitsToPlaceThisTurn,
-        unitsPlacedThisTurn: player.unitsPlacedThisTurn
+        unitsPlacedThisTurn: player.unitsPlacedThisTurn,
+        energyTotal: player.energy,
+        isAI: globalAIController.isAIPlayer(player.id)
       })
-    } else {
-      console.log('❌ unitsToPlace is undefined! This is the problem!')
     }
     
     console.log(`⚡ ${player.name} collected ${energyToAdd} energy (${player.energy} total)`)
-    if (unitsToPlace) {
-      console.log(`📍 ${player.name} will place ${unitsToPlace} units this turn`)
+    if (unitsToPlaceThisTurn && unitsToPlaceThisTurn > 0) {
+      console.log(`📍 ${player.name} will place ${unitsToPlaceThisTurn} units this turn`)
     }
     
     return newState
@@ -1552,6 +1874,14 @@ export class GameStateDO extends DurableObject {
         return this.revealBids(gameState)
       case 'start_year_turns':
         return this.startYearTurns(gameState)
+      case 'purchase_commander':
+        return this.purchaseCommander(gameState, action)
+      case 'place_commander_game':
+        return this.placeCommanderInGame(gameState, action)
+      case 'purchase_space_base':
+        return this.purchaseSpaceBase(gameState, action)
+      case 'place_space_base_game':
+        return this.placeSpaceBaseInGame(gameState, action)
       default:
         console.warn(`Unknown action type: ${action.type}`)
         return gameState
@@ -1631,6 +1961,216 @@ export class GameStateDO extends DurableObject {
     player.pendingDecision = undefined
     
     return newState
+  }
+
+  /**
+ * Purchase Commander - Deduct energy and mark commander as purchased
+ */
+  private purchaseCommander(gameState: GameState, action: GameAction): GameState {
+    const { commanderType, cost } = action.data;
+    const newState = { ...gameState };
+    
+    if (newState.status !== 'playing' || newState.currentPhase !== 2) {
+      console.log('❌ Cannot purchase commander - not in Build & Hire phase');
+      return newState;
+    }
+    
+    const player = newState.players.find(p => p.id === action.playerId);
+    const currentPlayer = newState.players[newState.currentPlayerIndex];
+    
+    if (!player || player.id !== currentPlayer.id) {
+      console.log('❌ Cannot purchase commander - not current player');
+      return newState;
+    }
+    
+    if (player.energy < cost) {
+      console.log(`❌ Cannot purchase commander - insufficient energy (${player.energy}/${cost})`);
+      return newState;
+    }
+    
+    // Check if player already owns this commander type
+    const alreadyOwnsCommander = player.territories.some(tId => {
+      const territory = newState.territories[tId];
+      switch (commanderType) {
+        case 'land': return territory?.landCommander === player.id;
+        case 'diplomat': return territory?.diplomatCommander === player.id;
+        case 'naval': return territory?.navalCommander === player.id;
+        case 'nuclear': return territory?.nuclearCommander === player.id;
+        default: return false;
+      }
+    });
+    
+    if (alreadyOwnsCommander) {
+      console.log(`❌ Player already owns ${commanderType} commander`);
+      return newState;
+    }
+    
+    // Deduct energy
+    player.energy -= cost;
+    
+    // Mark commander as purchased
+    if (!player.purchasedItems) {
+      player.purchasedItems = [];
+    }
+    player.purchasedItems.push(commanderType);
+    
+    console.log(`💰 ${player.name} purchased ${commanderType} commander for ${cost} energy (${player.energy} remaining)`);
+    
+    return newState;
+  }
+
+  private placeCommanderInGame(gameState: GameState, action: GameAction): GameState {
+    const { territoryId, commanderType } = action.data;
+    const newState = { ...gameState };
+    
+    if (newState.status !== 'playing' || newState.currentPhase !== 2) {
+      console.log('❌ Cannot place commander - not in Build & Hire phase');
+      return newState;
+    }
+    
+    const territory = newState.territories[territoryId];
+    const player = newState.players.find(p => p.id === action.playerId);
+    const currentPlayer = newState.players[newState.currentPlayerIndex];
+    
+    if (!territory || !player || player.id !== currentPlayer.id) {
+      console.log('❌ Cannot place commander - invalid territory or player');
+      return newState;
+    }
+    
+    if (territory.ownerId !== action.playerId) {
+      console.log('❌ Cannot place commander - player does not own territory');
+      return newState;
+    }
+    
+    // Check if commander was purchased this phase
+    if (!player.purchasedItems?.includes(commanderType)) {
+      console.log(`❌ Cannot place ${commanderType} commander - not purchased this phase`);
+      return newState;
+    }
+    
+    // Check if territory already has this commander type
+    switch (commanderType) {
+      case 'land':
+        if (territory.landCommander) {
+          console.log('❌ Territory already has a land commander');
+          return newState;
+        }
+        territory.landCommander = action.playerId;
+        break;
+      case 'diplomat':
+        if (territory.diplomatCommander) {
+          console.log('❌ Territory already has a diplomat commander');
+          return newState;
+        }
+        territory.diplomatCommander = action.playerId;
+        break;
+      case 'naval':
+        if (territory.navalCommander) {
+          console.log('❌ Territory already has a naval commander');
+          return newState;
+        }
+        territory.navalCommander = action.playerId;
+        break;
+      case 'nuclear':
+        if (territory.nuclearCommander) {
+          console.log('❌ Territory already has a nuclear commander');
+          return newState;
+        }
+        territory.nuclearCommander = action.playerId;
+        break;
+    }
+    
+    // Remove from purchased items list
+    player.purchasedItems = player.purchasedItems.filter(item => item !== commanderType);
+    
+    console.log(`📍 ${player.name} placed ${commanderType} commander on ${territory.name}`);
+    
+    return newState;
+  }
+
+  private purchaseSpaceBase(gameState: GameState, action: GameAction): GameState {
+    const { cost } = action.data;
+    const newState = { ...gameState };
+    
+    if (newState.status !== 'playing' || newState.currentPhase !== 2) {
+      console.log('❌ Cannot purchase space base - not in Build & Hire phase');
+      return newState;
+    }
+    
+    const player = newState.players.find(p => p.id === action.playerId);
+    const currentPlayer = newState.players[newState.currentPlayerIndex];
+    
+    if (!player || player.id !== currentPlayer.id) {
+      console.log('❌ Cannot purchase space base - not current player');
+      return newState;
+    }
+    
+    if (player.energy < cost) {
+      console.log(`❌ Cannot purchase space base - insufficient energy (${player.energy}/${cost})`);
+      return newState;
+    }
+    
+    // Deduct energy
+    player.energy -= cost;
+    
+    // Mark space base as purchased with unique ID
+    if (!player.purchasedItems) {
+      player.purchasedItems = [];
+    }
+    const uniqueSpaceBaseId = `space_base_${Date.now()}`;
+    player.purchasedItems.push(uniqueSpaceBaseId);
+    
+    console.log(`🏰 ${player.name} purchased space base for ${cost} energy (${player.energy} remaining)`);
+    
+    return newState;
+  }
+
+  private placeSpaceBaseInGame(gameState: GameState, action: GameAction): GameState {
+    const { territoryId } = action.data;
+    const newState = { ...gameState };
+    
+    if (newState.status !== 'playing' || newState.currentPhase !== 2) {
+      console.log('❌ Cannot place space base - not in Build & Hire phase');
+      return newState;
+    }
+    
+    const territory = newState.territories[territoryId];
+    const player = newState.players.find(p => p.id === action.playerId);
+    const currentPlayer = newState.players[newState.currentPlayerIndex];
+    
+    if (!territory || !player || player.id !== currentPlayer.id) {
+      console.log('❌ Cannot place space base - invalid territory or player');
+      return newState;
+    }
+    
+    if (territory.ownerId !== action.playerId) {
+      console.log('❌ Cannot place space base - player does not own territory');
+      return newState;
+    }
+    
+    // Check if player has any purchased space bases
+    const purchasedSpaceBases = player.purchasedItems?.filter(item => item.startsWith('space_base_')) || [];
+    if (purchasedSpaceBases.length === 0) {
+      console.log('❌ Cannot place space base - no space bases purchased this phase');
+      return newState;
+    }
+    
+    // Check if territory already has a space base
+    if (territory.spaceBase) {
+      console.log('❌ Territory already has a space base');
+      return newState;
+    }
+    
+    // Place the space base
+    territory.spaceBase = action.playerId;
+    
+    // Remove one space base from purchased items list
+    const spaceBaseToRemove = purchasedSpaceBases[0];
+    player.purchasedItems = player.purchasedItems?.filter(item => item !== spaceBaseToRemove);
+    
+    console.log(`🏰 ${player.name} placed space base on ${territory.name}`);
+    
+    return newState;
   }
 
   private deployMachines(gameState: GameState, action: GameAction): GameState {

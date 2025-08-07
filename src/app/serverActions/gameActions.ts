@@ -717,6 +717,8 @@ export async function advancePlayerPhase(gameId: string, playerId: string): Prom
   }
 }
 
+// Update your collectAndStartDeploy in gameActions.ts with better logging:
+// Update your collectAndStartDeploy in gameActions.ts:
 export async function collectAndStartDeploy(
   gameId: string,
   playerId: string,
@@ -724,18 +726,56 @@ export async function collectAndStartDeploy(
   unitsToPlace: number
 ): Promise<GameState> {
   try {
-    console.log('collectAndStartDeploy called:', { gameId, playerId, energyAmount, unitsToPlace })
+    console.log('🎯 SERVER ACTION: collectAndStartDeploy called:', { 
+      gameId, 
+      playerId, 
+      energyAmount, 
+      unitsToPlace 
+    })
     
-    // Collect the energy and start deployment
+    // ✅ CRITICAL: Validate inputs
+    if (typeof energyAmount !== 'number' || energyAmount <= 0) {
+      console.error('❌ Invalid energyAmount:', energyAmount)
+      throw new Error(`Invalid energyAmount: ${energyAmount}`)
+    }
+    
+    if (typeof unitsToPlace !== 'number' || unitsToPlace <= 0) {
+      console.error('❌ Invalid unitsToPlace:', unitsToPlace)  
+      throw new Error(`Invalid unitsToPlace: ${unitsToPlace}`)
+    }
+    
+    console.log('🎯 Sending data to Durable Object:', {
+      type: 'collect_energy',
+      playerId,
+      data: { amount: energyAmount, unitsToPlace }
+    })
+    
     const result = await callGameDO(gameId, 'applyAction', {
       type: 'collect_energy',
       playerId,
-      data: { amount: energyAmount, unitsToPlace } // Pass units count for tracking
+      data: { amount: energyAmount, unitsToPlace } // ✅ Both values passed explicitly
     })
     
-    console.log('collectAndStartDeploy result:', result)
+    // ✅ VERIFY the result has correct data
+    const updatedPlayer = result.players?.find(p => p.id === playerId)
+    console.log('🎯 SERVER ACTION: Result verification:', {
+      playerId,
+      playerName: updatedPlayer?.name,
+      unitsToPlaceThisTurn: updatedPlayer?.unitsToPlaceThisTurn,
+      unitsPlacedThisTurn: updatedPlayer?.unitsPlacedThisTurn,
+      energy: updatedPlayer?.energy,
+      gameStatus: result.status,
+      currentPhase: result.currentPhase
+    })
     
-    // Trigger realtime update
+    // ✅ CRITICAL: Verify the overlay should show
+    if (result.status === 'playing' && result.currentPhase === 1) {
+      const currentPlayer = result.players[result.currentPlayerIndex]
+      if (currentPlayer?.id === playerId) {
+        console.log('✅ CollectDeployOverlay should now be visible for', currentPlayer.name)
+      }
+    }
+    
     await renderRealtimeClients({
       durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
       key: `/game/${gameId}`,
@@ -743,10 +783,11 @@ export async function collectAndStartDeploy(
     
     return result as GameState
   } catch (error) {
-    console.error('Failed to collect and start deploy:', error)
-    throw new Error('Failed to collect and start deploy')
+    console.error('❌ SERVER ACTION: collectAndStartDeploy failed:', error)
+    throw new Error(`Failed to collect and start deploy: ${error.message}`)
   }
 }
+
 
 export async function confirmDeploymentComplete(
   gameId: string,
@@ -774,5 +815,166 @@ export async function confirmDeploymentComplete(
   } catch (error) {
     console.error('Failed to confirm deployment complete:', error)
     throw new Error('Failed to confirm deployment complete')
+  }
+}
+
+/**
+ * Purchase a commander during Build & Hire phase (Phase 2)
+ */
+export async function purchaseCommander(
+  gameId: string,
+  playerId: string,
+  commanderType: 'land' | 'diplomat' | 'naval' | 'nuclear',
+  cost: number
+): Promise<GameState> {
+  try {
+    console.log(`🛒 Purchasing ${commanderType} commander for ${cost} energy`);
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'purchase_commander',
+      playerId,
+      data: { commanderType, cost }
+    });
+
+    console.log('✅ Commander purchase successful:', result);
+    
+    // Trigger realtime update
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Commander purchase error:', error);
+    throw new Error(`Failed to purchase commander: ${error.message}`);
+  }
+}
+
+/**
+ * Place a purchased commander on a territory
+ */
+export async function placeCommanderInGame(
+  gameId: string,
+  playerId: string,
+  territoryId: string,
+  commanderType: 'land' | 'diplomat' | 'naval' | 'nuclear'
+): Promise<GameState> {
+  try {
+    console.log(`📍 Placing ${commanderType} commander on territory ${territoryId}`);
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'place_commander_game',
+      playerId,
+      data: { territoryId, commanderType }
+    });
+
+    console.log('✅ Commander placement successful:', result);
+    
+    // Trigger realtime update
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Commander placement error:', error);
+    throw new Error(`Failed to place commander: ${error.message}`);
+  }
+}
+
+/**
+ * Purchase a space base during Build & Hire phase (supports multiple purchases)
+ */
+export async function purchaseSpaceBaseGame(
+  gameId: string,
+  playerId: string,
+  cost: number
+): Promise<GameState> {
+  try {
+    console.log(`🏰 Purchasing space base for ${cost} energy`);
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'purchase_space_base',
+      playerId,
+      data: { cost }
+    });
+
+    console.log('✅ Space base purchase successful:', result);
+    
+    // Trigger realtime update
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Space base purchase error:', error);
+    throw new Error(`Failed to purchase space base: ${error.message}`);
+  }
+}
+
+/**
+ * Place a purchased space base on a territory
+ */
+export async function placeSpaceBaseInGame(
+  gameId: string,
+  playerId: string,
+  territoryId: string
+): Promise<GameState> {
+  try {
+    console.log(`🏰 Placing space base on territory ${territoryId}`);
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'place_space_base_game',
+      playerId,
+      data: { territoryId }
+    });
+
+    console.log('✅ Space base placement successful:', result);
+    
+    // Trigger realtime update
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Space base placement error:', error);
+    throw new Error(`Failed to place space base: ${error.message}`);
+  }
+}
+
+/**
+ * Advance from Build & Hire phase to Buy Cards phase
+ */
+export async function advanceFromBuildHire(
+  gameId: string,
+  playerId: string
+): Promise<GameState> {
+  try {
+    console.log('🎯 Advancing from Build & Hire to Buy Cards phase');
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'advance_player_phase',
+      playerId,
+      data: { phaseComplete: true }
+    });
+
+    console.log('✅ Phase advance successful:', result);
+    
+    // Trigger realtime update
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Phase advance error:', error);
+    throw new Error(`Failed to advance phase: ${error.message}`);
   }
 }
