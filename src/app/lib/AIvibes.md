@@ -19,7 +19,7 @@ Strategy: Holds 3+ territory clusters, uses diplomacy to avoid early conflicts
 
 Setup: Places near water territories, avoids human player borders
 Turn Placement: Retreats from large enemy forces, spreads out
-Cards: Buys WATER commander, mobility/escape cards
+Cards: Buys NAVAL commander, mobility/escape cards
 Bidding: Bids low early, saves for late game space base rush
 Strategy: Escapes to water territories, builds sea empire
 

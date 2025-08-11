@@ -1,15 +1,15 @@
 // Enhanced GameMap.tsx - WITH COMMANDER AND BASE ICONS
 'use client'
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { TERRITORY_POSITIONS } from '@/app/components/Game/GameData/gameData';
 
 // 🎨 Commander and Base Icons (using text/emoji for SVG compatibility)
 const COMMANDER_SYMBOLS = {
   land: '⛰️',        // Land Commander
   diplomat: '👤',    // Diplomat Commander  
-  nuke: '⚡',        // Nuke Commander
-  water: '🚢',       // Water Commander
+  nuclear: '⚡',        // Nuclear Commander
+  naval: '🚢',       // Naval Commander
 };
 
 const BASE_SYMBOL = '🏰';  // Space Base
@@ -24,10 +24,10 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
   const getNodeColor = (territory) => {
     const owner = gameState.players.find(p => p.id === territory.ownerId);
     const colorMap = {
+      'purple': '#a855f7',
+      'green': '#22c55e',
       'blue': '#3b82f6',
       'red': '#ef4444', 
-      'green': '#22c55e',
-      'purple': '#a855f7',
       'yellow': '#eab308'
     };
     return colorMap[owner?.color] || '#9ca3af';
@@ -44,11 +44,11 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
     if (territory.diplomatCommander) {
       extras.push({ type: 'diplomat', symbol: COMMANDER_SYMBOLS.diplomat, color: '#3b82f6' });
     }
-    if (territory.nukeCommander) {
-      extras.push({ type: 'nuke', symbol: COMMANDER_SYMBOLS.nuke, color: '#ef4444' });
+    if (territory.nuclearCommander) {  // ✅ Change to 'nuclearCommander'
+      extras.push({ type: 'nuclear', symbol: COMMANDER_SYMBOLS.nuclear, color: '#ef4444' });
     }
-    if (territory.waterCommander) {
-      extras.push({ type: 'water', symbol: COMMANDER_SYMBOLS.water, color: '#06b6d4' });
+    if (territory.navalCommander) {    // ✅ Change to 'navalCommander' 
+      extras.push({ type: 'naval', symbol: COMMANDER_SYMBOLS.naval, color: '#06b6d4' });
     }
     
     // Check for space base
@@ -248,7 +248,7 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
   };
 
   return (
-    <div className="relative w-full h-full bg-gradient-to-br from-blue-50 to-green-50 rounded-lg overflow-hidden">
+    <div className="relative w-full h-full bg-gradient-to-br from-purple-50 to-green-50 rounded-lg overflow-hidden">
       {/* Zoom controls */}
       <div className="absolute top-4 right-4 z-10 flex flex-col space-y-2">
         <button
@@ -420,8 +420,8 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
                           <span className="text-xs text-gray-600 capitalize">
                             {extra.type === 'land' && 'Land Commander'}
                             {extra.type === 'diplomat' && 'Diplomat'}
-                            {extra.type === 'nuke' && 'Nuke Commander'}
-                            {extra.type === 'water' && 'Water Commander'}
+                            {extra.type === 'nuclear' && 'Nuclear Commander'}
+                            {extra.type === 'naval' && 'Naval Commander'}
                             {extra.type === 'base' && 'Space Base'}
                           </span>
                         </div>

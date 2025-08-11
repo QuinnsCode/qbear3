@@ -574,14 +574,14 @@ export async function checkForAITurn(gameId: string): Promise<{ needsAI: boolean
 }
 
 // adding commander and base placements functions
-// adding the nuke and water commanders who can be placed but arent at setup phase
+// adding the nuclear and naval commanders who can be placed but arent at setup phase
 // Add this to your gameActions.ts file:
 
 export async function placeCommander(
   gameId: string,
   playerId: string,
   territoryId: string,
-  commanderType: 'land' | 'diplomat' | 'nuke' | 'water'  // ✅ ADD nuke and water if you use them
+  commanderType: 'land' | 'diplomat' | 'nuclear' | 'naval'  // ✅ ADD nuclear and naval if you use them
 ): Promise<GameState> {
   try {
     console.log('placeCommander called:', { gameId, playerId, territoryId, commanderType })
@@ -819,136 +819,6 @@ export async function confirmDeploymentComplete(
 }
 
 /**
- * Purchase a commander during Build & Hire phase (Phase 2)
- */
-export async function purchaseCommander(
-  gameId: string,
-  playerId: string,
-  commanderType: 'land' | 'diplomat' | 'naval' | 'nuclear',
-  cost: number
-): Promise<GameState> {
-  try {
-    console.log(`🛒 Purchasing ${commanderType} commander for ${cost} energy`);
-
-    const result = await callGameDO(gameId, 'applyAction', {
-      type: 'purchase_commander',
-      playerId,
-      data: { commanderType, cost }
-    });
-
-    console.log('✅ Commander purchase successful:', result);
-    
-    // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
-
-    return result as GameState;
-  } catch (error) {
-    console.error('❌ Commander purchase error:', error);
-    throw new Error(`Failed to purchase commander: ${error.message}`);
-  }
-}
-
-/**
- * Place a purchased commander on a territory
- */
-export async function placeCommanderInGame(
-  gameId: string,
-  playerId: string,
-  territoryId: string,
-  commanderType: 'land' | 'diplomat' | 'naval' | 'nuclear'
-): Promise<GameState> {
-  try {
-    console.log(`📍 Placing ${commanderType} commander on territory ${territoryId}`);
-
-    const result = await callGameDO(gameId, 'applyAction', {
-      type: 'place_commander_game',
-      playerId,
-      data: { territoryId, commanderType }
-    });
-
-    console.log('✅ Commander placement successful:', result);
-    
-    // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
-
-    return result as GameState;
-  } catch (error) {
-    console.error('❌ Commander placement error:', error);
-    throw new Error(`Failed to place commander: ${error.message}`);
-  }
-}
-
-/**
- * Purchase a space base during Build & Hire phase (supports multiple purchases)
- */
-export async function purchaseSpaceBaseGame(
-  gameId: string,
-  playerId: string,
-  cost: number
-): Promise<GameState> {
-  try {
-    console.log(`🏰 Purchasing space base for ${cost} energy`);
-
-    const result = await callGameDO(gameId, 'applyAction', {
-      type: 'purchase_space_base',
-      playerId,
-      data: { cost }
-    });
-
-    console.log('✅ Space base purchase successful:', result);
-    
-    // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
-
-    return result as GameState;
-  } catch (error) {
-    console.error('❌ Space base purchase error:', error);
-    throw new Error(`Failed to purchase space base: ${error.message}`);
-  }
-}
-
-/**
- * Place a purchased space base on a territory
- */
-export async function placeSpaceBaseInGame(
-  gameId: string,
-  playerId: string,
-  territoryId: string
-): Promise<GameState> {
-  try {
-    console.log(`🏰 Placing space base on territory ${territoryId}`);
-
-    const result = await callGameDO(gameId, 'applyAction', {
-      type: 'place_space_base_game',
-      playerId,
-      data: { territoryId }
-    });
-
-    console.log('✅ Space base placement successful:', result);
-    
-    // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
-
-    return result as GameState;
-  } catch (error) {
-    console.error('❌ Space base placement error:', error);
-    throw new Error(`Failed to place space base: ${error.message}`);
-  }
-}
-
-/**
  * Advance from Build & Hire phase to Buy Cards phase
  */
 export async function advanceFromBuildHire(
@@ -976,5 +846,72 @@ export async function advanceFromBuildHire(
   } catch (error) {
     console.error('❌ Phase advance error:', error);
     throw new Error(`Failed to advance phase: ${error.message}`);
+  }
+}
+
+/**
+ * Purchase and place commander in a single atomic action during Build & Hire phase (Phase 2)
+ */
+export async function purchaseAndPlaceCommander(
+  gameId: string,
+  playerId: string,
+  territoryId: string,
+  commanderType: 'land' | 'diplomat' | 'naval' | 'nuclear',
+  cost: number
+): Promise<GameState> {
+  try {
+    console.log(`🛒🏗️ Purchasing and placing ${commanderType} commander on territory ${territoryId} for ${cost} energy`);
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'purchase_and_place_commander',
+      playerId,
+      data: { territoryId, commanderType, cost }
+    });
+
+    console.log('✅ Commander purchase and placement successful:', result);
+    
+    // Trigger realtime update
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Commander purchase and placement error:', error);
+    throw new Error(`Failed to purchase and place commander: ${error.message}`);
+  }
+}
+
+/**
+ * Purchase and place space base in a single atomic action during Build & Hire phase (supports multiple purchases)
+ */
+export async function purchaseAndPlaceSpaceBase(
+  gameId: string,
+  playerId: string,
+  territoryId: string,
+  cost: number
+): Promise<GameState> {
+  try {
+    console.log(`🛒🏰 Purchasing and placing space base on territory ${territoryId} for ${cost} energy`);
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'purchase_and_place_space_base',
+      playerId,
+      data: { territoryId, cost }
+    });
+
+    console.log('✅ Space base purchase and placement successful:', result);
+    
+    // Trigger realtime update
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Space base purchase and placement error:', error);
+    throw new Error(`Failed to purchase and place space base: ${error.message}`);
   }
 }

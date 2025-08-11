@@ -1,22 +1,18 @@
 // app/components/Game/MobileGameUI.tsx
-// Enhanced MobileGameUI.tsx - FIXED AI INDICATOR POSITIONING
 'use client'
 import BuildHireOverlay from '@/app/components/Game/GamePhases/BuildHireOverlay';
+import GameRules from '@/app/components/Game/GameRules/GameRules';
 import { 
   submitBid,
   startYearTurns,
-  purchaseCommander, 
-  placeCommanderInGame, 
-  purchaseSpaceBaseGame, 
-  placeSpaceBaseInGame,
+  purchaseAndPlaceCommander,
+  purchaseAndPlaceSpaceBase,
   advanceFromBuildHire
 } from '@/app/serverActions/gameActions';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useGameSync } from '@/app/hooks/useGameSync';
 import BiddingOverlay from '@/app/components/Game/GameBidding/BiddingOverlay';
 import CollectDeployOverlay from '@/app/components/Game/GamePhases/CollectDeployOverlay';
-
-
 import { 
   Settings, 
   Sword, 
@@ -26,14 +22,15 @@ import {
   Menu, 
   X,
   // 🎨 Themed commander icons
-  User,        // 👤 Diplomat Commander
-  Mountain,    // ⛰️ Land Commander
-  Zap,         // ⚡ Nuke Commander
-  Ship,        // 🚢 Water Commander
-  Castle,      // 🏰 Space Base
-  Rocket,      // 🚀 Alternative space icon
-  Crown,       // 👑 Leadership
-  BookOpen     // 📚 Card Reference - ADD THIS
+  User,         // 👤 Diplomat Commander
+  Mountain,     // ⛰️ Land Commander
+  Zap,          // ⚡ Nuke Commander
+  Ship,         // 🚢 Water Commander
+  Castle,       // 🏰 Space Base
+  Rocket,       // 🚀 Alternative space icon
+  Crown,        // 👑 Leadership
+  BookOpen,     // 📚 Card Reference - ADD THIS
+  Scroll        // 📜 Game Rules
 } from 'lucide-react';
 import { 
   restartGameWithNuking, 
@@ -64,8 +61,8 @@ import CardReferenceServerWrapper from '@/app/components/Game/Cards/CardReferenc
 const COMMANDER_ICONS = {
   land: Mountain,        // ⛰️ Land Commander
   diplomat: User,        // 👤 Diplomat Commander  
-  nuke: Zap,            // ⚡ Nuke Commander
-  water: Ship,          // 🚢 Water Commander
+  nuclear: Zap,            // ⚡ Nuclear Commander
+  naval: Ship,          // 🚢 Naval Commander
 };
 
 const BASE_ICON = Castle;  // 🏰 Space Base
@@ -116,6 +113,13 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
   const [isUpdating, setIsUpdating] = useState(false);
   const [territoryActionInProgress, setTerritoryActionInProgress] = useState(false);
   const [showCardReference, setShowCardReference] = useState(false);
+  const [showGameRules, setShowGameRules] = useState(false);
+  const [buildHirePlacementMode, setBuildHirePlacementMode] = useState<{
+    active: boolean;
+    itemType: string;
+    cost: number;
+    territoryId?: string;
+  } | null>(null);
 
   if (isLoading || !gameState) {
     return (
@@ -167,7 +171,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
         console.log('🚀 Calling server action to restart game...')
         await restartGameWithNuking(gameId, currentUserId, 'player-2', nukeCount)
         console.log('✅ Server action completed - useGameSync will handle the update')
-      } catch (error) {
+      } catch (error:any) {
         console.error('❌ Server action failed:', error)
         alert(`Failed to restart game: ${error.message}`)
       } finally {
@@ -189,7 +193,6 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   }
 
-
   const handleConfirmDeploymentComplete = async () => {
     try {
       console.log(`✅ Confirming deployment complete and advancing to Build & Hire`)
@@ -203,8 +206,6 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   }
 
-
-  // Enhanced territory action handler with setup phase support
   const handleTerritoryAction = async (territoryId: string, action: string) => {
     console.log(`🎯 Territory action: ${action} on territory ${territoryId}`)
     
@@ -426,12 +427,57 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   }
 
-  const handleTerritoryClick = (territoryId) => {
-    // Route to appropriate action based on game state and interaction mode
+  const handleTerritoryClick = (territoryId: string) => {
+    // Build & Hire phase - Phase 2: Territory selection during placement
+    if (gameState.status === 'playing' && gameState.currentPhase === 2 && buildHirePlacementMode?.active && !buildHirePlacementMode.territoryId) {
+      // Validate territory selection
+      const territory = gameState.territories[territoryId];
+      if (!territory) {
+        alert('Invalid territory selected');
+        return;
+      }
+
+      if (territory.ownerId !== currentUserId) {
+        alert('You can only place on territories you control');
+        return;
+      }
+
+      // For space base - check if territory already has space base
+      if (buildHirePlacementMode.itemType === 'space_base' && territory.spaceBase === currentUserId) {
+        alert('This territory already has a space base');
+        return;
+      }
+
+      // For commanders - check if territory already has this commander type
+      if (buildHirePlacementMode.itemType !== 'space_base') {
+        const commanderField = `${buildHirePlacementMode.itemType}Commander`;
+        if (territory[commanderField] === currentUserId) {
+          alert(`This territory already has a ${buildHirePlacementMode.itemType} commander`);
+          return;
+        }
+      }
+
+      // Valid selection - move to confirmation phase
+      setBuildHirePlacementMode({
+        ...buildHirePlacementMode,
+        territoryId: territoryId
+      });
+      return;
+    }
+
+    // Regular Build & Hire info clicks
+    if (gameState.status === 'playing' && gameState.currentPhase === 2) {
+      if (interactionMode === 'info') {
+        setSelectedTerritory(selectedTerritory === territoryId ? null : territoryId);
+      }
+      return;
+    }
+
+    // ... rest of your existing handleTerritoryClick logic for setup and other phases
     if (gameState.status === 'setup') {
       switch (gameState.setupPhase) {
         case 'units':
-          handleTerritoryAction(territoryId, interactionMode) // 'place' or 'info'
+          handleTerritoryAction(territoryId, interactionMode)
           break
         case 'land_commander':
         case 'diplomat_commander':
@@ -446,7 +492,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   };
 
-  const handleModeChange = (mode) => {
+  const handleModeChange = (mode: string) => {
     setInteractionMode(mode);
     setSelectedTerritory(null);
   };
@@ -464,54 +510,42 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   }
 
-  const handlePurchaseCommander = async (commanderType: string, cost: number) => {
+  const handleStartBuildHirePlacement = (itemType: string, cost: number) => {
+    setBuildHirePlacementMode({ active: true, itemType, cost });
+  };
+
+  const handleCancelBuildHirePlacement = () => {
+    setBuildHirePlacementMode(null);
+  };
+
+  const handleCompleteBuildHirePlacement = () => {
+    setBuildHirePlacementMode(null);
+  };
+
+  // ✅ NEW: Combined purchase and place commander handler
+  const handlePurchaseAndPlaceCommander = async (territoryId: string, commanderType: string, cost: number) => {
     try {
-      console.log(`🛒 Purchasing ${commanderType} commander for ${cost} energy`);
-      await purchaseCommander(gameId, currentUserId, commanderType as any, cost);
-      console.log('✅ Commander purchase completed - useGameSync will handle the update');
+      console.log(`🛒🏗️ Purchasing and placing ${commanderType} commander on territory ${territoryId} for ${cost} energy`);
+      await purchaseAndPlaceCommander(gameId, currentUserId, territoryId, commanderType as any, cost);
+      console.log('✅ Commander purchase and placement completed - useGameSync will handle the update');
     } catch (error) {
-      console.error('❌ Commander purchase failed:', error);
+      console.error('❌ Commander purchase and placement failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to purchase commander: ${errorMessage}`);
+      alert(`Failed to purchase and place commander: ${errorMessage}`);
       throw error;
     }
   };
 
-  const handlePlaceCommander = async (territoryId: string, commanderType: string) => {
+  // ✅ NEW: Combined purchase and place space base handler  
+  const handlePurchaseAndPlaceSpaceBase = async (territoryId: string, cost: number) => {
     try {
-      console.log(`📍 Placing ${commanderType} commander on territory ${territoryId}`);
-      await placeCommanderInGame(gameId, currentUserId, territoryId, commanderType as any);
-      console.log('✅ Commander placement completed - useGameSync will handle the update');
+      console.log(`🛒🏰 Purchasing and placing space base on territory ${territoryId} for ${cost} energy`);
+      await purchaseAndPlaceSpaceBase(gameId, currentUserId, territoryId, cost);
+      console.log('✅ Space base purchase and placement completed - useGameSync will handle the update');
     } catch (error) {
-      console.error('❌ Commander placement failed:', error);
+      console.error('❌ Space base purchase and placement failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to place commander: ${errorMessage}`);
-      throw error;
-    }
-  };
-
-  const handlePurchaseSpaceBase = async (cost: number) => {
-    try {
-      console.log(`🏰 Purchasing space base for ${cost} energy`);
-      await purchaseSpaceBaseGame(gameId, currentUserId, cost);
-      console.log('✅ Space base purchase completed - useGameSync will handle the update');
-    } catch (error) {
-      console.error('❌ Space base purchase failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to purchase space base: ${errorMessage}`);
-      throw error;
-    }
-  };
-
-  const handlePlaceSpaceBase = async (territoryId: string) => {
-    try {
-      console.log(`🏰 Placing space base on territory ${territoryId}`);
-      await placeSpaceBaseInGame(gameId, currentUserId, territoryId);
-      console.log('✅ Space base placement completed - useGameSync will handle the update');
-    } catch (error) {
-      console.error('❌ Space base placement failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to place space base: ${errorMessage}`);
+      alert(`Failed to purchase and place space base: ${errorMessage}`);
       throw error;
     }
   };
@@ -529,9 +563,6 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   };
 
-  
-
-  // 🎨 ENHANCED: Setup phase display with themed descriptions
   const getPhaseDisplay = () => {
     if (gameState?.status === 'setup') {
       switch (gameState.setupPhase) {
@@ -582,7 +613,6 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     return 'Unknown Phase'
   }
 
-  // Get setup progress for current player
   const getSetupProgress = () => {
     if (!myPlayer || gameState?.status !== 'setup') return null
     
@@ -609,7 +639,6 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   }
 
-  // 🎨 GET CURRENT SETUP PHASE BUTTON CONFIG
   const getCurrentSetupButton = () => {
     switch (gameState.setupPhase) {
       case 'units':
@@ -742,7 +771,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       <div className="bg-white/95 backdrop-blur-sm border-t border-gray-200 p-4 z-20">
         {gameState?.status === 'setup' ? (
           // 🎨 Setup phase buttons with themed icons
-          <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
+          <div className="grid grid-cols-5 gap-3 max-w-md mx-auto">
              <GameActionButton
                 icon={Info}
                 label="Info"
@@ -770,6 +799,16 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
               )
             })()}
             
+            {/* 🆕 Card Reference - Always Available in setup */}
+            <GameActionButton
+              icon={BookOpen}
+              label="Cards"
+              active={showCardReference}
+              disabled={false}
+              onClick={handleToggleCardReference}
+              color="indigo"
+            />
+            
             {/* Fixed preview buttons */}
             {gameState.setupPhase === 'units' && (
               <>
@@ -789,6 +828,8 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
                   onClick={() => {}}
                   color="gray"
                 />
+
+                
               </>
             )}
             
@@ -1014,7 +1055,9 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
             >
               Restart Game
             </button>
-            <button className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+            <button onClick={()=>{
+              setShowGameRules(true)
+            }} className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
               Game Rules
             </button>
             <button className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
@@ -1061,21 +1104,30 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
         <BuildHireOverlay
           gameState={gameState}
           currentUserId={currentUserId}
-          onPurchaseCommander={handlePurchaseCommander}
-          onPlaceCommander={handlePlaceCommander}
-          onPurchaseSpaceBase={handlePurchaseSpaceBase}
-          onPlaceSpaceBase={handlePlaceSpaceBase}
+          onPurchaseAndPlaceCommander={handlePurchaseAndPlaceCommander}
+          onPurchaseAndPlaceSpaceBase={handlePurchaseAndPlaceSpaceBase}
           onAdvanceToNextPhase={handleAdvanceFromBuildHire}
+          onStartPlacement={handleStartBuildHirePlacement}
+          onCancelPlacement={handleCancelBuildHirePlacement}
+          placementMode={buildHirePlacementMode}
         />
       )}
 
-      {/* 🎯 Card Reference overlay - Z-index 65 (highest priority) */}
       {/* 🎯 Card Reference overlay - Z-index 65 (highest priority) */}
       {showCardReference && (
         <CardReferenceServerWrapper
           gameState={gameState}
           currentUserId={currentUserId}
           onClose={() => setShowCardReference(false)}
+        />
+      )}
+
+      {/* 🎯 Game Rules overlay - Z-index 65 (highest priority) */}
+      {showGameRules && (
+        <GameRules
+          gameState={gameState}
+          currentUserId={currentUserId}
+          onClose={() => setShowGameRules(false)}
         />
       )}
     </div>

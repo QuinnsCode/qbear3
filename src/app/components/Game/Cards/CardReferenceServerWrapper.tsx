@@ -21,13 +21,13 @@ const convertToGameCards = (rawData: typeof RAW_CARD_DATA): GameCard[] => {
     const title = cardData.cardTitle.toLowerCase();
     const text = cardData.cardText.toLowerCase();
     
-    if (text.includes('diplomat') || text.includes('evacuation') || text.includes('decoys') || text.includes('cease fire')) {
+    if (cardData.cardType === 'diplomat') {
       commanderType = 'diplomat';
-    } else if (text.includes('water') || text.includes('lava') || text.includes('naval')) {
+    } else if (cardData.cardType === 'naval') { 
       commanderType = 'naval';
-    } else if (text.includes('nuclear') || text.includes('bomb') || text.includes('rocket') || title.includes('assassin') || title.includes('scatter') || title.includes('armageddon')) {
+    } else if (cardData.cardType === 'nuclear') {
       commanderType = 'nuclear';
-    } else if (text.includes('land') || text.includes('stealth station') || text.includes('scout forces')) {
+    } else if (cardData.cardType === 'land') {
       commanderType = 'land';
     }
     

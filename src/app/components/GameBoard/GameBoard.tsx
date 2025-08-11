@@ -284,7 +284,7 @@ function GameBoard({ gameState, currentUserId, onAction }: GameBoardProps) {
               <span className={`px-2 py-1 rounded text-sm ${isMyTurn ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
                 {isMyTurn ? 'Your Turn' : `${currentPlayer?.name || 'Unknown'}'s Turn`}
               </span>
-              <span className="px-2 py-1 rounded text-sm bg-blue-100 text-blue-800">
+              <span className="px-2 py-1 rounded text-sm bg-purple-100 text-purple-800">
                 Year {gameState.currentYear} - Phase {gameState.currentPhase}
               </span>
             </div>
@@ -294,7 +294,7 @@ function GameBoard({ gameState, currentUserId, onAction }: GameBoardProps) {
             <div className="flex space-x-2">
               <button
                 onClick={handleAdvancePhase}
-                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm"
                 disabled={isProcessing}
               >
                 End Phase
@@ -339,7 +339,7 @@ function GameBoard({ gameState, currentUserId, onAction }: GameBoardProps) {
                   <div className="flex items-center space-x-2 mb-2">
                     <div className={`w-4 h-4 rounded-full bg-${player.color}-500`}></div>
                     <span className="font-medium">{player.name}</span>
-                    {player.id === currentUserId && <span className="text-blue-600">(You)</span>}
+                    {player.id === currentUserId && <span className="text-purple-700">(You)</span>}
                     {player.isActive && <span className="text-green-600">●</span>}
                   </div>
                   <div className="text-sm text-gray-600">
@@ -360,7 +360,7 @@ function GameBoard({ gameState, currentUserId, onAction }: GameBoardProps) {
       {isProcessing && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-4 flex items-center space-x-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-700"></div>
             <span>Processing...</span>
           </div>
         </div>

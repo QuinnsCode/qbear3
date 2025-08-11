@@ -40,12 +40,12 @@ function TerritoryNode({
     if (!owner) return 'rgb(156, 163, 175)' // gray-400
     
     const colorMap: Record<string, string> = {
+      'purple': 'rgb(168, 85, 247)', // purple-500
+      'green': 'rgb(34, 197, 94)',   // green-500
       'blue': 'rgb(59, 130, 246)',   // blue-500
       'red': 'rgb(239, 68, 68)',     // red-500
-      'gray': 'rgb(107, 114, 128)',  // gray-500
-      'green': 'rgb(34, 197, 94)',   // green-500
-      'purple': 'rgb(168, 85, 247)', // purple-500
       'yellow': 'rgb(234, 179, 8)',  // yellow-500
+      'gray': 'rgb(107, 114, 128)',  // gray-500
     }
     
     return colorMap[owner.color] || 'rgb(156, 163, 175)'
@@ -124,8 +124,8 @@ function InteractiveMap({ gameState, currentUserId, selectedTerritory, onTerrito
     
     switch (gameState.currentPhase) {
       case 2: return 'place'   // Collect & Deploy
-      case 6: return 'attack'  // Invade Territories
-      case 7: return 'fortify' // Fortify Position
+      case 5: return 'attack'  // Invade Territories
+      case 6: return 'fortify' // Fortify Position
       default: return 'none'
     }
   }
@@ -170,7 +170,7 @@ function InteractiveMap({ gameState, currentUserId, selectedTerritory, onTerrito
           <span className={`px-2 py-1 rounded ${isMyTurn ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
             {isMyTurn ? 'Your Turn' : `${currentPlayer?.name || 'Unknown'}'s Turn`}
           </span>
-          <span className="ml-2 px-2 py-1 rounded bg-blue-100 text-blue-800">
+          <span className="ml-2 px-2 py-1 rounded bg-blue-100 text-purple-800">
             Phase {gameState.currentPhase}: {phaseInfo.name}
           </span>
         </div>
@@ -191,14 +191,14 @@ function InteractiveMap({ gameState, currentUserId, selectedTerritory, onTerrito
           <p><strong>Info Mode:</strong> Click territories to view details. {!isMyTurn ? "Wait for your turn." : "No actions available this phase."}</p>
         )}
         {selectedTerritory && (
-          <p className="mt-1 text-blue-600">
+          <p className="mt-1 text-purple-800">
             Selected: {gameState.territories[selectedTerritory]?.name}
           </p>
         )}
       </div>
       
       {/* SVG Map */}
-      <div className="border rounded bg-blue-50 overflow-auto">
+      <div className="border rounded bg-purple-50 overflow-auto">
         <svg width="900" height="450" className="min-w-full">
           {/* Draw connections first (behind territories) */}
           {connections.map((connection, index) => (
@@ -231,7 +231,7 @@ function InteractiveMap({ gameState, currentUserId, selectedTerritory, onTerrito
           <div key={player.id} className="flex items-center space-x-2">
             <div className={`w-4 h-4 rounded-full bg-${player.color}-500`}></div>
             <span>{player.name}</span>
-            {player.id === currentUserId && <span className="text-blue-600">(You)</span>}
+            {player.id === currentUserId && <span className="text-purple-700">(You)</span>}
           </div>
         ))}
       </div>

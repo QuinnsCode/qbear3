@@ -1,6 +1,5 @@
 // app/pages/game/GamePage.tsx
 import { getGameState, getCurrentPlayer } from '@/app/serverActions/gameActions'
-import GameBoard from '@/app/components/GameBoard/GameBoard'
 import ClientGameWrapper from '@/app/components/Game/GameUtils/ClientGameWrapper'
 import { env } from "cloudflare:workers"
 
@@ -33,8 +32,7 @@ export default async function GamePage({ params, ctx }) {
     
     try {
       console.log('About to call getGameState with gameId:', gameId)
-      
-      // Fixed: Only pass gameId parameter
+
       initialGameState = await getGameState(gameId)
       currentPlayer = await getCurrentPlayer(gameId)
       
@@ -47,26 +45,11 @@ export default async function GamePage({ params, ctx }) {
     return (
       <>
         {initialGameState ? (
-          // OPTION 1: Use Mobile UI (new design)
           <ClientGameWrapper 
             gameId={gameId}
             currentUserId={userId}
             initialState={initialGameState}
           />
-          
-          // OPTION 2: Use Original GameBoard (comment out ClientGameWrapper above and uncomment below)
-          // <div className="min-h-screen bg-gray-50">
-          //   <div className="container mx-auto py-8">
-          //     <h1 className="text-3xl font-bold mb-6">
-          //       Game: {initialGameState?.id}
-          //     </h1>
-          //     <GameBoard 
-          //       gameId={gameId} 
-          //       currentUserId={userId}
-          //       initialState={initialGameState}
-          //     />
-          //   </div>
-          // </div>
         ) : (
           <div className="h-screen w-full bg-gray-900 flex items-center justify-center">
             <div className="text-center text-white">
