@@ -177,8 +177,8 @@ const BuildHireOverlay = ({
   // Main purchase selection phase
   if (phase === 'choose') {
     return (
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-60 flex items-center justify-center">
-        <div className="bg-white/95 backdrop-blur-lg rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-60 flex items-center justify-center pt-16">
+        <div className="bg-white/95 backdrop-blur-lg rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl max-h-[80vh] overflow-y-auto">
           
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -237,7 +237,7 @@ const BuildHireOverlay = ({
             </div>
           </div>
 
-          {/* Available Commanders */}
+          {/* Available Commanders - same as before */}
           {availableCommanders.length > 0 && (
             <div className="mb-6">
               <h3 className="font-semibold text-gray-800 mb-3">Available Commanders (3 Energy)</h3>
@@ -284,7 +284,7 @@ const BuildHireOverlay = ({
             </div>
           )}
 
-          {/* Space Base Option */}
+          {/* Space Base Option - same as before */}
           {canBuySpaceBase && (
             <div className="mb-6">
               <h3 className="font-semibold text-gray-800 mb-3">Space Base (5 Energy)</h3>
@@ -323,20 +323,37 @@ const BuildHireOverlay = ({
             </div>
           )}
 
-          {/* Skip/Complete Button */}
-          <div className="text-center">
+          {/* ✅ FIX 2: TWO BUTTON LAYOUT - Skip & Continue */}
+          <div className="flex gap-4 justify-center">
+            {/* Skip Button - Always Available */}
             <button
               onClick={handleComplete}
               disabled={isProcessing}
-              className={`px-6 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 mx-auto ${
+              className={`px-6 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${
                 isProcessing 
                   ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-gray-600 hover:bg-gray-700 text-white border-2 border-gray-600 hover:border-gray-700'
               }`}
             >
-              <span>{isProcessing ? 'Processing...' : 'Continue to Buy Cards'}</span>
+              <span>{isProcessing ? 'Processing...' : 'Skip - Buy Nothing'}</span>
               <ArrowRight size={16} />
             </button>
+            
+            {/* Continue Button - Only if purchases available */}
+            {(availableCommanders.length > 0 || canBuySpaceBase) && (
+              <button
+                onClick={handleComplete}
+                disabled={isProcessing}
+                className={`px-6 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${
+                  isProcessing 
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    : 'bg-green-600 hover:bg-green-700 text-white'
+                }`}
+              >
+                <span>{isProcessing ? 'Processing...' : 'Continue to Buy Cards'}</span>
+                <ArrowRight size={16} />
+              </button>
+            )}
           </div>
         </div>
       </div>

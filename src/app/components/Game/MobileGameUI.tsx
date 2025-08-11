@@ -32,7 +32,8 @@ import {
   Ship,        // 🚢 Water Commander
   Castle,      // 🏰 Space Base
   Rocket,      // 🚀 Alternative space icon
-  Crown        // 👑 Leadership
+  Crown,       // 👑 Leadership
+  BookOpen     // 📚 Card Reference - ADD THIS
 } from 'lucide-react';
 import { 
   restartGameWithNuking, 
@@ -47,6 +48,8 @@ import {
 import { GameActionButton } from '@/app/components/Game/GameUtils/GameActionButton';
 import { GameStats } from '@/app/components/Game/GameUtils/GameStats';
 import { GameMap } from '@/app/components/Game/GameMap/GameMap';
+import CardReferenceServerWrapper from '@/app/components/Game/Cards/CardReferenceServerWrapper';
+
 
 // Z-Index Hierarchy:
 // z-60: Critical overlays (bidding, collect/deploy)
@@ -112,6 +115,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
   const [showSettings, setShowSettings] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [territoryActionInProgress, setTerritoryActionInProgress] = useState(false);
+  const [showCardReference, setShowCardReference] = useState(false);
 
   if (isLoading || !gameState) {
     return (
@@ -148,6 +152,10 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
   const isMyTurn = currentPlayer?.id === currentUserId;
   const isAITurn = currentPlayer?.name === 'AI Player';
   const myPlayer = gameState?.players.find(p => p.id === currentUserId);
+
+  const handleToggleCardReference = () => {
+    setShowCardReference(!showCardReference);
+  };
 
   const handleGameStateUpdate = async (newGameState: any, useServerAction: boolean = false) => {
     console.log('🔄 Game state update requested:', { useServerAction, newGameState })
@@ -849,7 +857,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           </div>
         ) : gameState?.status === 'playing' ? (
           // 🎮 MAIN GAME: Fixed phase buttons with correct numbers
-          <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
+          <div className="grid grid-cols-5 gap-2 max-w-lg mx-auto"> {/* Changed from grid-cols-4 to grid-cols-5 */}
             <GameActionButton
               icon={Info}
               label="Info"
@@ -877,6 +885,16 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
               disabled={!isMyTurn || gameState?.currentPhase !== 2}
               onClick={() => handleModeChange('build')}
               color="purple"
+            />
+            
+            {/* 🆕 Card Reference - Always Available */}
+            <GameActionButton
+              icon={BookOpen}
+              label="Cards"
+              active={showCardReference}
+              disabled={false}
+              onClick={handleToggleCardReference}
+              color="indigo"
             />
             
             {/* Attack - Phase 5 */}
@@ -1048,6 +1066,16 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           onPurchaseSpaceBase={handlePurchaseSpaceBase}
           onPlaceSpaceBase={handlePlaceSpaceBase}
           onAdvanceToNextPhase={handleAdvanceFromBuildHire}
+        />
+      )}
+
+      {/* 🎯 Card Reference overlay - Z-index 65 (highest priority) */}
+      {/* 🎯 Card Reference overlay - Z-index 65 (highest priority) */}
+      {showCardReference && (
+        <CardReferenceServerWrapper
+          gameState={gameState}
+          currentUserId={currentUserId}
+          onClose={() => setShowCardReference(false)}
         />
       )}
     </div>
