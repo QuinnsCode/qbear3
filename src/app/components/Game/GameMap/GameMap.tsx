@@ -1,4 +1,4 @@
-// Enhanced GameMap.tsx - WITH COMMANDER AND BASE ICONS
+// Enhanced GameMap.tsx - WITH WATER TERRITORY OPACITY
 'use client'
 
 import { useState } from 'react';
@@ -21,16 +21,31 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const [touches, setTouches] = useState([]);
 
+  // ✅ Simple water territory detection using the type field
+  const isWaterTerritory = (territory) => {
+    return territory?.type === 'water';
+  };
+
   const getNodeColor = (territory) => {
     const owner = gameState.players.find(p => p.id === territory.ownerId);
     const colorMap = {
-      'purple': '#a855f7',
-      'green': '#22c55e',
       'blue': '#3b82f6',
       'red': '#ef4444', 
+      'green': '#22c55e',
+      'purple': '#a855f7',
       'yellow': '#eab308'
     };
     return colorMap[owner?.color] || '#9ca3af';
+  };
+
+  // ✅ NEW: Get territory opacity based on water status and selection
+  const getTerritoryOpacity = (territory) => {
+    if (isWaterTerritory(territory)) {
+      // Water territories: partial opacity by default, full when selected
+      return selectedTerritory === territory.id ? 1.0 : 0.4;
+    }
+    // Land territories: always full opacity
+    return 1.0;
   };
 
   // Get all commanders and bases on a territory
@@ -44,10 +59,10 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
     if (territory.diplomatCommander) {
       extras.push({ type: 'diplomat', symbol: COMMANDER_SYMBOLS.diplomat, color: '#3b82f6' });
     }
-    if (territory.nuclearCommander) {  // ✅ Change to 'nuclearCommander'
+    if (territory.nuclearCommander) {
       extras.push({ type: 'nuclear', symbol: COMMANDER_SYMBOLS.nuclear, color: '#ef4444' });
     }
-    if (territory.navalCommander) {    // ✅ Change to 'navalCommander' 
+    if (territory.navalCommander) {
       extras.push({ type: 'naval', symbol: COMMANDER_SYMBOLS.naval, color: '#06b6d4' });
     }
     
@@ -319,15 +334,17 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
           const isSelected = selectedTerritory === territory.id;
           const nodeColor = getNodeColor(territory);
           const extras = getTerritoryExtras(territory);
+          const territoryOpacity = getTerritoryOpacity(territory);
+          const isWater = isWaterTerritory(territory);
           
           return (
-            <g key={territory.id}>
+            <g key={territory.id} opacity={territoryOpacity}>
               {/* Main territory circle */}
               <circle
                 cx={position.x} cy={position.y}
                 r={isSelected ? 24 : 20}
                 fill={nodeColor}
-                stroke={isSelected ? '#000' : '#fff'}
+                stroke={isSelected ? '#000' : (isWater ? '#0ea5e9' : '#fff')}
                 strokeWidth={isSelected ? 3 : 2}
                 className="cursor-pointer transition-all duration-200 hover:opacity-80"
                 onClick={(e) => handleTerritoryClick(territory.id, e)}
@@ -344,7 +361,7 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
                 {territory.machineCount}
               </text>
               
-              {/* 🎨 NEW: Commander and Base indicators */}
+              {/* 🎨 Commander and Base indicators */}
               {extras.length > 0 && (
                 <g>
                   {extras.map((extra, index) => {
@@ -390,12 +407,16 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
         })}
       </svg>
 
-      {/* 🎨 ENHANCED: Territory info overlay with commander details */}
+      {/* Territory info overlay with commander details */}
       {selectedTerritory && (
         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg max-w-64 z-10">
           <div className="text-sm">
             <h3 className="font-bold text-gray-800 mb-1">
               {gameState.territories[selectedTerritory]?.name}
+              {/* ✅ Show water indicator */}
+              {isWaterTerritory(gameState.territories[selectedTerritory]) && (
+                <span className="ml-2 text-blue-500 text-xs">🌊 Water</span>
+              )}
             </h3>
             <p className="text-gray-600">
               Units: {gameState.territories[selectedTerritory]?.machineCount}

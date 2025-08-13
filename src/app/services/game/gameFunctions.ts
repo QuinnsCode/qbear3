@@ -313,6 +313,7 @@ export function createInitialTerritories(): Record<string, Territory> {
     territories[territoryData.id.toString()] = {
       id: territoryData.id.toString(),
       name: territoryData.name,
+      type: territoryData.type,
       ownerId: undefined,
       machineCount: 1,
       connections: territoryData.connections.map(id => id.toString())

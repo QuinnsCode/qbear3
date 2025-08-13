@@ -172,6 +172,8 @@ export class GameStateDO extends DurableObject {
     }
   }
 
+  // ✅ ALTERNATIVE: If you want to start directly in main game (skipping setup)
+  // ✅ CORRECT: Default game for SETUP mode (commanders placed during setup)
   async createDefaultGame(): Promise<GameState> {
     const gameId = crypto.randomUUID()
 
@@ -186,14 +188,14 @@ export class GameStateDO extends DurableObject {
         pendingDecision: undefined,
         remainingUnitsToPlace: GAME_CONFIG.SETUP_UNITS_PER_PLAYER, 
         unitsPlacedThisTurn: 0,
-        unitsToPlaceThisTurn: 0, // ✅ NEW
+        unitsToPlaceThisTurn: 0,
         energy: GAME_CONFIG.SETUP_STARTING_ENERGY,
         currentBid: undefined,
         totalEnergySpentOnBids: 0
       },
       {
         id: crypto.randomUUID(),
-        name: 'Player 2',
+        name: 'AI Player',
         color: 'red',
         cards: [],
         territories: ['territory2'],
@@ -201,7 +203,7 @@ export class GameStateDO extends DurableObject {
         pendingDecision: undefined,
         remainingUnitsToPlace: GAME_CONFIG.SETUP_UNITS_PER_PLAYER,
         unitsPlacedThisTurn: 0,
-        unitsToPlaceThisTurn: 0, // ✅ NEW
+        unitsToPlaceThisTurn: 0,
         energy: GAME_CONFIG.SETUP_STARTING_ENERGY,
         aiVibe: 'efficient',
         currentBid: undefined,
@@ -213,32 +215,54 @@ export class GameStateDO extends DurableObject {
       territory1: {
         id: 'territory1',
         name: 'North Region',
+        type: 'land', // ✅ ADD: Territory type for AI water detection
         ownerId: players[0].id,
         machineCount: 3,
-        connections: ['territory2', 'territory3'],
+        connections: ['territory2', 'territory3', 'territory4'],
+        // ✅ NO COMMANDERS - they get placed during setup phases
         modifiers: {}
       },
       territory2: {
         id: 'territory2',
         name: 'South Region',
+        type: 'land', // ✅ ADD: Territory type
         ownerId: players[1].id,
         machineCount: 3,
-        connections: ['territory1', 'territory3'],
+        connections: ['territory1', 'territory3', 'territory5'],
+        // ✅ NO COMMANDERS - they get placed during setup phases
         modifiers: {}
       },
       territory3: {
         id: 'territory3',
         name: 'Central Region',
+        type: 'land', // ✅ ADD: Territory type
         machineCount: 2,
-        connections: ['territory1', 'territory2'],
+        connections: ['territory1', 'territory2', 'territory4', 'territory5'],
+        modifiers: {}
+      },
+      // ✅ ADD: Water territories for naval commander testing
+      territory4: {
+        id: 'territory4',
+        name: 'Northern Waters',
+        type: 'water', // ✅ Water territory for AI to detect
+        machineCount: 1,
+        connections: ['territory1', 'territory3'],
+        modifiers: {}
+      },
+      territory5: {
+        id: 'territory5',
+        name: 'Southern Waters',
+        type: 'water', // ✅ Water territory for AI to detect
+        machineCount: 1,
+        connections: ['territory2', 'territory3'],
         modifiers: {}
       }
     }
 
     this.gameState = {
       id: gameId,
-      status: 'setup',
-      setupPhase: 'units',
+      status: 'setup',    // ✅ Start in setup mode
+      setupPhase: 'units', // ✅ First setup phase
       currentPlayerIndex: 0,
       currentYear: 1,
       currentPhase: 1,
@@ -250,14 +274,24 @@ export class GameStateDO extends DurableObject {
       currentActionIndex: -1,
       createdAt: new Date(),
       updatedAt: new Date(),
-      // 🎯 NEW: Initialize bidding-related properties
-      bidding: undefined,              // No bidding during setup
-      yearlyTurnOrders: {}            // Will track turn orders from each year's bidding
+      bidding: undefined,
+      yearlyTurnOrders: {}
     }
 
     await this.persist()
     return this.gameState
   }
+
+  // 🎯 FLOW REMINDER:
+  // Setup Phase Flow:
+  // 1. status: 'setup', setupPhase: 'units' → Players place units
+  // 2. status: 'setup', setupPhase: 'land_commander' → Players place land commanders  
+  // 3. status: 'setup', setupPhase: 'diplomat_commander' → Players place diplomat commanders
+  // 4. status: 'setup', setupPhase: 'space_base' → Players place space bases
+  // 5. status: 'playing', currentPhase: 1 → Main game starts (Collect & Deploy)
+  // 6. status: 'playing', currentPhase: 2 → Build & Hire (buy naval/nuclear commanders)
+
+  // ✅ The only thing to add is territory types so AI can detect water territories
   
   async applyAction(action: Omit<GameAction, 'id' | 'timestamp'>): Promise<GameState> {
     if (!this.gameState) {
@@ -536,7 +570,8 @@ export class GameStateDO extends DurableObject {
       case 'deploy_machines':
         return GameUtils.deployMachines(gameState, action)
       case 'place_unit':
-        return GameUtils.placeUnit(gameState, action)
+        console.log(`🎬 📍 PLACE_UNIT received:`, action.data);
+        return GameUtils.placeUnit(gameState, action);
       case 'place_commander':
         return GameUtils.placeCommander(gameState, action)
       case 'place_space_base':
@@ -546,7 +581,8 @@ export class GameStateDO extends DurableObject {
       case 'spend_energy':
         return GameUtils.spendEnergy(gameState, action)
       case 'advance_player_phase':
-        return RestOfThemManager.advancePlayerPhase(gameState, action)
+        console.log(`🎬 📋 ADVANCE_PLAYER_PHASE received:`, action.data);
+        return RestOfThemManager.advancePlayerPhase(gameState, action);
       case 'start_main_game':
         return RestOfThemManager.startMainGame(gameState)
       case 'attack_territory':
@@ -561,6 +597,10 @@ export class GameStateDO extends DurableObject {
         return RestOfThemManager.revealBids(gameState)
       case 'start_year_turns':
         return RestOfThemManager.startYearTurns(gameState)
+      case 'purchase_and_place_commander':
+        return RestOfThemManager.purchaseAndPlaceCommander(gameState, action)
+      case 'purchase_and_place_space_base':
+        return RestOfThemManager.purchaseAndPlaceSpaceBase(gameState, action)
       case 'purchase_and_place_commander':
         return RestOfThemManager.purchaseAndPlaceCommander(gameState, action)
       case 'purchase_and_place_space_base':
@@ -616,7 +656,7 @@ export class GameStateDO extends DurableObject {
       pendingDecision: undefined,
       remainingUnitsToPlace: GAME_CONFIG.SETUP_UNITS_PER_PLAYER,
       unitsPlacedThisTurn: 0,
-      unitsToPlaceThisTurn: 0, // ✅ NEW
+      unitsToPlaceThisTurn: 0,
       energy: GAME_CONFIG.SETUP_STARTING_ENERGY,
       // ✅ ADD: Set AI vibe for AI players
       aiVibe: name === 'AI Player' ? 'efficient' : undefined,
@@ -629,6 +669,7 @@ export class GameStateDO extends DurableObject {
       territories[id] = {
         id,
         name: config.name,
+        type: config.type || 'land', // ✅ ADD: Territory type with fallback to 'land'
         machineCount: config.initialMachines || 0,
         connections: config.connections || [],
         modifiers: config.modifiers
@@ -650,9 +691,8 @@ export class GameStateDO extends DurableObject {
       currentActionIndex: -1,
       createdAt: new Date(),
       updatedAt: new Date(),
-      // 🎯 NEW: Initialize bidding-related properties
-      bidding: undefined,              // No bidding during setup
-      yearlyTurnOrders: {}            // Will track turn orders from each year's bidding
+      bidding: undefined,
+      yearlyTurnOrders: {}
     }
 
     await this.persist()

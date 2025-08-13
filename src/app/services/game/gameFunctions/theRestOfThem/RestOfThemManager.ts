@@ -12,30 +12,30 @@ export class RestOfThemManager {
   // ================================
   
   static advanceToNextMainGamePlayer(gameState: GameState): GameState {
-    const newState = { ...gameState };
+    console.log(`🔄 ADVANCING TO NEXT PLAYER from index ${gameState.currentPlayerIndex}`);
     
-    if (!newState) return newState;
+    let newState = { ...gameState };
+    newState.currentPhase = 1; // Reset to Phase 1 for next player
+    newState.currentPlayerIndex = (newState.currentPlayerIndex + 1) % newState.players.length;
     
-    const currentPlayer = newState.players[newState.currentPlayerIndex];
-    const currentTurnIndex = newState.activeTurnOrder.indexOf(currentPlayer.id);
-    
-    const nextTurnIndex = (currentTurnIndex + 1) % newState.activeTurnOrder.length;
-    
-    if (nextTurnIndex === 0) {
-      console.log(`🔄 All players completed Turn ${newState.currentYear} - advancing to next turn`);
-      return RestOfThemManager.advanceMainGameTurn(newState);
-    } else {
-      const nextPlayerId = newState.activeTurnOrder[nextTurnIndex];
-      const nextPlayerIndex = newState.players.findIndex(p => p.id === nextPlayerId);
-      
-      newState.players[newState.currentPlayerIndex].isActive = false;
-      newState.currentPlayerIndex = nextPlayerIndex;
-      newState.players[nextPlayerIndex].isActive = true;
-      newState.currentPhase = 1;
-      
-      const nextPlayer = newState.players[nextPlayerIndex];
-      console.log(`🔄 Turn advanced to: ${nextPlayer.name} - Phase 1`);
+    // Check if we completed a full round (back to player 0)
+    if (newState.currentPlayerIndex === 0) {
+      console.log(`🎯 FULL ROUND COMPLETED - advancing year from ${newState.currentYear}`);
+      if (newState.currentYear < 5) {
+        newState.currentYear = (newState.currentYear + 1) as any;
+        newState.status = 'bidding'; // Start bidding for next year
+      } else {
+        newState.status = 'finished'; // Game over
+      }
     }
+    
+    console.log(`🔄 Next player result:`, {
+      newPlayerIndex: newState.currentPlayerIndex,
+      newPlayer: newState.players[newState.currentPlayerIndex]?.name,
+      newPhase: newState.currentPhase,
+      newYear: newState.currentYear,
+      newStatus: newState.status
+    });
     
     return newState;
   }
@@ -153,72 +153,83 @@ export class RestOfThemManager {
   }
 
   static advancePlayerPhase(gameState: GameState, action: GameAction): GameState {
-    const newState = { ...gameState };
+    console.log(`📋 ADVANCE_PLAYER_PHASE called:`, {
+      currentPhase: gameState.currentPhase,
+      playerId: action.playerId,
+      data: action.data
+    });
     
-    if (newState.status !== 'playing') {
-      console.log('❌ Cannot advance phase - not in playing mode');
-      return newState;
-    }
+    const { playerId, data } = action;
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     
-    const player = newState.players.find(p => p.id === action.playerId);
-    const currentPlayer = newState.players[newState.currentPlayerIndex];
-    
-    if (!player || player.id !== currentPlayer.id) {
-      console.log('❌ Cannot advance phase - not current player');
-      return newState;
-    }
-    
-    // ✅ ENHANCED: Special handling for Phase 1 deployment completion
-    if (newState.currentPhase === 1) {
-      const deploymentComplete = action.data?.deploymentComplete;
-      const unitsToPlace = player.unitsToPlaceThisTurn || 0;
-      const unitsPlaced = player.unitsPlacedThisTurn || 0;
-      
-      console.log('🎯 Phase 1 advancement check:', {
-        playerId: player.id,
-        playerName: player.name,
-        deploymentComplete,
-        unitsToPlace,
-        unitsPlaced,
-        canAdvance: deploymentComplete && unitsPlaced >= unitsToPlace
+    if (!currentPlayer || currentPlayer.id !== playerId) {
+      console.warn(`📋 ❌ Invalid player for phase advance:`, {
+        expectedPlayerId: currentPlayer?.id,
+        receivedPlayerId: playerId
       });
-      
-      if (deploymentComplete) {
-        if (unitsToPlace > 0 && unitsPlaced < unitsToPlace) {
-          console.log(`❌ Cannot advance - must place all units (${unitsPlaced}/${unitsToPlace})`);
-          return newState;
-        }
-        
-        // ✅ Reset placement counters when advancing from Phase 1
-        player.unitsToPlaceThisTurn = 0;
-        player.unitsPlacedThisTurn = 0;
-        console.log(`✅ ${player.name} completed deployment, resetting counters`);
-      } else if (!deploymentComplete) {
-        console.log(`❌ Cannot advance from Phase 1 without deployment completion flag`);
-        return newState;
-      }
-    }
-
-    // ✅ ADD PHASE-SPECIFIC SAFEGUARDS
-    if (newState.currentPhase === 2) {
-      // Build & Hire phase completion
-      if (!action.data?.phaseComplete) {
-        console.log('❌ Cannot advance from Phase 2 without phaseComplete flag');
-        return newState;
-      }
-      console.log(`✅ ${player.name} completed Build & Hire phase`);
+      return gameState;
     }
     
-    // ✅ Advance to next phase or next player
-    if (newState.currentPhase === 6) {
-      console.log(`✅ ${currentPlayer.name} completed all 6 phases`);
-      return RestOfThemManager.advanceToNextPlayer(newState);
-    } else {
-      newState.currentPhase = (newState.currentPhase + 1) as any;
-      const phaseInfo = GAME_CONFIG.PLAYER_PHASES[newState.currentPhase];
+    let newState = { ...gameState };
+    
+    switch (gameState.currentPhase) {
+      case 1: // Collect & Deploy
+        if (data?.deploymentComplete) {
+          console.log(`📋 ✅ Phase 1 completed - advancing to Phase 2`);
+          newState.currentPhase = 2;
+        } else {
+          console.log(`📋 ❌ Phase 1 not completed - missing deploymentComplete flag`);
+        }
+        break;
+        
+      case 2: // Build & Hire
+        if (data?.phaseComplete) {
+          console.log(`📋 ✅ Phase 2 completed - advancing to Phase 3`);
+          newState.currentPhase = 3;
+        } else {
+          console.log(`📋 ❌ Phase 2 not completed - missing phaseComplete flag`);
+        }
+        break;
+        
+      case 3: // Buy Cards
+        if (data?.phaseComplete) {
+          console.log(`📋 ✅ Phase 3 completed - advancing to Phase 4`);
+          newState.currentPhase = 4;
+        } else {
+          console.log(`📋 ❌ Phase 3 not completed - missing phaseComplete flag`);
+        }
+        break;
+        
+      case 4: // Play Cards
+        if (data?.phaseComplete) {
+          console.log(`📋 ✅ Phase 4 completed - advancing to Phase 5`);
+          newState.currentPhase = 5;
+        } else {
+          console.log(`📋 ❌ Phase 4 not completed - missing phaseComplete flag`);
+        }
+        break;
+        
+      case 5: // Invade 
+        if (data?.phaseComplete) {
+          console.log(`📋 ✅ Phase 5 completed - advancing to Phase 6`);
+          newState.currentPhase = 6;
+        } else {
+          console.log(`📋 ❌ Phase 5 not completed - missing phaseComplete flag`);
+        }
+        break;
       
-      console.log(`📋 ${currentPlayer.name} advanced to Phase ${newState.currentPhase}: ${phaseInfo?.name || 'Unknown Phase'}`);
+      case 6: // Fortify (last phase)
+        console.log(`📋 ✅ Phase 6 completed - advancing to next player`);
+        newState = this.advanceToNextMainGamePlayer(newState);
+        break;
     }
+    
+    console.log(`📋 📤 Phase advance result:`, {
+      oldPhase: gameState.currentPhase,
+      newPhase: newState.currentPhase,
+      oldPlayerIndex: gameState.currentPlayerIndex,
+      newPlayerIndex: newState.currentPlayerIndex
+    });
     
     return newState;
   }
@@ -424,141 +435,118 @@ export class RestOfThemManager {
   // ================================
   // COMBINED PURCHASE+PLACE SYSTEM
   // ================================
+  // ✅ Handler for purchasing and placing commander in one action
   static purchaseAndPlaceCommander(gameState: GameState, action: GameAction): GameState {
-    const { territoryId, commanderType, cost } = action.data;
-    const newState = { ...gameState };
+    const { playerId, data } = action;
+    const { territoryId, commanderType, cost } = data;
     
-    if (newState.status !== 'playing' || newState.currentPhase !== 2) {
-      console.log('❌ Cannot purchase and place commander - not in Build & Hire phase');
-      return newState;
+    const player = gameState.players.find(p => p.id === playerId);
+    const territory = gameState.territories[territoryId];
+    
+    if (!player || !territory) {
+      console.warn('Invalid player or territory for commander purchase');
+      return gameState;
     }
     
-    const territory = newState.territories[territoryId];
-    const player = newState.players.find(p => p.id === action.playerId);
-    const currentPlayer = newState.players[newState.currentPlayerIndex];
-    
-    if (!territory || !player || player.id !== currentPlayer.id) {
-      console.log('❌ Cannot purchase and place commander - invalid territory or player');
-      return newState;
-    }
-    
-    if (territory.ownerId !== action.playerId) {
-      console.log('❌ Cannot purchase and place commander - player does not own territory');
-      return newState;
-    }
-    
+    // Validate energy
     if (player.energy < cost) {
-      console.log(`❌ Cannot purchase and place commander - insufficient energy (${player.energy}/${cost})`);
-      return newState;
+      console.warn(`Player ${player.name} doesn't have enough energy (${player.energy} < ${cost})`);
+      return gameState;
+    }
+    
+    // Validate territory ownership
+    if (territory.ownerId !== playerId) {
+      console.warn(`Player ${player.name} doesn't control territory ${territoryId}`);
+      return gameState;
+    }
+    
+    // Validate commander placement
+    const commanderField = `${commanderType}Commander` as keyof Territory;
+    if (territory[commanderField]) {
+      console.warn(`Territory ${territoryId} already has a ${commanderType} commander`);
+      return gameState;
     }
     
     // Check if player already owns this commander type
     const alreadyOwnsCommander = player.territories.some(tId => {
-      const territory = newState.territories[tId];
-      switch (commanderType) {
-        case 'land': return territory?.landCommander === player.id;
-        case 'diplomat': return territory?.diplomatCommander === player.id;
-        case 'naval': return territory?.navalCommander === player.id;
-        case 'nuclear': return territory?.nuclearCommander === player.id;
-        default: return false;
-      }
+      const t = gameState.territories[tId];
+      return t && t[commanderField] === playerId;
     });
     
     if (alreadyOwnsCommander) {
-      console.log(`❌ Player already owns ${commanderType} commander`);
-      return newState;
+      console.warn(`Player ${player.name} already owns a ${commanderType} commander`);
+      return gameState;
     }
     
-    // Check if territory already has this commander type
-    switch (commanderType) {
-      case 'land':
-        if (territory.landCommander) {
-          console.log('❌ Territory already has a land commander');
-          return newState;
-        }
-        break;
-      case 'diplomat':
-        if (territory.diplomatCommander) {
-          console.log('❌ Territory already has a diplomat commander');
-          return newState;
-        }
-        break;
-      case 'naval':
-        if (territory.navalCommander) {
-          console.log('❌ Territory already has a naval commander');
-          return newState;
-        }
-        break;
-      case 'nuclear':
-        if (territory.nuclearCommander) {
-          console.log('❌ Territory already has a nuclear commander');
-          return newState;
-        }
-        break;
-    }
+    // ✅ All validations passed - execute purchase and placement
+    const newState = { ...gameState };
+    newState.players = gameState.players.map(p => 
+      p.id === playerId 
+        ? { ...p, energy: p.energy - cost }
+        : p
+    );
     
-    // ✅ ATOMIC OPERATION: Deduct energy AND place commander
-    player.energy -= cost;
+    newState.territories = {
+      ...gameState.territories,
+      [territoryId]: {
+        ...territory,
+        [commanderField]: playerId
+      }
+    };
     
-    switch (commanderType) {
-      case 'land':
-        territory.landCommander = action.playerId;
-        break;
-      case 'diplomat':
-        territory.diplomatCommander = action.playerId;
-        break;
-      case 'naval':
-        territory.navalCommander = action.playerId;
-        break;
-      case 'nuclear':
-        territory.nuclearCommander = action.playerId;
-        break;
-    }
-    
-    console.log(`💰📍 ${player.name} purchased and placed ${commanderType} commander on ${territory.name} for ${cost} energy (${player.energy} remaining)`);
+    console.log(`✅ Player ${player.name} purchased and placed ${commanderType} commander on ${territory.name} for ${cost} energy`);
     
     return newState;
   }
 
+  // ✅ Handler for purchasing and placing space base in one action
   static purchaseAndPlaceSpaceBase(gameState: GameState, action: GameAction): GameState {
-    const { territoryId, cost } = action.data;
-    const newState = { ...gameState };
+    const { playerId, data } = action;
+    const { territoryId, cost } = data;
     
-    if (newState.status !== 'playing' || newState.currentPhase !== 2) {
-      console.log('❌ Cannot purchase and place space base - not in Build & Hire phase');
-      return newState;
+    const player = gameState.players.find(p => p.id === playerId);
+    const territory = gameState.territories[territoryId];
+    
+    if (!player || !territory) {
+      console.warn('Invalid player or territory for space base purchase');
+      return gameState;
     }
     
-    const territory = newState.territories[territoryId];
-    const player = newState.players.find(p => p.id === action.playerId);
-    const currentPlayer = newState.players[newState.currentPlayerIndex];
-    
-    if (!territory || !player || player.id !== currentPlayer.id) {
-      console.log('❌ Cannot purchase and place space base - invalid territory or player');
-      return newState;
-    }
-    
-    if (territory.ownerId !== action.playerId) {
-      console.log('❌ Cannot purchase and place space base - player does not own territory');
-      return newState;
-    }
-    
+    // Validate energy
     if (player.energy < cost) {
-      console.log(`❌ Cannot purchase and place space base - insufficient energy (${player.energy}/${cost})`);
-      return newState;
+      console.warn(`Player ${player.name} doesn't have enough energy (${player.energy} < ${cost})`);
+      return gameState;
     }
     
-    // Check if territory already has a space base
+    // Validate territory ownership
+    if (territory.ownerId !== playerId) {
+      console.warn(`Player ${player.name} doesn't control territory ${territoryId}`);
+      return gameState;
+    }
+    
+    // Validate space base placement
     if (territory.spaceBase) {
-      console.log('❌ Territory already has a space base');
-      return newState;
+      console.warn(`Territory ${territoryId} already has a space base`);
+      return gameState;
     }
     
-    // ✅ ATOMIC OPERATION: Deduct energy AND place space base
-    player.energy -= cost;
-    territory.spaceBase = action.playerId;
+    // ✅ All validations passed - execute purchase and placement
+    const newState = { ...gameState };
+    newState.players = gameState.players.map(p => 
+      p.id === playerId 
+        ? { ...p, energy: p.energy - cost }
+        : p
+    );
     
-    console.log(`💰🏰 ${player.name} purchased and placed space base on ${territory.name} for ${cost} energy (${player.energy} remaining)`);
+    newState.territories = {
+      ...gameState.territories,
+      [territoryId]: {
+        ...territory,
+        spaceBase: playerId
+      }
+    };
+    
+    console.log(`✅ Player ${player.name} purchased and placed space base on ${territory.name} for ${cost} energy`);
     
     return newState;
   }

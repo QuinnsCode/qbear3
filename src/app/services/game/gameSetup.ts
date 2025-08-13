@@ -82,109 +82,94 @@ export function distributeTerritories(playerIds: string[], availableTerritories:
   return playerTerritories
 }
 
-export function createInitialPlayers(player1Id: string, player2Id: string): Player[] {
-  return [
-    {
-      id: player1Id,
-      name: 'Human Player',
-      color: 'blue',
-      cards: [
-        { id: 'land-commander-1', type: 'commander', name: 'Land Commander', data: { commanderType: 'land' } },
-        { id: 'diplomat-commander-1', type: 'commander', name: 'Diplomat Commander', data: { commanderType: 'diplomat' } }
-      ],
-      territories: [],
-      isActive: false,
-      remainingUnitsToPlace: GAME_CONFIG.PLAYER_STARTING_UNITS, // ✅ Use your existing name
-      energy: GAME_CONFIG.SETUP_STARTING_ENERGY // ✅ ONLY ADD THIS LINE
-    },
-    {
-      id: player2Id,
-      name: 'AI Player', 
-      color: 'red',
-      cards: [
-        { id: 'land-commander-2', type: 'commander', name: 'Land Commander', data: { commanderType: 'land' } },
-        { id: 'diplomat-commander-2', type: 'commander', name: 'Diplomat Commander', data: { commanderType: 'diplomat' } }
-      ],
-      territories: [],
-      isActive: false,
-      remainingUnitsToPlace: GAME_CONFIG.PLAYER_STARTING_UNITS, // ✅ Use your existing name
-      energy: GAME_CONFIG.SETUP_STARTING_ENERGY // ✅ ONLY ADD THIS LINE
-    },
-    {
-      id: 'npc-neutral',
-      name: 'Neutral NPC',
-      color: 'gray',
-      cards: [],
-      territories: [],
-      isActive: false,
-      remainingUnitsToPlace: 0,
-      energy: 0 // ✅ ONLY ADD THIS LINE
-    }
-  ]
-}
-
 export function setupNewGame(gameId: string, player1Id: string, player2Id: string, nukeCount: number = DEFAULT_NUKE_COUNT): GameState {
-  const landTerritories = TERRITORY_DATA.filter(territory => territory.id <= 41)
+  // 1. Only nuke LAND territories for player distribution
+  const landTerritories = TERRITORY_DATA.filter(territory => territory.type === 'land')
   
   const { remainingTerritories, nukedTerritoryIds, nukedTerritories } = nukeXTerritories(nukeCount, landTerritories)
   
+  // 2. Create players first
   const players = createInitialPlayers(player1Id, player2Id)
+  const allPlayerIds = players.map(p => p.id)
   
-  // Only human and AI players participate in territory distribution (not NPC)
-  const allPlayerIds = players.map(p => p.id) // Include NPC
-  const territoryDistribution = distributeTerritories(allPlayerIds, remainingTerritories) 
+  // 3. Distribute territories and assign to players
+  const territoryDistribution = distributeTerritories(allPlayerIds, remainingTerritories)
   
-  // Assign territories to players
+  // ✅ FIX: Actually assign territories to players
   players.forEach(player => {
     player.territories = territoryDistribution[player.id] || []
   })
   
-  // Create territories based on remaining territories
+  // 4. Create territories - LAND territories get owners, WATER territories stay neutral
   const territories: Record<string, Territory> = {}
   
+  // Add land territories (with owners)
   remainingTerritories.forEach(territoryData => {
     territories[territoryData.id.toString()] = {
       id: territoryData.id.toString(),
       name: territoryData.name,
-      ownerId: undefined,
-      machineCount: 1, // Start with 1 unit each
-      connections: territoryData.connections.map(id => id.toString())
+      type: territoryData.type,
+      ownerId: undefined, // Will be set below
+      machineCount: 1,
+      connections: territoryData.connections.map(id => id.toString()),
+      // ✅ ADD: Missing optional fields
+      landCommander: undefined,
+      diplomatCommander: undefined,
+      spaceBase: undefined,
+      navalCommander: undefined,
+      nuclearCommander: undefined,
+      modifiers: {}
     }
   })
   
-  // Set territory ownership and initial units
+  // Add water territories (neutral, no owner)
+  const waterTerritories = TERRITORY_DATA.filter(territory => territory.type === 'water')
+  waterTerritories.forEach(territoryData => {
+    territories[territoryData.id.toString()] = {
+      id: territoryData.id.toString(),
+      name: territoryData.name,
+      type: territoryData.type,
+      ownerId: undefined, // Stay neutral
+      machineCount: 0,    // No units
+      connections: territoryData.connections.map(id => id.toString()),
+      // ✅ ADD: Missing optional fields
+      landCommander: undefined,
+      diplomatCommander: undefined,
+      spaceBase: undefined,
+      navalCommander: undefined,
+      nuclearCommander: undefined,
+      modifiers: {}
+    }
+  })
+  
+  // ✅ FIX: Set ownership for land territories (now that players have territories assigned)
   Object.keys(territories).forEach(territoryId => {
     const territory = territories[territoryId]
-    
-    const owner = players.find(player => 
-      player.territories.includes(territoryId)
-    )
-    
-    if (owner) {
-      territory.ownerId = owner.id
-      
-      if (owner.id === 'npc-neutral') {
-        territory.machineCount = NPC_UNITS_PER_TERRITORY
-      } else {
-        territory.machineCount = 1 // Players start with 1 and will place more during setup
+    if (territory.type === 'land') {
+      const owner = players.find(player => 
+        player.territories.includes(territoryId)
+      )
+      if (owner) {
+        territory.ownerId = owner.id
+        territory.machineCount = owner.id === 'npc-neutral' ? NPC_UNITS_PER_TERRITORY : 1
       }
     }
   })
+  
   // Create turn order (AI first, then Human)
   const activeTurnOrder = createTurnOrder(players)
-  // Create game state - start with first human/AI player active for setup
   
+  // Create game state - start with first human/AI player active for setup
   const gameState: GameState = {
     id: gameId,
     status: 'setup',
     setupPhase: 'units',
     currentYear: 1,
-    currentPlayerIndex: 0, // Start with first player
-    // ✅ Add new turn cycle properties
-    currentPhase: 2,
+    currentPlayerIndex: 0,
+    currentPhase: 1, // ✅ Change from 2 to 1 (should start at phase 1)
     activeTurnOrder,
     players,
-    turnOrder: [player1Id, player2Id], // Only human players in turn order
+    turnOrder: [player1Id, player2Id],
     territories,
     actions: [{
       id: 'game-start',
@@ -200,9 +185,12 @@ export function setupNewGame(gameId: string, player1Id: string, player2Id: strin
     currentActionIndex: 0,
     setupDeployPhase: 0,
     createdAt: new Date(),
-    updatedAt: new Date()
+    updatedAt: new Date(),
+    
+    // ✅ ADD MISSING BIDDING FIELDS:
+    bidding: undefined,
+    yearlyTurnOrders: {}
   }
-  
   
   // Set first player as active for setup
   gameState.players[0].isActive = true
@@ -210,8 +198,78 @@ export function setupNewGame(gameId: string, player1Id: string, player2Id: strin
   console.log(`🎮 Game initialized with ${remainingTerritories.length} territories (${nukeCount} nuked)`)
   console.log(`💥 Nuked territories:`, nukedTerritories.map(t => t.name).join(', '))
   console.log(`🎲 Setup phase: Players need to place ${PLAYER_STARTING_UNITS} units each`)
+  console.log(`🎯 Territory distribution:`, territoryDistribution)
   
   return gameState
+}
+
+// ✅ AND UPDATE: createInitialPlayers function to include all required fields
+export function createInitialPlayers(player1Id: string, player2Id: string): Player[] {
+  return [
+    {
+      id: player1Id,
+      name: 'Human Player',
+      color: 'blue',
+      cards: [
+        { id: 'land-commander-1', type: 'commander', name: 'Land Commander', data: { commanderType: 'land' } },
+        { id: 'diplomat-commander-1', type: 'commander', name: 'Diplomat Commander', data: { commanderType: 'diplomat' } }
+      ],
+      territories: [],
+      isActive: false,
+      energy: 5, // Use hardcoded value instead of GAME_CONFIG
+      
+      // ✅ All required fields:
+      pendingDecision: undefined,
+      aiVibe: undefined,
+      remainingUnitsToPlace: 12, // Use hardcoded value instead of GAME_CONFIG
+      unitsPlacedThisTurn: 0,
+      unitsToPlaceThisTurn: 0,
+      currentBid: undefined,
+      totalEnergySpentOnBids: 0,
+      purchasedItems: []
+    },
+    {
+      id: player2Id,
+      name: 'AI Player', 
+      color: 'red',
+      cards: [
+        { id: 'land-commander-2', type: 'commander', name: 'Land Commander', data: { commanderType: 'land' } },
+        { id: 'diplomat-commander-2', type: 'commander', name: 'Diplomat Commander', data: { commanderType: 'diplomat' } }
+      ],
+      territories: [],
+      isActive: false,
+      energy: 5, // Use hardcoded value
+      
+      // ✅ All required fields:
+      pendingDecision: undefined,
+      aiVibe: 'efficient',
+      remainingUnitsToPlace: 12, // Use hardcoded value
+      unitsPlacedThisTurn: 0,
+      unitsToPlaceThisTurn: 0,
+      currentBid: undefined,
+      totalEnergySpentOnBids: 0,
+      purchasedItems: []
+    },
+    {
+      id: 'npc-neutral',
+      name: 'Neutral NPC',
+      color: 'gray',
+      cards: [],
+      territories: [],
+      isActive: false,
+      energy: 0,
+      
+      // ✅ All required fields:
+      pendingDecision: undefined,
+      aiVibe: undefined,
+      remainingUnitsToPlace: 0,
+      unitsPlacedThisTurn: 0,
+      unitsToPlaceThisTurn: 0,
+      currentBid: undefined,
+      totalEnergySpentOnBids: 0,
+      purchasedItems: []
+    }
+  ]
 }
 
 export function createTurnOrder(players: Player[]): string[] {
