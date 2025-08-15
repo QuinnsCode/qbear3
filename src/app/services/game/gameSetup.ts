@@ -221,7 +221,7 @@ export function createInitialPlayers(player1Id: string, player2Id: string): Play
       // ✅ All required fields:
       pendingDecision: undefined,
       aiVibe: undefined,
-      remainingUnitsToPlace: 12, // Use hardcoded value instead of GAME_CONFIG
+      remainingUnitsToPlace: PLAYER_STARTING_UNITS, // Use hardcoded value instead of GAME_CONFIG
       unitsPlacedThisTurn: 0,
       unitsToPlaceThisTurn: 0,
       currentBid: undefined,
@@ -243,7 +243,7 @@ export function createInitialPlayers(player1Id: string, player2Id: string): Play
       // ✅ All required fields:
       pendingDecision: undefined,
       aiVibe: 'efficient',
-      remainingUnitsToPlace: 12, // Use hardcoded value
+      remainingUnitsToPlace: PLAYER_STARTING_UNITS, // Use hardcoded value
       unitsPlacedThisTurn: 0,
       unitsToPlaceThisTurn: 0,
       currentBid: undefined,

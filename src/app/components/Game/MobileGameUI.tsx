@@ -7,12 +7,13 @@ import {
   startYearTurns,
   purchaseAndPlaceCommander,
   purchaseAndPlaceSpaceBase,
-  advanceFromBuildHire
+  advanceFromBuildHire,
 } from '@/app/serverActions/gameActions';
 import { useState } from 'react';
 import { useGameSync } from '@/app/hooks/useGameSync';
 import BiddingOverlay from '@/app/components/Game/GameBidding/BiddingOverlay';
 import CollectDeployOverlay from '@/app/components/Game/GamePhases/CollectDeployOverlay';
+import BuyCardsOverlay from '@/app/components/Game/GamePhases/BuyCardsOverlay';
 import { 
   Settings, 
   Sword, 
@@ -40,7 +41,9 @@ import {
   placeCommander,
   placeSpaceBase,
   collectAndStartDeploy,
-  confirmDeploymentComplete
+  confirmDeploymentComplete,
+  purchaseCards,
+  advanceFromBuyCards
 } from '@/app/serverActions/gameActions';
 import { GameActionButton } from '@/app/components/Game/GameUtils/GameActionButton';
 import { GameStats } from '@/app/components/Game/GameUtils/GameStats';
@@ -678,6 +681,33 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   }
 
+  const handlePurchaseCards = async (selectedCards) => {
+    try {
+      console.log('🛒 Purchasing cards:', selectedCards);
+      await purchaseCards(gameId, currentUserId, selectedCards);
+      console.log('✅ Cards purchased - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Card purchase failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to purchase cards: ${errorMessage}`);
+      throw error;
+    }
+  };
+
+  const handleAdvanceFromBuyCards = async () => {
+    try {
+      console.log('🎯 Advancing from Buy Cards to Play Cards phase');
+      await advanceFromBuyCards(gameId, currentUserId);
+      console.log('✅ Phase advance completed - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Phase advance failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to advance phase: ${errorMessage}`);
+      throw error;
+    }
+  };
+
+
   return (
     <div className="h-screen w-full bg-gray-900 flex flex-col relative overflow-hidden">
       {/* ✅ FIXED: Connection Status Indicator - Higher z-index, better positioning */}
@@ -912,7 +942,11 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
             <GameActionButton
               icon={Plus}
               label="Deploy"
-              active={interactionMode === 'place'}
+              active={
+                // Auto-active if it's phase 1 and my turn, OR manually selected
+                (gameState?.currentPhase === 1 && isMyTurn) || 
+                interactionMode === 'place'
+              }
               disabled={!isMyTurn || gameState?.currentPhase !== 1}
               onClick={() => handleModeChange('place')}
               color="green"
@@ -1110,6 +1144,15 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           onStartPlacement={handleStartBuildHirePlacement}
           onCancelPlacement={handleCancelBuildHirePlacement}
           placementMode={buildHirePlacementMode}
+        />
+      )}
+
+      {gameState?.status === 'playing' && gameState?.currentPhase === 3 && (
+        <BuyCardsOverlay
+          gameState={gameState}
+          currentUserId={currentUserId}
+          onPurchaseCards={handlePurchaseCards}
+          onAdvanceToNextPhase={handleAdvanceFromBuyCards}
         />
       )}
 

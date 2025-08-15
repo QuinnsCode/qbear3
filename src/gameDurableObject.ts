@@ -427,100 +427,88 @@ export class GameStateDO extends DurableObject {
   }
 
   private async handleMainGamePhaseProgression(action: any): Promise<void> {
-    if (!this.gameState || this.gameState.status !== 'playing') return
+    if (!this.gameState || this.gameState.status !== 'playing') return;
 
     // ✅ FIXED: Use AiManager
     this.aiManager.clearAllTimeouts();
 
-    const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex]
+    const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
     
-    console.log(`📍 Main game progression - Turn: ${this.gameState.currentYear}, Phase: ${this.gameState.currentPhase}, Player: ${currentPlayer.name}, Action: ${action.type}`)
+    console.log(`📍 Main game progression - Turn: ${this.gameState.currentYear}, Phase: ${this.gameState.currentPhase}, Player: ${currentPlayer.name}, Action: ${action.type}`);
     
     if (action.type === 'start_year_turns') {
-      console.log(`🎮 Year turns just started - checking first player`)
+      console.log(`🎮 Year turns just started - checking first player`);
       if (globalAIController.isAIPlayer(currentPlayer.id)) {
-        console.log(`🤖 First player is AI - scheduling turn`)
+        console.log(`🤖 First player is AI - scheduling turn`);
         setTimeout(() => {
           // ✅ FIXED: Use AiManager
           this.aiManager.doAIMainGameAction()
         }, this.AI_TURN_SPEED_MS * 2)
       } else {
-        console.log(`👤 First player is human - they should see CollectDeployOverlay`)
+        console.log(`👤 First player is human - they should see CollectDeployOverlay`);
       }
-      return
+      return;
     }
 
-    let phaseCompleted = false
+    let phaseCompleted = false;
     
-    switch (this.gameState.currentPhase) {
-      case 1: // Collect & Deploy
-        if (action.type === 'advance_player_phase' && action.data?.deploymentComplete) {
-          phaseCompleted = true
-        }
-        break
-      case 2: // Build & Hire  
-        if (action.type === 'advance_player_phase' && action.data?.phaseComplete) {
-          phaseCompleted = true
-        }
-        break
-      case 3: // Buy Cards
-        if (action.type === 'advance_player_phase') {
-          phaseCompleted = true
-        }
-        break
-      case 4: // Play Cards
-        if (action.type === 'advance_player_phase') {
-          phaseCompleted = true
-        }
-        break
-      case 5: // Invade
-        if (action.type === 'advance_player_phase') {
-          phaseCompleted = true
-        }
-        break
-      case 6: // Fortify
-        if (action.type === 'advance_player_phase') {
-          phaseCompleted = true
-        }
-        break
+    // ✅ SIMPLIFIED: Check for phase completion based on action data
+    if (action.type === 'advance_player_phase') {
+      const hasPhaseComplete = action.data?.phaseComplete === true;
+      const hasDeploymentComplete = action.data?.deploymentComplete === true;
+      
+      switch (this.gameState.currentPhase) {
+        case 1: // Collect & Deploy
+          if (hasDeploymentComplete || hasPhaseComplete) {
+            phaseCompleted = true;
+          }
+          break;
+        case 2: // Build & Hire  
+          if (hasPhaseComplete) {
+            phaseCompleted = true;
+          }
+          break;
+        case 3: // Buy Cards
+        case 4: // Play Cards
+        case 5: // Invade
+        case 6: // Fortify
+          if (hasPhaseComplete) {
+            phaseCompleted = true;
+          }
+          break;
+      }
     }
     
     if (phaseCompleted) {
-      console.log(`✅ ${currentPlayer.name} completed Phase ${this.gameState.currentPhase}`)
+      console.log(`✅ ${currentPlayer.name} completed Phase ${this.gameState.currentPhase}`);
       
       if (this.gameState.currentPhase === 6) {
-        console.log(`🎯 ${currentPlayer.name} completed all phases - advancing to next player`)
-        this.gameState = RestOfThemManager.advanceToNextMainGamePlayer(this.gameState)
+        console.log(`🎯 ${currentPlayer.name} completed all phases - advancing to next player`);
+        this.gameState = RestOfThemManager.advanceToNextMainGamePlayer(this.gameState);
       } else {
-        this.gameState.currentPhase = (this.gameState.currentPhase + 1) as any
-        const phaseInfo = GAME_CONFIG.PLAYER_PHASES[this.gameState.currentPhase]
-        console.log(`📋 ${currentPlayer.name} advanced to Phase ${this.gameState.currentPhase}: ${phaseInfo?.name || 'Unknown Phase'}`)
+        // ❌ REMOVE THIS - RestOfThemManager.advancePlayerPhase already did it!
+        // const nextPhase = (this.gameState.currentPhase + 1) as any;
+        // this.gameState.currentPhase = nextPhase;
+        // console.log(`📋 ${currentPlayer.name} advanced to Phase ${nextPhase}`);
       }
       
-      console.log(`📡 Broadcasting state update after main game progression`)
-      this.wsManager.broadcast({ type: 'state_update', state: this.gameState })
+      await this.persist();
+      console.log(`📡 Broadcasting state update after main game progression`);
+      this.wsManager.broadcast({ type: 'state_update', state: this.gameState });
       
-      const updatedCurrentPlayer = this.gameState.players[this.gameState.currentPlayerIndex]
+      const updatedCurrentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
       if (updatedCurrentPlayer && globalAIController.isAIPlayer(updatedCurrentPlayer.id)) {
-        console.log(`🤖 Scheduling AI turn for ${updatedCurrentPlayer.name} in Phase ${this.gameState.currentPhase}`)
+        console.log(`🤖 Scheduling AI turn for ${updatedCurrentPlayer.name} in Phase ${this.gameState.currentPhase}`);
         
-        // ✅ FIXED: Use AiManager
-        this.aiManager.scheduleAIMainGameAction(updatedCurrentPlayer.id);
+        // ✅ FIXED: Use AiManager with delay to prevent immediate recursion
+        setTimeout(() => {
+          this.aiManager.doAIMainGameAction();
+        }, this.AI_TURN_SPEED_MS);
       } else if (updatedCurrentPlayer) {
-        console.log(`👤 Next phase for human: ${updatedCurrentPlayer.name} - Phase ${this.gameState.currentPhase}`)
-        
-        if (this.gameState.currentPhase === 1) {
-          console.log(`👤 Human should see CollectDeployOverlay`)
-        } else if (this.gameState.currentPhase === 2) {
-          console.log(`👤 Human should see BuildHireOverlay`)
-        } else if (this.gameState.currentPhase === 3) {
-          console.log(`👤 Human should see Buy Cards UI (not implemented yet)`)
-        } else {
-          console.log(`👤 Human should see Phase ${this.gameState.currentPhase} UI`)
-        }
+        console.log(`👤 Next phase for human: ${updatedCurrentPlayer.name} - Phase ${this.gameState.currentPhase}`);
       }
     } else {
-      console.log(`⏳ ${currentPlayer.name} action ${action.type} did not complete Phase ${this.gameState.currentPhase}`)
+      console.log(`⏳ ${currentPlayer.name} action ${action.type} did not complete Phase ${this.gameState.currentPhase}`);
     }
   }
 
@@ -582,7 +570,12 @@ export class GameStateDO extends DurableObject {
         return GameUtils.spendEnergy(gameState, action)
       case 'advance_player_phase':
         console.log(`🎬 📋 ADVANCE_PLAYER_PHASE received:`, action.data);
-        return RestOfThemManager.advancePlayerPhase(gameState, action);
+        try {
+          return RestOfThemManager.advancePlayerPhase(gameState, action);
+        } catch (error) {
+          console.error('❌ RestOfThemManager.advancePlayerPhase failed:', error);
+          throw error; // Re-throw to see the actual error
+        }
       case 'start_main_game':
         return RestOfThemManager.startMainGame(gameState)
       case 'attack_territory':
@@ -601,10 +594,8 @@ export class GameStateDO extends DurableObject {
         return RestOfThemManager.purchaseAndPlaceCommander(gameState, action)
       case 'purchase_and_place_space_base':
         return RestOfThemManager.purchaseAndPlaceSpaceBase(gameState, action)
-      case 'purchase_and_place_commander':
-        return RestOfThemManager.purchaseAndPlaceCommander(gameState, action)
-      case 'purchase_and_place_space_base':
-        return RestOfThemManager.purchaseAndPlaceSpaceBase(gameState, action)
+      case 'purchase_cards':
+        return RestOfThemManager.purchaseCards(gameState, action);
       default:
         console.warn(`Unknown action type: ${action.type}`)
         return gameState

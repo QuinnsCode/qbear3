@@ -87,6 +87,90 @@ export class RestOfThemManager {
     return newState;
   }
 
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // PURCHASE CARDS
+  // RestOfThemManager.ts - Add this method
+  static purchaseCards(gameState: GameState, action: GameAction): GameState {
+    const { playerId, data } = action;
+    const { selectedCards } = data;
+    
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player) {
+      console.error('Player not found for card purchase');
+      return gameState;
+    }
+    
+    // ✅ FIXED: Calculate total cost (1 energy per card)
+    const totalCost = selectedCards.reduce((sum: number, item: any) => 
+      sum + item.quantity, 0  // Each card costs 1 energy to purchase
+    );
+    
+    // Validate player has enough energy
+    if (player.energy < totalCost) {
+      console.error(`Player ${player.name} cannot afford cards (cost: ${totalCost}, energy: ${player.energy})`);
+      return gameState;
+    }
+    
+    console.log(`💳 ${player.name} purchasing ${totalCost} cards for ${totalCost} energy`);
+    
+    // Create new state
+    const newState = { ...gameState };
+    newState.players = gameState.players.map(p => {
+      if (p.id === playerId) {
+        const newCards = [...p.cards];
+        
+        // ✅ FIXED: Add random cards from each commander type
+        selectedCards.forEach((item: any) => {
+          const { commanderType, quantity } = item;
+          
+          for (let i = 0; i < quantity; i++) {
+            // Get a random card from this commander type
+            const randomCard = this.getRandomCardFromCommanderType(commanderType);
+            
+            if (randomCard) {
+              newCards.push({
+                id: crypto.randomUUID(),
+                type: 'commander',
+                name: randomCard.cardTitle,
+                data: {
+                  cost: randomCard.cardCost,
+                  commanderType: randomCard.cardType,
+                  text: randomCard.cardText,
+                  phase: randomCard.cardPhase
+                }
+              });
+            }
+          }
+        });
+        
+        return {
+          ...p,
+          energy: p.energy - totalCost,
+          cards: newCards
+        };
+      }
+      return p;
+    });
+    
+    console.log(`✅ ${player.name} purchased cards successfully. New energy: ${player.energy - totalCost}`);
+    return newState;
+  }
+
+  // ✅ ADD THIS HELPER FUNCTION:
+  static getRandomCardFromCommanderType(commanderType: string) {
+    // You'll need to import RAW_CARD_DATA or have it available
+    const commanderCards = RAW_CARD_DATA.filter(card => card.cardType === commanderType);
+    
+    if (commanderCards.length === 0) {
+      console.warn(`No cards found for commander type: ${commanderType}`);
+      return null;
+    }
+    
+    // Get random card
+    const randomIndex = Math.floor(Math.random() * commanderCards.length);
+    return commanderCards[randomIndex];
+  }
+
   // ================================
   // UTILITY METHODS
   // ================================

@@ -915,3 +915,68 @@ export async function purchaseAndPlaceSpaceBase(
     throw new Error(`Failed to purchase and place space base: ${error.message}`);
   }
 }
+
+/**
+ * Purchase cards from commander decks (Phase 3)
+ * selectedCards: Array<{ commanderType: string, quantity: number }>
+ */
+export async function purchaseCards(
+  gameId: string,
+  playerId: string,
+  selectedCards: Array<{ commanderType: string, quantity: number }>
+): Promise<GameState> {
+  try {
+    console.log(`🛒📋 Purchasing cards:`, selectedCards);
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'purchase_cards',
+      playerId,
+      data: { selectedCards }
+    });
+
+    console.log('✅ Cards purchased successfully:', result);
+    
+    // Trigger realtime update
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Card purchase error:', error);
+    throw new Error(`Failed to purchase cards: ${error.message}`);
+  }
+}
+
+/**
+ * Advance from Buy Cards phase to Play Cards phase
+ */
+export async function advanceFromBuyCards(
+  gameId: string,
+  playerId: string
+): Promise<GameState> {
+  try {
+    console.log('🎯 Advancing from Buy Cards to Play Cards phase');
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'advance_player_phase',
+      playerId,
+      data: { phaseComplete: true }
+    });
+
+    console.log('✅ Phase advance successful:', result);
+    
+    // Trigger realtime update
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Phase advance error:', error);
+    throw new Error(`Failed to advance phase: ${error.message}`);
+  }
+}
+

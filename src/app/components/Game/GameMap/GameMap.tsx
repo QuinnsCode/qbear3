@@ -1,4 +1,4 @@
-// Enhanced GameMap.tsx - WITH WATER TERRITORY OPACITY
+// Enhanced GameMap.tsx - FOCUSED ON CONNECTION LINES & SHIMMER EFFECTS
 'use client'
 
 import { useState } from 'react';
@@ -46,6 +46,11 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
     }
     // Land territories: always full opacity
     return 1.0;
+  };
+
+  // ✅ NEW: Check if connection should be highlighted
+  const isConnectionHighlighted = (territoryId1, territoryId2) => {
+    return selectedTerritory === territoryId1 || selectedTerritory === territoryId2;
   };
 
   // Get all commanders and bases on a territory
@@ -306,27 +311,84 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
         onTouchEnd={handleTouchEnd}
         style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
       >
-        {/* Territory connections */}
+        {/* ✨ ENHANCED: SVG Definitions for shimmer effects */}
+        <defs>
+          {/* Shimmer gradient for highlighted connections */}
+          <linearGradient id="shimmerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(59, 130, 246, 0.2)">
+              <animate attributeName="stop-opacity" values="0.2;0.8;0.2" dur="2s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="50%" stopColor="rgba(59, 130, 246, 0.8)">
+              <animate attributeName="stop-opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="100%" stopColor="rgba(59, 130, 246, 0.2)">
+              <animate attributeName="stop-opacity" values="0.2;0.8;0.2" dur="2s" repeatCount="indefinite"/>
+            </stop>
+          </linearGradient>
+          
+          {/* Tripwire effect gradient */}
+          <linearGradient id="tripwireGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(168, 85, 247, 0.3)">
+              <animate attributeName="stop-opacity" values="0.3;0.9;0.3" dur="1.5s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="25%" stopColor="rgba(59, 130, 246, 0.5)">
+              <animate attributeName="stop-opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="75%" stopColor="rgba(34, 197, 94, 0.5)">
+              <animate attributeName="stop-opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="100%" stopColor="rgba(168, 85, 247, 0.3)">
+              <animate attributeName="stop-opacity" values="0.3;0.9;0.3" dur="1.5s" repeatCount="indefinite"/>
+            </stop>
+          </linearGradient>
+        </defs>
+
+        {/* ✨ ENHANCED: Territory connections with much lighter default opacity and shimmer effects */}
         {Object.values(gameState.territories).map(territory => 
           territory.connections.map(connId => {
             const fromPos = TERRITORY_POSITIONS[territory.id];
             const toPos = TERRITORY_POSITIONS[connId];
             if (fromPos && toPos && parseInt(territory.id) < parseInt(connId)) {
+              const isHighlighted = isConnectionHighlighted(territory.id, connId);
+              
               return (
-                <line
-                  key={`${territory.id}-${connId}`}
-                  x1={fromPos.x} y1={fromPos.y}
-                  x2={toPos.x} y2={toPos.y}
-                  stroke="rgba(0,0,0,0.2)"
-                  strokeWidth="2"
-                />
+                <g key={`${territory.id}-${connId}`}>
+                  {/* Animated background line for highlighted connections */}
+                  {isHighlighted && (
+                    <line
+                      x1={fromPos.x} y1={fromPos.y}
+                      x2={toPos.x} y2={toPos.y}
+                      stroke="url(#tripwireGradient)"
+                      strokeWidth="3"
+                      opacity="0.7"
+                      className="animate-pulse"
+                      style={{
+                        filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.6))'
+                      }}
+                    />
+                  )}
+                  
+                  {/* Main connection line - MUCH LIGHTER than your original */}
+                  <line
+                    x1={fromPos.x} y1={fromPos.y}
+                    x2={toPos.x} y2={toPos.y}
+                    stroke={isHighlighted ? "rgba(59, 130, 246, 0.5)" : "rgba(156, 163, 175, 0.25)"}
+                    strokeWidth={isHighlighted ? "2" : "1"}
+                    strokeDasharray={isHighlighted ? "4,4" : "none"}
+                    opacity={isHighlighted ? "0.8" : "0.6"}
+                    className="transition-all duration-300"
+                    style={{
+                      filter: isHighlighted ? 'drop-shadow(0 0 2px rgba(59, 130, 246, 0.4))' : 'none'
+                    }}
+                  />
+                </g>
               );
             }
             return null;
           })
         )}
 
-        {/* Territories */}
+        {/* Territories - Enhanced with better visual feedback */}
         {Object.values(gameState.territories).map(territory => {
           const position = TERRITORY_POSITIONS[territory.id];
           if (!position) return null;
@@ -339,24 +401,45 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
           
           return (
             <g key={territory.id} opacity={territoryOpacity}>
+              {/* ✨ Enhanced selection glow effect */}
+              {isSelected && (
+                <circle
+                  cx={position.x} cy={position.y}
+                  r={32}
+                  fill="none"
+                  stroke="rgba(59, 130, 246, 0.4)"
+                  strokeWidth="3"
+                  className="animate-pulse"
+                  style={{
+                    filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))'
+                  }}
+                />
+              )}
+              
               {/* Main territory circle */}
               <circle
                 cx={position.x} cy={position.y}
                 r={isSelected ? 24 : 20}
                 fill={nodeColor}
-                stroke={isSelected ? '#000' : (isWater ? '#0ea5e9' : '#fff')}
+                stroke={isSelected ? '#1d4ed8' : (isWater ? '#0ea5e9' : '#fff')}
                 strokeWidth={isSelected ? 3 : 2}
-                className="cursor-pointer transition-all duration-200 hover:opacity-80"
+                className="cursor-pointer transition-all duration-200 hover:opacity-90"
                 onClick={(e) => handleTerritoryClick(territory.id, e)}
-                style={{ cursor: isPanning ? 'grabbing' : 'pointer' }}
+                style={{ 
+                  cursor: isPanning ? 'grabbing' : 'pointer',
+                  filter: isSelected ? 'drop-shadow(0 0 6px rgba(29, 78, 216, 0.8))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                }}
               />
               
-              {/* Unit count */}
+              {/* Unit count with enhanced text shadow */}
               <text
                 x={position.x} y={position.y + 4}
                 textAnchor="middle"
                 className="text-white text-sm font-bold pointer-events-none select-none"
-                style={{ fontSize: '12px' }}
+                style={{ 
+                  fontSize: '12px',
+                  filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.8))'
+                }}
               >
                 {territory.machineCount}
               </text>
@@ -382,6 +465,9 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
                           stroke={extra.color}
                           strokeWidth="2"
                           className="pointer-events-none"
+                          style={{
+                            filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.3))'
+                          }}
                         />
                         
                         {/* Commander/Base symbol */}
@@ -392,7 +478,8 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
                           className="pointer-events-none select-none"
                           style={{ 
                             fontSize: '10px',
-                            fill: extra.color
+                            fill: extra.color,
+                            filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.5))'
                           }}
                         >
                           {extra.symbol}
@@ -422,7 +509,7 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
               Units: {gameState.territories[selectedTerritory]?.machineCount}
             </p>
             <p className="text-gray-600">
-              Owner: {gameState.players.find(p => p.id === gameState.territories[selectedTerritory]?.ownerId)?.name}
+              Owner: {gameState.players.find(p => p.id === gameState.territories[selectedTerritory]?.ownerId)?.name || 'Neutral'}
             </p>
             
             {/* Show commanders and bases */}

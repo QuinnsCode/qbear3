@@ -1,7 +1,6 @@
-// src/app/services/game/gameFunctions/ai/AiManager.ts
+// src/app/services/game/gameFunctions/ai/AiManager.ts - CLEANED VERSION
 import type { GameState, Player, Territory, CommanderType, PurchaseStrategy } from '@/app/lib/GameState';
 import { globalAIController } from '@/app/services/game/ADai';
-
 
 export class AiManager {
   private aiTurnTimeouts = new Map<string, any>();
@@ -29,7 +28,6 @@ export class AiManager {
     const gameState = this.getGameState();
     if (!gameState) return;
     
-    // ✅ CRITICAL SAFEGUARD: Don't run setup AI if no longer in setup
     if (gameState.status !== 'setup') {
       console.log(`🤖 SAFEGUARD: Attempted to run setup AI but game status is '${gameState.status}' - ABORTING`);
       return;
@@ -38,12 +36,10 @@ export class AiManager {
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     if (!currentPlayer || !globalAIController.isAIPlayer(currentPlayer.id)) return;
     
-    // ✅ FIXED: Clear any existing timeout for this player to prevent overlaps
     this.clearPlayerTimeout(currentPlayer.id);
     
     console.log(`🤖 AI Setup Action - Status: ${gameState.status}, Phase: ${gameState.setupPhase}, Player: ${currentPlayer.name}`);
     
-    // ✅ FIXED: Actually execute the setup action based on phase
     switch (gameState.setupPhase) {
       case 'units':
         this.doAISetupUnits(currentPlayer);
@@ -66,7 +62,6 @@ export class AiManager {
 
     console.log(`🤖 AI ${player.name} placing units in setup phase`);
     
-    // Place 3 units (setup requirement)
     let unitsPlaced = 0;
     const maxUnits = 3;
     
@@ -76,7 +71,6 @@ export class AiManager {
       const currentGameState = this.getGameState();
       if (!currentGameState || currentGameState.status !== 'setup') return;
       
-      // Pick random territory owned by this player
       const playerTerritories = player.territories.filter(tId => 
         currentGameState.territories[tId]?.ownerId === player.id
       );
@@ -117,7 +111,6 @@ export class AiManager {
       const currentGameState = this.getGameState();
       if (!currentGameState || currentGameState.status !== 'setup') return;
       
-      // Pick random territory owned by this player
       const playerTerritories = player.territories.filter(tId => 
         currentGameState.territories[tId]?.ownerId === player.id
       );
@@ -151,7 +144,6 @@ export class AiManager {
       const currentGameState = this.getGameState();
       if (!currentGameState || currentGameState.status !== 'setup') return;
       
-      // Pick random territory owned by this player
       const playerTerritories = player.territories.filter(tId => 
         currentGameState.territories[tId]?.ownerId === player.id
       );
@@ -203,7 +195,6 @@ export class AiManager {
     
     console.log(`🤖 AI ${currentPlayer.name} doing Collect & Deploy phase`);
     
-    // ✅ Calculate fresh values for AI turn
     const energyIncome = this.calculateTurnIncome(currentPlayer, gameState);
     const unitsToPlace = this.calculateUnitsToPlace(currentPlayer, gameState);
     
@@ -213,7 +204,11 @@ export class AiManager {
       const currentGameState = this.getGameState();
       if (!currentGameState || currentGameState.status !== 'playing') return;
       
-      // ✅ STEP 1: Collect energy and set up deployment
+      if (currentGameState.currentPhase !== 1) {
+        console.log(`🤖 ❌ Not in phase 1 anymore (phase ${currentGameState.currentPhase}), aborting collect & deploy`);
+        return;
+      }
+      
       console.log(`🤖 AI collecting energy and starting deployment`);
       await this.applyAction({
         type: 'collect_energy',
@@ -221,16 +216,14 @@ export class AiManager {
         data: { amount: energyIncome, unitsToPlace }
       });
       
-      // ✅ STEP 2: Start unit placement sequence
       this.doAIUnitPlacement(currentPlayer.id, unitsToPlace);
       
     }, this.AI_TURN_SPEED_MS);
   }
 
   private calculateUnitsToPlace(player: Player, gameState: GameState): number {
-    const baseUnits = this.calculateTurnIncome(player, gameState); // Same as energy income
+    const baseUnits = this.calculateTurnIncome(player, gameState);
     
-    // ✅ Count space bases owned by this player
     const spaceBaseBonusUnits = player.territories.filter(tId => {
       const territory = gameState.territories[tId];
       return territory?.spaceBase === player.id;
@@ -257,10 +250,14 @@ export class AiManager {
         return;
       }
       
+      if (currentGameState.currentPhase !== 1) {
+        console.log(`🤖 ❌ Phase changed during placement (now ${currentGameState.currentPhase}), stopping`);
+        return;
+      }
+      
       if (unitsPlaced >= totalUnitsToPlace) {
-        // ✅ DEBUG: All units placed - this is the critical moment
         console.log(`🤖 ✅ ALL UNITS PLACED (${unitsPlaced}/${totalUnitsToPlace})`);
-        console.log(`🤖 📤 Sending advance_player_phase action...`);
+        console.log(`🤖 📤 Advancing to next phase...`);
         
         setTimeout(async () => {
           const finalGameState = this.getGameState();
@@ -270,14 +267,14 @@ export class AiManager {
             player: finalGameState?.players[finalGameState?.currentPlayerIndex]?.name
           });
           
-          if (finalGameState?.status === 'playing') {
+          if (finalGameState?.status === 'playing' && finalGameState?.currentPhase === 1) {
             try {
-              console.log(`🤖 📨 SENDING: advance_player_phase with deploymentComplete: true`);
+              console.log(`🤖 📨 SENDING: advance_player_phase for phase completion`);
               
               await this.applyAction({
                 type: 'advance_player_phase',
                 playerId: player.id,
-                data: { deploymentComplete: true }
+                data: { deploymentComplete: true, phaseComplete: true }
               });
               
               console.log(`🤖 ✅ advance_player_phase action sent successfully`);
@@ -286,13 +283,15 @@ export class AiManager {
               console.error(`🤖 ❌ ERROR sending advance_player_phase:`, error);
             }
           } else {
-            console.log(`🤖 ❌ Game state invalid for advance:`, finalGameState?.status);
+            console.log(`🤖 ❌ Game state invalid for advance:`, {
+              status: finalGameState?.status,
+              phase: finalGameState?.currentPhase
+            });
           }
         }, this.AI_TURN_SPEED_MS);
         return;
       }
       
-      // Place next unit...
       const playerTerritories = player.territories.filter(tId => 
         currentGameState?.territories[tId]?.ownerId === player.id
       );
@@ -316,7 +315,6 @@ export class AiManager {
         unitsPlaced++;
         console.log(`🤖 ✅ Unit placed successfully (${unitsPlaced}/${totalUnitsToPlace})`);
         
-        // Continue to next unit
         setTimeout(placeNextUnit, this.AI_TURN_SPEED_MS);
         
       } catch (error) {
@@ -324,7 +322,6 @@ export class AiManager {
       }
     };
     
-    // Start placing units
     setTimeout(placeNextUnit, this.AI_TURN_SPEED_MS);
   }
 
@@ -337,13 +334,16 @@ export class AiManager {
     
     console.log(`🤖 AI ${currentPlayer.name} doing Build & Hire phase (${currentPlayer.energy} energy)`);
     
-    // ✅ STEP 1: Calculate purchase strategy
+    if (gameState.currentPhase !== 2) {
+      console.log(`🤖 ❌ Not in phase 2 anymore (phase ${gameState.currentPhase}), aborting build & hire`);
+      return;
+    }
+    
     const strategy = this.calculateAIPurchaseStrategy(currentPlayer, gameState);
     
     console.log(`🤖 AI strategy:`, strategy);
     
     if (strategy.totalCost === 0) {
-      // No purchases - advance immediately
       console.log(`🤖 AI ${currentPlayer.name} has nothing to buy - advancing phase`);
       setTimeout(() => this.completeAIBuildHire(currentPlayer.id), this.AI_TURN_SPEED_MS);
       return;
@@ -351,17 +351,32 @@ export class AiManager {
     
     setTimeout(async () => {
       const currentGameState = this.getGameState();
-      if (!currentGameState || currentGameState.status !== 'playing') return;
+      if (!currentGameState || currentGameState.status !== 'playing' || currentGameState.currentPhase !== 2) {
+        console.log(`🤖 ❌ Game state invalid for build & hire`);
+        return;
+      }
       
-      // ✅ STEP 2: Execute purchases in sequence
       this.executeAIPurchases(currentPlayer.id, strategy);
       
     }, this.AI_TURN_SPEED_MS);
   }
 
-  // ✅ Improved purchase strategy calculation
-  // AI "Thought Process" Algorithm for Build & Hire Phase
-  // Based on your requirements and strategic considerations
+  // ✅ SINGLE VERSION: Build & Hire completion
+  private completeAIBuildHire(playerId: string): void {
+    setTimeout(async () => {
+      const gameState = this.getGameState();
+      if (gameState && gameState.status === 'playing' && gameState.currentPhase === 2) {
+        console.log(`🤖 AI completing Build & Hire phase`);
+        
+        await this.applyAction({
+          type: 'advance_player_phase',
+          playerId,
+          data: { phaseComplete: true }
+        });
+      }
+    }, this.AI_TURN_SPEED_MS);
+  }
+
   private calculateAIPurchaseStrategy(player: Player, gameState: GameState): PurchaseStrategy {
     const availableEnergy = player.energy;
     const ownedCommanders = this.getOwnedCommanders(player, gameState.territories);
@@ -369,20 +384,17 @@ export class AiManager {
     console.log(`🤖 AI ${player.name} analyzing situation:`, {
       energy: availableEnergy,
       ownedCommanders,
-      startingCommanders: ['land', 'diplomat'] // We start with these
+      startingCommanders: ['land', 'diplomat']
     });
     
-    // ✅ STEP 1: What commanders are missing? (only naval/nuclear can be bought)
     const missingCommanders = (['naval', 'nuclear'] as CommanderType[])
       .filter(cmd => !ownedCommanders.includes(cmd));
     
     console.log(`🤖 Missing commanders available for purchase:`, missingCommanders);
     
-    // ✅ STEP 2: Analyze threat landscape
     const threatAnalysis = this.analyzeStrategicThreats(player, gameState);
     console.log(`🤖 Threat analysis:`, threatAnalysis);
     
-    // ✅ STEP 3: Decision tree based on strategic priorities
     let strategy: PurchaseStrategy = {
       commanders: [],
       spaceBases: 0,
@@ -392,7 +404,6 @@ export class AiManager {
     
     let remainingEnergy = availableEnergy;
     
-    // 🎯 PRIORITY 1: Naval Commander (if water territories are strategically important)
     if (missingCommanders.includes('naval') && remainingEnergy >= 3) {
       if (threatAnalysis.shouldGetNaval) {
         strategy.commanders.push('naval');
@@ -402,7 +413,6 @@ export class AiManager {
       }
     }
     
-    // 🎯 PRIORITY 2: Nuclear Commander (if we need offensive capability or water counter)
     if (missingCommanders.includes('nuclear') && remainingEnergy >= 3) {
       if (threatAnalysis.shouldGetNuclear) {
         strategy.commanders.push('nuclear');
@@ -412,14 +422,9 @@ export class AiManager {
       }
     }
     
-    // 🎯 PRIORITY 3: Save energy for cards vs more commanders
-    // Since cards are cheaper (1 energy) but nuke cards cost more to PLAY,
-    // we balance between getting commanders vs saving for card purchases
-    
     if (remainingEnergy >= 3 && strategy.commanders.length === 0) {
-      // If we didn't buy any commanders yet, maybe get one anyway
       if (missingCommanders.length > 0) {
-        const fallbackCommander = missingCommanders[0]; // naval first, then nuclear
+        const fallbackCommander = missingCommanders[0];
         strategy.commanders.push(fallbackCommander);
         remainingEnergy -= 3;
         strategy.totalCost += 3;
@@ -427,8 +432,6 @@ export class AiManager {
       }
     }
     
-    // ✅ STEP 4: Future card-buying consideration
-    // Save some energy for card phase (next phase)
     const shouldSaveForCards = remainingEnergy >= 2 && remainingEnergy <= 5;
     if (shouldSaveForCards) {
       console.log(`🤖 Saving ${remainingEnergy} energy for card purchases next phase`);
@@ -439,7 +442,6 @@ export class AiManager {
     return strategy;
   }
 
-  // 🎯 STRATEGIC THREAT ANALYSIS
   private analyzeStrategicThreats(player: Player, gameState: GameState): {
     shouldGetNaval: boolean;
     shouldGetNuclear: boolean;
@@ -454,10 +456,9 @@ export class AiManager {
       waterTerritoryThreat: false,
       enemyNavalCommanders: 0,
       enemyNuclearCommanders: 0,
-      reasoning: [] as string[] // ✅ Quick fix: explicitly type as string[]
+      reasoning: [] as string[]
     };
     
-    // Count enemy commanders
     gameState.players.forEach(otherPlayer => {
       if (otherPlayer.id === player.id) return;
       
@@ -470,11 +471,9 @@ export class AiManager {
       }
     });
     
-    // Check for water territories near our borders
     const nearbyWaterTerritories = this.findNearbyWaterTerritories(player, gameState);
     threats.waterTerritoryThreat = nearbyWaterTerritories.length > 0;
     
-    // 🎯 NAVAL DECISION LOGIC
     if (threats.enemyNavalCommanders > 0) {
       threats.shouldGetNaval = true;
       threats.reasoning.push(`Enemy has ${threats.enemyNavalCommanders} naval commander(s) - need naval to compete for water`);
@@ -483,7 +482,6 @@ export class AiManager {
       threats.reasoning.push(`${nearbyWaterTerritories.length} water territories nearby - get naval for expansion`);
     }
     
-    // 🎯 NUCLEAR DECISION LOGIC
     if (threats.enemyNavalCommanders > 0 && !threats.shouldGetNaval) {
       threats.shouldGetNuclear = true;
       threats.reasoning.push(`Enemy has naval control - get nuclear to counter with nuke cards`);
@@ -491,7 +489,6 @@ export class AiManager {
       threats.shouldGetNuclear = true;
       threats.reasoning.push(`Nuclear arms race - match enemy nuclear capability`);
     } else if (player.territories.length >= 8) {
-      // If we have strong position, get nuclear for offensive power
       threats.shouldGetNuclear = true;
       threats.reasoning.push(`Strong position (${player.territories.length} territories) - get nuclear for offense`);
     }
@@ -499,7 +496,6 @@ export class AiManager {
     return threats;
   }
 
-  // 🌊 Find water territories adjacent to our controlled territories
   private findNearbyWaterTerritories(player: Player, gameState: GameState): string[] {
     const waterTerritories: string[] = [];
     
@@ -507,12 +503,10 @@ export class AiManager {
       const territory = gameState.territories[territoryId];
       if (!territory) return;
       
-      // Check connections for water territories
       territory.connections.forEach(connectedId => {
         const connectedTerritory = gameState.territories[connectedId];
         if (!connectedTerritory) return;
         
-        // ✅ SIMPLE FIX: Use the type field that already exists in Territory
         if (connectedTerritory.type === 'water' && !waterTerritories.includes(connectedId)) {
           waterTerritories.push(connectedId);
         }
@@ -557,7 +551,6 @@ export class AiManager {
       }
       
       if (purchaseIndex >= totalPurchases) {
-        // All purchases complete
         console.log(`🤖 AI ${player.name} completed all purchases`);
         setTimeout(() => this.completeAIBuildHire(playerId), this.AI_TURN_SPEED_MS);
         return;
@@ -565,11 +558,9 @@ export class AiManager {
       
       try {
         if (purchaseIndex < strategy.commanders.length) {
-          // ✅ Buy and place commander using the correct action type
           const commander = strategy.commanders[purchaseIndex];
           console.log(`🤖 AI purchasing and placing commander: ${commander}`);
           
-          // Find available territory for placement
           const availableTerritories = player.territories.filter(tId => {
             const territory = currentGameState?.territories[tId];
             return territory?.ownerId === playerId && this.canPlaceCommanderOnTerritory(territory, commander);
@@ -584,10 +575,9 @@ export class AiManager {
           
           const randomTerritory = availableTerritories[Math.floor(Math.random() * availableTerritories.length)];
           
-          // ✅ Use the action type that matches your BuildHireOverlay
           await this.applyAction({
             type: 'purchase_and_place_commander',
-            playerId: player.id,
+            playerId: playerId,
             data: { 
               territoryId: randomTerritory, 
               commanderType: commander, 
@@ -598,190 +588,238 @@ export class AiManager {
           console.log(`🤖 AI placed ${commander} commander on ${randomTerritory}`);
           
         } else {
-          // ✅ Buy and place space base using the correct action type
-          const spaceBaseIndex = purchaseIndex - strategy.commanders.length + 1;
-          console.log(`🤖 AI purchasing space base ${spaceBaseIndex}/${strategy.spaceBases}`);
-          
-          // Find available territory for space base
           const availableTerritories = player.territories.filter(tId => {
             const territory = currentGameState?.territories[tId];
             return territory?.ownerId === playerId && !territory.spaceBase;
           });
           
           if (availableTerritories.length === 0) {
-            console.log(`🤖 No available territories for space base - skipping`);
+            console.log(`🤖 No territories for space base - skipping`);
             purchaseIndex++;
             setTimeout(makeNextPurchase, this.AI_TURN_SPEED_MS);
             return;
           }
           
-          const randomTerritory = availableTerritories[Math.floor(Math.random() * availableTerritories.length)];
+          const randomTerritory = availableTerritories[0];
           
-          // ✅ Use the action type that matches your BuildHireOverlay
           await this.applyAction({
             type: 'purchase_and_place_space_base',
-            playerId: player.id,
+            playerId: playerId,
             data: { 
               territoryId: randomTerritory, 
               cost: 5 
             }
           });
-          
-          console.log(`🤖 AI placed space base on ${randomTerritory}`);
         }
         
         purchaseIndex++;
-        
-        // ✅ Continue to next purchase after delay
         setTimeout(makeNextPurchase, this.AI_TURN_SPEED_MS);
         
       } catch (error) {
-        console.error(`🤖 AI purchase error:`, error);
-        // Skip this purchase and continue
+        console.error(`🤖 Purchase error:`, error);
         purchaseIndex++;
         setTimeout(makeNextPurchase, this.AI_TURN_SPEED_MS);
       }
     };
     
-    // Start the purchase sequence
     setTimeout(makeNextPurchase, this.AI_TURN_SPEED_MS);
   }
 
-  private async placeAIPurchasedCommander(playerId: string, commanderType: CommanderType): Promise<void> {
+  // ✅ SINGLE VERSION: Buy Cards phase
+  private doAIBuyCards(): void {
     const gameState = this.getGameState();
     if (!gameState) return;
     
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) return;
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (!currentPlayer || !globalAIController.isAIPlayer(currentPlayer.id)) return;
     
-    const availableTerritories = player.territories.filter(tId => {
-      const territory = gameState?.territories[tId];
-      return territory?.ownerId === playerId;
-    });
+    console.log(`🤖 AI ${currentPlayer.name} doing Buy Cards phase (${currentPlayer.energy} energy)`);
     
-    if (availableTerritories.length > 0) {
-      const randomTerritory = availableTerritories[Math.floor(Math.random() * availableTerritories.length)];
-      
-      await this.applyAction({
-        type: 'place_commander_game',
-        playerId,
-        data: { territoryId: randomTerritory, commanderType }
-      });
-      
-      console.log(`🤖 AI placed ${commanderType} commander on ${randomTerritory}`);
+    if (gameState.currentPhase !== 3) {
+      console.log(`🤖 ❌ Not in phase 3 anymore (phase ${gameState.currentPhase}), aborting buy cards`);
+      return;
     }
-  }
-
-  private async placeAIPurchasedSpaceBase(playerId: string): Promise<void> {
-    const gameState = this.getGameState();
-    if (!gameState) return;
     
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) return;
-    
-    const availableTerritories = player.territories.filter(tId => {
-      const territory = gameState?.territories[tId];
-      return territory?.ownerId === playerId && !territory.spaceBase;
-    });
-    
-    if (availableTerritories.length > 0) {
-      const randomTerritory = availableTerritories[Math.floor(Math.random() * availableTerritories.length)];
-      
-      await this.applyAction({
-        type: 'place_space_base_game',
-        playerId,
-        data: { territoryId: randomTerritory }
-      });
-      
-      console.log(`🤖 AI placed space base on ${randomTerritory}`);
-    }
-  }
-
-  private completeAIBuildHire(playerId: string): void {
     setTimeout(async () => {
-      const gameState = this.getGameState();
-      if (gameState && gameState.status === 'playing' && gameState.currentPhase === 2) {
-        console.log(`🤖 AI completing Build & Hire phase`);
+      const currentGameState = this.getGameState();
+      if (!currentGameState || currentGameState.status !== 'playing' || currentGameState.currentPhase !== 3) {
+        console.log(`🤖 ❌ Game state invalid for buy cards`);
+        return;
+      }
+      
+      const cardStrategy = this.calculateAICardStrategy(currentPlayer, currentGameState);
+      
+      console.log(`🤖 AI card strategy:`, cardStrategy);
+      
+      if (cardStrategy.selectedCards.length === 0) {
+        console.log(`🤖 AI ${currentPlayer.name} has no cards to buy - advancing phase`);
         await this.applyAction({
           type: 'advance_player_phase',
-          playerId,
+          playerId: currentPlayer.id,
+          data: { phaseComplete: true }
+        });
+        return;
+      }
+      
+      try {
+        await this.applyAction({
+          type: 'purchase_cards',
+          playerId: currentPlayer.id,
+          data: { selectedCards: cardStrategy.selectedCards }
+        });
+        
+        console.log(`🤖 AI purchased ${cardStrategy.selectedCards.length} card(s)`);
+        
+        setTimeout(async () => {
+          const finalGameState = this.getGameState();
+          if (finalGameState?.status === 'playing' && finalGameState?.currentPhase === 3) {
+            await this.applyAction({
+              type: 'advance_player_phase',
+              playerId: currentPlayer.id,
+              data: { phaseComplete: true }
+            });
+          }
+        }, this.AI_TURN_SPEED_MS);
+        
+      } catch (error) {
+        console.error(`🤖 AI card purchase error:`, error);
+        
+        await this.applyAction({
+          type: 'advance_player_phase',
+          playerId: currentPlayer.id,
+          data: { phaseComplete: true }
+        });
+      }
+      
+    }, this.AI_TURN_SPEED_MS);
+  }
+
+  private calculateAICardStrategy(player: Player, gameState: GameState): {
+    selectedCards: Array<{ card: any; quantity: number }>;
+    totalCost: number;
+    reasoning: string[];
+  } {
+    const availableEnergy = player.energy;
+    const ownedCommanders = this.getOwnedCommanders(player, gameState.territories);
+    
+    console.log(`🤖 AI ${player.name} card buying analysis:`, {
+      energy: availableEnergy,
+      ownedCommanders
+    });
+    
+    const strategy = {
+      selectedCards: [] as Array<{ card: any; quantity: number }>,
+      totalCost: 0,
+      reasoning: [] as string[]
+    };
+    
+    if (availableEnergy >= 2) {
+      const mockCard = {
+        cardTitle: "AI Strategic Card",
+        cardCost: 2,
+        commanderType: ownedCommanders[0] || 'land',
+        cardText: "AI-selected strategic advantage"
+      };
+      
+      strategy.selectedCards.push({ card: mockCard, quantity: 1 });
+      strategy.totalCost += 2;
+      strategy.reasoning.push(`Purchased strategic card for ${mockCard.commanderType} commander`);
+    }
+    
+    if (availableEnergy >= 4 && ownedCommanders.length > 1) {
+      const mockCard2 = {
+        cardTitle: "AI Backup Card",
+        cardCost: 2,
+        commanderType: ownedCommanders[1] || 'diplomat',
+        cardText: "AI-selected backup strategy"
+      };
+      
+      strategy.selectedCards.push({ card: mockCard2, quantity: 1 });
+      strategy.totalCost += 2;
+      strategy.reasoning.push(`Purchased backup card for ${mockCard2.commanderType} commander`);
+    }
+    
+    if (strategy.selectedCards.length === 0) {
+      strategy.reasoning.push(`Not enough energy (${availableEnergy}) or no owned commanders for card purchases`);
+    }
+    
+    console.log(`🤖 AI card strategy reasoning:`, strategy.reasoning);
+    return strategy;
+  }
+
+  private doAIPlayCards(): void {
+    const gameState = this.getGameState();
+    if (!gameState) return;
+    
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (!currentPlayer || !globalAIController.isAIPlayer(currentPlayer.id)) return;
+    
+    console.log(`🤖 AI ${currentPlayer.name} doing Play Cards phase`);
+    
+    if (gameState.currentPhase !== 4) {
+      console.log(`🤖 ❌ Not in phase 4 anymore (phase ${gameState.currentPhase}), aborting play cards`);
+      return;
+    }
+    
+    setTimeout(async () => {
+      const gameState = this.getGameState();
+      if (gameState && gameState.status === 'playing' && gameState.currentPhase === 4) {
+        await this.applyAction({
+          type: 'advance_player_phase',
+          playerId: gameState.players[gameState.currentPlayerIndex].id,
           data: { phaseComplete: true }
         });
       }
     }, this.AI_TURN_SPEED_MS);
   }
 
-  private getOwnedCommanders(player: Player, territories: Record<string, Territory>): CommanderType[] {
-    const owned: CommanderType[] = [];
-    
-    player.territories.forEach(tId => {
-      const territory = territories[tId];
-      if (!territory) return;
-      
-      // ✅ Check each commander type individually
-      if (territory.landCommander === player.id) owned.push('land');
-      if (territory.diplomatCommander === player.id) owned.push('diplomat');
-      if (territory.navalCommander === player.id) owned.push('naval');
-      if (territory.nuclearCommander === player.id) owned.push('nuclear');
-    });
-    
-    // ✅ Remove duplicates (shouldn't happen but safety check)
-    return [...new Set(owned)];
-  }
-
-  private getSpaceBaseCount(player: Player, territories: Record<string, Territory>): number {
-    return player.territories.filter(tId => 
-      territories[tId]?.spaceBase === player.id
-    ).length;
-  }
-
-  private doAIBuyCards(): void {
-    setTimeout(async () => {
-      const gameState = this.getGameState();
-      if (gameState) {
-        await this.applyAction({
-          type: 'advance_player_phase',
-          playerId: gameState.players[gameState.currentPlayerIndex].id,
-          data: {}
-        });
-      }
-    }, this.AI_TURN_SPEED_MS);
-  }
-
-  private doAIPlayCards(): void {
-    setTimeout(async () => {
-      const gameState = this.getGameState();
-      if (gameState) {
-        await this.applyAction({
-          type: 'advance_player_phase',
-          playerId: gameState.players[gameState.currentPlayerIndex].id,
-          data: {}
-        });
-      }
-    }, this.AI_TURN_SPEED_MS);
-  }
-
   private doAIInvade(): void {
+    const gameState = this.getGameState();
+    if (!gameState) return;
+    
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (!currentPlayer || !globalAIController.isAIPlayer(currentPlayer.id)) return;
+    
+    console.log(`🤖 AI ${currentPlayer.name} doing Invade phase`);
+    
+    if (gameState.currentPhase !== 5) {
+      console.log(`🤖 ❌ Not in phase 5 anymore (phase ${gameState.currentPhase}), aborting invade`);
+      return;
+    }
+    
     setTimeout(async () => {
       const gameState = this.getGameState();
-      if (gameState) {
+      if (gameState && gameState.status === 'playing' && gameState.currentPhase === 5) {
         await this.applyAction({
           type: 'advance_player_phase',
           playerId: gameState.players[gameState.currentPlayerIndex].id,
-          data: {}
+          data: { phaseComplete: true }
         });
       }
     }, this.AI_TURN_SPEED_MS);
   }
 
   private doAIFortify(): void {
+    const gameState = this.getGameState();
+    if (!gameState) return;
+    
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    if (!currentPlayer || !globalAIController.isAIPlayer(currentPlayer.id)) return;
+    
+    console.log(`🤖 AI ${currentPlayer.name} doing Fortify phase`);
+    
+    if (gameState.currentPhase !== 6) {
+      console.log(`🤖 ❌ Not in phase 6 anymore (phase ${gameState.currentPhase}), aborting fortify`);
+      return;
+    }
+    
     setTimeout(async () => {
       const gameState = this.getGameState();
-      if (gameState) {
+      if (gameState && gameState.status === 'playing' && gameState.currentPhase === 6) {
         await this.applyAction({
           type: 'advance_player_phase',
           playerId: gameState.players[gameState.currentPlayerIndex].id,
-          data: {}
+          data: { phaseComplete: true }
         });
       }
     }, this.AI_TURN_SPEED_MS);
@@ -796,13 +834,11 @@ export class AiManager {
       return;
     }
     
-    // ✅ CRITICAL SAFEGUARD: Don't run bidding AI if no longer in bidding
     if (gameState.status !== 'bidding') {
       console.log(`🤖 SAFEGUARD: Attempted to run bidding AI but game status is '${gameState.status}' - ABORTING`);
       return;
     }
     
-    // Find the specific player by ID instead of using currentPlayerIndex
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) {
       console.log(`🤖 SAFEGUARD: Player ${playerId} not found - ABORTING`);
@@ -814,25 +850,21 @@ export class AiManager {
       return;
     }
 
-    // Check if player has already bid
     if (gameState.bidding?.bidsSubmitted[playerId] !== undefined) {
       console.log(`🤖 SAFEGUARD: Player ${player.name} has already bid - ABORTING`);
       return;
     }
 
-    // Check if player is still in waiting list
     if (!gameState.bidding?.playersWaitingToBid?.includes(playerId)) {
       console.log(`🤖 SAFEGUARD: Player ${player.name} is not in waiting list - ABORTING`);
       return;
     }
     
-    // ✅ FIXED: Clear any existing timeout for this player to prevent overlaps
     this.clearPlayerTimeout(player.id);
     
     console.log(`🤖 AI Bidding Action - Status: ${gameState.status}, Year: ${gameState.bidding?.year}, Player: ${player.name}`);
     console.log(`🤖 Player energy: ${player.energy}, Already bid: ${gameState.bidding?.bidsSubmitted[playerId] || 'none'}`);
     
-    // Simple AI bidding strategy: 20-40% of available energy
     const minBidPercent = 0.20;
     const maxBidPercent = 0.40;
     const randomPercent = minBidPercent + (Math.random() * (maxBidPercent - minBidPercent));
@@ -840,7 +872,6 @@ export class AiManager {
     
     console.log(`🤖 AI ${player.name} calculating bid: ${bidAmount} energy (${Math.round(randomPercent * 100)}% of ${player.energy})`);
     
-    // Add immediate validation before timeout
     if (bidAmount > player.energy) {
       console.log(`🤖 ERROR: Bid amount ${bidAmount} exceeds player energy ${player.energy}`);
       return;
@@ -849,14 +880,12 @@ export class AiManager {
     const timeoutId = setTimeout(async () => {
       console.log(`🤖 AI ${player.name} attempting to place bid...`);
       
-      // Double-check state before placing bid
       const currentGameState = this.getGameState();
       if (!currentGameState || currentGameState.status !== 'bidding') {
         console.log(`🤖 TIMEOUT ABORT: Game state changed`);
         return;
       }
 
-      // Check if player still needs to bid
       if (currentGameState.bidding?.bidsSubmitted[playerId] !== undefined) {
         console.log(`🤖 TIMEOUT ABORT: Player already bid`);
         return;
@@ -897,7 +926,6 @@ export class AiManager {
       return;
     }
 
-    // Find AI players who haven't bid yet
     const waitingToBid = gameState.bidding.playersWaitingToBid || [];
     const aiPlayersNeedingToBid = waitingToBid.filter(playerId => 
       globalAIController.isAIPlayer(playerId)
@@ -912,12 +940,10 @@ export class AiManager {
       return;
     }
 
-    // Clear any existing AI timeouts to prevent conflicts
     aiPlayersNeedingToBid.forEach(playerId => {
       this.clearPlayerTimeout(playerId);
     });
 
-    // Schedule immediate bidding for all AI players
     aiPlayersNeedingToBid.forEach((playerId, index) => {
       const player = gameState?.players.find(p => p.id === playerId);
       if (player) {
@@ -925,7 +951,7 @@ export class AiManager {
         
         const timeoutId = setTimeout(() => {
           this.doAIBiddingAction(playerId);
-        }, 200 + (index * 100)); // Stagger slightly to avoid conflicts
+        }, 200 + (index * 100));
         
         this.aiTurnTimeouts.set(playerId, timeoutId);
       }
@@ -949,13 +975,33 @@ export class AiManager {
   }
 
   private calculateTurnIncome(player: Player, gameState: GameState): number {
-    const baseIncome = 3; // Minimum
-    const territoryIncome = Math.floor(player.territories.length / 3); // 1 per 3 territories
+    const baseIncome = 3;
+    const territoryIncome = Math.floor(player.territories.length / 3);
     
-    // ✅ ADD: Continental bonuses (expand based on your continent logic)
     let continentalBonus = 0;
-    // TODO: Add your continent control logic here
     
     return Math.max(baseIncome, territoryIncome + continentalBonus);
+  }
+
+  private getOwnedCommanders(player: Player, territories: Record<string, Territory>): CommanderType[] {
+    const owned: CommanderType[] = [];
+    
+    player.territories.forEach(tId => {
+      const territory = territories[tId];
+      if (!territory) return;
+      
+      if (territory.landCommander === player.id) owned.push('land');
+      if (territory.diplomatCommander === player.id) owned.push('diplomat');
+      if (territory.navalCommander === player.id) owned.push('naval');
+      if (territory.nuclearCommander === player.id) owned.push('nuclear');
+    });
+    
+    return [...new Set(owned)];
+  }
+
+  private getSpaceBaseCount(player: Player, territories: Record<string, Territory>): number {
+    return player.territories.filter(tId => 
+      territories[tId]?.spaceBase === player.id
+    ).length;
   }
 }
