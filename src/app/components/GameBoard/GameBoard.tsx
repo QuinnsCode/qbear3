@@ -115,15 +115,15 @@ function GameBoard({ gameState, currentUserId, onAction }: GameBoardProps) {
         const fromTerritory = gameState.territories[selectedTerritory]
         const attackingUnits = Math.min(fromTerritory.machineCount - 1, 3)
         
-        await onAction({
-          type: 'attack_territory',
-          playerId: currentUserId,
-          data: {
-            fromTerritoryId: selectedTerritory,
-            toTerritoryId: territoryId,
-            attackingUnits
-          }
-        })
+        // await onAction({
+        //   type: 'attack_territory',
+        //   playerId: currentUserId,
+        //   data: {
+        //     fromTerritoryId: selectedTerritory,
+        //     toTerritoryId: territoryId,
+        //     attackingUnits
+        //   }
+        // })
         
         setSelectedTerritory(null)
       } else {

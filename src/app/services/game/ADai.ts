@@ -285,8 +285,9 @@ class AIController {
         if (territory.machineCount > target.machineCount) {
           const attackingUnits = Math.min(territory.machineCount - 1, 3)
           
+          //this is deprecated to now be invade territory but we will come back to this
           return {
-            type: 'attack_territory',
+            type: 'invade_territory',
             playerId: player.id,
             data: {
               fromTerritoryId: territoryId,

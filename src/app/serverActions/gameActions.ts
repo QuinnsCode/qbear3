@@ -5,7 +5,8 @@
 
 import { env } from "cloudflare:workers";
 import { renderRealtimeClients } from "rwsdk/realtime/worker";
-import type { GameState } from '@/app/lib/GameState'
+import type { GameState, AttackResult, InvasionResult, MoveResult } from '@/app/lib/GameState'
+
 
 // Helper function to call the Durable Object - FIXED VERSION
 async function callGameDO(
@@ -481,27 +482,75 @@ export async function spendEnergy(
   }
 }
 
-export async function attackTerritory(
+export async function invadeTerritory(
   gameId: string,
   playerId: string,
   fromTerritoryId: string,
   toTerritoryId: string,
-  attackingUnits: number
+  attackingUnits: number,
+  commanderTypes: string[] = []
+): Promise<GameState> {  // ← Just GameState, not the complex structure
+  try {
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'invade_territory',
+      playerId,
+      data: { fromTerritoryId, toTerritoryId, attackingUnits, commanderTypes }
+    });
+    
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+    
+    return result as GameState;  // ← Just return the state
+  } catch (error) {
+    console.error('❌ Failed to invade territory:', error);
+    throw new Error(`Failed to invade territory: ${error.message}`);
+  }
+}
+
+// ✅ ENHANCED: Move into empty territory (for nuclear devastation, etc.)
+export async function moveIntoEmptyTerritory(
+  gameId: string,
+  playerId: string,
+  fromTerritoryId: string,
+  toTerritoryId: string,
+  movingUnits: number
+): Promise<GameState> {  // ← Just GameState
+  try {
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'move_into_empty_territory',
+      playerId,
+      data: { fromTerritoryId, toTerritoryId, movingUnits }
+    });
+    
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+    
+    return result as GameState;  // ← Just return the state
+  } catch (error) {
+    console.error('❌ Failed to move into empty territory:', error);
+    throw new Error(`Failed to move into empty territory: ${error.message}`);
+  }
+}
+
+// ✅ NEW: Reset invasion stats at start of invasion phase
+export async function startInvasionPhase(
+  gameId: string,
+  playerId: string
 ): Promise<GameState> {
   try {
-    console.log('attackTerritory called:', { gameId, playerId, fromTerritoryId, toTerritoryId, attackingUnits })
+    console.log('⚔️ startInvasionPhase called:', { gameId, playerId });
     
     const result = await callGameDO(gameId, 'applyAction', {
-      type: 'attack_territory',
+      type: 'start_invasion_phase', // ✅ Correct action type
       playerId,
-      data: { 
-        fromTerritoryId, 
-        toTerritoryId, 
-        attackingUnits 
-      }
-    })
+      data: {}
+    });
     
-    console.log('attackTerritory result:', result)
+    console.log('⚔️ startInvasionPhase result:', result);
     
     // Trigger realtime update
     await renderRealtimeClients({
@@ -509,12 +558,13 @@ export async function attackTerritory(
       key: `/game/${gameId}`,
     });
     
-    return result as GameState
+    return result as GameState;
   } catch (error) {
-    console.error('Failed to attack territory:', error)
-    throw new Error('Failed to attack territory')
+    console.error('❌ Failed to start invasion phase:', error);
+    throw new Error(`Failed to start invasion phase: ${error.message}`);
   }
 }
+
 
 export async function fortifyTerritory(
   gameId: string,
@@ -980,3 +1030,73 @@ export async function advanceFromBuyCards(
   }
 }
 
+export async function advanceFromPlayCards(gameId: string, playerId: string): Promise<GameState> {
+  try {
+    console.log('🎯 Advancing from Play Cards to Play Cards phase at Attack Phase');
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'advance_player_phase',
+      playerId,
+      data: { phaseComplete: true }
+    });
+
+    console.log('✅ Phase advance successful:', result);
+    
+    // Trigger realtime update
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Phase advance error:', error);
+    throw new Error(`Failed to advance phase: ${error.message}`);
+  }
+}
+
+export async function confirmAdditionalMoveIn(
+  gameId: string,
+  playerId: string,
+  fromTerritoryId: string,
+  toTerritoryId: string,
+  additionalUnits: number
+): Promise<void> {
+  try {
+    console.log('📦 Confirming additional move-in:', {
+      gameId,
+      playerId,
+      fromTerritoryId,
+      toTerritoryId,
+      additionalUnits
+    });
+
+    const response = await fetch(`/api/game/${gameId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'confirm_additional_move_in',
+        playerId,
+        data: {
+          fromTerritoryId,
+          toTerritoryId,
+          additionalUnits
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ Additional move-in confirmed:', result);
+
+  } catch (error) {
+    console.error('❌ Additional move-in confirmation failed:', error);
+    throw error;
+  }
+}

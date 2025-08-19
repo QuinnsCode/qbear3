@@ -8,12 +8,18 @@ import {
   purchaseAndPlaceCommander,
   purchaseAndPlaceSpaceBase,
   advanceFromBuildHire,
+  invadeTerritory,
+  moveIntoEmptyTerritory, 
+  startInvasionPhase,
+  confirmAdditionalMoveIn
 } from '@/app/serverActions/gameActions';
 import { useState } from 'react';
 import { useGameSync } from '@/app/hooks/useGameSync';
 import BiddingOverlay from '@/app/components/Game/GameBidding/BiddingOverlay';
 import CollectDeployOverlay from '@/app/components/Game/GamePhases/CollectDeployOverlay';
 import BuyCardsOverlay from '@/app/components/Game/GamePhases/BuyCardsOverlay';
+import PlayCardsOverlay from '@/app/components/Game/GamePhases/PlayCardsOverlay';
+import InvasionOverlay from '@/app/components/Game/GamePhases/InvasionOverlay';
 import { 
   Settings, 
   Sword, 
@@ -22,6 +28,7 @@ import {
   Info, 
   Menu, 
   X,
+  Play,         // 🎮 Card Play Mode
   // 🎨 Themed commander icons
   User,         // 👤 Diplomat Commander
   Mountain,     // ⛰️ Land Commander
@@ -35,15 +42,16 @@ import {
 } from 'lucide-react';
 import { 
   restartGameWithNuking, 
-  placeUnit, 
-  attackTerritory, 
+  placeUnit,
   fortifyTerritory,
   placeCommander,
   placeSpaceBase,
   collectAndStartDeploy,
   confirmDeploymentComplete,
   purchaseCards,
-  advanceFromBuyCards
+  advanceFromBuyCards,
+  playCard,
+  advanceFromPlayCards
 } from '@/app/serverActions/gameActions';
 import { GameActionButton } from '@/app/components/Game/GameUtils/GameActionButton';
 import { GameStats } from '@/app/components/Game/GameUtils/GameStats';
@@ -109,19 +117,40 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   });
 
+  const [cardSelectedTerritories, setCardSelectedTerritories] = useState<string[]>([]);
   const [selectedTerritory, setSelectedTerritory] = useState(null);
   const [interactionMode, setInteractionMode] = useState('info');
+  //top right stats panel
   const [showStats, setShowStats] = useState(false);
+  //top right settings panel
   const [showSettings, setShowSettings] = useState(false);
+  //used for throbber
   const [isUpdating, setIsUpdating] = useState(false);
   const [territoryActionInProgress, setTerritoryActionInProgress] = useState(false);
+  //explains all the cards in the game
   const [showCardReference, setShowCardReference] = useState(false);
+  //game rules scroll container shows up
   const [showGameRules, setShowGameRules] = useState(false);
+  
   const [buildHirePlacementMode, setBuildHirePlacementMode] = useState<{
     active: boolean;
     itemType: string;
     cost: number;
     territoryId?: string;
+  } | null>(null);
+
+  const [cardPlayMode, setCardPlayMode] = useState<{
+    active: boolean;
+    cardId: string;
+    cardTitle: string;
+    cardType: string;
+    validTerritoryTypes: string[];
+  } | null>(null);
+  
+  const [invasionState, setInvasionState] = useState<{
+    isActive: boolean;
+    fromTerritoryId: string | null;
+    toTerritoryId: string | null;
   } | null>(null);
 
   if (isLoading || !gameState) {
@@ -208,6 +237,36 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       throw error
     }
   }
+
+  // Add this handler for card play mode
+  const handleEnterCardPlayMode = (cardId: string, cardData: any) => {
+    console.log('🃏 DEBUG: Card play mode data:', {
+      cardId,
+      cardData,
+      cardTitle: cardData?.cardTitle,
+      commanderType: cardData?.commanderType || cardData?.cardType
+    });
+
+    const cardType = cardData.commanderType || cardData.cardType;
+    let validTypes: string[] = [];
+    
+    switch (cardData.cardTitle) {
+      case 'Assemble MODs':
+      case 'Territorial Station':
+        validTypes = cardType === 'naval' ? ['water'] : ['land']; // ✅ Fixed: no lava
+        break;
+      default:
+        validTypes = ['land', 'water']; // ✅ Fixed: no lava
+    }
+    
+    setCardPlayMode({
+      active: true,
+      cardId: cardId,
+      cardTitle: cardData.cardTitle,
+      cardType: cardType,
+      validTerritoryTypes: validTypes
+    });
+  };
 
   const handleTerritoryAction = async (territoryId: string, action: string) => {
     console.log(`🎯 Territory action: ${action} on territory ${territoryId}`)
@@ -348,32 +407,52 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
         case 'attack':
           console.log('🔥 Attack mode!')
           
-          if (!selectedTerritory) {
-            if (territory.ownerId === currentUserId) {
-              setSelectedTerritory(territoryId)
-              console.log(`🎯 Selected attacking territory: ${territory.name}`)
+          // ✅ ENHANCED: Invasion phase handling (Phase 5)
+          if (gameState.status === 'playing' && gameState.currentPhase === 5) {
+            if (!selectedTerritory) {
+              if (territory.ownerId === currentUserId) {
+                // Check if territory is attack-locked
+                const myPlayer = gameState.players.find(p => p.id === currentUserId);
+                const attackLockedTerritories = myPlayer?.invasionStats?.territoriesAttackedFrom || [];
+
+                if (attackLockedTerritories.includes(territoryId)) {
+                  alert('This territory has already attacked this turn and is locked down');
+                  return;
+                }
+
+                if (territory.machineCount <= 1) {
+                  alert('This territory needs more than 1 unit to attack (must leave 1 behind)');
+                  return;
+                }
+
+                setSelectedTerritory(territoryId);
+                console.log(`🎯 Selected attacking territory: ${territory.name}`);
+              } else {
+                alert('You must select your own territory to attack from');
+              }
             } else {
-              alert('You must select your own territory to attack from')
+              if (territoryId === selectedTerritory) {
+                setSelectedTerritory(null);
+                console.log('❌ Attack cancelled');
+              } else if (territory.ownerId === currentUserId) {
+                setSelectedTerritory(territoryId);
+                console.log(`🎯 Switched attacking territory: ${territory.name}`);
+              } else {
+                // Open invasion overlay instead of immediate attack
+                console.log(`⚔️ Opening invasion overlay: ${gameState.territories[selectedTerritory].name} → ${territory.name}`);
+                
+                setInvasionState({
+                  isActive: true,
+                  fromTerritoryId: selectedTerritory,
+                  toTerritoryId: territoryId
+                });
+                
+                // Don't clear selectedTerritory yet - keep it for potential follow-up attacks
+              }
             }
-          } else {
-            if (territoryId === selectedTerritory) {
-              setSelectedTerritory(null)
-              console.log('❌ Attack cancelled')
-            } else if (territory.ownerId === currentUserId) {
-              setSelectedTerritory(territoryId)
-              console.log(`🎯 Switched attacking territory: ${territory.name}`)
-            } else {
-              const fromTerritory = gameState.territories[selectedTerritory]
-              const attackingUnits = Math.max(1, fromTerritory.machineCount - 1)
-              
-              console.log(`⚔️ Attacking ${territory.name} from ${fromTerritory.name} with ${attackingUnits} units`)
-              
-              await attackTerritory(gameId, currentUserId, selectedTerritory, territoryId, attackingUnits)
-              setSelectedTerritory(null)
-              console.log('✅ Attack completed - useGameSync will handle the update')
-            }
+            return; // Exit early for invasion phase
           }
-          break
+          break;
           
         case 'fortify':
           console.log('🛡️ Fortify mode!')
@@ -430,7 +509,87 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   }
 
+  const getRequiredTargetCount = (cardTitle: string) => {
+    switch (cardTitle) {
+      case 'Assemble MODs':
+      case 'Territorial Station':
+        return 1;
+      case 'Reinforcements':
+        return 3;
+      default:
+        return 1;
+    }
+  };
+
   const handleTerritoryClick = (territoryId: string) => {
+
+    // Card play mode - handle territory selection for cards
+    // Card play mode - handle territory selection for cards
+    if (cardPlayMode?.active) {
+      const territory = gameState.territories[territoryId];
+      if (!territory) {
+        alert('Invalid territory selected');
+        return;
+      }
+      
+      // Validation
+      if (territory.ownerId !== currentUserId) {
+        alert('You can only target territories you control');
+        return;
+      }
+      
+      if (!cardPlayMode.validTerritoryTypes.includes(territory.type)) {
+        alert(`This card requires a ${cardPlayMode.validTerritoryTypes.join(' or ')} territory`);
+        return;
+      }
+      
+      // Get required target count for this card
+      const requiredTargets = getRequiredTargetCount(cardPlayMode.cardTitle);
+      
+      // Toggle territory selection
+      const isAlreadySelected = cardSelectedTerritories.includes(territoryId);
+      let newSelectedTerritories: string[];
+      
+      if (isAlreadySelected) {
+        // Remove if already selected
+        newSelectedTerritories = cardSelectedTerritories.filter(id => id !== territoryId);
+      } else {
+        // Add if not selected (but don't exceed required count)
+        if (cardSelectedTerritories.length >= requiredTargets) {
+          alert(`This card only requires ${requiredTargets} territories. Deselect one first.`);
+          return;
+        }
+        newSelectedTerritories = [...cardSelectedTerritories, territoryId];
+      }
+      
+      setCardSelectedTerritories(newSelectedTerritories);
+      
+      // If we have enough territories, show confirmation
+      if (newSelectedTerritories.length === requiredTargets) {
+        const territoryNames = newSelectedTerritories
+          .map(id => gameState.territories[id].name)
+          .join(', ');
+        
+        const confirmPlay = confirm(
+          `Play ${cardPlayMode.cardTitle} on: ${territoryNames}?\n\n` +
+          `${getCardEffect(cardPlayMode)}`
+        );
+        
+        if (confirmPlay) {
+          // Play the card with all selected territories
+          handlePlayCard(cardPlayMode.cardId, newSelectedTerritories);
+          
+          // Reset card play mode
+          setCardPlayMode(null);
+          setCardSelectedTerritories([]);
+        }
+      }
+      
+      return; // Exit early when in card play mode
+    }
+
+   
+
     // Build & Hire phase - Phase 2: Territory selection during placement
     if (gameState.status === 'playing' && gameState.currentPhase === 2 && buildHirePlacementMode?.active && !buildHirePlacementMode.territoryId) {
       // Validate territory selection
@@ -566,6 +725,147 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   };
 
+  const handlePurchaseCards = async (selectedCards) => {
+    try {
+      console.log('🛒 Purchasing cards:', selectedCards);
+      await purchaseCards(gameId, currentUserId, selectedCards);
+      console.log('✅ Cards purchased - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Card purchase failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to purchase cards: ${errorMessage}`);
+      throw error;
+    }
+  };
+
+  const handleAdvanceFromBuyCards = async () => {
+    try {
+      console.log('🎯 Advancing from Buy Cards to Play Cards phase');
+      await advanceFromBuyCards(gameId, currentUserId);
+      console.log('✅ Phase advance completed - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Phase advance failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to advance phase: ${errorMessage}`);
+      throw error;
+    }
+  };
+
+  const handlePlayCard = async (cardId: string, targets?: string[]) => {
+    try {
+      console.log('🃏 Playing card:', cardId, 'with targets:', targets);
+      await playCard(gameId, currentUserId, cardId, targets);
+      console.log('✅ Card played - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Card play failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to play card: ${errorMessage}`);
+      throw error;
+    }
+  };
+
+  const handleAdvanceFromPlayCards = async () => {
+    try {
+      console.log('🎯 Advancing from Play Cards to Invade phase');
+      await advanceFromPlayCards(gameId, currentUserId);
+      console.log('✅ Phase advance completed - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Phase advance failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to advance phase: ${errorMessage}`);
+      throw error;
+    }
+  };
+
+  const getCardEffect = (cardMode: any) => {
+    switch (cardMode.cardTitle) {
+      case 'Assemble MODs':
+        return "Place 3 MODs on this territory";
+      case 'Reinforcements':
+        return "Place 1 MOD on each of these 3 territories";
+      case 'Colony Influence':
+        return "Move your score marker ahead 3 spaces";
+      case 'Territorial Station':
+        return "Place a space station on this territory";
+      case 'Scout Forces':
+        return "Draw a land territory card and place 5 MODs on it";
+      case 'Stealth MODs':
+        return "Place 3 additional defending MODs";
+      default:
+        return "Apply card effect";
+    }
+  };
+
+  const handleInvade = async (attackingUnits: number, commanderTypes: string[]) => {
+    if (!invasionState || !invasionState.fromTerritoryId || !invasionState.toTerritoryId) {
+      console.error('❌ Invasion state not properly set');
+      return;
+    }
+    
+    try {
+      await invadeTerritory(
+        gameId,
+        currentUserId,
+        invasionState.fromTerritoryId,
+        invasionState.toTerritoryId,
+        attackingUnits,
+        commanderTypes
+      );
+      // useGameSync will handle the state update
+      setInvasionState(null);
+    } catch (error) {
+      console.error('❌ Invasion failed:', error);
+      alert(`Invasion failed: ${error.message}`);
+    }
+  };
+
+  const handleMoveIntoEmpty = async (movingUnits: number) => {
+    if (!invasionState || !invasionState.fromTerritoryId || !invasionState.toTerritoryId) {
+      console.error('❌ Invasion state not properly set');
+      return;
+    }
+    
+    try {
+      await moveIntoEmptyTerritory(
+        gameId,
+        currentUserId,
+        invasionState.fromTerritoryId,
+        invasionState.toTerritoryId,
+        movingUnits
+      );
+      setInvasionState(null);
+    } catch (error) {
+      console.error('❌ Movement failed:', error);
+      alert(`Movement failed: ${error.message}`);
+    }
+  };
+
+  const handleConfirmAdditionalMoveIn = async (additionalUnits: number) => {
+    if (!invasionState || !invasionState.fromTerritoryId || !invasionState.toTerritoryId) {
+      console.error('❌ Invasion state not properly set for move-in');
+      return;
+    }
+    
+    try {
+      await confirmAdditionalMoveIn(
+        gameId,
+        currentUserId,
+        invasionState.fromTerritoryId,
+        invasionState.toTerritoryId,
+        additionalUnits
+      );
+      // useGameSync will handle the state update
+      setInvasionState(null);
+    } catch (error) {
+      console.error('❌ Additional move-in failed:', error);
+      alert(`Additional move-in failed: ${error.message}`);
+    }
+  };
+
+  const handleCancelInvasion = () => {
+    setInvasionState(null);
+  };
+
   const getPhaseDisplay = () => {
     if (gameState?.status === 'setup') {
       switch (gameState.setupPhase) {
@@ -680,33 +980,103 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       throw error
     }
   }
-
-  const handlePurchaseCards = async (selectedCards) => {
+  
+  const saveGameState = () => {
     try {
-      console.log('🛒 Purchasing cards:', selectedCards);
-      await purchaseCards(gameId, currentUserId, selectedCards);
-      console.log('✅ Cards purchased - useGameSync will handle the update');
+      const gameStateToSave = {
+        ...gameState,
+        timestamp: new Date().toISOString(),
+        version: "1.0" // for future compatibility
+      };
+      
+      const dataStr = JSON.stringify(gameStateToSave, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(dataBlob);
+      link.download = `game-state-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+      link.click();
+      
+      console.log('Game state saved successfully');
     } catch (error) {
-      console.error('❌ Card purchase failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to purchase cards: ${errorMessage}`);
-      throw error;
+      console.error('Failed to save game state:', error);
+      alert('Failed to save game state: ' + error.message);
     }
   };
 
-  const handleAdvanceFromBuyCards = async () => {
+  const loadGameState = async () => {
     try {
-      console.log('🎯 Advancing from Buy Cards to Play Cards phase');
-      await advanceFromBuyCards(gameId, currentUserId);
-      console.log('✅ Phase advance completed - useGameSync will handle the update');
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      
+      input.onchange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const loadedState = JSON.parse(e.target.result);
+            
+            // Basic validation
+            if (!loadedState.players || !loadedState.territories || !loadedState.status) {
+              throw new Error('Invalid game state file - missing required fields');
+            }
+            
+            // Confirm with user before overwriting current game
+            const confirmLoad = confirm(
+              `Are you sure you want to load this saved game state?\n\n` +
+              `Saved: ${loadedState.timestamp || 'unknown time'}\n` +
+              `Status: ${loadedState.status}\n` +
+              `Players: ${loadedState.players.map(p => p.name).join(', ')}\n\n` +
+              `This will overwrite the current game!`
+            );
+            
+            if (!confirmLoad) {
+              return;
+            }
+            
+            setIsUpdating(true);
+            
+            // Send the loaded state to the server
+            const response = await fetch(`/api/game/${gameId}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                action: 'load_game_state',
+                playerId: currentUserId,
+                gameState: loadedState
+              })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Server error: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log('Game state loaded successfully from:', loadedState.timestamp || 'unknown time');
+            alert('Game state loaded and applied successfully!');
+            
+          } catch (parseError) {
+            console.error('Failed to load game state:', parseError);
+            alert('Failed to load game state: ' + parseError.message);
+          } finally {
+            setIsUpdating(false);
+          }
+        };
+        
+        reader.readAsText(file);
+      };
+      
+      input.click();
     } catch (error) {
-      console.error('❌ Phase advance failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to advance phase: ${errorMessage}`);
-      throw error;
+      console.error('Failed to load game state:', error);
+      alert('Failed to load game state: ' + error.message);
     }
   };
-
 
   return (
     <div className="h-screen w-full bg-gray-900 flex flex-col relative overflow-hidden">
@@ -729,7 +1099,37 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           </div>
         </div>
       )}
-
+      {/* 🎯 Card Play Mode Indicator */}
+      {cardPlayMode?.active && (
+        <div className="absolute top-16 left-4 right-4 bg-blue-600/95 backdrop-blur-md text-white px-4 py-3 rounded-lg z-45 shadow-xl border border-blue-400">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Play size={18} />
+              <div>
+                <div className="font-semibold">Select Target Territory</div>
+                <div className="text-xs opacity-90">
+                  Playing: {cardPlayMode.cardTitle} - Select {getRequiredTargetCount(cardPlayMode.cardTitle)} {cardPlayMode.validTerritoryTypes.join('/')} territories
+                  {cardSelectedTerritories.length > 0 && (
+                    <span className="ml-2 bg-green-500/30 px-2 py-1 rounded">
+                      {cardSelectedTerritories.length}/{getRequiredTargetCount(cardPlayMode.cardTitle)} selected
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => {
+                setCardPlayMode(null);
+                setCardSelectedTerritories([]);
+              }}
+              className="bg-gray-500 hover:bg-gray-600 px-3 py-1 rounded text-xs font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {/* 🚨 EMERGENCY FIX: AI Turn Indicator - SMALL, NON-BLOCKING, WITH EMERGENCY ACCESS */}
       {isAITurn && (
         <div className="absolute top-16 right-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-2 rounded-lg z-30 shadow-lg max-w-xs">
@@ -794,6 +1194,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           selectedTerritory={selectedTerritory}
           onTerritoryClick={handleTerritoryClick}
           interactionMode={interactionMode}
+          cardSelectedTerritories={cardSelectedTerritories}
         />
       </div>
 
@@ -1087,15 +1488,34 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
               onClick={() => handleGameStateUpdate({}, true)}
               className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              Restart Game
+              🔄 Restart Game
             </button>
-            <button onClick={()=>{
-              setShowGameRules(true)
-            }} className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
-              Game Rules
+            
+            <button 
+              onClick={saveGameState}
+              className="w-full p-3 text-left bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-green-800"
+            >
+              💾 Save Game State
             </button>
+            
+            <button 
+              onClick={loadGameState}
+              className="w-full p-3 text-left bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-blue-800"
+            >
+              📂 Load Game State
+            </button>
+            
+            <button 
+              onClick={() => {
+                setShowGameRules(true)
+              }} 
+              className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              📋 Game Rules
+            </button>
+            
             <button className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
-              End Game
+              🏁 End Game
             </button>
           </div>
         </div>
@@ -1147,12 +1567,43 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
         />
       )}
 
+      {/* 🎯 Buy Cards overlay - Z-index 60 (highest priority) */}
       {gameState?.status === 'playing' && gameState?.currentPhase === 3 && (
         <BuyCardsOverlay
           gameState={gameState}
           currentUserId={currentUserId}
           onPurchaseCards={handlePurchaseCards}
           onAdvanceToNextPhase={handleAdvanceFromBuyCards}
+        />
+      )}
+
+      {/* 🎯 Play Cards overlay - Z-index 60 (highest priority) */}
+      {gameState?.status === 'playing' && gameState?.currentPhase === 4 && (
+        <PlayCardsOverlay
+          gameState={gameState}
+          currentUserId={currentUserId}
+          onPlayCard={handlePlayCard}
+          onAdvanceToNextPhase={handleAdvanceFromPlayCards}
+          onEnterCardPlayMode={handleEnterCardPlayMode}
+        />
+      )}
+
+      {/* 🎯 Invasion overlay - Z-index 60 (highest priority) */}
+      {/* 🎯 Invasion overlay - Z-index 60 (highest priority) */}
+      {gameState?.status === 'playing' && 
+      gameState?.currentPhase === 5 && 
+      invasionState?.isActive && 
+      invasionState.fromTerritoryId && 
+      invasionState.toTerritoryId && (
+        <InvasionOverlay
+          gameState={gameState}
+          currentUserId={currentUserId}
+          fromTerritoryId={invasionState.fromTerritoryId}
+          toTerritoryId={invasionState.toTerritoryId}
+          onInvade={handleInvade}
+          onMoveIntoEmpty={handleMoveIntoEmpty}
+          onConfirmMoveIn={handleConfirmAdditionalMoveIn} // ✅ NEW
+          onCancel={handleCancelInvasion}
         />
       )}
 

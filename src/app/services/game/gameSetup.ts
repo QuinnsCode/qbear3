@@ -216,17 +216,22 @@ export function createInitialPlayers(player1Id: string, player2Id: string): Play
       ],
       territories: [],
       isActive: false,
-      energy: 5, // Use hardcoded value instead of GAME_CONFIG
-      
-      // ✅ All required fields:
+      energy: 5,
       pendingDecision: undefined,
       aiVibe: undefined,
-      remainingUnitsToPlace: PLAYER_STARTING_UNITS, // Use hardcoded value instead of GAME_CONFIG
+      remainingUnitsToPlace: PLAYER_STARTING_UNITS,
       unitsPlacedThisTurn: 0,
       unitsToPlaceThisTurn: 0,
       currentBid: undefined,
       totalEnergySpentOnBids: 0,
-      purchasedItems: []
+      purchasedItems: [],
+      invasionStats: {
+        contestedTerritoriesTaken: 0,
+        emptyTerritoriesClaimed: 0,
+        conquestBonusEarned: false,
+        territoriesAttackedFrom: [],
+        lastInvasionResults: []
+      }
     },
     {
       id: player2Id,
@@ -238,17 +243,22 @@ export function createInitialPlayers(player1Id: string, player2Id: string): Play
       ],
       territories: [],
       isActive: false,
-      energy: 5, // Use hardcoded value
-      
-      // ✅ All required fields:
+      energy: 5,
       pendingDecision: undefined,
       aiVibe: 'efficient',
-      remainingUnitsToPlace: PLAYER_STARTING_UNITS, // Use hardcoded value
+      remainingUnitsToPlace: PLAYER_STARTING_UNITS,
       unitsPlacedThisTurn: 0,
       unitsToPlaceThisTurn: 0,
       currentBid: undefined,
       totalEnergySpentOnBids: 0,
-      purchasedItems: []
+      purchasedItems: [],
+      invasionStats: {
+        contestedTerritoriesTaken: 0,
+        emptyTerritoriesClaimed: 0,
+        conquestBonusEarned: false,
+        territoriesAttackedFrom: [],
+        lastInvasionResults: []
+      }
     },
     {
       id: 'npc-neutral',
@@ -258,8 +268,6 @@ export function createInitialPlayers(player1Id: string, player2Id: string): Play
       territories: [],
       isActive: false,
       energy: 0,
-      
-      // ✅ All required fields:
       pendingDecision: undefined,
       aiVibe: undefined,
       remainingUnitsToPlace: 0,
@@ -267,7 +275,14 @@ export function createInitialPlayers(player1Id: string, player2Id: string): Play
       unitsToPlaceThisTurn: 0,
       currentBid: undefined,
       totalEnergySpentOnBids: 0,
-      purchasedItems: []
+      purchasedItems: [],
+      invasionStats: {
+        contestedTerritoriesTaken: 0,
+        emptyTerritoriesClaimed: 0,
+        conquestBonusEarned: false,
+        territoriesAttackedFrom: [],
+        lastInvasionResults: []
+      }
     }
   ]
 }
@@ -498,7 +513,7 @@ export const GAME_CONFIG = {
     2: { name: 'Build & Hire', allowedActions: ['hire_commander', 'build_station', 'advance_phase'] },
     3: { name: 'Buy Cards', allowedActions: ['buy_card', 'advance_phase'] },
     4: { name: 'Play Cards', allowedActions: ['play_card', 'advance_phase'] },
-    5: { name: 'Invade', allowedActions: ['attack_territory', 'advance_phase'] },
+    5: { name: 'Invade', allowedActions: ['invade_territory', 'advance_phase'] },
     6: { name: 'Fortify', allowedActions: ['fortify_territory', 'advance_phase'] },
   } as const
 }

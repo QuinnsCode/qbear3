@@ -2,7 +2,7 @@
 // Game Logic Functions
 // meant to be used in the game logic
 
-import type { GameState, Player, Territory } from '@/app/lib/GameState'
+import type { GameState, Player, Territory, InvasionStats } from '@/app/lib/GameState'
 
 // Territory Data (updated with correct names and groupings + types)
 export const TERRITORY_DATA = [
@@ -134,8 +134,6 @@ export function buildDeck(cardData: Array<{ qty: number, cardTitle: string, card
 
   return deck;
 }
-
-
 
 // Updated Continent Definitions
 export const CONTINENTS = {
@@ -323,7 +321,23 @@ export function createInitialTerritories(): Record<string, Territory> {
   return territories
 }
 
+export function createInitialInvasionStats(): InvasionStats {
+  return {
+    contestedTerritoriesTaken: 0,
+    emptyTerritoriesClaimed: 0,
+    conquestBonusEarned: false,
+    territoriesAttackedFrom: [],
+    lastInvasionResults: []
+  };
+}
+
 export function createInitialGameState(gameId: string, players: Player[]): GameState {
+  // ✅ Initialize players with invasion stats
+  const playersWithInvasionStats = players.map(player => ({
+    ...player,
+    invasionStats: createInitialInvasionStats()
+  }));
+
   return {
     id: gameId,
     status: 'setup',
@@ -331,7 +345,7 @@ export function createInitialGameState(gameId: string, players: Player[]): GameS
     currentPhase: 1,
     currentYear: 1,
     currentPlayerIndex: 0,
-    players,
+    players: playersWithInvasionStats, // ✅ Use the enhanced players
     turnOrder: players.map(p => p.id),
     activeTurnOrder: players.filter(p => p.id !== 'npc-neutral').map(p => p.id),
     territories: createInitialTerritories(),

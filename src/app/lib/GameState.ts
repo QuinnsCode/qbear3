@@ -25,23 +25,26 @@
     
     // 🆕 BUILD & HIRE: Track purchased items during Phase 2
     purchasedItems?: string[]  // Array of 'land', 'diplomat', 'naval', 'nuclear', 'space_base_123456'
+
+    // INAVDE
+    invasionStats?: InvasionStats
   }
 
   export interface Territory {
     id: string
     name: string
     ownerId?: string
-    machineCount: number
     type: string  // ✅ Simple string - no need for strict typing here
     connections: string[]
+    
+    machineCount: number
+    modifiers?: Record<string, any>
+    // 🆕 BUILD & HIRE: Additional commander types for main game
     landCommander?: string      // playerId who owns the land commander here
     diplomatCommander?: string  // playerId who owns the diplomat commander here
-    spaceBase?: string         // playerId who owns the space base here
-    modifiers?: Record<string, any>
-    
-    // 🆕 BUILD & HIRE: Additional commander types for main game
     navalCommander?: string     // playerId who owns the naval commander here  
     nuclearCommander?: string   // playerId who owns the nuclear commander here
+    spaceBase?: string         // playerId who owns the space base here
   }
 
   export interface Card {
@@ -91,7 +94,7 @@
     | 'purchase_space_base'     // Buy a space base (5 energy)
     | 'place_space_base_game'   // Place purchased space base on territory
 
-  // 🎯 COMPLETE: All game action types
+  // 🎯 COMPLETE: All game action types 
   export type GameActionType = 
     | 'advance_phase'
     | 'advance_turn'
@@ -104,9 +107,11 @@
     | 'spend_energy'
     | 'advance_player_phase'
     | 'start_main_game'
-    | 'attack_territory'
     | 'fortify_territory'
     | 'play_card'
+    | 'invade_territory'           // ✅ newest
+    | 'move_into_empty_territory'  // ✅ newest
+    | 'start_invasion_phase'       // ✅ newest
     | BiddingActionType
     | BuildHireActionType
 
@@ -213,3 +218,45 @@
       territories[tId]?.spaceBase === player.id
     ).length
   }
+
+  // INVADE
+
+  export interface AttackResult {
+    id: string
+    timestamp: number
+    fromTerritoryId: string
+    toTerritoryId: string
+    attackingUnits: number
+    defendingUnits: number
+    commandersUsed: string[]
+    attackerDice: number[]
+    defenderDice: number[]
+    attackerLosses: number
+    defenderLosses: number
+    territoryConquered: boolean
+    wasContested: boolean  // Whether target had defending units
+  }
+
+export interface InvasionStats {
+  contestedTerritoriesTaken: number     // Defended territories conquered this turn
+  emptyTerritoriesClaimed: number       // Empty territories claimed this turn
+  conquestBonusEarned: boolean          // Whether 3+ contested territory bonus earned
+  territoriesAttackedFrom: string[]     // Territories that have attacked (attack-locked)
+  lastInvasionResults: AttackResult[]   // Recent attack results for UI feedback
+}
+
+
+export interface InvasionResult {
+  success: boolean
+  wasContested: boolean          
+  contestedCount: number         
+  emptyCount: number            
+  bonusEarned: boolean          
+  canContinueAttacking: boolean 
+  attackResult: AttackResult
+}
+
+export interface MoveResult {
+  success: boolean
+  emptyCount: number            
+}

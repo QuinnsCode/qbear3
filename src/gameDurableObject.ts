@@ -58,12 +58,22 @@
  * - AI player support with configurable difficulty
  * - Real-time multiplayer with WebSocket sync
  * - Modular architecture for maintainability
+ * 
+ * GameStateDO.reduceAction()
+    │
+    ├── Card Actions → CardManager.* (direct)
+    ├── Invasion Actions → InvasionManager.* (direct) 
+    ├── Game Flow → RestOfThemManager.*
+    └── Core Mechanics → GameUtils.*
+ * 
  */
 
 import { WebSocketManager } from '@/app/services/game/gameFunctions/websocket/WebSocketManager';
 import { AiManager } from '@/app/services/game/gameFunctions/ai/AiManager';
 import { GameUtils } from '@/app/services/game/gameFunctions/utils/GameUtils';
 import { RestOfThemManager } from '@/app/services/game/gameFunctions/theRestOfThem/RestOfThemManager';
+import { CardManager } from '@/app/services/game/gameFunctions/cards/CardManager';
+import { InvasionManager } from '@/app/services/game/gameFunctions/invasion/InvasionManager';
 import { StateManager } from '@/app/services/game/gameFunctions/state/StateManager';
 import { GAME_CONFIG } from '@/app/services/game/gameSetup'
 import { DurableObject } from "cloudflare:workers";
@@ -133,9 +143,20 @@ export class GameStateDO extends DurableObject {
       }
       
       if (method === 'PUT') {
-        const { actionIndex } = await request.json()
+        const { actionIndex } = await request.json() as any
         const rewindResult = await this.rewindToAction(actionIndex)
         return Response.json(rewindResult)
+      }
+
+      if (method === 'PATCH') {
+        const requestData = await request.json() as any
+        
+        if (requestData.action === 'load_game_state' && requestData.gameState) {
+          const loadResult = await this.loadGameStateFromFile(requestData.gameState, requestData.playerId)
+          return Response.json(loadResult)
+        } else {
+          return new Response('Invalid PATCH data', { status: 400 })
+        }
       }
       
       return new Response('Method not allowed', { status: 405 })
@@ -170,6 +191,58 @@ export class GameStateDO extends DurableObject {
         timestamp: new Date(action.timestamp)
       }))
     }
+  }
+
+  async loadGameStateFromFile(loadedState: any, requestingPlayerId: string): Promise<GameState> {
+    console.log('🔄 Loading game state from file...', {
+      timestamp: loadedState.timestamp,
+      status: loadedState.status,
+      players: loadedState.players?.map(p => p.name)
+    });
+
+    // Validate the loaded state has required fields
+    if (!loadedState.players || !loadedState.territories || !loadedState.status) {
+      throw new Error('Invalid game state - missing required fields');
+    }
+
+    // Ensure dates are properly converted
+    const restoredState: GameState = {
+      ...loadedState,
+      createdAt: new Date(loadedState.createdAt),
+      updatedAt: new Date(),
+      actions: (loadedState.actions || []).map(action => ({
+        ...action,
+        timestamp: new Date(action.timestamp)
+      }))
+    };
+
+    // Validate that the requesting player exists in the loaded state
+    const playerExists = restoredState.players.some(p => p.id === requestingPlayerId);
+    if (!playerExists) {
+      throw new Error('You are not a player in this saved game state');
+    }
+
+    // Apply the loaded state
+    this.gameState = restoredState;
+    
+    // Clear any AI timeouts since we're loading a new state
+    this.aiManager.clearAllTimeouts();
+    
+    // Re-initialize AI players if any exist
+    await this.initializeAIPlayers(this.gameState);
+    
+    // Persist the loaded state
+    await this.persist();
+    
+    // Broadcast the new state to all connected clients
+    this.wsManager.broadcast({ 
+      type: 'game_state_loaded', 
+      state: this.gameState,
+      loadedBy: requestingPlayerId
+    });
+    
+    console.log('✅ Game state loaded and applied successfully');
+    return this.gameState;
   }
 
   // ✅ ALTERNATIVE: If you want to start directly in main game (skipping setup)
@@ -578,14 +651,12 @@ export class GameStateDO extends DurableObject {
         }
       case 'start_main_game':
         return RestOfThemManager.startMainGame(gameState)
-      case 'attack_territory':
-        return RestOfThemManager.attackTerritory(gameState, action)
       case 'fortify_territory':
         return RestOfThemManager.fortifyTerritory(gameState, action)
       case 'play_card':
-        return RestOfThemManager.playCard(gameState, action)
-      case 'place_bid':
-        return RestOfThemManager.placeBid(gameState, action)
+        return CardManager.handlePlayCard(gameState, action);  // ✅ CHANGED
+      case 'purchase_cards':
+        return CardManager.purchaseCards(gameState, action);   // ✅ CHANGED
       case 'reveal_bids':
         return RestOfThemManager.revealBids(gameState)
       case 'start_year_turns':
@@ -596,6 +667,16 @@ export class GameStateDO extends DurableObject {
         return RestOfThemManager.purchaseAndPlaceSpaceBase(gameState, action)
       case 'purchase_cards':
         return RestOfThemManager.purchaseCards(gameState, action);
+     case 'invade_territory':
+        return InvasionManager.invadeTerritory(gameState, action);
+      case 'move_into_empty_territory':
+        return InvasionManager.moveIntoEmptyTerritory(gameState, action);
+      case 'start_invasion_phase':
+        return InvasionManager.startInvasionPhase(gameState, action);
+      case 'confirm_additional_move_in':
+        return InvasionManager.confirmAdditionalMoveIn(gameState, action);
+      case 'place_bid':
+        return RestOfThemManager.placeBid(gameState, action);
       default:
         console.warn(`Unknown action type: ${action.type}`)
         return gameState

@@ -50,16 +50,23 @@ export function useGameActions({
           );
           break;
 
-        case 'attack_territory':
-          result = await gameActions.attackTerritory(
+        case 'invade_territory':
+          const { gameState, invasionResult } = await gameActions.invadeTerritory(
             gameId,
             action.playerId,
             action.data.fromTerritoryId,
             action.data.toTerritoryId,
-            action.data.attackingUnits
+            action.data.attackingUnits,
+            action.data.commanderTypes
           );
-          break;
 
+          // Use `gameState` as the main result
+          result = gameState;
+
+          // Optionally, handle `invasionResult` if you need to do something with it
+          // For example, update state or log it
+          console.log('~~~Invasion result:', invasionResult);
+          break;
         case 'fortify_territory':
           result = await gameActions.fortifyTerritory(
             gameId,
@@ -83,9 +90,9 @@ export function useGameActions({
           result = await gameActions.advancePhase(gameId, action.playerId);
           break;
 
-        case 'advance_setup_turn':
-          result = await gameActions.advanceSetupTurn(gameId, action.playerId);
-          break;
+        // case 'advance_setup_turn':
+        //   result = await gameActions.advanceSetupTurn(gameId, action.playerId);
+        //   break;
 
         case 'advance_turn':
           result = await gameActions.advanceTurn(gameId, action.playerId);
@@ -157,7 +164,7 @@ export function useGameActions({
 
     attack: (fromTerritoryId: string, toTerritoryId: string, attackingUnits: number) =>
       executeAction({
-        type: 'attack_territory',
+        type: 'invade_territory',
         playerId: currentUserId,
         data: { fromTerritoryId, toTerritoryId, attackingUnits }
       }),

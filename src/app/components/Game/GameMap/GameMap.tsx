@@ -1,4 +1,5 @@
-// Enhanced GameMap.tsx - FOCUSED ON CONNECTION LINES & SHIMMER EFFECTS
+// app/components/Game/GameMap/GameMap.tsx - WITH MULTI-TERRITORY CARD SELECTION SUPPORT
+// Enhanced GameMap.tsx - WITH MULTI-TERRITORY CARD SELECTION SUPPORT
 'use client'
 
 import { useState } from 'react';
@@ -14,7 +15,22 @@ const COMMANDER_SYMBOLS = {
 
 const BASE_SYMBOL = '🏰';  // Space Base
 
-export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, interactionMode }) => {
+// ✅ ADD: Props interface with new cardSelectedTerritories prop
+interface GameMapProps {
+  gameState: any;
+  selectedTerritory: string | null;
+  onTerritoryClick: (territoryId: string) => void;
+  interactionMode: string;
+  cardSelectedTerritories?: string[]; // ✅ NEW: For multi-territory card selection
+}
+
+export const GameMap = ({ 
+  gameState, 
+  selectedTerritory, 
+  onTerritoryClick, 
+  interactionMode,
+  cardSelectedTerritories = [] // ✅ NEW: Default to empty array
+}: GameMapProps) => {
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: 900, height: 450 });
   const [zoom, setZoom] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
@@ -38,7 +54,7 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
     return colorMap[owner?.color] || '#9ca3af';
   };
 
-  // ✅ NEW: Get territory opacity based on water status and selection
+  // ✅ UPDATED: Get territory opacity based on water status and selection
   const getTerritoryOpacity = (territory) => {
     if (isWaterTerritory(territory)) {
       // Water territories: partial opacity by default, full when selected
@@ -46,6 +62,11 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
     }
     // Land territories: always full opacity
     return 1.0;
+  };
+
+  // ✅ NEW: Check if territory is selected for card play
+  const isCardSelectedTerritory = (territoryId) => {
+    return cardSelectedTerritories.includes(territoryId);
   };
 
   // ✅ NEW: Check if connection should be highlighted
@@ -341,6 +362,19 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
               <animate attributeName="stop-opacity" values="0.3;0.9;0.3" dur="1.5s" repeatCount="indefinite"/>
             </stop>
           </linearGradient>
+
+          {/* ✅ NEW: Card selection gradient */}
+          <linearGradient id="cardSelectionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(34, 197, 94, 0.4)">
+              <animate attributeName="stop-opacity" values="0.4;0.8;0.4" dur="1s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="50%" stopColor="rgba(34, 197, 94, 0.8)">
+              <animate attributeName="stop-opacity" values="0.8;1;0.8" dur="1s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="100%" stopColor="rgba(34, 197, 94, 0.4)">
+              <animate attributeName="stop-opacity" values="0.4;0.8;0.4" dur="1s" repeatCount="indefinite"/>
+            </stop>
+          </linearGradient>
         </defs>
 
         {/* ✨ ENHANCED: Territory connections with much lighter default opacity and shimmer effects */}
@@ -394,6 +428,7 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
           if (!position) return null;
           
           const isSelected = selectedTerritory === territory.id;
+          const isCardSelected = isCardSelectedTerritory(territory.id); // ✅ NEW
           const nodeColor = getNodeColor(territory);
           const extras = getTerritoryExtras(territory);
           const territoryOpacity = getTerritoryOpacity(territory);
@@ -415,21 +450,55 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
                   }}
                 />
               )}
+
+              {/* ✅ NEW: Card selection glow effect */}
+              {isCardSelected && (
+                <circle
+                  cx={position.x} cy={position.y}
+                  r={36}
+                  fill="none"
+                  stroke="url(#cardSelectionGradient)"
+                  strokeWidth="4"
+                  className="animate-pulse"
+                  style={{
+                    filter: 'drop-shadow(0 0 12px rgba(34, 197, 94, 0.8))'
+                  }}
+                />
+              )}
               
               {/* Main territory circle */}
               <circle
                 cx={position.x} cy={position.y}
                 r={isSelected ? 24 : 20}
                 fill={nodeColor}
-                stroke={isSelected ? '#1d4ed8' : (isWater ? '#0ea5e9' : '#fff')}
-                strokeWidth={isSelected ? 3 : 2}
+                stroke={
+                  isCardSelected ? '#22c55e' : // Green for card selection
+                  isSelected ? '#1d4ed8' : // Blue for regular selection
+                  (isWater ? '#0ea5e9' : '#fff') // Default colors
+                }
+                strokeWidth={isCardSelected || isSelected ? 3 : 2}
                 className="cursor-pointer transition-all duration-200 hover:opacity-90"
                 onClick={(e) => handleTerritoryClick(territory.id, e)}
                 style={{ 
                   cursor: isPanning ? 'grabbing' : 'pointer',
-                  filter: isSelected ? 'drop-shadow(0 0 6px rgba(29, 78, 216, 0.8))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+                  filter: isCardSelected ? 'drop-shadow(0 0 8px rgba(34, 197, 94, 0.8))' :
+                          isSelected ? 'drop-shadow(0 0 6px rgba(29, 78, 216, 0.8))' : 
+                          'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
                 }}
               />
+
+              {/* ✅ NEW: Card selection indicator */}
+              {isCardSelected && (
+                <circle
+                  cx={position.x + 12}
+                  cy={position.y - 12}
+                  r="6"
+                  fill="#22c55e"
+                  stroke="white"
+                  strokeWidth="2"
+                  className="pointer-events-none"
+                />
+              )}
               
               {/* Unit count with enhanced text shadow */}
               <text
@@ -503,6 +572,10 @@ export const GameMap = ({ gameState, selectedTerritory, onTerritoryClick, intera
               {/* ✅ Show water indicator */}
               {isWaterTerritory(gameState.territories[selectedTerritory]) && (
                 <span className="ml-2 text-blue-500 text-xs">🌊 Water</span>
+              )}
+              {/* ✅ NEW: Show card selection indicator */}
+              {isCardSelectedTerritory(selectedTerritory) && (
+                <span className="ml-2 text-green-500 text-xs">🎯 Selected</span>
               )}
             </h3>
             <p className="text-gray-600">

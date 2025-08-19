@@ -2,6 +2,7 @@
 
 import type { GameState, GameAction, Player, Territory } from '@/app/lib/GameState';
 import { GameUtils } from '@/app/services/game/gameFunctions/utils/GameUtils';
+import { CardManager } from '@/app/services/game/gameFunctions/cards/CardManager';
 import { GAME_CONFIG } from '@/app/services/game/gameSetup';
 import { globalAIController } from '@/app/services/game/ADai';
 
@@ -87,89 +88,26 @@ export class RestOfThemManager {
     return newState;
   }
 
-  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  // PURCHASE CARDS
-  // RestOfThemManager.ts - Add this method
+  // ================================
+  // CARD SYSTEM (DELEGATED TO CARDMANAGER)
+  // ================================
+  
   static purchaseCards(gameState: GameState, action: GameAction): GameState {
-    const { playerId, data } = action;
-    const { selectedCards } = data;
-    
-    const player = gameState.players.find(p => p.id === playerId);
-    if (!player) {
-      console.error('Player not found for card purchase');
-      return gameState;
-    }
-    
-    // ✅ FIXED: Calculate total cost (1 energy per card)
-    const totalCost = selectedCards.reduce((sum: number, item: any) => 
-      sum + item.quantity, 0  // Each card costs 1 energy to purchase
-    );
-    
-    // Validate player has enough energy
-    if (player.energy < totalCost) {
-      console.error(`Player ${player.name} cannot afford cards (cost: ${totalCost}, energy: ${player.energy})`);
-      return gameState;
-    }
-    
-    console.log(`💳 ${player.name} purchasing ${totalCost} cards for ${totalCost} energy`);
-    
-    // Create new state
-    const newState = { ...gameState };
-    newState.players = gameState.players.map(p => {
-      if (p.id === playerId) {
-        const newCards = [...p.cards];
-        
-        // ✅ FIXED: Add random cards from each commander type
-        selectedCards.forEach((item: any) => {
-          const { commanderType, quantity } = item;
-          
-          for (let i = 0; i < quantity; i++) {
-            // Get a random card from this commander type
-            const randomCard = this.getRandomCardFromCommanderType(commanderType);
-            
-            if (randomCard) {
-              newCards.push({
-                id: crypto.randomUUID(),
-                type: 'commander',
-                name: randomCard.cardTitle,
-                data: {
-                  cost: randomCard.cardCost,
-                  commanderType: randomCard.cardType,
-                  text: randomCard.cardText,
-                  phase: randomCard.cardPhase
-                }
-              });
-            }
-          }
-        });
-        
-        return {
-          ...p,
-          energy: p.energy - totalCost,
-          cards: newCards
-        };
-      }
-      return p;
-    });
-    
-    console.log(`✅ ${player.name} purchased cards successfully. New energy: ${player.energy - totalCost}`);
-    return newState;
+    return CardManager.purchaseCards(gameState, action);
   }
 
-  // ✅ ADD THIS HELPER FUNCTION:
-  static getRandomCardFromCommanderType(commanderType: string) {
-    // You'll need to import RAW_CARD_DATA or have it available
-    const commanderCards = RAW_CARD_DATA.filter(card => card.cardType === commanderType);
-    
-    if (commanderCards.length === 0) {
-      console.warn(`No cards found for commander type: ${commanderType}`);
-      return null;
-    }
-    
-    // Get random card
-    const randomIndex = Math.floor(Math.random() * commanderCards.length);
-    return commanderCards[randomIndex];
+  static handlePlayCard(gameState: GameState, action: GameAction): GameState {
+    return CardManager.handlePlayCard(gameState, action);
   }
+
+  static playCard(gameState: GameState, action: GameAction): GameState {
+    return CardManager.playCard(gameState, action);
+  }
+
+  // ================================
+  // INVASION SYSTEM - REMOVED (Now handled directly by InvasionManager)
+  // ================================
+  // All invasion-related actions are now routed directly from GameStateDO to InvasionManager
 
   // ================================
   // UTILITY METHODS
@@ -238,6 +176,7 @@ export class RestOfThemManager {
 
   static advancePlayerPhase(gameState: GameState, action: GameAction): GameState {
     console.log(`📋 ADVANCE_PLAYER_PHASE called:`, {
+      currentStatus: gameState.status,  // ✅ ADD: Check status
       currentPhase: gameState.currentPhase,
       playerId: action.playerId,
       data: action.data
@@ -256,59 +195,90 @@ export class RestOfThemManager {
     
     let newState = { ...gameState };
     
-    switch (gameState.currentPhase) {
-      case 1: // Collect & Deploy
-        if (data?.deploymentComplete) {
-          console.log(`📋 ✅ Phase 1 completed - advancing to Phase 2`);
-          newState.currentPhase = 2;
-        } else {
-          console.log(`📋 ❌ Phase 1 not completed - missing deploymentComplete flag`);
-        }
-        break;
+    // ✅ CRITICAL FIX: Only process main game phase logic when status is 'playing'
+    if (newState.status === 'playing') {
+      switch (gameState.currentPhase) {
+        case 1: // Collect & Deploy
+          if (data?.deploymentComplete) {
+            console.log(`📋 ✅ Phase 1 completed - advancing to Phase 2`);
+            newState.currentPhase = 2;
+          } else {
+            console.log(`📋 ❌ Phase 1 not completed - missing deploymentComplete flag`);
+          }
+          break;
+          
+        case 2: // Build & Hire
+          if (data?.phaseComplete) {
+            console.log(`📋 ✅ Phase 2 completed - advancing to Phase 3`);
+            newState.currentPhase = 3;
+          } else {
+            console.log(`📋 ❌ Phase 2 not completed - missing phaseComplete flag`);
+          }
+          break;
+          
+        case 3: // Buy Cards
+          if (data?.phaseComplete) {
+            console.log(`📋 ✅ Phase 3 completed - advancing to Phase 4`);
+            newState.currentPhase = 4;
+          } else {
+            console.log(`📋 ❌ Phase 3 not completed - missing phaseComplete flag`);
+          }
+          break;
+          
+        case 4: // Play Cards
+          if (data?.phaseComplete) {
+            console.log(`📋 ✅ Phase 4 completed - advancing to Phase 5 (Invasion)`);
+            newState.currentPhase = 5;
+            
+            // ✅ AUTO-UNLOCK: When entering Phase 5, unlock all territories for invasion
+            // ✅ FIXED: Only do this when we're actually in playing status
+            const invadingPlayer = newState.players.find(p => p.id === playerId);
+            if (invadingPlayer) {
+              // Reset invasion stats to unlock territories
+              invadingPlayer.invasionStats = {
+                contestedTerritoriesTaken: 0,
+                emptyTerritoriesClaimed: 0,
+                conquestBonusEarned: false,
+                territoriesAttackedFrom: [], // ← This unlocks all territories
+                lastInvasionResults: []
+              };
+              console.log(`🔓 Territories unlocked for ${invadingPlayer.name} entering Phase 5`);
+            }
+          } else {
+            console.log(`📋 ❌ Phase 4 not completed - missing phaseComplete flag`);
+          }
+          break;
+          
+        case 5: // Invade 
+          if (data?.phaseComplete) {
+            console.log(`📋 ✅ Phase 5 completed - advancing to Phase 6`);
+            newState.currentPhase = 6;
+          } else {
+            console.log(`📋 ❌ Phase 5 not completed - missing phaseComplete flag`);
+          }
+          break;
         
-      case 2: // Build & Hire
-        if (data?.phaseComplete) {
-          console.log(`📋 ✅ Phase 2 completed - advancing to Phase 3`);
-          newState.currentPhase = 3;
-        } else {
-          console.log(`📋 ❌ Phase 2 not completed - missing phaseComplete flag`);
-        }
-        break;
-        
-      case 3: // Buy Cards
-        if (data?.phaseComplete) {
-          console.log(`📋 ✅ Phase 3 completed - advancing to Phase 4`);
-          newState.currentPhase = 4;
-        } else {
-          console.log(`📋 ❌ Phase 3 not completed - missing phaseComplete flag`);
-        }
-        break;
-        
-      case 4: // Play Cards
-        if (data?.phaseComplete) {
-          console.log(`📋 ✅ Phase 4 completed - advancing to Phase 5`);
-          newState.currentPhase = 5;
-        } else {
-          console.log(`📋 ❌ Phase 4 not completed - missing phaseComplete flag`);
-        }
-        break;
-        
-      case 5: // Invade 
-        if (data?.phaseComplete) {
-          console.log(`📋 ✅ Phase 5 completed - advancing to Phase 6`);
-          newState.currentPhase = 6;
-        } else {
-          console.log(`📋 ❌ Phase 5 not completed - missing phaseComplete flag`);
-        }
-        break;
-      
-      case 6: // Fortify (last phase)
-        console.log(`📋 ✅ Phase 6 completed - advancing to next player`);
-        newState = this.advanceToNextMainGamePlayer(newState);
-        break;
+        case 6: // Fortify (last phase)
+          console.log(`📋 ✅ Phase 6 completed - advancing to next player`);
+          newState = this.advanceToNextMainGamePlayer(newState);
+          break;
+      }
+    } 
+    // ✅ SETUP STATUS: Let setup phase progression handle this via setupFunctions
+    else if (newState.status === 'setup') {
+      console.log(`📋 ⚠️ Setup phase progression should be handled by setupFunctions, not advancePlayerPhase`);
+      // Don't modify the state here - let setup progression handle it
+      return gameState;
+    }
+    // ✅ BIDDING STATUS: This shouldn't be called during bidding
+    else if (newState.status === 'bidding') {
+      console.log(`📋 ⚠️ advancePlayerPhase called during bidding - this should not happen`);
+      return gameState;
     }
     
     console.log(`📋 📤 Phase advance result:`, {
+      oldStatus: gameState.status,
+      newStatus: newState.status,
       oldPhase: gameState.currentPhase,
       newPhase: newState.currentPhase,
       oldPlayerIndex: gameState.currentPlayerIndex,
@@ -413,7 +383,7 @@ export class RestOfThemManager {
         }
         break;
       case 'play_card':
-        break;
+        return CardManager.handlePlayCard(gameState, action);
     }
     
     player.pendingDecision = undefined;
@@ -422,70 +392,8 @@ export class RestOfThemManager {
   }
 
   // ================================
-  // COMBAT SYSTEM
+  // FORTIFICATION SYSTEM
   // ================================
-  
-  static attackTerritory(gameState: GameState, action: GameAction): GameState {
-    const { fromTerritoryId, toTerritoryId, attackingUnits } = action.data;
-    const newState = { ...gameState };
-    
-    const fromTerritory = newState.territories[fromTerritoryId];
-    const toTerritory = newState.territories[toTerritoryId];
-    
-    if (!fromTerritory || !toTerritory) {
-      console.warn('Invalid territories for attack');
-      return newState;
-    }
-    
-    if (fromTerritory.ownerId !== action.playerId) {
-      console.warn(`Player ${action.playerId} does not own attacking territory`);
-      return newState;
-    }
-    
-    if (toTerritory.ownerId === action.playerId) {
-      console.warn('Cannot attack your own territory');
-      return newState;
-    }
-    
-    if (fromTerritory.machineCount <= attackingUnits) {
-      console.warn('Not enough units to attack (must leave 1 behind)');
-      return newState;
-    }
-    
-    // ✅ Use GameUtils for combat resolution
-    const combatResult = GameUtils.resolveCombat(
-      attackingUnits,
-      toTerritory.machineCount,
-      action.playerId,
-      toTerritory.ownerId || 'neutral'
-    );
-    
-    fromTerritory.machineCount -= combatResult.attackerLosses;
-    toTerritory.machineCount -= combatResult.defenderLosses;
-    
-    if (toTerritory.machineCount <= 0) {
-      const oldOwnerId = toTerritory.ownerId;
-      toTerritory.ownerId = action.playerId;
-      toTerritory.machineCount = combatResult.attackerUnitsRemaining;
-      
-      const attacker = newState.players.find(p => p.id === action.playerId);
-      const defender = newState.players.find(p => p.id === oldOwnerId);
-      
-      if (attacker && !attacker.territories.includes(toTerritoryId)) {
-        attacker.territories.push(toTerritoryId);
-      }
-      
-      if (defender) {
-        defender.territories = defender.territories.filter(id => id !== toTerritoryId);
-      }
-      
-      console.log(`🎯 ${fromTerritory.name} conquered ${toTerritory.name}!`);
-    } else {
-      console.log(`⚔️ Attack from ${fromTerritory.name} to ${toTerritory.name} repelled`);
-    }
-    
-    return newState;
-  }
 
   static fortifyTerritory(gameState: GameState, action: GameAction): GameState {
     const { fromTerritoryId, toTerritoryId, unitCount } = action.data;
@@ -519,7 +427,7 @@ export class RestOfThemManager {
   // ================================
   // COMBINED PURCHASE+PLACE SYSTEM
   // ================================
-  // ✅ Handler for purchasing and placing commander in one action
+  
   static purchaseAndPlaceCommander(gameState: GameState, action: GameAction): GameState {
     const { playerId, data } = action;
     const { territoryId, commanderType, cost } = data;
@@ -583,7 +491,6 @@ export class RestOfThemManager {
     return newState;
   }
 
-  // ✅ Handler for purchasing and placing space base in one action
   static purchaseAndPlaceSpaceBase(gameState: GameState, action: GameAction): GameState {
     const { playerId, data } = action;
     const { territoryId, cost } = data;
@@ -634,6 +541,7 @@ export class RestOfThemManager {
     
     return newState;
   }
+
   // ================================
   // BIDDING SYSTEM
   // ================================
@@ -798,29 +706,6 @@ export class RestOfThemManager {
     newState.bidding = undefined;
     
     console.log(`🎯 Year ${year} begins! ${newState.players[newState.currentPlayerIndex].name} starts Phase 1`);
-    
-    return newState;
-  }
-
-  // ================================
-  // CARD SYSTEM
-  // ================================
-  
-  static playCard(gameState: GameState, action: GameAction): GameState {
-    const { cardId, targets } = action.data;
-    const newState = { ...gameState };
-    const player = newState.players.find(p => p.id === action.playerId);
-    
-    if (!player) return newState;
-    
-    const cardIndex = player.cards.findIndex(c => c.id === cardId);
-    if (cardIndex === -1) return newState;
-    
-    const card = player.cards[cardIndex];
-    player.cards.splice(cardIndex, 1);
-    
-    // TODO: Implement specific card effects based on card type
-    console.log(`🃏 ${player.name} played card: ${card.type || 'Unknown'}`);
     
     return newState;
   }
