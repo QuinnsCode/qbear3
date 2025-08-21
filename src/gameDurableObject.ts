@@ -77,7 +77,17 @@ import { InvasionManager } from '@/app/services/game/gameFunctions/invasion/Inva
 import { StateManager } from '@/app/services/game/gameFunctions/state/StateManager';
 import { GAME_CONFIG } from '@/app/services/game/gameSetup'
 import { DurableObject } from "cloudflare:workers";
-import type { GameState, GameAction, Player, Territory } from '@/app/lib/GameState'
+
+// ✅ UPDATED: Import the new types
+import type { 
+  GameState, 
+  GameAction, 
+  Player, 
+  Territory,
+  PendingConquest,  // ✅ NEW
+  CombatResult      // ✅ NEW
+} from '@/app/lib/GameState'
+
 import { setupNewGame } from '@/app/services/game/gameSetup'
 import { globalAIController } from '@/app/services/game/ADai'
 
@@ -379,6 +389,11 @@ export class GameStateDO extends DurableObject {
     console.log(`🎬 Action data:`, action.data)
     console.log(`🎬 Current game status: ${this.gameState.status}`)
     console.log(`🎬 Current setup phase: ${this.gameState.setupPhase}`)
+    
+    // ✅ NEW: Log pending conquest state before action
+    if (action.type === 'resolve_combat' || action.type === 'confirm_conquest') {
+      this.logPendingConquestState();
+    }
 
     const gameAction: GameAction = {
       ...action,
@@ -393,6 +408,16 @@ export class GameStateDO extends DurableObject {
       console.log(`⚠️ State unchanged after ${action.type} - validation may have failed`)
     } else {
       console.log(`✅ State changed after ${action.type}`)
+      
+      // ✅ NEW: Log pending conquest state after action
+      if (action.type === 'resolve_combat' || action.type === 'confirm_conquest') {
+        console.log('📦 AFTER ACTION:');
+        // Temporarily set gameState to log the new state
+        const tempState = this.gameState;
+        this.gameState = newState;
+        this.logPendingConquestState();
+        this.gameState = tempState;
+      }
     }
     
     if (newState !== this.gameState) {
@@ -410,7 +435,6 @@ export class GameStateDO extends DurableObject {
       } else if (this.gameState.status === 'playing') {
         await this.handleMainGamePhaseProgression(action)
       } 
-      // 🎯 ADD THIS: Handle bidding progression
       else if (this.gameState.status === 'bidding') {
         await this.handleBiddingProgression(action)
       }
@@ -647,16 +671,14 @@ export class GameStateDO extends DurableObject {
           return RestOfThemManager.advancePlayerPhase(gameState, action);
         } catch (error) {
           console.error('❌ RestOfThemManager.advancePlayerPhase failed:', error);
-          throw error; // Re-throw to see the actual error
+          throw error;
         }
       case 'start_main_game':
         return RestOfThemManager.startMainGame(gameState)
       case 'fortify_territory':
         return RestOfThemManager.fortifyTerritory(gameState, action)
       case 'play_card':
-        return CardManager.handlePlayCard(gameState, action);  // ✅ CHANGED
-      case 'purchase_cards':
-        return CardManager.purchaseCards(gameState, action);   // ✅ CHANGED
+        return CardManager.handlePlayCard(gameState, action);
       case 'reveal_bids':
         return RestOfThemManager.revealBids(gameState)
       case 'start_year_turns':
@@ -667,20 +689,78 @@ export class GameStateDO extends DurableObject {
         return RestOfThemManager.purchaseAndPlaceSpaceBase(gameState, action)
       case 'purchase_cards':
         return RestOfThemManager.purchaseCards(gameState, action);
-     case 'invade_territory':
-        return InvasionManager.invadeTerritory(gameState, action);
-      case 'move_into_empty_territory':
-        return InvasionManager.moveIntoEmptyTerritory(gameState, action);
-      case 'start_invasion_phase':
-        return InvasionManager.startInvasionPhase(gameState, action);
-      case 'confirm_additional_move_in':
-        return InvasionManager.confirmAdditionalMoveIn(gameState, action);
       case 'place_bid':
         return RestOfThemManager.placeBid(gameState, action);
+
+      // ================================
+      // ✅ NEW: Two-Phase Invasion System
+      // ================================
+      case 'resolve_combat':
+        console.log('🎯 Processing resolve_combat action');
+        return InvasionManager.resolveCombat(gameState, action);
+
+      case 'confirm_conquest':
+        console.log('📦 Processing confirm_conquest action');
+        return InvasionManager.confirmConquest(gameState, action);
+
+      // ================================
+      // ✅ DEPRECATED: Backward Compatibility
+      // ================================
+      case 'invade_territory':
+        console.log('⚠️ Processing deprecated invade_territory action - redirecting to resolve_combat');
+        // Redirect old action type to new system for backward compatibility
+        const resolveAction = { ...action, type: 'resolve_combat' as const };
+        return InvasionManager.resolveCombat(gameState, resolveAction);
+
+      case 'confirm_additional_move_in':
+        console.log('⚠️ Processing deprecated confirm_additional_move_in action - redirecting to confirm_conquest');
+        // Redirect old action type to new system for backward compatibility
+        const confirmAction = { ...action, type: 'confirm_conquest' as const };
+        return InvasionManager.confirmConquest(gameState, confirmAction);
+
+      // ================================
+      // ✅ EXISTING: Keep these unchanged
+      // ================================
+      case 'move_into_empty_territory':
+        console.log('🚶 Processing move_into_empty_territory action');
+        return InvasionManager.moveIntoEmptyTerritory(gameState, action);
+
+      case 'start_invasion_phase':
+        console.log('⚔️ Processing start_invasion_phase action');
+        return InvasionManager.startInvasionPhase(gameState, action);
+
       default:
         console.warn(`Unknown action type: ${action.type}`)
         return gameState
     }
+  }
+
+  private logPendingConquestState(): void {
+    if (!this.gameState?.pendingConquest) {
+      console.log('📦 No pending conquest');
+      return;
+    }
+
+    const pc = this.gameState.pendingConquest;
+    const fromTerritory = this.gameState.territories[pc.fromTerritoryId];
+    const toTerritory = this.gameState.territories[pc.toTerritoryId];
+    
+    console.log('📦 PENDING CONQUEST STATE:', {
+      from: fromTerritory?.name,
+      to: toTerritory?.name,
+      player: this.gameState.players.find(p => p.id === pc.playerId)?.name,
+      originalAttackingUnits: pc.originalAttackingUnits,
+      minimumMoveIn: pc.minimumMoveIn,
+      availableForAdditional: pc.availableForAdditionalMoveIn,
+      attackingCommanders: pc.attackingCommanders,
+      combatResult: {
+        attackerLosses: pc.combatResult.attackerLosses,
+        defenderLosses: pc.combatResult.defenderLosses,
+        attackerDice: pc.combatResult.attackerDice,
+        defenderDice: pc.combatResult.defenderDice
+      },
+      showDiceResults: pc.showDiceResults
+    });
   }
 
   async rewindToAction(actionIndex: number): Promise<GameState> {

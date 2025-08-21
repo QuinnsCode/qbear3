@@ -2,32 +2,33 @@
   export type AIVibe = 'aggro' | 'defensive' | 'evasive' | 'efficient'
 
   export interface Player {
-    id: string
-    name: string
-    color: string
-    cards: Card[]
-    territories: string[]
-    isActive: boolean
-    pendingDecision?: PendingDecision
-    energy: number
-    aiVibe?: 'aggressive' | 'defensive' | 'balanced' | 'efficient'
-    
-    // ✅ SETUP PHASE: Unit placement tracking
-    remainingUnitsToPlace?: number  // For setup phase
-    unitsPlacedThisTurn?: number   // For setup phase (max 3 per turn)
-    
-    // ✅ PLAYING PHASE: Enhanced unit tracking
-    unitsToPlaceThisTurn?: number  // Total units to place this turn (base + space base bonus)
-    
-    // ✅ BIDDING: Bidding system properties
-    currentBid?: number
-    totalEnergySpentOnBids?: number
-    
-    // 🆕 BUILD & HIRE: Track purchased items during Phase 2
-    purchasedItems?: string[]  // Array of 'land', 'diplomat', 'naval', 'nuclear', 'space_base_123456'
+      id: string
+      name: string
+      color: string
+      cards: Card[]
+      territories: string[]
+      isActive: boolean
+      pendingDecision?: PendingDecision
+      energy: number
+      aiVibe?: 'aggressive' | 'defensive' | 'balanced' | 'efficient'
+      
+      // ✅ SETUP PHASE: Unit placement tracking
+      remainingUnitsToPlace?: number  // For setup phase
+      unitsPlacedThisTurn?: number   // For setup phase (max 3 per turn)
+      
+      // ✅ PLAYING PHASE: Enhanced unit tracking
+      unitsToPlaceThisTurn?: number  // Total units to place this turn (base + space base bonus)
+      
+      // ✅ BIDDING: Bidding system properties
+      currentBid?: number
+      totalEnergySpentOnBids?: number
+      
+      // 🆕 BUILD & HIRE: Track purchased items during Phase 2
+      purchasedItems?: string[]  // Array of 'land', 'diplomat', 'naval', 'nuclear', 'space_base_123456'
 
-    // INAVDE
-    invasionStats?: InvasionStats
+      // INVASION
+      invasionStats?: InvasionStats
+      // ✅ REMOVED: pendingMoveIn should be on GameState, not Player
   }
 
   export interface Territory {
@@ -101,21 +102,21 @@
     | 'player_decision'
     | 'deploy_machines'
     | 'place_unit'
-    | 'place_commander'          // Setup phase commander placement
-    | 'place_space_base'         // Setup phase space base placement
+    | 'place_commander'
+    | 'place_space_base'
     | 'collect_energy'
     | 'spend_energy'
     | 'advance_player_phase'
     | 'start_main_game'
     | 'fortify_territory'
     | 'play_card'
-    | 'invade_territory'           // ✅ newest
-    | 'move_into_empty_territory'  // ✅ newest
-    | 'start_invasion_phase'       // ✅ newest
+    | 'resolve_combat'           // ✅ NEW - replaces 'invade_territory'
+    | 'confirm_conquest'         // ✅ NEW - for move-in selection
+    | 'move_into_empty_territory'
+    | 'start_invasion_phase'
     | BiddingActionType
     | BuildHireActionType
-
-  // 🎯 ENHANCED: Game status with bidding
+  
   export interface GameState {
     id: string
     status: 'setup' | 'bidding' | 'playing' | 'paused' | 'finished'
@@ -131,6 +132,9 @@
     // 🎯 Bidding state
     bidding?: YearlyBidding
     yearlyTurnOrders?: Record<number, string[]>
+    
+    // 🆕 INVASION: Move-in state after conquest (CORRECT LOCATION)
+    pendingConquest?: PendingConquest;
     
     players: Player[]
     turnOrder: string[]
@@ -221,6 +225,14 @@
 
   // INVADE
 
+  // 🆕 INVASION: Pending move-in state after conquest
+  export interface PendingMoveIn {
+    fromTerritoryId: string
+    toTerritoryId: string
+    playerId: string
+    minOccupation: number    // Minimum units that MUST move in (survivors)
+    availableUnits: number   // Additional units available to move (from source territory)
+  }
   export interface AttackResult {
     id: string
     timestamp: number
@@ -260,3 +272,36 @@ export interface MoveResult {
   success: boolean
   emptyCount: number            
 }
+
+// 🆕 INVASION: Two-phase conquest system
+export interface PendingConquest {
+  fromTerritoryId: string;
+  toTerritoryId: string;
+  playerId: string;
+  originalAttackingUnits: number;    // CRITICAL: Must move this many minimum
+  attackingCommanders: string[];     // CRITICAL: These MUST move in
+  combatResult: CombatResult;
+  oldOwnerId?: string;
+  wasContested: boolean;
+  
+  // Move-in calculation
+  minimumMoveIn: number;             // = originalAttackingUnits
+  availableForAdditionalMoveIn: number; // Additional units available
+  
+  // UI state
+  showDiceResults: boolean;
+}
+
+export interface CombatResult {
+  attackerDice: number[];
+  defenderDice: number[];
+  attackerLosses: number;
+  defenderLosses: number;
+  attackerUnitsRemaining: number;
+}
+
+export type InvasionActionType = 
+  | 'resolve_combat'        // Phase 1: Calculate dice results
+  | 'confirm_conquest'      // Phase 2: Choose additional move-in
+  | 'move_into_empty_territory'
+  | 'start_invasion_phase'

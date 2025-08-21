@@ -253,42 +253,23 @@ export function canAttackTerritory(
   fromTerritoryId: string, 
   toTerritoryId: string
 ): { canAttack: boolean; reason?: string } {
-  const fromTerritory = getTerritory(gameState, fromTerritoryId)
-  const toTerritory = getTerritory(gameState, toTerritoryId)
-  
-  if (!fromTerritory || !toTerritory) {
-    return { canAttack: false, reason: 'Territory not found' }
-  }
-  
-  if (fromTerritory.ownerId !== attackerId) {
-    return { canAttack: false, reason: 'You do not control the attacking territory' }
-  }
-  
-  if (toTerritory.ownerId === attackerId) {
-    return { canAttack: false, reason: 'Cannot attack your own territory' }
-  }
-  
-  if (fromTerritory.machineCount <= 1) {
-    return { canAttack: false, reason: 'Need at least 2 units to attack (must leave 1 behind)' }
-  }
-  
-  if (!areTerritoriesConnected(fromTerritoryId, toTerritoryId)) {
-    return { canAttack: false, reason: 'Territories are not connected' }
-  }
-  
-  return { canAttack: true }
+  // ✅ Redirect to new function with updated logic
+  const result = canInvadeTerritory(gameState, attackerId, fromTerritoryId, toTerritoryId);
+  return {
+    canAttack: result.canInvade,
+    reason: result.reason
+  };
 }
 
 // Game Phase Functions
 export function getPhaseInfo(phase: number): { name: string; description: string } {
   const phases = {
-    1: { name: 'Bidding', description: 'Bid energy for turn order' },
-    2: { name: 'Collect & Deploy', description: 'Receive income and deploy units' },
-    3: { name: 'Hire & Build', description: 'Hire commanders and build space stations' },
-    4: { name: 'Buy Command Cards', description: 'Purchase command cards with energy' },
-    5: { name: 'Play Command Cards', description: 'Activate purchased command cards' },
-    6: { name: 'Invade Territories', description: 'Attack enemy territories' },
-    7: { name: 'Fortify Position', description: 'Move units within your territories' }
+    1: { name: 'Collect & Deploy', description: 'Receive income and deploy units' },
+    2: { name: 'Build & Hire', description: 'Hire commanders and build space stations' },
+    3: { name: 'Buy Command Cards', description: 'Purchase command cards with energy' },
+    4: { name: 'Play Command Cards', description: 'Activate purchased command cards' },
+    5: { name: 'Invade Territories', description: 'Attack enemy territories (two-phase combat)' },
+    6: { name: 'Fortify Position', description: 'Move units within your territories' }
   }
   
   return phases[phase as keyof typeof phases] || { name: 'Unknown', description: 'Unknown phase' }
@@ -345,13 +326,156 @@ export function createInitialGameState(gameId: string, players: Player[]): GameS
     currentPhase: 1,
     currentYear: 1,
     currentPlayerIndex: 0,
-    players: playersWithInvasionStats, // ✅ Use the enhanced players
+    players: playersWithInvasionStats,
     turnOrder: players.map(p => p.id),
     activeTurnOrder: players.filter(p => p.id !== 'npc-neutral').map(p => p.id),
     territories: createInitialTerritories(),
     actions: [],
     currentActionIndex: 0,
     createdAt: new Date(),
-    updatedAt: new Date()
+    updatedAt: new Date(),
+    
+    // ✅ NEW: Initialize two-phase combat state
+    pendingConquest: undefined,  // No pending conquest at start
+    
+    // ✅ Keep existing optional fields
+    bidding: undefined,
+    yearlyTurnOrders: {}
   }
+}
+
+export function canInvadeTerritory(
+  gameState: GameState, 
+  attackerId: string, 
+  fromTerritoryId: string, 
+  toTerritoryId: string
+): { canInvade: boolean; reason?: string } {
+  // ✅ Check for pending conquest first
+  if (gameState.pendingConquest) {
+    return { 
+      canInvade: false, 
+      reason: 'Cannot start new attack while conquest is pending completion' 
+    };
+  }
+
+  const fromTerritory = getTerritory(gameState, fromTerritoryId)
+  const toTerritory = getTerritory(gameState, toTerritoryId)
+  const player = gameState.players.find(p => p.id === attackerId);
+  
+  if (!fromTerritory || !toTerritory) {
+    return { canInvade: false, reason: 'Territory not found' }
+  }
+  
+  if (fromTerritory.ownerId !== attackerId) {
+    return { canInvade: false, reason: 'You do not control the attacking territory' }
+  }
+  
+  if (toTerritory.ownerId === attackerId) {
+    return { canInvade: false, reason: 'Cannot attack your own territory' }
+  }
+  
+  if (fromTerritory.machineCount <= 1) {
+    return { canInvade: false, reason: 'Need at least 2 units to attack (must leave 1 behind)' }
+  }
+  
+  if (!areTerritoriesConnected(fromTerritoryId, toTerritoryId)) {
+    return { canInvade: false, reason: 'Territories are not connected' }
+  }
+
+  // ✅ NEW: Check if territory is attack-locked
+  if (player?.invasionStats?.territoriesAttackedFrom.includes(fromTerritoryId)) {
+    return { 
+      canInvade: false, 
+      reason: 'This territory has already completed an attack this turn and is locked' 
+    };
+  }
+
+  // ✅ NEW: Check naval commander requirement for water territories
+  if (toTerritory.type === 'water') {
+    const hasNavalCommander = fromTerritory.navalCommander === attackerId;
+    if (!hasNavalCommander) {
+      return { 
+        canInvade: false, 
+        reason: 'Naval commander required to attack water territories' 
+      };
+    }
+  }
+  
+  return { canInvade: true }
+}
+
+export function hasPendingConquest(gameState: GameState): boolean {
+  return !!gameState.pendingConquest;
+}
+
+export function getPendingConquestPlayer(gameState: GameState): Player | null {
+  if (!gameState.pendingConquest) return null;
+  return gameState.players.find(p => p.id === gameState.pendingConquest!.playerId) || null;
+}
+
+export function canStartNewInvasion(gameState: GameState, playerId: string): boolean {
+  // Can't start new invasion if there's a pending conquest
+  if (gameState.pendingConquest) {
+    // Unless it's the same player completing their conquest
+    return gameState.pendingConquest.playerId === playerId;
+  }
+  return true;
+}
+
+export function validateMoveInRequirements(
+  gameState: GameState, 
+  additionalUnits: number
+): { isValid: boolean; reason?: string } {
+  const pendingConquest = gameState.pendingConquest;
+  
+  if (!pendingConquest) {
+    return { isValid: false, reason: 'No pending conquest found' };
+  }
+
+  if (additionalUnits < 0) {
+    return { isValid: false, reason: 'Cannot move negative units' };
+  }
+
+  if (additionalUnits > pendingConquest.availableForAdditionalMoveIn) {
+    return { 
+      isValid: false, 
+      reason: `Only ${pendingConquest.availableForAdditionalMoveIn} additional units available` 
+    };
+  }
+
+  const fromTerritory = gameState.territories[pendingConquest.fromTerritoryId];
+  if (!fromTerritory) {
+    return { isValid: false, reason: 'Source territory not found' };
+  }
+
+  // Ensure source territory will still have at least 1 unit after move
+  if (additionalUnits > 0 && fromTerritory.machineCount <= additionalUnits) {
+    return { 
+      isValid: false, 
+      reason: 'Must leave at least 1 unit in source territory' 
+    };
+  }
+
+  return { isValid: true };
+}
+
+export function resetInvasionStatsForNewTurn(player: Player): void {
+  if (player.invasionStats) {
+    player.invasionStats.contestedTerritoriesTaken = 0;
+    player.invasionStats.emptyTerritoriesClaimed = 0;
+    player.invasionStats.conquestBonusEarned = false;
+    player.invasionStats.territoriesAttackedFrom = [];
+    player.invasionStats.lastInvasionResults = [];
+  }
+}
+
+export function canCompleteAdditionalMoveIn(gameState: GameState, playerId: string): boolean {
+  const pendingConquest = gameState.pendingConquest;
+  
+  if (!pendingConquest || pendingConquest.playerId !== playerId) {
+    return false;
+  }
+
+  // Player can always complete move-in with 0 additional units
+  return true;
 }

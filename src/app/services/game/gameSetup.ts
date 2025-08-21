@@ -189,7 +189,10 @@ export function setupNewGame(gameId: string, player1Id: string, player2Id: strin
     
     // ✅ ADD MISSING BIDDING FIELDS:
     bidding: undefined,
-    yearlyTurnOrders: {}
+    yearlyTurnOrders: {},
+    
+    // ✅ NEW: Add pendingMoveIn field (undefined by default)
+    pendingConquest: undefined
   }
   
   // Set first player as active for setup

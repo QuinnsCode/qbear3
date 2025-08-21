@@ -2,7 +2,7 @@
 'use client'
 import BuildHireOverlay from '@/app/components/Game/GamePhases/BuildHireOverlay';
 import GameRules from '@/app/components/Game/GameRules/GameRules';
-import { 
+import {
   submitBid,
   startYearTurns,
   purchaseAndPlaceCommander,
@@ -11,7 +11,7 @@ import {
   invadeTerritory,
   moveIntoEmptyTerritory, 
   startInvasionPhase,
-  confirmAdditionalMoveIn
+  confirmConquest  // ✅ CHANGED: Use new server action
 } from '@/app/serverActions/gameActions';
 import { useState } from 'react';
 import { useGameSync } from '@/app/hooks/useGameSync';
@@ -684,6 +684,23 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     setBuildHirePlacementMode(null);
   };
 
+  const handleConfirmConquest = async (additionalUnits: number) => {
+    try {
+      console.log('📦 Phase 2: Confirming conquest with additional units:', additionalUnits);
+      
+      // ✅ CHANGED: Use new confirmConquest server action
+      await confirmConquest(gameId, currentUserId, additionalUnits);
+      
+      // ✅ Reset invasion state after successful conquest
+      setInvasionState(null);
+      
+      console.log('✅ Conquest confirmed - useGameSync will handle the update');
+    } catch (error) {
+      console.error('❌ Conquest confirmation failed:', error);
+      alert(`Conquest confirmation failed: ${error.message}`);
+    }
+  };
+
   // ✅ NEW: Combined purchase and place commander handler
   const handlePurchaseAndPlaceCommander = async (territoryId: string, commanderType: string, cost: number) => {
     try {
@@ -803,6 +820,9 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
     
     try {
+      console.log('🎯 Phase 1: Resolving combat');
+      
+      // ✅ PHASE 1: Resolve Combat (this may set pendingConquest)
       await invadeTerritory(
         gameId,
         currentUserId,
@@ -811,11 +831,16 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
         attackingUnits,
         commanderTypes
       );
-      // useGameSync will handle the state update
-      setInvasionState(null);
+      
+      // ✅ DON'T reset invasionState here - let the overlay handle the flow
+      // InvasionOverlay will detect pendingConquest and transition to dice/move-in
+      console.log('✅ Combat resolved - InvasionOverlay will handle next steps');
+      
     } catch (error) {
-      console.error('❌ Invasion failed:', error);
-      alert(`Invasion failed: ${error.message}`);
+      console.error('❌ Combat resolution failed:', error);
+      alert(`Combat failed: ${error.message}`);
+      // Only reset on error
+      setInvasionState(null);
     }
   };
 
@@ -837,28 +862,6 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     } catch (error) {
       console.error('❌ Movement failed:', error);
       alert(`Movement failed: ${error.message}`);
-    }
-  };
-
-  const handleConfirmAdditionalMoveIn = async (additionalUnits: number) => {
-    if (!invasionState || !invasionState.fromTerritoryId || !invasionState.toTerritoryId) {
-      console.error('❌ Invasion state not properly set for move-in');
-      return;
-    }
-    
-    try {
-      await confirmAdditionalMoveIn(
-        gameId,
-        currentUserId,
-        invasionState.fromTerritoryId,
-        invasionState.toTerritoryId,
-        additionalUnits
-      );
-      // useGameSync will handle the state update
-      setInvasionState(null);
-    } catch (error) {
-      console.error('❌ Additional move-in failed:', error);
-      alert(`Additional move-in failed: ${error.message}`);
     }
   };
 
@@ -986,10 +989,11 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       const gameStateToSave = {
         ...gameState,
         timestamp: new Date().toISOString(),
-        version: "1.0" // for future compatibility
+        version: "1.0"
       };
       
-      const dataStr = JSON.stringify(gameStateToSave, null, 2);
+      // ✅ OPTIMIZED: No formatting = smaller file size
+      const dataStr = JSON.stringify(gameStateToSave);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       
       const link = document.createElement('a');
@@ -997,7 +1001,13 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       link.download = `game-state-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
       link.click();
       
-      console.log('Game state saved successfully');
+      // ✅ IMPROVED: Show file size info
+      const fileSizeKB = Math.round(dataBlob.size / 1024);
+      console.log(`Game state saved successfully (${fileSizeKB}KB)`);
+      
+      // ✅ IMPROVED: User feedback with file info
+      alert(`Game state saved successfully!\nFile size: ${fileSizeKB}KB`);
+      
     } catch (error) {
       console.error('Failed to save game state:', error);
       alert('Failed to save game state: ' + error.message);
@@ -1014,58 +1024,95 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
         const file = event.target.files[0];
         if (!file) return;
         
+        // ✅ IMPROVED: Show file size
+        const fileSizeKB = Math.round(file.size / 1024);
+        console.log(`Loading game state file: ${file.name} (${fileSizeKB}KB)`);
+        
         const reader = new FileReader();
         reader.onload = async (e) => {
           try {
             const loadedState = JSON.parse(e.target.result);
             
-            // Basic validation
+            // ✅ ENHANCED: Better validation
             if (!loadedState.players || !loadedState.territories || !loadedState.status) {
               throw new Error('Invalid game state file - missing required fields');
             }
             
-            // Confirm with user before overwriting current game
+            // ✅ ENHANCED: Check for correct version
+            if (loadedState.version && loadedState.version !== "1.0") {
+              const confirmVersion = confirm(
+                `This save file is version ${loadedState.version}, but current game expects version 1.0.\n` +
+                `Loading may cause issues. Continue anyway?`
+              );
+              if (!confirmVersion) return;
+            }
+            
+            // ✅ ENHANCED: Better confirmation dialog
+            const saveDate = loadedState.timestamp ? 
+              new Date(loadedState.timestamp).toLocaleString() : 'unknown time';
+            
             const confirmLoad = confirm(
-              `Are you sure you want to load this saved game state?\n\n` +
-              `Saved: ${loadedState.timestamp || 'unknown time'}\n` +
-              `Status: ${loadedState.status}\n` +
-              `Players: ${loadedState.players.map(p => p.name).join(', ')}\n\n` +
-              `This will overwrite the current game!`
+              `Load this saved game?\n\n` +
+              `📅 Saved: ${saveDate}\n` +
+              `🎮 Status: ${loadedState.status}\n` +
+              `👥 Players: ${loadedState.players.map(p => p.name).join(', ')}\n` +
+              `🎯 Phase: ${loadedState.currentPhase || 'unknown'}\n` +
+              `📊 Year: ${loadedState.currentYear || 'unknown'}\n\n` +
+              `⚠️ This will overwrite the current game!`
             );
             
-            if (!confirmLoad) {
-              return;
-            }
+            if (!confirmLoad) return;
             
             setIsUpdating(true);
             
-            // Send the loaded state to the server
-            const response = await fetch(`/api/game/${gameId}`, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                action: 'load_game_state',
-                playerId: currentUserId,
-                gameState: loadedState
-              })
-            });
-            
-            if (!response.ok) {
-              throw new Error(`Server error: ${response.status}`);
+            // ✅ ENHANCED: Better error handling for server communication
+            try {
+              const response = await fetch(`/api/game/${gameId}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  action: 'load_game_state',
+                  playerId: currentUserId,
+                  gameState: loadedState
+                })
+              });
+              
+              if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server error ${response.status}: ${errorText}`);
+              }
+              
+              const result = await response.json();
+              console.log('Game state loaded successfully from:', saveDate);
+              
+              // ✅ IMPROVED: Better success message
+              alert(
+                `🎉 Game state loaded successfully!\n\n` +
+                `📅 From: ${saveDate}\n` +
+                `🎮 Status: ${result.status}\n` +
+                `🎯 Current: Year ${result.currentYear}, Phase ${result.currentPhase}`
+              );
+              
+            } catch (serverError) {
+              console.error('Server error loading game state:', serverError);
+              alert(`Failed to load game state on server: ${serverError.message}`);
             }
             
-            const result = await response.json();
-            console.log('Game state loaded successfully from:', loadedState.timestamp || 'unknown time');
-            alert('Game state loaded and applied successfully!');
-            
           } catch (parseError) {
-            console.error('Failed to load game state:', parseError);
-            alert('Failed to load game state: ' + parseError.message);
+            console.error('Failed to parse game state file:', parseError);
+            alert(`Invalid game state file: ${parseError.message}`);
           } finally {
             setIsUpdating(false);
           }
+        };
+        
+        // ✅ ENHANCED: Better error handling for file reading
+        reader.onerror = () => {
+          console.error('Failed to read file');
+          alert('Failed to read the selected file');
+          setIsUpdating(false);
         };
         
         reader.readAsText(file);
@@ -1073,10 +1120,38 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       
       input.click();
     } catch (error) {
-      console.error('Failed to load game state:', error);
-      alert('Failed to load game state: ' + error.message);
+      console.error('Failed to initiate file load:', error);
+      alert('Failed to open file selector: ' + error.message);
     }
   };
+
+  // ✅ BONUS: Add a function to validate current game state before saving
+  const validateGameStateForSave = (gameState) => {
+    const issues = [];
+    
+    if (!gameState.players || gameState.players.length === 0) {
+      issues.push('No players found');
+    }
+    
+    if (!gameState.territories || Object.keys(gameState.territories).length === 0) {
+      issues.push('No territories found');
+    }
+    
+    if (!gameState.status) {
+      issues.push('Game status missing');
+    }
+    
+    // ✅ NEW: Check for pendingConquest consistency
+    if (gameState.pendingConquest) {
+      const pc = gameState.pendingConquest;
+      if (!gameState.territories[pc.fromTerritoryId] || !gameState.territories[pc.toTerritoryId]) {
+        issues.push('Pending conquest references invalid territories');
+      }
+    }
+    
+    return issues;
+  };
+
 
   return (
     <div className="h-screen w-full bg-gray-900 flex flex-col relative overflow-hidden">
@@ -1174,6 +1249,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
               {getSetupProgress()}
             </div>
           )}
+          
           <div className={`text-xs mt-1 ${isConnected ? 'text-green-300' : 'text-red-300'}`}>
             {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
           </div>
@@ -1589,7 +1665,6 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       )}
 
       {/* 🎯 Invasion overlay - Z-index 60 (highest priority) */}
-      {/* 🎯 Invasion overlay - Z-index 60 (highest priority) */}
       {gameState?.status === 'playing' && 
       gameState?.currentPhase === 5 && 
       invasionState?.isActive && 
@@ -1602,7 +1677,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           toTerritoryId={invasionState.toTerritoryId}
           onInvade={handleInvade}
           onMoveIntoEmpty={handleMoveIntoEmpty}
-          onConfirmMoveIn={handleConfirmAdditionalMoveIn} // ✅ NEW
+          onConfirmConquest={handleConfirmConquest} // ✅ NEW
           onCancel={handleCancelInvasion}
         />
       )}

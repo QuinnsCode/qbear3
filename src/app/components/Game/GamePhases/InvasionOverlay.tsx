@@ -1,7 +1,7 @@
 // app/components/Game/GamePhases/InvasionOverlay.tsx
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Eye, 
@@ -10,16 +10,16 @@ import {
   Target, 
   ChevronUp, 
   ChevronDown,
-  Mountain,     // Land Commander
-  User,         // Diplomat  
-  Zap,          // Nuclear
-  Ship,         // Naval
-  Crown,        // Victory bonus
+  Mountain,
+  User,
+  Zap,
+  Ship,
+  Crown,
   AlertTriangle,
   Dice6,
   Dice1
 } from 'lucide-react';
-import type { GameState, Territory, InvasionStats, Player, Card } from '@/app/lib/GameState';
+import type { GameState, Territory, InvasionStats, Player, PendingConquest } from '@/app/lib/GameState';
 import DiceRollOverlay from '@/app/components/Game/GamePhases/DiceRollOverlay';
 import MoveInSelectionOverlay from '@/app/components/Game/GamePhases/MoveInSelectionOverlay';
 
@@ -30,7 +30,7 @@ interface InvasionOverlayProps {
   toTerritoryId: string
   onInvade: (attackingUnits: number, commanderTypes: string[]) => Promise<void>
   onMoveIntoEmpty: (movingUnits: number) => Promise<void>
-  onConfirmMoveIn: (additionalUnits: number) => Promise<void>
+  onConfirmConquest: (additionalUnits: number) => Promise<void>  // ✅ UPDATED: New method name
   onCancel: () => void
   onClose?: () => void
 }
@@ -49,7 +49,7 @@ const InvasionOverlay = ({
   toTerritoryId,
   onInvade,
   onMoveIntoEmpty,
-  onConfirmMoveIn,
+  onConfirmConquest,  // ✅ UPDATED: Use new method name
   onCancel,
   onClose 
 }: InvasionOverlayProps) => {
@@ -58,20 +58,59 @@ const InvasionOverlay = ({
   const [selectedCommanders, setSelectedCommanders] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  // Simple state management without complex useEffects
-  const [showDiceAnimation, setShowDiceAnimation] = useState(false);
+  // ✅ UPDATED: State management for new two-phase flow
+  const [overlayState, setOverlayState] = useState<'selecting' | 'processing' | 'diceResults' | 'moveIn'>('selecting');
+  const [persistentData, setPersistentData] = useState<any>(null);
+  const processingRef = useRef(false);
+  
+  // UI state for overlays
+  const [showDiceResults, setShowDiceResults] = useState(false);
   const [showMoveInSelection, setShowMoveInSelection] = useState(false);
   const [lastCombatResult, setLastCombatResult] = useState<any>(null);
-  const [conquestData, setConquestData] = useState<{
-    requiredUnits: number;
-    availableUnits: number;
-    commandersMoving: string[];
-  } | null>(null);
 
   const myPlayer = gameState.players.find(p => p.id === currentUserId);
   const fromTerritory = gameState.territories[fromTerritoryId];
   const toTerritory = gameState.territories[toTerritoryId];
   const invasionStats = myPlayer?.invasionStats;
+
+  // ✅ UPDATED: Detect pending conquest state from server
+  useEffect(() => {
+    const pendingConquest = gameState.pendingConquest;
+    
+    if (pendingConquest && 
+        pendingConquest.playerId === currentUserId &&
+        pendingConquest.fromTerritoryId === fromTerritoryId &&
+        pendingConquest.toTerritoryId === toTerritoryId) {
+      
+      console.log('🎯 Server indicates pending conquest state detected:', pendingConquest);
+      
+      // Show dice results first if showDiceResults is true
+      if (pendingConquest.showDiceResults) {
+        console.log('📊 Showing dice results from server');
+        setLastCombatResult(pendingConquest.combatResult);
+        setShowDiceResults(true);
+        setShowMoveInSelection(false);
+        setOverlayState('diceResults');
+      } else {
+        // Move directly to move-in selection
+        console.log('📦 Moving directly to move-in selection');
+        setShowDiceResults(false);
+        setShowMoveInSelection(true);
+        setOverlayState('moveIn');
+      }
+    } else {
+      // Only reset if we're NOT waiting for server response
+      if (overlayState === 'diceResults' || overlayState === 'moveIn') {
+        console.log('🔄 No pending conquest - resetting to selection');
+        setShowDiceResults(false);
+        setShowMoveInSelection(false);
+        setOverlayState('selecting');
+        setLastCombatResult(null);
+      }
+      // DO NOT reset while 'processing' - let the server response handle it
+    }
+  }, [gameState.pendingConquest, currentUserId, fromTerritoryId, toTerritoryId]);
+
 
   // Calculate available units (must leave 1 behind)
   const availableUnits = Math.max(0, fromTerritory.machineCount - 1);
@@ -93,25 +132,29 @@ const InvasionOverlay = ({
   const hasNavalCommander = selectedCommanders.includes('naval') || availableCommanders.includes('naval');
   const navalValidation = !requiresNaval || hasNavalCommander;
 
-  // Reset selection when territories change
+  // Initialize selection when overlay opens
   useEffect(() => {
-    setSelectedUnits(Math.min(1, maxUnits));
-    setSelectedCommanders([]);
-  }, [fromTerritoryId, toTerritoryId, maxUnits]);
+    if (!processingRef.current && overlayState === 'selecting') {
+      setSelectedUnits(Math.min(1, maxUnits));
+      setSelectedCommanders([]);
+    }
+  }, [fromTerritoryId, toTerritoryId, maxUnits, overlayState]);
 
   // Adjust units if max changes
   useEffect(() => {
-    if (selectedUnits > maxUnits) {
+    if (selectedUnits > maxUnits && overlayState === 'selecting') {
       setSelectedUnits(maxUnits);
     }
-  }, [maxUnits, selectedUnits]);
+  }, [maxUnits, selectedUnits, overlayState]);
 
   const handleUnitChange = (delta: number) => {
+    if (overlayState !== 'selecting') return;
     const newValue = Math.max(1, Math.min(maxUnits, selectedUnits + delta));
     setSelectedUnits(newValue);
   };
 
   const toggleCommander = (commanderType: string) => {
+    if (overlayState !== 'selecting') return;
     setSelectedCommanders(prev => 
       prev.includes(commanderType)
         ? prev.filter(c => c !== commanderType)
@@ -120,166 +163,137 @@ const InvasionOverlay = ({
   };
 
   const handleAction = async () => {
-    if (isProcessing) return;
+    if (isProcessing || overlayState !== 'selecting') return;
     
     setIsProcessing(true);
+    processingRef.current = true;
+    setOverlayState('processing');
+    
     try {
       if (isTargetEmpty) {
+        // ✅ Empty territory movement (unchanged)
         await onMoveIntoEmpty(selectedUnits);
         onCancel(); // Close overlay after successful empty territory move
       } else {
-        console.log('🎬 📋 INVADE action starting with dice animation');
+        // ✅ UPDATED: Phase 1 - Resolve Combat
+        console.log('🎯 Starting Phase 1: Resolve Combat');
         
-        // Generate combat result for dice animation BEFORE server call
-        const fakeCombatResult = generateFakeCombatResult(selectedUnits, selectedCommanders, toTerritory.machineCount);
-        setLastCombatResult(fakeCombatResult);
+        // Store the attack parameters for later phases
+        setPersistentData({
+          selectedUnits,
+          selectedCommanders: [...selectedCommanders],
+          targetDefenders: toTerritory.machineCount
+        });
         
-        // Show dice animation immediately
-        setShowDiceAnimation(true);
-        
-        // Call server action in background
+        // ✅ Call Phase 1: This will set pendingConquest on server
         await onInvade(selectedUnits, selectedCommanders);
         
-        // Don't close overlay here - let dice animation complete first
+        // ✅ Don't close overlay - server will set pendingConquest
+        // useEffect will detect it and transition to dice results
       }
     } catch (error) {
       console.error('Action failed:', error);
-      alert(`${isTargetEmpty ? 'Movement' : 'Invasion'} failed: ${error.message}`);
-      setShowDiceAnimation(false);
+      alert(`${isTargetEmpty ? 'Movement' : 'Combat'} failed: ${error.message}`);
+      setOverlayState('selecting');
     } finally {
       setIsProcessing(false);
+      processingRef.current = false;
     }
   };
 
-  // Generate fake combat result for demo purposes (your existing method)
-  const generateFakeCombatResult = (attackingUnits: number, commanderTypes: string[], defendingUnits: number) => {
-    // Generate attacker dice
-    const attackerDice = [];
-    const regularUnits = attackingUnits - commanderTypes.length;
+  // ✅ NEW: Handle dice results completion (transition to move-in)
+  const handleDiceResultsComplete = () => {
+    const pendingConquest = gameState.pendingConquest;
     
-    // Regular units roll d6
-    for (let i = 0; i < regularUnits; i++) {
-      attackerDice.push(Math.floor(Math.random() * 6) + 1);
+    if (pendingConquest && pendingConquest.playerId === currentUserId) {
+      console.log('🎯 Dice results complete - transitioning to move-in selection');
+      setShowDiceResults(false);
+      setShowMoveInSelection(true);
+      setOverlayState('moveIn');
+    } else {
+      console.log('🎯 Dice results complete - attack failed, returning to selection');
+      setShowDiceResults(false);
+      setOverlayState('selecting');
+      setLastCombatResult(null);
+      setPersistentData(null);
     }
-    
-    // Commanders roll d8 or d6
-    commanderTypes.forEach(commanderType => {
-      const isD8 = ['land', 'naval', 'nuclear'].includes(commanderType);
-      attackerDice.push(Math.floor(Math.random() * (isD8 ? 8 : 6)) + 1);
-    });
-    
-    // Generate defender dice (max 2, all d6 for simplicity)
-    const defenderDice = [];
-    for (let i = 0; i < Math.min(2, defendingUnits); i++) {
-      defenderDice.push(Math.floor(Math.random() * 6) + 1);
+  };
+
+  // ✅ UPDATED: Handle move-in confirmation (Phase 2)
+  const handleMoveInConfirmation = async (additionalUnits: number) => {
+    try {
+      console.log('📦 Phase 2: Confirming conquest with additional units:', additionalUnits);
+      
+      // ✅ Call Phase 2: This will complete the conquest
+      await onConfirmConquest(additionalUnits);
+      
+      // ✅ Reset all state and close overlay
+      setShowMoveInSelection(false);
+      setShowDiceResults(false);
+      setLastCombatResult(null);
+      setPersistentData(null);
+      setOverlayState('selecting');
+      onCancel(); // Close the entire invasion overlay
+    } catch (error) {
+      console.error('Move-in confirmation failed:', error);
+      alert(`Failed to confirm conquest: ${error.message}`);
     }
-    
-    // Sort dice high to low
-    attackerDice.sort((a, b) => b - a);
-    defenderDice.sort((a, b) => b - a);
-    
-    // Resolve combat
-    let attackerLosses = 0;
-    let defenderLosses = 0;
-    
-    const maxMatches = Math.min(attackerDice.length, defenderDice.length);
-    for (let i = 0; i < maxMatches; i++) {
-      if (attackerDice[i] > defenderDice[i]) {
-        defenderLosses++;
-      } else {
-        attackerLosses++;
-      }
-    }
-    
-    const territoryConquered = defenderLosses >= defendingUnits;
-    
-    return {
-      attackerDice,
-      defenderDice,
-      attackerLosses,
-      defenderLosses,
-      territoryConquered
-    };
+  };
+
+  const handleMoveInCancel = () => {
+    // ✅ Player cancelled move-in - this shouldn't happen in the new system
+    // since conquest is mandatory, but we'll handle it gracefully
+    console.log('⚠️ Move-in cancelled - this should not happen with mandatory conquest');
+    setShowMoveInSelection(false);
+    setShowDiceResults(false);
+    setLastCombatResult(null);
+    setPersistentData(null);
+    setOverlayState('selecting');
+    onCancel();
   };
 
   const canExecuteAction = () => {
-    return selectedUnits > 0 && 
+    return overlayState === 'selecting' &&
+           selectedUnits > 0 && 
            selectedUnits <= maxUnits && 
            navalValidation &&
            !isProcessing;
   };
 
-  // Handle dice animation completion
-  const handleDiceAnimationComplete = () => {
-    setShowDiceAnimation(false);
+  // ✅ UPDATED: Show move-in selection overlay
+  if (showMoveInSelection && gameState.pendingConquest) {
+    const pc = gameState.pendingConquest;
     
-    // If territory was conquered, show move-in selection
-    if (lastCombatResult?.territoryConquered) {
-      const availableUnitsToMove = fromTerritory.machineCount - 1; // After the invasion, must leave 1
-      
-      setConquestData({
-        requiredUnits: selectedUnits - (lastCombatResult.attackerLosses || 0), // Survivors who must move
-        availableUnits: Math.max(0, availableUnitsToMove), // Additional units available
-        commandersMoving: selectedCommanders // Commanders that were part of the attack
-      });
-      
-      setShowMoveInSelection(true);
-    } else {
-      // Attack failed, reset for potential retry
-      setLastCombatResult(null);
-    }
-  };
-
-  // Handle move-in confirmation
-  const handleMoveInConfirmation = async (additionalUnits: number) => {
-    try {
-      await onConfirmMoveIn(additionalUnits);
-      setShowMoveInSelection(false);
-      setConquestData(null);
-      setLastCombatResult(null);
-      onCancel(); // Close the entire invasion overlay
-    } catch (error) {
-      console.error('Move-in confirmation failed:', error);
-      alert(`Failed to confirm move-in: ${error.message}`);
-    }
-  };
-
-  const handleMoveInCancel = () => {
-    setShowMoveInSelection(false);
-    setConquestData(null);
-    setLastCombatResult(null);
-    onCancel(); // Close the entire invasion overlay
-  };
-
-  // Show move-in selection overlay if active
-  if (showMoveInSelection && conquestData) {
     return (
       <MoveInSelectionOverlay
         isVisible={true}
         fromTerritoryName={fromTerritory.name}
         toTerritoryName={toTerritory.name}
         conqueredTerritoryId={toTerritoryId}
-        requiredUnits={conquestData.requiredUnits}
-        availableUnits={conquestData.availableUnits}
-        commandersMoving={conquestData.commandersMoving}
+        requiredUnits={pc.minimumMoveIn}
+        availableUnits={pc.availableForAdditionalMoveIn}
+        commandersMoving={pc.attackingCommanders}
         onConfirmMoveIn={handleMoveInConfirmation}
         onCancel={handleMoveInCancel}
       />
     );
   }
 
-  // Show dice animation overlay if active
-  if (showDiceAnimation && lastCombatResult) {
+  // ✅ UPDATED: Show dice results overlay
+  if (showDiceResults && gameState.pendingConquest && lastCombatResult) {
+    const pc = gameState.pendingConquest;
+    
     return (
       <DiceRollOverlay
         isVisible={true}
         fromTerritoryName={fromTerritory.name}
         toTerritoryName={toTerritory.name}
-        attackingUnits={selectedUnits}
-        defendingUnits={toTerritory.machineCount}
-        commanderTypes={selectedCommanders}
-        combatResult={lastCombatResult}
-        onComplete={handleDiceAnimationComplete}
+        attackingUnits={pc.originalAttackingUnits}
+        defendingUnits={toTerritory.machineCount + pc.combatResult.defenderLosses}
+        commanderTypes={pc.attackingCommanders}
+        combatResult={pc.combatResult}
+        territoryConquered={!!gameState.pendingConquest}  // ✅ ADD this - if pendingConquest exists, territory was conquered
+        onComplete={handleDiceResultsComplete}
       />
     );
   }
@@ -302,12 +316,15 @@ const InvasionOverlay = ({
     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-60 flex items-end sm:items-center justify-center">
       <div className="bg-white/95 backdrop-blur-lg rounded-t-2xl sm:rounded-2xl p-6 max-w-lg w-full mx-4 shadow-2xl">
         
-        {/* Header */}
+        {/* Header with processing state indicator */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
             <Sword className="text-red-500" size={28} />
             <h2 className="text-2xl font-bold text-gray-800">
-              {isTargetEmpty ? 'Move Into Territory' : 'Invade Territory'}
+              {overlayState === 'processing' ? 'Processing Attack...' :
+               overlayState === 'diceResults' ? 'Combat Results' :
+               overlayState === 'moveIn' ? 'Move-In Required' :
+               isTargetEmpty ? 'Move Into Territory' : 'Invade Territory'}
             </h2>
           </div>
           <div className="flex items-center space-x-2">
@@ -315,12 +332,14 @@ const InvasionOverlay = ({
               onClick={() => setIsHidden(true)}
               className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
               title="Hide overlay"
+              disabled={overlayState !== 'selecting'}
             >
               <EyeOff size={20} />
             </button>
             <button 
               onClick={onCancel}
               className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+              disabled={overlayState === 'processing'}
             >
               <X size={20} />
             </button>
@@ -397,7 +416,7 @@ const InvasionOverlay = ({
           <div className="flex items-center justify-center space-x-4">
             <button
               onClick={() => handleUnitChange(-1)}
-              disabled={selectedUnits <= 1}
+              disabled={selectedUnits <= 1 || overlayState !== 'selecting'}
               className="p-2 bg-white border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >
               <ChevronDown size={20} />
@@ -412,7 +431,7 @@ const InvasionOverlay = ({
             
             <button
               onClick={() => handleUnitChange(1)}
-              disabled={selectedUnits >= maxUnits}
+              disabled={selectedUnits >= maxUnits || overlayState !== 'selecting'}
               className="p-2 bg-white border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >
               <ChevronUp size={20} />
@@ -441,7 +460,8 @@ const InvasionOverlay = ({
                   <button
                     key={commanderType}
                     onClick={() => toggleCommander(commanderType)}
-                    className={`w-full p-3 rounded-lg border-2 transition-all flex items-center justify-between ${
+                    disabled={overlayState !== 'selecting'}
+                    className={`w-full p-3 rounded-lg border-2 transition-all flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed ${
                       isSelected 
                         ? 'border-red-500 bg-red-50 text-red-700' 
                         : 'border-gray-200 bg-white hover:border-gray-300'
@@ -543,7 +563,7 @@ const InvasionOverlay = ({
                 ) : (
                   <>
                     <Sword size={24} />
-                    <span>INVADE!</span>
+                    <span>ATTACK!</span>
                   </>
                 )}
               </>
@@ -552,8 +572,8 @@ const InvasionOverlay = ({
           
           <button
             onClick={onCancel}
-            disabled={isProcessing}
-            className="w-full py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            disabled={overlayState === 'processing'}
+            className="w-full py-2 text-gray-600 hover:text-gray-800 transition-colors disabled:opacity-50"
           >
             Cancel {isTargetEmpty ? 'Movement' : 'Attack'}
           </button>
@@ -567,9 +587,12 @@ const InvasionOverlay = ({
               {isTargetEmpty ? (
                 <li>• Moving into empty territory doesn't count toward contested bonus</li>
               ) : (
-                <li>• Contested territory conquest counts toward 3-territory bonus</li>
+                <>
+                  <li>• Contested territory conquest counts toward 3-territory bonus</li>
+                  <li>• ✅ NEW: Attack force commits immediately, survivors must move in</li>
+                  <li>• ✅ NEW: You can choose additional units to move after conquest</li>
+                </>
               )}
-              <li>• You can attack multiple times from the same territory</li>
               <li>• Must leave 1 unit behind in attacking territory</li>
               {requiresNaval && (
                 <li className="text-blue-700">• Water territories require Naval Commander</li>
@@ -577,6 +600,20 @@ const InvasionOverlay = ({
             </ul>
           </div>
         </div>
+
+        {/* Processing State Indicator */}
+        {overlayState !== 'selecting' && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-2 text-blue-700">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700"></div>
+              <span className="text-sm font-medium">
+                {overlayState === 'processing' && 'Sending attack to server...'}
+                {overlayState === 'diceResults' && 'Showing combat results...'}
+                {overlayState === 'moveIn' && 'Choose additional units to move in...'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -20,15 +20,7 @@ interface DiceResult {
   isCommander?: boolean;
   commanderType?: string;
 }
-
-interface CombatResult {
-  attackerDice: number[];
-  defenderDice: number[];
-  attackerLosses: number;
-  defenderLosses: number;
-  territoryConquered: boolean;
-}
-
+import { CombatResult } from '@/app/lib/GameState';
 interface DiceRollOverlayProps {
   isVisible: boolean;
   fromTerritoryName: string;
@@ -37,6 +29,7 @@ interface DiceRollOverlayProps {
   defendingUnits: number;
   commanderTypes: string[];
   combatResult: CombatResult;
+  territoryConquered: boolean;  // ✅ ADD this as separate prop
   onComplete: () => void;
 }
 
@@ -48,6 +41,7 @@ const DiceRollOverlay = ({
   defendingUnits,
   commanderTypes,
   combatResult,
+  territoryConquered,  // ✅ ADD this
   onComplete
 }: DiceRollOverlayProps) => {
   const [stage, setStage] = useState<'setup' | 'rolling' | 'finalizing' | 'sorting' | 'matching' | 'results' | 'extended_display'>('setup');
@@ -293,8 +287,8 @@ const DiceRollOverlay = ({
             {stage === 'finalizing' && '⏳ Dice are Settling...'}
             {stage === 'sorting' && '📊 Sorting Results...'}
             {stage === 'matching' && '🔄 Matching Highest vs Highest...'}
-            {stage === 'results' && (combatResult.territoryConquered ? '🏆 Territory Conquered!' : '🛡️ Attack Repelled!')}
-            {stage === 'extended_display' && (combatResult.territoryConquered ? '👑 Victory is Yours!' : '⚔️ Defenders Hold Strong!')}
+            {stage === 'results' && (territoryConquered ? '🏆 Territory Conquered!' : '🛡️ Attack Repelled!')}
+            {stage === 'extended_display' && (territoryConquered ? '👑 Victory is Yours!' : '⚔️ Defenders Hold Strong!')}
           </div>
           
           {/* Skip Button */}
@@ -455,12 +449,12 @@ const DiceRollOverlay = ({
         {(stage === 'results' || stage === 'extended_display') && (
           <div className="text-center mb-8">
             <div className={`p-6 rounded-xl mb-6 border-2 shadow-lg ${
-              combatResult.territoryConquered 
+              territoryConquered 
                 ? 'bg-gradient-to-br from-green-50 to-emerald-100 border-green-300' 
                 : 'bg-gradient-to-br from-yellow-50 to-amber-100 border-yellow-300'
             }`}>
               <div className="flex items-center justify-center space-x-3 mb-4">
-                {combatResult.territoryConquered ? (
+                {territoryConquered ? (
                   <>
                     <Crown className="text-green-600" size={32} />
                     <span className="text-green-800 font-black text-2xl">VICTORY!</span>
@@ -488,7 +482,7 @@ const DiceRollOverlay = ({
                 </div>
               </div>
               
-              {combatResult.territoryConquered && (
+              {territoryConquered && (
                 <div className="mt-4 p-3 bg-green-200 rounded-lg">
                   <div className="text-green-800 font-bold">🏆 Territory conquered! Select additional units to move in.</div>
                 </div>
@@ -504,7 +498,7 @@ const DiceRollOverlay = ({
               onClick={onComplete}
               className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-lg transition-colors shadow-lg"
             >
-              {combatResult.territoryConquered ? 'Select Move-In Forces' : 'Continue Game'}
+              {territoryConquered ? 'Select Move-In Forces' : 'Continue Game'}
             </button>
           ) : canSkip ? (
             <button
@@ -522,7 +516,7 @@ const DiceRollOverlay = ({
         {/* Dramatic flair for extended display */}
         {stage === 'extended_display' && (
           <div className="absolute inset-0 pointer-events-none">
-            <div className={`absolute inset-0 ${combatResult.territoryConquered ? 'bg-green-500' : 'bg-yellow-500'} opacity-10 animate-pulse`}></div>
+            <div className={`absolute inset-0 ${territoryConquered ? 'bg-green-500' : 'bg-yellow-500'} opacity-10 animate-pulse`}></div>
           </div>
         )}
       </div>

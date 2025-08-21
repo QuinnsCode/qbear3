@@ -482,6 +482,14 @@ export async function spendEnergy(
   }
 }
 
+// ================================
+// NEW TWO-PHASE INVASION SYSTEM
+// ================================
+
+/**
+ * PHASE 1: Resolve Combat (Calculate dice results, store pendingConquest)
+ * This replaces the old invadeTerritory action
+ */
 export async function invadeTerritory(
   gameId: string,
   playerId: string,
@@ -489,23 +497,74 @@ export async function invadeTerritory(
   toTerritoryId: string,
   attackingUnits: number,
   commanderTypes: string[] = []
-): Promise<GameState> {  // ← Just GameState, not the complex structure
+): Promise<GameState> {
   try {
+    console.log('🎯 PHASE 1: Resolving combat:', {
+      gameId,
+      playerId,
+      fromTerritoryId,
+      toTerritoryId,
+      attackingUnits,
+      commanderTypes
+    });
+
+    // ✅ CHANGED: Use new 'resolve_combat' action type
     const result = await callGameDO(gameId, 'applyAction', {
-      type: 'invade_territory',
+      type: 'resolve_combat',  // ✅ NEW ACTION TYPE
       playerId,
       data: { fromTerritoryId, toTerritoryId, attackingUnits, commanderTypes }
     });
     
+    console.log('🎯 Combat resolution result:', {
+      pendingConquest: result.pendingConquest,
+      territoryConquered: !!result.pendingConquest
+    });
+
     await renderRealtimeClients({
       durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
       key: `/game/${gameId}`,
     });
     
-    return result as GameState;  // ← Just return the state
+    return result as GameState;
   } catch (error) {
-    console.error('❌ Failed to invade territory:', error);
-    throw new Error(`Failed to invade territory: ${error.message}`);
+    console.error('❌ Failed to resolve combat:', error);
+    throw new Error(`Failed to resolve combat: ${error.message}`);
+  }
+}
+
+/**
+ * PHASE 2: Confirm Conquest (Choose additional move-in, apply territory ownership)
+ * This is the NEW action for completing a conquest
+ */
+export async function confirmConquest(
+  gameId: string,
+  playerId: string,
+  additionalUnits: number
+): Promise<GameState> {
+  try {
+    console.log('📦 PHASE 2: Confirming conquest with additional units:', {
+      gameId,
+      playerId,
+      additionalUnits
+    });
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'confirm_conquest',  // ✅ NEW ACTION TYPE
+      playerId,
+      data: { additionalUnits }
+    });
+    
+    console.log('✅ Conquest confirmed:', result);
+
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+    
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Failed to confirm conquest:', error);
+    throw new Error(`Failed to confirm conquest: ${error.message}`);
   }
 }
 
@@ -516,8 +575,16 @@ export async function moveIntoEmptyTerritory(
   fromTerritoryId: string,
   toTerritoryId: string,
   movingUnits: number
-): Promise<GameState> {  // ← Just GameState
+): Promise<GameState> {
   try {
+    console.log('🚶 Moving into empty territory:', {
+      gameId,
+      playerId,
+      fromTerritoryId,
+      toTerritoryId,
+      movingUnits
+    });
+
     const result = await callGameDO(gameId, 'applyAction', {
       type: 'move_into_empty_territory',
       playerId,
@@ -529,30 +596,28 @@ export async function moveIntoEmptyTerritory(
       key: `/game/${gameId}`,
     });
     
-    return result as GameState;  // ← Just return the state
+    return result as GameState;
   } catch (error) {
     console.error('❌ Failed to move into empty territory:', error);
     throw new Error(`Failed to move into empty territory: ${error.message}`);
   }
 }
 
-// ✅ NEW: Reset invasion stats at start of invasion phase
 export async function startInvasionPhase(
   gameId: string,
   playerId: string
 ): Promise<GameState> {
   try {
-    console.log('⚔️ startInvasionPhase called:', { gameId, playerId });
+    console.log('⚔️ Starting invasion phase:', { gameId, playerId });
     
     const result = await callGameDO(gameId, 'applyAction', {
-      type: 'start_invasion_phase', // ✅ Correct action type
+      type: 'start_invasion_phase',
       playerId,
       data: {}
     });
     
-    console.log('⚔️ startInvasionPhase result:', result);
+    console.log('⚔️ Invasion phase started:', result);
     
-    // Trigger realtime update
     await renderRealtimeClients({
       durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
       key: `/game/${gameId}`,
@@ -1061,42 +1126,48 @@ export async function confirmAdditionalMoveIn(
   fromTerritoryId: string,
   toTerritoryId: string,
   additionalUnits: number
-): Promise<void> {
+): Promise<GameState> {
+  console.warn('⚠️ confirmAdditionalMoveIn is deprecated - use confirmConquest instead');
+  
+  // ✅ Redirect to new system
+  return confirmConquest(gameId, playerId, additionalUnits);
+}
+
+// ================================
+// HELPER FUNCTIONS FOR UI
+// ================================
+
+/**
+ * Check if player has a pending conquest awaiting move-in decision
+ */
+export async function hasPendingConquest(gameId: string, playerId: string): Promise<boolean> {
   try {
-    console.log('📦 Confirming additional move-in:', {
-      gameId,
-      playerId,
-      fromTerritoryId,
-      toTerritoryId,
-      additionalUnits
-    });
-
-    const response = await fetch(`/api/game/${gameId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        type: 'confirm_additional_move_in',
-        playerId,
-        data: {
-          fromTerritoryId,
-          toTerritoryId,
-          additionalUnits
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Server error: ${response.status} - ${errorText}`);
-    }
-
-    const result = await response.json();
-    console.log('✅ Additional move-in confirmed:', result);
-
+    const gameState = await getGameState(gameId);
+    return !!(gameState.pendingConquest && gameState.pendingConquest.playerId === playerId);
   } catch (error) {
-    console.error('❌ Additional move-in confirmation failed:', error);
-    throw error;
+    console.error('Failed to check pending conquest:', error);
+    return false;
+  }
+}
+
+/**
+ * Get pending conquest details for UI
+ */
+export async function getPendingConquest(gameId: string, playerId: string) {
+  try {
+    const gameState = await getGameState(gameId);
+    
+    if (gameState.pendingConquest && gameState.pendingConquest.playerId === playerId) {
+      return {
+        conquest: gameState.pendingConquest,
+        fromTerritory: gameState.territories[gameState.pendingConquest.fromTerritoryId],
+        toTerritory: gameState.territories[gameState.pendingConquest.toTerritoryId]
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Failed to get pending conquest:', error);
+    return null;
   }
 }
