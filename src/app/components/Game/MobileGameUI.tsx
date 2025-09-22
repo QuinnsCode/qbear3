@@ -1275,7 +1275,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       </div>
 
       {/* ✅ FIXED: Bottom Action Bar - Z-index 20, CLEAR SPACE ABOVE */}
-      <div className="bg-white/95 backdrop-blur-sm border-t border-gray-200 p-4 z-20">
+      <div className="bg-gradient-to-b from-slate-500/95 via-slate-400/95 to-slate-300/95 backdrop-blur-sm border-t border-gray-200 p-4 z-20">
         {gameState?.status === 'setup' ? (
           // 🎨 Setup phase buttons with themed icons
           <div className="grid grid-cols-5 gap-3 max-w-md mx-auto">
@@ -1287,26 +1287,36 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
                 onClick={() => handleModeChange('info')}
                 color="blue"
               />
-            
-            {/* Current phase button */}
-            {(() => {
-              const currentButton = getCurrentSetupButton()
-              const actionMode = gameState.setupPhase === 'units' ? 'place' :
-                              gameState.setupPhase === 'space_base' ? 'place_base' : 'place_commander'
               
-              return (
-                <GameActionButton
-                  icon={currentButton.icon}
-                  label={currentButton.label}
-                  active={interactionMode === actionMode}
-                  disabled={!isMyTurn}
-                  onClick={() => handleModeChange(actionMode)}
-                  color={currentButton.color}
-                />
-              )
-            })()}
+              {/* Current phase button - AUTO-ACTIVE when it's the current setup phase */}
+              {(() => {
+                const currentButton = getCurrentSetupButton()
+                const actionMode = gameState.setupPhase === 'units' ? 'place' :
+                                  gameState.setupPhase === 'space_base' ? 'place_base' : 'place_commander'
+                
+                return (
+                  <GameActionButton
+                    icon={currentButton.icon}
+                    label={currentButton.label}
+                    // ✅ FIX: Auto-active when it's my turn OR manually selected
+                    active={
+                      // Auto-active for commander phases when it's my turn
+                      (isMyTurn && gameState.setupPhase === 'land_commander') || 
+                      (isMyTurn && gameState.setupPhase === 'diplomat_commander') ||
+                      // For other phases, check interaction mode
+                      (gameState.setupPhase === 'units' && interactionMode === 'place') ||
+                      (gameState.setupPhase === 'space_base' && interactionMode === 'place_base') ||
+                      // Manual selection fallback
+                      interactionMode === actionMode
+                    }
+                    disabled={!isMyTurn}
+                    onClick={() => handleModeChange(actionMode)}
+                    color={currentButton.color}
+                  />
+                )
+              })()}
             
-            {/* 🆕 Card Reference - Always Available in setup */}
+            {/* Card Reference - Always Available in setup */}
             <GameActionButton
               icon={BookOpen}
               label="Cards"

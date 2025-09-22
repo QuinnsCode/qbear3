@@ -289,7 +289,7 @@ export const GameMap = ({
   };
 
   return (
-    <div className="relative w-full h-full bg-gradient-to-br from-purple-50 to-green-50 rounded-lg overflow-hidden">
+    <div className="relative w-full h-full bg-gradient-to-br from-slate-700 via-black/95 to-slate-800 rounded-lg overflow-hidden">
       {/* Zoom controls */}
       <div className="absolute top-4 right-4 z-10 flex flex-col space-y-2">
         <button
