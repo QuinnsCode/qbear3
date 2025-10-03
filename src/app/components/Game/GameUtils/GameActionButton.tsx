@@ -6,7 +6,11 @@ export const GameActionButton = ({ icon: Icon, label, active, disabled, onClick,
     blue: active ? 'bg-blue-500 text-white' : 'bg-white text-blue-500 border-blue-200',
     red: active ? 'bg-red-500 text-white' : 'bg-white text-red-500 border-red-200',
     green: active ? 'bg-green-500 text-white' : 'bg-white text-green-500 border-green-200',
-    yellow: active ? 'bg-yellow-500 text-white' : 'bg-white text-yellow-500 border-yellow-200'
+    yellow: active ? 'bg-yellow-500 text-white' : 'bg-white text-yellow-500 border-yellow-200',
+    amber: active ? 'bg-amber-500 text-white' : 'bg-white text-amber-500 border-amber-200',
+    purple: active ? 'bg-purple-500 text-white' : 'bg-white text-purple-500 border-purple-200',
+    gray: active ? 'bg-gray-500 text-white' : 'bg-white text-gray-500 border-gray-200',
+    indigo: active ? 'bg-indigo-500 text-white' : 'bg-white text-indigo-500 border-indigo-200'
   };
 
   return (

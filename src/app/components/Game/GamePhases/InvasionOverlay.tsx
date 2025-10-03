@@ -73,44 +73,42 @@ const InvasionOverlay = ({
   const toTerritory = gameState.territories[toTerritoryId];
   const invasionStats = myPlayer?.invasionStats;
 
+  console.log('🔍 InvasionOverlay render - pendingConquest:', gameState.pendingConquest);
+
   // ✅ UPDATED: Detect pending conquest state from server
   useEffect(() => {
     const pendingConquest = gameState.pendingConquest;
     
-    if (pendingConquest && 
-        pendingConquest.playerId === currentUserId &&
-        pendingConquest.fromTerritoryId === fromTerritoryId &&
-        pendingConquest.toTerritoryId === toTerritoryId) {
-      
-      console.log('🎯 Server indicates pending conquest state detected:', pendingConquest);
-      
-      // Show dice results first if showDiceResults is true
-      if (pendingConquest.showDiceResults) {
-        console.log('📊 Showing dice results from server');
-        setLastCombatResult(pendingConquest.combatResult);
-        setShowDiceResults(true);
-        setShowMoveInSelection(false);
-        setOverlayState('diceResults');
-      } else {
-        // Move directly to move-in selection
-        console.log('📦 Moving directly to move-in selection');
-        setShowDiceResults(false);
-        setShowMoveInSelection(true);
-        setOverlayState('moveIn');
+    if (pendingConquest && pendingConquest.playerId === currentUserId) {
+      // Only check if this pending conquest is for the current overlay
+      if (pendingConquest.fromTerritoryId === fromTerritoryId && 
+          pendingConquest.toTerritoryId === toTerritoryId) {
+        
+        if (pendingConquest.showDiceResults) {
+          setLastCombatResult(pendingConquest.combatResult);
+          setShowDiceResults(true);
+          setShowMoveInSelection(false);
+          setOverlayState('diceResults');
+        } else {
+          setShowDiceResults(false);
+          setShowMoveInSelection(true);
+          setOverlayState('moveIn');
+        }
       }
     } else {
-      // Only reset if we're NOT waiting for server response
+      // Clean up when no pending conquest
       if (overlayState === 'diceResults' || overlayState === 'moveIn') {
-        console.log('🔄 No pending conquest - resetting to selection');
         setShowDiceResults(false);
         setShowMoveInSelection(false);
         setOverlayState('selecting');
         setLastCombatResult(null);
       }
-      // DO NOT reset while 'processing' - let the server response handle it
     }
-  }, [gameState.pendingConquest, currentUserId, fromTerritoryId, toTerritoryId]);
+  }, [gameState.pendingConquest, currentUserId]);
 
+  useEffect(() => {
+    console.log('🔍 pendingConquest changed:', gameState.pendingConquest);
+  }, [gameState.pendingConquest]);
 
   // Calculate available units (must leave 1 behind)
   const availableUnits = Math.max(0, fromTerritory.machineCount - 1);

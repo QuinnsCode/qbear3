@@ -104,6 +104,25 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       setSelectedTerritory(null);
       setTerritoryActionInProgress(false);
       
+      // Auto-set interaction mode based on setup phase
+      if (newState.status === 'setup') {
+        const currentPlayer = newState?.players[newState.currentPlayerIndex];
+        if (currentPlayer?.id === currentUserId) {
+          switch (newState.setupPhase) {
+            case 'units':
+              setInteractionMode('place');
+              break;
+            case 'land_commander':
+            case 'diplomat_commander':
+              setInteractionMode('place_commander');
+              break;
+            case 'space_base':
+              setInteractionMode('place_base');
+              break;
+          }
+        }
+      }
+      
       const currentPlayer = newState?.players[newState.currentPlayerIndex];
       if (currentPlayer?.id === currentUserId) {
         console.log('🎯 It\'s now your turn!');
@@ -643,7 +662,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           break
         case 'land_commander':
         case 'diplomat_commander':
-          handleTerritoryAction(territoryId, interactionMode === 'place_commander' ? 'place_commander' : 'info')
+          handleTerritoryAction(territoryId, 'place_commander')  // Always use place_commander action
           break
         case 'space_base':
           handleTerritoryAction(territoryId, interactionMode === 'place_base' ? 'place_base' : 'info')
@@ -1300,14 +1319,12 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
                     label={currentButton.label}
                     // ✅ FIX: Auto-active when it's my turn OR manually selected
                     active={
-                      // Auto-active for commander phases when it's my turn
+                      // Always active for commander phases when it's my turn
                       (isMyTurn && gameState.setupPhase === 'land_commander') || 
                       (isMyTurn && gameState.setupPhase === 'diplomat_commander') ||
-                      // For other phases, check interaction mode
-                      (gameState.setupPhase === 'units' && interactionMode === 'place') ||
-                      (gameState.setupPhase === 'space_base' && interactionMode === 'place_base') ||
-                      // Manual selection fallback
-                      interactionMode === actionMode
+                      // Always active for units phase when it's my turn
+                      (isMyTurn && gameState.setupPhase === 'units') ||
+                      (gameState.setupPhase === 'space_base' && interactionMode === 'place_base')
                     }
                     disabled={!isMyTurn}
                     onClick={() => handleModeChange(actionMode)}

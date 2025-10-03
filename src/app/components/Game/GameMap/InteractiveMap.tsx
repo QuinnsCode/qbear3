@@ -8,7 +8,7 @@ import { TERRITORY_POSITIONS } from '@/app/components/Game/GameData/gameData'
 interface InteractiveMapProps {
   gameState: GameState
   currentUserId: string
-  selectedTerritory?: string | null  // Add this prop
+  selectedTerritory?: string | null
   onTerritoryAction: (territoryId: string, action: 'attack' | 'fortify' | 'place' | 'info') => void
 }
 
@@ -40,12 +40,12 @@ function TerritoryNode({
     if (!owner) return 'rgb(156, 163, 175)' // gray-400
     
     const colorMap: Record<string, string> = {
-      'purple': 'rgb(168, 85, 247)', // purple-500
-      'green': 'rgb(34, 197, 94)',   // green-500
-      'blue': 'rgb(59, 130, 246)',   // blue-500
-      'red': 'rgb(239, 68, 68)',     // red-500
-      'yellow': 'rgb(234, 179, 8)',  // yellow-500
-      'gray': 'rgb(107, 114, 128)',  // gray-500
+      'purple': 'rgb(147, 51, 234)', // purple-600 (darker, more vibrant)
+      'green': 'rgb(22, 163, 74)',   // green-600
+      'blue': 'rgb(37, 99, 235)',    // blue-600
+      'red': 'rgb(220, 38, 38)',     // red-600
+      'yellow': 'rgb(202, 138, 4)',  // yellow-600
+      'gray': 'rgb(75, 85, 99)',     // gray-600
     }
     
     return colorMap[owner.color] || 'rgb(156, 163, 175)'
@@ -67,17 +67,44 @@ function TerritoryNode({
   
   return (
     <g>
+      {/* Glow effect for selected territory */}
+      {/* Glow effect for selected territory */}
+      {isSelected && (
+        <circle
+          cx={position.x}
+          cy={position.y}
+          r={32}
+          fill="none"
+          stroke="#fbbf24"
+          strokeWidth={3}
+          opacity={0.6}
+          className="animate-pulse"
+        />
+      )}
+
+      {/* Outer ring for better definition */}
+      <circle
+        cx={position.x}
+        cy={position.y}
+        r={isSelected ? 27 : 22}
+        fill="none"
+        stroke="#1f2937"
+        strokeWidth={2}
+        opacity={0.8}
+      />
+      
       {/* Territory circle */}
       <circle
         cx={position.x}
         cy={position.y}
         r={isSelected ? 25 : 20}
         fill={nodeColor}
-        stroke={isSelected ? '#000' : canTarget ? '#fff' : 'none'}
-        strokeWidth={isSelected ? 3 : canTarget ? 2 : 0}
-        opacity={canTarget ? 1 : 0.6}
-        className={canTarget ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}
+        stroke={isSelected ? '#fbbf24' : canTarget ? '#ffffff' : '#374151'}
+        strokeWidth={isSelected ? 3 : canTarget ? 2.5 : 1.5}
+        opacity={canTarget ? 1 : 0.7}
+        className={canTarget ? 'cursor-pointer hover:opacity-90 transition-opacity' : 'cursor-default'}
         onClick={() => canTarget && onTerritoryClick(territory.id)}
+        style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}
       />
       
       {/* Unit count */}
@@ -85,8 +112,15 @@ function TerritoryNode({
         x={position.x}
         y={position.y + 5}
         textAnchor="middle"
-        className="text-white text-sm font-bold pointer-events-none select-none"
-        style={{ fontSize: '12px' }}
+        className="pointer-events-none select-none"
+        style={{ 
+          fontSize: '13px',
+          fontWeight: 'bold',
+          fill: '#ffffff',
+          stroke: '#000000',
+          strokeWidth: '0.5px',
+          paintOrder: 'stroke'
+        }}
       >
         {territory.machineCount}
       </text>
@@ -99,15 +133,28 @@ function TerritoryNode({
 
 function ConnectionLine({ from, to }: { from: { x: number; y: number }, to: { x: number; y: number } }) {
   return (
-    <line
-      x1={from.x}
-      y1={from.y}
-      x2={to.x}
-      y2={to.y}
-      stroke="rgba(156, 163, 175, 0.3)"
-      strokeWidth="1"
-      className="pointer-events-none"
-    />
+    <g>
+      {/* Thicker background line for better visibility */}
+      <line
+        x1={from.x}
+        y1={from.y}
+        x2={to.x}
+        y2={to.y}
+        stroke="rgba(75, 85, 99, 0.5)"
+        strokeWidth="3"
+        className="pointer-events-none"
+      />
+      {/* Lighter overlay line */}
+      <line
+        x1={from.x}
+        y1={from.y}
+        x2={to.x}
+        y2={to.y}
+        stroke="rgba(209, 213, 219, 0.4)"
+        strokeWidth="1.5"
+        className="pointer-events-none"
+      />
+    </g>
   )
 }
 
@@ -198,7 +245,7 @@ function InteractiveMap({ gameState, currentUserId, selectedTerritory, onTerrito
       </div>
       
       {/* SVG Map */}
-      <div className="border rounded bg-purple-50 overflow-auto">
+      <div className="border rounded bg-gradient-to-br from-slate-800 to-slate-900 overflow-auto">
         <svg width="900" height="450" className="min-w-full">
           {/* Draw connections first (behind territories) */}
           {connections.map((connection, index) => (
