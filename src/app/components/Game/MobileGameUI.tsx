@@ -1173,38 +1173,38 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
 
   return (
-    <div className="h-screen w-full bg-gray-900 flex flex-col relative overflow-hidden">
+    <div className="h-screen w-full bg-gradient-to-br from-zinc-900 via-stone-900 to-amber-950 flex flex-col relative overflow-hidden">
       {/* ✅ FIXED: Connection Status Indicator - Higher z-index, better positioning */}
       {!isConnected && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-lg z-40 shadow-lg">
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-900 to-orange-900 text-amber-100 px-4 py-2 rounded border-2 border-red-700/50 z-40 shadow-[0_4px_20px_rgba(153,27,27,0.6)]">
           <div className="flex items-center space-x-2">
-            <div className="animate-pulse rounded-full h-4 w-4 bg-white"></div>
-            <span className="text-sm font-medium">Reconnecting to game server...</span>
+            <div className="animate-pulse rounded-full h-4 w-4 bg-amber-300"></div>
+            <span className="text-sm font-bold">Reconnecting to game server...</span>
           </div>
         </div>
       )}
 
       {/* ✅ FIXED: Loading Indicator - Better positioning to avoid UI conflicts */}
       {isUpdating && (
-        <div className="absolute top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg z-40 shadow-lg">
+        <div className="absolute top-4 right-4 bg-gradient-to-r from-amber-800 to-orange-900 text-amber-100 px-4 py-2 rounded border-2 border-amber-600/50 z-40 shadow-[0_4px_20px_rgba(180,83,9,0.6)]">
           <div className="flex items-center space-x-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            <span className="text-sm font-medium">Updating...</span>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-200"></div>
+            <span className="text-sm font-bold">Updating...</span>
           </div>
         </div>
       )}
       {/* 🎯 Card Play Mode Indicator */}
       {cardPlayMode?.active && (
-        <div className="absolute top-16 left-4 right-4 bg-blue-600/95 backdrop-blur-md text-white px-4 py-3 rounded-lg z-45 shadow-xl border border-blue-400">
+        <div className="absolute top-16 left-4 right-4 bg-gradient-to-r from-lime-800/95 to-green-900/95 backdrop-blur-md text-amber-100 px-4 py-3 rounded border-2 border-lime-600/60 z-45 shadow-[0_4px_20px_rgba(77,124,15,0.6)]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Play size={18} />
               <div>
-                <div className="font-semibold">Select Target Territory</div>
+                <div className="font-bold">Select Target Territory</div>
                 <div className="text-xs opacity-90">
                   Playing: {cardPlayMode.cardTitle} - Select {getRequiredTargetCount(cardPlayMode.cardTitle)} {cardPlayMode.validTerritoryTypes.join('/')} territories
                   {cardSelectedTerritories.length > 0 && (
-                    <span className="ml-2 bg-green-500/30 px-2 py-1 rounded">
+                    <span className="ml-2 bg-lime-500/40 px-2 py-1 rounded border border-lime-400/30">
                       {cardSelectedTerritories.length}/{getRequiredTargetCount(cardPlayMode.cardTitle)} selected
                     </span>
                   )}
@@ -1217,7 +1217,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
                 setCardPlayMode(null);
                 setCardSelectedTerritories([]);
               }}
-              className="bg-gray-500 hover:bg-gray-600 px-3 py-1 rounded text-xs font-medium transition-colors"
+              className="bg-red-800 hover:bg-red-700 border border-red-600/50 px-3 py-1 rounded text-xs font-bold transition-colors shadow-md"
             >
               Cancel
             </button>
@@ -1226,16 +1226,15 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       )}
       {/* 🚨 EMERGENCY FIX: AI Turn Indicator - SMALL, NON-BLOCKING, WITH EMERGENCY ACCESS */}
       {isAITurn && (
-        <div className="absolute top-16 right-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-2 rounded-lg z-30 shadow-lg max-w-xs">
+        <div className="absolute top-16 right-4 bg-gradient-to-r from-yellow-700 to-orange-700 text-amber-100 px-3 py-2 rounded border-2 border-yellow-600/60 z-30 shadow-[0_4px_15px_rgba(161,98,7,0.6)] max-w-xs">
           <div className="flex items-center space-x-2">
-            <div className="animate-pulse rounded-full h-2 w-2 bg-white"></div>
-            <span className="text-xs font-medium">
+            <div className="animate-pulse rounded-full h-2 w-2 bg-amber-200"></div>
+            <span className="text-xs font-bold">
               🤖 AI {gameState?.status === 'setup' ? 'setting up' : 'thinking'}
             </span>
-            {/* 🚨 EMERGENCY: Always show restart button when AI is active */}
             <button
               onClick={() => handleGameStateUpdate({}, true)}
-              className="ml-2 px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded transition-colors"
+              className="ml-2 px-2 py-1 bg-red-700 hover:bg-red-600 border border-red-600/50 text-white text-xs rounded transition-colors font-bold shadow-md"
               title="Restart Game (Emergency)"
             >
               ⚠️ Restart
@@ -1244,39 +1243,41 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
         </div>
       )}
 
+
       {/* Top Bar - Z-index 20 */}
-      <div className="bg-white/10 backdrop-blur-sm text-white p-4 flex items-center justify-between z-20">
+      <div className="bg-gradient-to-b from-amber-900/85 via-orange-900/80 to-red-900/75 backdrop-blur-sm text-amber-100 p-4 flex items-center justify-between z-20 border-b-2 border-amber-600/60 shadow-[0_4px_20px_rgba(120,53,15,0.4)]">
         <button
           onClick={() => setShowStats(!showStats)}
-          className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+          className="p-2 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-800 to-orange-900 hover:from-amber-700 hover:to-orange-800 transition-all shadow-md"
         >
           <Menu size={20} />
         </button>
         
         <div className="text-center">
-          <div className="text-sm opacity-90">
+          <div className="text-sm opacity-95 font-bold">
             {getPhaseDisplay()}
           </div>
-          <div className={`text-xs px-2 py-1 rounded-full ${
-            isMyTurn ? 'bg-green-500' : 'bg-yellow-500'
+          <div className={`text-xs px-2 py-1 rounded-full border ${
+            isMyTurn 
+              ? 'bg-lime-700 border-lime-500/50 shadow-[0_0_10px_rgba(132,204,22,0.4)]' 
+              : 'bg-yellow-700 border-yellow-500/50'
           }`}>
             {isMyTurn ? 'Your Turn' : `${currentPlayer?.name}'s Turn`}
           </div>
-          {/* Setup progress indicator */}
           {gameState?.status === 'setup' && (
-            <div className="text-xs text-green-300 mt-1">
+            <div className="text-xs text-lime-300 mt-1 font-semibold">
               {getSetupProgress()}
             </div>
           )}
           
-          <div className={`text-xs mt-1 ${isConnected ? 'text-green-300' : 'text-red-300'}`}>
+          <div className={`text-xs mt-1 font-bold ${isConnected ? 'text-lime-300' : 'text-red-300'}`}>
             {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
           </div>
         </div>
 
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className="p-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+          className="p-2 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-800 to-orange-900 hover:from-amber-700 hover:to-orange-800 transition-all shadow-md"
         >
           <Settings size={20} />
         </button>
@@ -1294,7 +1295,8 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       </div>
 
       {/* ✅ FIXED: Bottom Action Bar - Z-index 20, CLEAR SPACE ABOVE */}
-      <div className="bg-gradient-to-b from-slate-500/95 via-slate-400/95 to-slate-300/95 backdrop-blur-sm border-t border-gray-200 p-4 z-20">
+      <div className="bg-gradient-to-b from-zinc-800/95 via-amber-900/92 to-orange-900/88 backdrop-blur-sm border-t-2 border-amber-600/60 p-4 z-20 shadow-[0_-4px_20px_rgba(120,53,15,0.3)]">
+
         {gameState?.status === 'setup' ? (
           // 🎨 Setup phase buttons with themed icons
           <div className="grid grid-cols-5 gap-3 max-w-md mx-auto">
@@ -1511,8 +1513,8 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
         )}
 
         {/* 🎨 ENHANCED: Action Instructions with themed descriptions */}
-         <div className="mt-3 text-center">
-          <div className="text-xs text-gray-600 bg-gray-100 rounded-full px-3 py-2 inline-block">
+        <div className="mt-3 text-center">
+          <div className="text-xs text-amber-200 bg-gradient-to-r from-amber-950/80 to-orange-950/80 border border-amber-700/40 rounded-full px-3 py-2 inline-block shadow-inner font-semibold">
             {gameState?.status === 'setup' ? (
               // Setup instructions with emojis
               <>
