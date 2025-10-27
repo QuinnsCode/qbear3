@@ -12,7 +12,7 @@ export default function OrgLanding({ ctx, request }: RequestInfo) {
       <div style={{ marginTop: '20px' }}>
         <h2>Quick Actions</h2>
         <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-          <a href="/dashboard">Dashboard</a>
+          {/* <a href="/dashboard">Dashboard</a> */}
           <a href="/search/test123">Search Orders</a>
         </div>
       </div>

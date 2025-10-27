@@ -19,6 +19,15 @@ export function useGameRecovery({
 
   const attemptRecovery = useCallback(async () => {
     if (isRecovering) return false;
+    
+    // Check if gameId is available
+    if (!gameId) {
+      const errorMsg = 'Cannot recover: Game ID is missing';
+      console.error('❌ ' + errorMsg);
+      setLastRecoveryError(errorMsg);
+      onRecoveryFailed?.(errorMsg);
+      return false;
+    }
 
     setIsRecovering(true);
     setLastRecoveryError(null);

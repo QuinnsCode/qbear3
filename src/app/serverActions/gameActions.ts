@@ -1171,3 +1171,58 @@ export async function getPendingConquest(gameId: string, playerId: string) {
     return null;
   }
 }
+
+/**
+ * Advance from Invasion phase (5) to Fortify phase (6)
+ */
+export async function advanceFromInvasion(
+  gameId: string,
+  playerId: string
+): Promise<GameState> {
+  try {
+    console.log('🎯 Advancing from Invasion to Fortify phase');
+
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'advance_player_phase',
+      playerId,
+      data: { phaseComplete: true }
+    });
+
+    console.log('✅ Phase advance successful:', result);
+    
+    // Trigger realtime update
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+
+    return result as GameState;
+  } catch (error) {
+    console.error('❌ Phase advance error:', error);
+    throw new Error(`Failed to advance from invasion phase: ${error.message}`);
+  }
+}
+
+export async function advanceFromFortify(gameId: string, playerId: string): Promise<GameState> {
+  try {
+    console.log('Advancing from Fortify phase - ending turn');
+    
+    const result = await callGameDO(gameId, 'applyAction', {
+      type: 'advance_from_fortify',
+      playerId,
+      data: { phaseComplete: true }
+    });
+    
+    console.log('Turn ended - advancing to next player');
+    
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
+      key: `/game/${gameId}`,
+    });
+    
+    return result as GameState;
+  } catch (error) {
+    console.error('Advance from fortify failed:', error);
+    throw new Error(`Failed to advance from fortify: ${error.message}`);
+  }
+}

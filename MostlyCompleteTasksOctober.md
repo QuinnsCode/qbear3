@@ -292,3 +292,93 @@ invasionState: {
 ---
 
 *This plan addresses the core issues with move-in logic while maintaining the game's strategic depth around attack force commitment and commander movement requirements.*
+
+Phase 1 Fix Checklist
+
+✅ Chunk 1: Fix Commander Death Logic
+
+Fix applyDefenderLosses() - regular units die first, commanders only when last remaining
+
+Fix handleAttackerCommanderDeaths() - same logic for attacking commanders
+
+Test: commanders survive when regular units available
+
+Test: commanders die when they're the only units left
+
+✅ Chunk 2: Add Auto-Defender Selection
+
+Create selectBestDefenders() method
+
+Priority: space base > terrain commanders > regular commanders > units
+
+Automatically pick 1-2 best defenders
+
+Integrate into resolveCombatWithDice()
+
+Test: system picks optimal defenders automatically
+
+✅ Chunk 3: Fix Casualty Application Order
+
+Failed attacks: apply attacker casualties immediately, NO defender casualties
+
+Successful attacks: apply attacker casualties immediately, defer defender casualties until conquest
+
+Modify resolveCombat() casualty logic
+
+Test: failed attacks don't harm defenders until conquest confirmed
+
+Phase 2: Territory Rules Checklist
+
+✅ Chunk 4: Add Anti-Marauding Protection
+
+Lock territories that attack from further attacks same turn
+
+Check territoriesAttackedFrom in canAttackFromTerritory()
+
+Update invasion stats when attacking
+
+Test: cannot attack from newly conquered territories
+
+✅ Chunk 5: Expand Naval Commander Bonus
+
+Work on coastal territories (connected to water) not just water
+
+Modify getCommanderDieType() for naval commanders
+
+Test: naval commanders get d8 on coastal territories
+
+✅ Chunk 6: Add Space Base Defense Bonus
+
+All defenders in space base territory get d8
+
+Modify rollDefenderDice() and getDefenderCommanderDieType()
+
+Test: space base territories have stronger defense
+
+Current Status: Ready to start Chunk 4 Next Action: Add anti-marauding protection
+
+Looking at your current code, I can see canAttackFromTerritory() already checks territoriesAttackedFrom at lines 429-431. Let me check if anti-marauding is already working or needs fixes.
+
+Should I proceed with Chunk 4?
+
+Phase 3: Edge Cases Checklist
+
+✅ Chunk 7: Commander Death Choice UI
+
+When multiple commanders could die, add selection interface
+
+Handle tie-breaking when casualties exceed available units
+
+✅ Chunk 8: Attack Leader Tracking
+
+Track which commander leads when only commanders remain
+
+Ensure proper commander movement after conquest
+
+✅ Chunk 9: Validate Commander Survival
+
+Ensure attacking commanders that survive move into conquered territory
+
+Handle edge cases where commanders die but attack succeeds
+
+Should we proceed with Phase 3, or do you want to test the current implementation first?

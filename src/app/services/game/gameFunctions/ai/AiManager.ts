@@ -787,18 +787,46 @@ export class AiManager {
       return;
     }
     
+    // 🔧 FIX: Store the AI player ID to validate later
+    const aiPlayerId = currentPlayer.id;
+    
     setTimeout(async () => {
       const gameState = this.getGameState();
-      if (gameState && gameState.status === 'playing' && gameState.currentPhase === 5) {
+      
+      // 🔧 FIX: Verify it's STILL the AI's turn before advancing
+      if (!gameState) {
+        console.log(`🤖 ❌ TIMEOUT ABORT: No game state`);
+        return;
+      }
+      
+      const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+      
+      // 🔧 FIX: Check if current player is still the AI
+      if (!currentPlayer || currentPlayer.id !== aiPlayerId) {
+        console.log(`🤖 ❌ TIMEOUT ABORT: Turn changed - was ${aiPlayerId}, now ${currentPlayer?.id}`);
+        return;
+      }
+      
+      // 🔧 FIX: Verify it's still an AI player
+      if (!globalAIController.isAIPlayer(currentPlayer.id)) {
+        console.log(`🤖 ❌ TIMEOUT ABORT: Current player is not AI`);
+        return;
+      }
+      
+      if (gameState.status === 'playing' && gameState.currentPhase === 5) {
+        console.log(`🤖 ✅ AI ${currentPlayer.name} advancing from phase 5 to phase 6`);
         await this.applyAction({
           type: 'advance_player_phase',
-          playerId: gameState.players[gameState.currentPlayerIndex].id,
+          playerId: currentPlayer.id,
           data: { phaseComplete: true }
         });
+      } else {
+        console.log(`🤖 ❌ TIMEOUT ABORT: Game state changed - status: ${gameState.status}, phase: ${gameState.currentPhase}`);
       }
     }, this.AI_TURN_SPEED_MS);
   }
 
+  // 🔧 FIXED: Added AI turn validation
   private doAIFortify(): void {
     const gameState = this.getGameState();
     if (!gameState) return;
@@ -813,14 +841,41 @@ export class AiManager {
       return;
     }
     
+    // 🔧 FIX: Store the AI player ID to validate later
+    const aiPlayerId = currentPlayer.id;
+    
     setTimeout(async () => {
       const gameState = this.getGameState();
-      if (gameState && gameState.status === 'playing' && gameState.currentPhase === 6) {
+      
+      // 🔧 FIX: Verify it's STILL the AI's turn before advancing
+      if (!gameState) {
+        console.log(`🤖 ❌ TIMEOUT ABORT: No game state`);
+        return;
+      }
+      
+      const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+      
+      // 🔧 FIX: Check if current player is still the AI
+      if (!currentPlayer || currentPlayer.id !== aiPlayerId) {
+        console.log(`🤖 ❌ TIMEOUT ABORT: Turn changed - was ${aiPlayerId}, now ${currentPlayer?.id}`);
+        return;
+      }
+      
+      // 🔧 FIX: Verify it's still an AI player
+      if (!globalAIController.isAIPlayer(currentPlayer.id)) {
+        console.log(`🤖 ❌ TIMEOUT ABORT: Current player is not AI`);
+        return;
+      }
+      
+      if (gameState.status === 'playing' && gameState.currentPhase === 6) {
+        console.log(`🤖 ✅ AI ${currentPlayer.name} advancing from phase 6 (ending turn)`);
         await this.applyAction({
           type: 'advance_player_phase',
-          playerId: gameState.players[gameState.currentPlayerIndex].id,
+          playerId: currentPlayer.id,
           data: { phaseComplete: true }
         });
+      } else {
+        console.log(`🤖 ❌ TIMEOUT ABORT: Game state changed - status: ${gameState.status}, phase: ${gameState.currentPhase}`);
       }
     }, this.AI_TURN_SPEED_MS);
   }

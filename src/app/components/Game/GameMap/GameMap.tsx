@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { TERRITORY_POSITIONS } from '@/app/components/Game/GameData/gameData';
+import { ConquestAnimation } from '@/app/components/Game/Animations/Invasion/ConquestAnimation';
 
 // 🎨 Commander and Base Icons
 const COMMANDER_SYMBOLS = {
@@ -63,6 +64,43 @@ export const GameMap = ({
 
   const isConnectionHighlighted = (territoryId1, territoryId2) => {
     return selectedTerritory === territoryId1 || selectedTerritory === territoryId2;
+  };
+
+  // 🎨 Enhanced connection styling based on territory relationship
+  const getConnectionStyle = (territory1Id, territory2Id) => {
+    const territory1 = gameState.territories[territory1Id];
+    const territory2 = gameState.territories[territory2Id];
+    const isHighlighted = isConnectionHighlighted(territory1Id, territory2Id);
+    const bothWater = isWaterTerritory(territory1) && isWaterTerritory(territory2);
+    const oneWater = isWaterTerritory(territory1) || isWaterTerritory(territory2);
+    
+    // Different styling for different connection types
+    if (bothWater) {
+      return {
+        stroke: isHighlighted ? "#0891b2" : "#0e7490",
+        strokeWidth: isHighlighted ? "4" : "2.5",
+        opacity: isHighlighted ? "0.9" : "0.6",
+        strokeDasharray: "8,4",
+        filter: isHighlighted ? 'drop-shadow(0 0 8px rgba(8, 145, 178, 0.8))' : 'drop-shadow(0 0 4px rgba(14, 116, 144, 0.4))'
+      };
+    } else if (oneWater) {
+      return {
+        stroke: isHighlighted ? "#ca8a04" : "#a16207",
+        strokeWidth: isHighlighted ? "4" : "2.5",
+        opacity: isHighlighted ? "0.9" : "0.7",
+        strokeDasharray: "6,3",
+        filter: isHighlighted ? 'drop-shadow(0 0 8px rgba(202, 138, 4, 0.8))' : 'drop-shadow(0 0 4px rgba(161, 98, 7, 0.4))'
+      };
+    } else {
+      // Land connections
+      return {
+        stroke: isHighlighted ? "#d97706" : "#92400e",
+        strokeWidth: isHighlighted ? "4" : "3",
+        opacity: isHighlighted ? "1" : "0.8",
+        strokeDasharray: "none",
+        filter: isHighlighted ? 'drop-shadow(0 0 8px rgba(217, 119, 6, 0.9))' : 'drop-shadow(0 0 4px rgba(146, 64, 14, 0.6))'
+      };
+    }
   };
 
   const getTerritoryExtras = (territory) => {
@@ -144,7 +182,7 @@ export const GameMap = ({
       const newHeight = 450 / newZoom;
       setViewBox({
         x: worldX - (relativeX / rect.width) * newWidth,
-        y: worldY - (relativeY / rect.height) * newHeight,
+        y: worldY - (relativeY / rect.height) * newWidth,
         width: newWidth,
         height: newHeight
       });
@@ -204,6 +242,12 @@ export const GameMap = ({
     setZoom(newZoom);
   };
 
+  // Callback for when conquest animation completes
+  const handleConquestAnimationComplete = (territoryId: string) => {
+    console.log(`Conquest animation completed for territory: ${territoryId}`);
+    // You can add additional logic here if needed
+  };
+
   return (
     <div className="relative w-full h-full bg-gradient-to-br from-zinc-900 via-stone-900 to-amber-950 rounded-lg overflow-hidden border-2 border-amber-900/40 shadow-[inset_0_2px_20px_rgba(120,53,15,0.3)]">
       {/* 🎨 FALLOUT ZOOM CONTROLS - Rusty buttons */}
@@ -249,28 +293,54 @@ export const GameMap = ({
         style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
       >
         <defs>
-          {/* 🎨 FALLOUT GRADIENTS - Amber/orange theme */}
+          {/* 🎨 ENHANCED FALLOUT GRADIENTS - More pronounced */}
           <linearGradient id="shimmerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgba(217, 119, 6, 0.2)">
-              <animate attributeName="stop-opacity" values="0.2;0.7;0.2" dur="2s" repeatCount="indefinite"/>
+            <stop offset="0%" stopColor="rgba(217, 119, 6, 0.3)">
+              <animate attributeName="stop-opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite"/>
             </stop>
-            <stop offset="50%" stopColor="rgba(217, 119, 6, 0.7)">
-              <animate attributeName="stop-opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite"/>
+            <stop offset="50%" stopColor="rgba(217, 119, 6, 0.8)">
+              <animate attributeName="stop-opacity" values="0.8;1;0.8" dur="2s" repeatCount="indefinite"/>
             </stop>
-            <stop offset="100%" stopColor="rgba(217, 119, 6, 0.2)">
-              <animate attributeName="stop-opacity" values="0.2;0.7;0.2" dur="2s" repeatCount="indefinite"/>
+            <stop offset="100%" stopColor="rgba(217, 119, 6, 0.3)">
+              <animate attributeName="stop-opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite"/>
             </stop>
           </linearGradient>
           
           <linearGradient id="tripwireGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgba(180, 83, 9, 0.3)">
-              <animate attributeName="stop-opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite"/>
+            <stop offset="0%" stopColor="rgba(180, 83, 9, 0.5)">
+              <animate attributeName="stop-opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite"/>
             </stop>
-            <stop offset="50%" stopColor="rgba(234, 179, 8, 0.6)">
-              <animate attributeName="stop-opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite"/>
+            <stop offset="50%" stopColor="rgba(234, 179, 8, 0.8)">
+              <animate attributeName="stop-opacity" values="0.8;1;0.8" dur="1.5s" repeatCount="indefinite"/>
             </stop>
-            <stop offset="100%" stopColor="rgba(180, 83, 9, 0.3)">
-              <animate attributeName="stop-opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite"/>
+            <stop offset="100%" stopColor="rgba(180, 83, 9, 0.5)">
+              <animate attributeName="stop-opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite"/>
+            </stop>
+          </linearGradient>
+
+          {/* 🎨 NEW: Enhanced water connection gradient */}
+          <linearGradient id="waterConnectionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(8, 145, 178, 0.4)">
+              <animate attributeName="stop-opacity" values="0.4;0.9;0.4" dur="2.5s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="50%" stopColor="rgba(6, 182, 212, 0.7)">
+              <animate attributeName="stop-opacity" values="0.7;1;0.7" dur="2.5s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="100%" stopColor="rgba(8, 145, 178, 0.4)">
+              <animate attributeName="stop-opacity" values="0.4;0.9;0.4" dur="2.5s" repeatCount="indefinite"/>
+            </stop>
+          </linearGradient>
+
+          {/* 🎨 NEW: Land-water hybrid connection gradient */}
+          <linearGradient id="hybridConnectionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(202, 138, 4, 0.4)">
+              <animate attributeName="stop-opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="50%" stopColor="rgba(245, 158, 11, 0.7)">
+              <animate attributeName="stop-opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite"/>
+            </stop>
+            <stop offset="100%" stopColor="rgba(202, 138, 4, 0.4)">
+              <animate attributeName="stop-opacity" values="0.4;0.8;0.4" dur="2s" repeatCount="indefinite"/>
             </stop>
           </linearGradient>
 
@@ -293,43 +363,106 @@ export const GameMap = ({
             <circle cx="15" cy="10" r="1.5" fill="#92400e" opacity="0.2"/>
             <circle cx="10" cy="15" r="1" fill="#451a03" opacity="0.4"/>
           </pattern>
+
+          {/* 🎨 NEW: Connection glow filters */}
+          <filter id="connectionGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge> 
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+
+          <filter id="strongConnectionGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge> 
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
         </defs>
 
         {/* Background texture */}
         <rect x={viewBox.x} y={viewBox.y} width={viewBox.width} height={viewBox.height} fill="url(#rustTexture)" opacity="0.1"/>
 
-        {/* 🎨 FALLOUT CONNECTIONS - Rust-colored, weathered */}
+        {/* 🎨 ENHANCED FALLOUT CONNECTIONS - Much more pronounced */}
         {Object.values(gameState.territories).map(territory => 
           territory.connections.map(connId => {
             const fromPos = TERRITORY_POSITIONS[territory.id];
             const toPos = TERRITORY_POSITIONS[connId];
             if (fromPos && toPos && parseInt(territory.id) < parseInt(connId)) {
               const isHighlighted = isConnectionHighlighted(territory.id, connId);
+              const connectionStyle = getConnectionStyle(territory.id, connId);
+              const territory1 = gameState.territories[territory.id];
+              const territory2 = gameState.territories[connId];
+              const bothWater = isWaterTerritory(territory1) && isWaterTerritory(territory2);
+              const oneWater = isWaterTerritory(territory1) || isWaterTerritory(territory2);
               
               return (
-                <g key={`${territory.id}-${connId}`}>
+                <g key={`connection-${territory.id}-${connId}`}>
+                  {/* 🎨 Enhanced background glow for all connections */}
+                  <line
+                    x1={fromPos.x} y1={fromPos.y}
+                    x2={toPos.x} y2={toPos.y}
+                    stroke={connectionStyle.stroke}
+                    strokeWidth={parseFloat(connectionStyle.strokeWidth) + 2}
+                    opacity={parseFloat(connectionStyle.opacity) * 0.3}
+                    strokeDasharray={connectionStyle.strokeDasharray}
+                    filter="url(#connectionGlow)"
+                  />
+
+                  {/* 🎨 Animated highlight layer for selected connections */}
                   {isHighlighted && (
                     <line
                       x1={fromPos.x} y1={fromPos.y}
                       x2={toPos.x} y2={toPos.y}
-                      stroke="url(#tripwireGradient)"
-                      strokeWidth="3"
-                      opacity="0.7"
+                      stroke={bothWater ? "url(#waterConnectionGradient)" : 
+                              oneWater ? "url(#hybridConnectionGradient)" : 
+                              "url(#tripwireGradient)"}
+                      strokeWidth={parseFloat(connectionStyle.strokeWidth) + 1}
+                      opacity="0.9"
                       className="animate-pulse"
-                      style={{ filter: 'drop-shadow(0 0 4px rgba(217, 119, 6, 0.6))' }}
+                      filter="url(#strongConnectionGlow)"
                     />
                   )}
                   
+                  {/* 🎨 Main connection line - now thicker and more visible */}
                   <line
                     x1={fromPos.x} y1={fromPos.y}
                     x2={toPos.x} y2={toPos.y}
-                    stroke={isHighlighted ? "rgba(217, 119, 6, 0.5)" : "rgba(120, 53, 15, 0.25)"}
-                    strokeWidth={isHighlighted ? "2" : "1"}
-                    strokeDasharray={isHighlighted ? "4,4" : "none"}
-                    opacity={isHighlighted ? "0.8" : "0.6"}
+                    stroke={connectionStyle.stroke}
+                    strokeWidth={connectionStyle.strokeWidth}
+                    strokeDasharray={connectionStyle.strokeDasharray}
+                    opacity={connectionStyle.opacity}
                     className="transition-all duration-300"
-                    style={{ filter: isHighlighted ? 'drop-shadow(0 0 2px rgba(217, 119, 6, 0.4))' : 'none' }}
+                    style={{ filter: connectionStyle.filter }}
                   />
+
+                  {/* 🎨 NEW: Connection direction indicators for highlighted paths */}
+                  {isHighlighted && (
+                    <g>
+                      {/* Midpoint indicator */}
+                      <circle
+                        cx={(fromPos.x + toPos.x) / 2}
+                        cy={(fromPos.y + toPos.y) / 2}
+                        r="3"
+                        fill={connectionStyle.stroke}
+                        opacity="0.8"
+                        className="animate-pulse"
+                      />
+                      
+                      {/* Direction arrows */}
+                      <g transform={`translate(${(fromPos.x + toPos.x) / 2}, ${(fromPos.y + toPos.y) / 2})`}>
+                        <polygon
+                          points="-4,-2 4,0 -4,2"
+                          fill={connectionStyle.stroke}
+                          opacity="0.7"
+                          transform={`rotate(${Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x) * 180 / Math.PI})`}
+                          className="animate-pulse"
+                        />
+                      </g>
+                    </g>
+                  )}
                 </g>
               );
             }
@@ -350,7 +483,7 @@ export const GameMap = ({
           const isWater = isWaterTerritory(territory);
           
           return (
-            <g key={territory.id} opacity={territoryOpacity}>
+            <g key={`${territory.id}-${territory.ownerId}-${territory.machineCount}`} opacity={territoryOpacity}>
               {isSelected && (
                 <circle
                   cx={position.x} cy={position.y}
@@ -374,6 +507,14 @@ export const GameMap = ({
                   style={{ filter: 'drop-shadow(0 0 12px rgba(132, 204, 22, 0.8))' }}
                 />
               )}
+              
+              {/* 🎨 CONQUEST ANIMATION COMPONENT */}
+              <ConquestAnimation
+                territoryId={territory.id}
+                position={position}
+                ownerId={territory.ownerId}
+                onAnimationComplete={handleConquestAnimationComplete}
+              />
               
               {/* Outer metallic ring */}
               <circle

@@ -1,3 +1,4 @@
+// this is new broken code to remind you
 // app/components/Game/MobileGameUI.tsx
 'use client'
 import BuildHireOverlay from '@/app/components/Game/GamePhases/BuildHireOverlay';
@@ -11,15 +12,25 @@ import {
   invadeTerritory,
   moveIntoEmptyTerritory, 
   startInvasionPhase,
-  confirmConquest  // ✅ CHANGED: Use new server action
+  confirmConquest,
+  advanceFromInvasion,
+  advanceFromFortify,
+  fortifyTerritory,
 } from '@/app/serverActions/gameActions';
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useGameSync } from '@/app/hooks/useGameSync';
 import BiddingOverlay from '@/app/components/Game/GameBidding/BiddingOverlay';
 import CollectDeployOverlay from '@/app/components/Game/GamePhases/CollectDeployOverlay';
 import BuyCardsOverlay from '@/app/components/Game/GamePhases/BuyCardsOverlay';
 import PlayCardsOverlay from '@/app/components/Game/GamePhases/PlayCardsOverlay';
 import InvasionOverlay from '@/app/components/Game/GamePhases/InvasionOverlay';
+import InGameCardsOverlay from '@/app/components/Game/GamePhases/InGameCardsOverlay';
+import FortifyOverlay from '@/app/components/Game/GamePhases/FortifyOverlay';
+// import CardsToggleButton from '@/app/components/Game/GameUIPieces/CardsToggleButton';
+import CardsButton from '@/app/components/Game/GameUIPieces/CardsButton';
+import ActiveScoutForces from '@/app/components/Game/GameUIPieces/ActiveScoutForces';
+import InvasionPhaseBanner from './GamePhases/InvasionPhaseBanner';
+
 import { 
   Settings, 
   Sword, 
@@ -28,22 +39,20 @@ import {
   Info, 
   Menu, 
   X,
-  Play,         // 🎮 Card Play Mode
-  // 🎨 Themed commander icons
-  User,         // 👤 Diplomat Commander
-  Mountain,     // ⛰️ Land Commander
-  Zap,          // ⚡ Nuke Commander
-  Ship,         // 🚢 Water Commander
-  Castle,       // 🏰 Space Base
-  Rocket,       // 🚀 Alternative space icon
-  Crown,        // 👑 Leadership
-  BookOpen,     // 📚 Card Reference - ADD THIS
-  Scroll        // 📜 Game Rules
+  Play,
+  User,
+  Mountain,
+  Zap,
+  Ship,
+  Castle,
+  Rocket,
+  Crown,
+  BookOpen,
+  Scroll
 } from 'lucide-react';
 import { 
   restartGameWithNuking, 
   placeUnit,
-  fortifyTerritory,
   placeCommander,
   placeSpaceBase,
   collectAndStartDeploy,
@@ -58,25 +67,20 @@ import { GameStats } from '@/app/components/Game/GameUtils/GameStats';
 import { GameMap } from '@/app/components/Game/GameMap/GameMap';
 import CardReferenceServerWrapper from '@/app/components/Game/Cards/CardReferenceServerWrapper';
 
-
-// Z-Index Hierarchy:
-// z-60: Critical overlays (bidding, collect/deploy)
-// z-50: Settings/Stats panels (always accessible)
-// z-45: Panel overlay backgrounds  
-// z-40: Status indicators (connection, AI thinking)
-// z-30: Lower game elements
-// z-20: UI bars (top bar, bottom action bar)
-// z-10: Map and main content
-
-// 🎨 THEMED ICON MAPPING
 const COMMANDER_ICONS = {
-  land: Mountain,        // ⛰️ Land Commander
-  diplomat: User,        // 👤 Diplomat Commander  
-  nuclear: Zap,            // ⚡ Nuclear Commander
-  naval: Ship,          // 🚢 Naval Commander
+  land: Mountain,
+  diplomat: User,
+  nuclear: Zap,
+  naval: Ship,
 };
 
-const BASE_ICON = Castle;  // 🏰 Space Base
+const BASE_ICON = Castle;
+
+const GAME_SYNC_SETTINGS = {
+  HEARTBEAT_INTERVAL: 30000,
+  RECONNECT_DELAY: 3000,
+  MAX_RECONNECT_ATTEMPTS: 10,
+} as const;
 
 interface MobileGameUIProps {
   gameId: string
@@ -86,6 +90,7 @@ interface MobileGameUIProps {
 
 const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps) => {
   
+  // ✅ USE THE HOOK - Clean and simple
   const { gameState, isConnected, isLoading, error, utils } = useGameSync({
     gameId,
     playerId: currentUserId,
@@ -136,20 +141,17 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   });
 
+  // ✅ All your UI state
   const [cardSelectedTerritories, setCardSelectedTerritories] = useState<string[]>([]);
   const [selectedTerritory, setSelectedTerritory] = useState(null);
   const [interactionMode, setInteractionMode] = useState('info');
-  //top right stats panel
   const [showStats, setShowStats] = useState(false);
-  //top right settings panel
   const [showSettings, setShowSettings] = useState(false);
-  //used for throbber
   const [isUpdating, setIsUpdating] = useState(false);
   const [territoryActionInProgress, setTerritoryActionInProgress] = useState(false);
-  //explains all the cards in the game
   const [showCardReference, setShowCardReference] = useState(false);
-  //game rules scroll container shows up
   const [showGameRules, setShowGameRules] = useState(false);
+  const [showCardsOverlay, setShowCardsOverlay] = useState(false);
   
   const [buildHirePlacementMode, setBuildHirePlacementMode] = useState<{
     active: boolean;
@@ -172,6 +174,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     toTerritoryId: string | null;
   } | null>(null);
 
+  // ✅ EARLY RETURN for loading
   if (isLoading || !gameState) {
     return (
       <div className="h-screen w-full bg-gray-900 flex items-center justify-center">
@@ -186,6 +189,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     )
   }
 
+  // ✅ EARLY RETURN for errors
   if (error) {
     return (
       <div className="h-screen w-full bg-gray-900 flex items-center justify-center">
@@ -193,7 +197,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           <h2 className="text-xl font-bold mb-4 text-red-400">Connection Error</h2>
           <p className="text-gray-300 mb-4">{error}</p>
           <button 
-            onClick={() => window.location.reload()}
+            onClick={() => utils.reconnect()}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Retry
@@ -203,10 +207,19 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     )
   }
 
+  // ✅ NOW all the rest of the component logic - gameState is guaranteed to exist
   const currentPlayer = gameState?.players[gameState.currentPlayerIndex];
+  const playerCards = currentPlayer?.cards || [];
+  const playerEnergy = currentPlayer?.energy || 0;
+  
   const isMyTurn = currentPlayer?.id === currentUserId;
   const isAITurn = currentPlayer?.name === 'AI Player';
   const myPlayer = gameState?.players.find(p => p.id === currentUserId);
+
+
+  //scout forces use memo to not rerender on every change
+  //actually just use it directly no use memo
+  const activeScoutForces = currentPlayer?.activeScoutForces;
 
   const handleToggleCardReference = () => {
     setShowCardReference(!showCardReference);
@@ -473,34 +486,34 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           }
           break;
           
-        case 'fortify':
-          console.log('🛡️ Fortify mode!')
+        // case 'fortify':
+        //   console.log('🛡️ Fortify mode!')
           
-          if (!selectedTerritory) {
-            if (territory.ownerId === currentUserId && territory.machineCount > 1) {
-              setSelectedTerritory(territoryId)
-              console.log(`🎯 Selected source territory: ${territory.name}`)
-            } else {
-              alert('You must select your own territory with more than 1 unit')
-            }
-          } else {
-            if (territoryId === selectedTerritory) {
-              setSelectedTerritory(null)
-              console.log('❌ Fortify cancelled')
-            } else if (territory.ownerId === currentUserId) {
-              const fromTerritory = gameState.territories[selectedTerritory]
-              const unitsToMove = Math.floor((fromTerritory.machineCount - 1) / 2) || 1
+        //   if (!selectedTerritory) {
+        //     if (territory.ownerId === currentUserId && territory.machineCount > 1) {
+        //       setSelectedTerritory(territoryId)
+        //       console.log(`🎯 Selected source territory: ${territory.name}`)
+        //     } else {
+        //       alert('You must select your own territory with more than 1 unit')
+        //     }
+        //   } else {
+        //     if (territoryId === selectedTerritory) {
+        //       setSelectedTerritory(null)
+        //       console.log('❌ Fortify cancelled')
+        //     } else if (territory.ownerId === currentUserId) {
+        //       const fromTerritory = gameState.territories[selectedTerritory]
+        //       const unitsToMove = Math.floor((fromTerritory.machineCount - 1) / 2) || 1
               
-              console.log(`🛡️ Fortifying ${territory.name} from ${fromTerritory.name} with ${unitsToMove} units`)
+        //       console.log(`🛡️ Fortifying ${territory.name} from ${fromTerritory.name} with ${unitsToMove} units`)
               
-              await fortifyTerritory(gameId, currentUserId, selectedTerritory, territoryId, unitsToMove)
-              setSelectedTerritory(null)
-              console.log('✅ Fortify completed - useGameSync will handle the update')
-            } else {
-              alert('You can only fortify your own territories')
-            }
-          }
-          break
+        //       await fortifyTerritory(gameId, currentUserId, selectedTerritory, territoryId, unitsToMove)
+        //       setSelectedTerritory(null)
+        //       console.log('✅ Fortify completed - useGameSync will handle the update')
+        //     } else {
+        //       alert('You can only fortify your own territories')
+        //     }
+        //   }
+        //   break
           
         case 'info':
           console.log('ℹ️ Showing territory info!')
@@ -717,6 +730,47 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     } catch (error) {
       console.error('❌ Conquest confirmation failed:', error);
       alert(`Conquest confirmation failed: ${error.message}`);
+    }
+  };
+
+  const handleAdvanceFromInvasion = async () => {
+    try {
+      console.log('🎯 Advancing from Invasion to Fortify phase');
+      await advanceFromInvasion(gameId, currentUserId);
+      console.log('✅ Phase advance completed');
+      setInvasionState(null);
+    } catch (error) {
+      console.error('❌ Failed to advance from invasion:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to advance to fortify phase: ${errorMessage}`);
+    }
+  };
+
+  const handleFortifyTerritory = async (
+    fromTerritoryId: string, 
+    toTerritoryId: string, 
+    unitCount: number
+  ) => {
+    try {
+      console.log(`🛡️ Fortifying: ${fromTerritoryId} → ${toTerritoryId} with ${unitCount} units`);
+      await fortifyTerritory(gameId, currentUserId, fromTerritoryId, toTerritoryId, unitCount);
+      console.log('✅ Fortify completed');
+    } catch (error) {
+      console.error('❌ Failed to fortify:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to fortify: ${errorMessage}`);
+    }
+  };
+
+  const handleAdvanceFromFortify = async () => {
+    try {
+      console.log('🎯 Ending turn - advancing from Fortify phase');
+      await advanceFromFortify(gameId, currentUserId);
+      console.log('✅ Turn ended successfully');
+    } catch (error) {
+      console.error('❌ Failed to end turn:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to end turn: ${errorMessage}`);
     }
   };
 
@@ -1173,7 +1227,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-zinc-900 via-stone-900 to-amber-950 flex flex-col relative overflow-hidden">
+    <div className="h-screen font-sandall w-full bg-gradient-to-br from-zinc-900 via-stone-900 to-amber-950 flex flex-col relative overflow-hidden">
       {/* ✅ FIXED: Connection Status Indicator - Higher z-index, better positioning */}
       {!isConnected && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-900 to-orange-900 text-amber-100 px-4 py-2 rounded border-2 border-red-700/50 z-40 shadow-[0_4px_20px_rgba(153,27,27,0.6)]">
@@ -1293,6 +1347,32 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           cardSelectedTerritories={cardSelectedTerritories}
         />
       </div>
+
+      {/* 🃏 Cards Toggle Button - Always visible during playing phase */}
+      {gameState?.status === 'playing' && playerCards.length > 0 && (
+        <CardsButton
+          cardCount={playerCards?.length}
+          onClick={() => setShowCardsOverlay(!showCardsOverlay)}
+          isOpen={showCardsOverlay}
+        />
+      )}
+
+      {/* 🃏 In-Game Cards Overlay - Z-index 70 (above phase overlays) */}
+      {showCardsOverlay && gameState?.status === 'playing' && (
+        <InGameCardsOverlay
+          cards={playerCards}
+          playerEnergy={playerEnergy}
+          currentPhase={gameState.currentPhase}
+          activeScoutForces={activeScoutForces}
+          territories={gameState.territories}
+          onClose={() => setShowCardsOverlay(false)}
+          onCardClick={(cardId) => {
+            console.log('Card clicked:', cardId);
+            // TODO: Later we'll implement the interaction button logic here
+            // For now, just show selection
+          }}
+        />
+      )}
 
       {/* ✅ FIXED: Bottom Action Bar - Z-index 20, CLEAR SPACE ABOVE */}
       <div className="bg-gradient-to-b from-zinc-800/95 via-amber-900/92 to-orange-900/88 backdrop-blur-sm border-t-2 border-amber-600/60 p-4 z-20 shadow-[0_-4px_20px_rgba(120,53,15,0.3)]">
@@ -1487,16 +1567,6 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
               onClick={() => handleModeChange('attack')}
               color="red"
             />
-            
-            {/* Fortify - Phase 6 */}
-            <GameActionButton
-              icon={Shield}
-              label="Fortify"
-              active={interactionMode === 'fortify'}
-              disabled={!isMyTurn || gameState?.currentPhase !== 6}
-              onClick={() => handleModeChange('fortify')}
-              color="yellow"
-            />
           </div>
         ) : (
           // 🎯 BIDDING OR OTHER STATES: Simple info button
@@ -1561,7 +1631,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
       {/* 🚨 EMERGENCY ACCESS: Always show emergency restart button when AI is thinking too long */}
       {isAITurn && (
-        <div className="absolute top-20 left-4 z-50">
+        <div className="absolute top-12 left-16 z-50">
           <button
             onClick={() => {
               if (confirm('AI seems stuck. Restart the game?')) {
@@ -1692,6 +1762,24 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           onEnterCardPlayMode={handleEnterCardPlayMode}
         />
       )}
+     {/* 🎯 Invasion Phase Banner - Always visible during Phase 5 */}
+      {gameState?.status === 'playing' && gameState?.currentPhase === 5 && isMyTurn && (
+        <InvasionPhaseBanner
+          invasionsCompleted={myPlayer?.invasionStats?.contestedTerritoriesTaken || 0}
+          isProcessing={isUpdating}
+          onContinueToFortify={handleAdvanceFromInvasion}
+        />
+      )}
+
+      {/* 🎯 Fortify Overlay - Full overlay during Phase 6 */}
+      {gameState?.status === 'playing' && gameState?.currentPhase === 6 && isMyTurn && (
+        <FortifyOverlay
+          gameState={gameState}
+          currentUserId={currentUserId}
+          onFortifyTerritory={handleFortifyTerritory}
+          onAdvanceFromFortify={handleAdvanceFromFortify}
+        />
+      )}
 
       {/* 🎯 Invasion overlay - Z-index 60 (highest priority) */}
       {gameState?.status === 'playing' && 
@@ -1706,8 +1794,9 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           toTerritoryId={invasionState.toTerritoryId}
           onInvade={handleInvade}
           onMoveIntoEmpty={handleMoveIntoEmpty}
-          onConfirmConquest={handleConfirmConquest} // ✅ NEW
+          onConfirmConquest={handleConfirmConquest}
           onCancel={handleCancelInvasion}
+          onAdvanceToFortify={handleAdvanceFromInvasion}
         />
       )}
 
@@ -1728,6 +1817,16 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           onClose={() => setShowGameRules(false)}
         />
       )}
+
+      {/* 🎯 Active Scout Forces Display - Always visible when active add optional chaining to activeScoutForces */}
+      {gameState?.status === 'playing' && activeScoutForces && activeScoutForces?.length > 0 && (
+        <ActiveScoutForces
+          activeScoutForces={activeScoutForces ? activeScoutForces : []}
+          territories={gameState.territories}
+          playerColor={currentUserId}
+        />
+      )}
+
     </div>
   );
 };

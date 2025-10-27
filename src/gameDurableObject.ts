@@ -9,6 +9,9 @@
  * - TypeScript for type safety
  * 
  * ARCHITECTURE:
+ *  It all boils down to this:
+ *   UI/Client Action → Server Action → reduceAction() → New Game State → Broadcast
+ * 
  * - GameStateDO: Single source of truth for game state, handles orchestration
  * - Modular Function Managers: Organized game logic into specialized classes
  * - WebSocket connections: Real-time bidirectional communication between clients and DO
@@ -70,6 +73,7 @@
 
 import { WebSocketManager } from '@/app/services/game/gameFunctions/websocket/WebSocketManager';
 import { AiManager } from '@/app/services/game/gameFunctions/ai/AiManager';
+import { NeutralManager } from './app/services/game/gameFunctions/ai/NeutralManager';
 import { GameUtils } from '@/app/services/game/gameFunctions/utils/GameUtils';
 import { RestOfThemManager } from '@/app/services/game/gameFunctions/theRestOfThem/RestOfThemManager';
 import { CardManager } from '@/app/services/game/gameFunctions/cards/CardManager';
@@ -103,12 +107,22 @@ export class GameStateDO extends DurableObject {
   private gameState: GameState | null = null
   private wsManager: WebSocketManager;
   private aiManager: AiManager;
+  private neutralManager: NeutralManager;
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
+
+    //comms
     this.wsManager = new WebSocketManager(() => this.gameState);
     
+    //ai turn manager
     this.aiManager = new AiManager(
+      (action) => this.applyAction(action),
+      () => this.gameState
+    );
+
+    //neutral behavves different than ai so use another manager but mostly same
+    this.neutralManager = new NeutralManager(
       (action) => this.applyAction(action),
       () => this.gameState
     );
@@ -677,6 +691,12 @@ export class GameStateDO extends DurableObject {
         return RestOfThemManager.startMainGame(gameState)
       case 'fortify_territory':
         return RestOfThemManager.fortifyTerritory(gameState, action)
+      case 'advance_from_fortify':
+        console.log(`🛡️ ADVANCE_FROM_FORTIFY received`);
+        if (gameState.currentPhase === 6) {
+          return RestOfThemManager.advanceToNextMainGamePlayer(gameState);
+        }
+        return gameState;
       case 'play_card':
         return CardManager.handlePlayCard(gameState, action);
       case 'reveal_bids':
@@ -704,6 +724,18 @@ export class GameStateDO extends DurableObject {
         return InvasionManager.confirmConquest(gameState, action);
 
       // ================================
+      // ✅ EXISTING: Keep these unchanged
+      // ================================
+      case 'move_into_empty_territory':
+        console.log('🚶 Processing move_into_empty_territory action');
+        return InvasionManager.moveIntoEmptyTerritory(gameState, action);
+
+      case 'start_invasion_phase':
+        console.log('⚔️ Processing start_invasion_phase action');
+        return InvasionManager.startInvasionPhase(gameState, action);
+      
+
+      // ================================
       // ✅ DEPRECATED: Backward Compatibility
       // ================================
       case 'invade_territory':
@@ -717,18 +749,7 @@ export class GameStateDO extends DurableObject {
         // Redirect old action type to new system for backward compatibility
         const confirmAction = { ...action, type: 'confirm_conquest' as const };
         return InvasionManager.confirmConquest(gameState, confirmAction);
-
-      // ================================
-      // ✅ EXISTING: Keep these unchanged
-      // ================================
-      case 'move_into_empty_territory':
-        console.log('🚶 Processing move_into_empty_territory action');
-        return InvasionManager.moveIntoEmptyTerritory(gameState, action);
-
-      case 'start_invasion_phase':
-        console.log('⚔️ Processing start_invasion_phase action');
-        return InvasionManager.startInvasionPhase(gameState, action);
-
+      
       default:
         console.warn(`Unknown action type: ${action.type}`)
         return gameState

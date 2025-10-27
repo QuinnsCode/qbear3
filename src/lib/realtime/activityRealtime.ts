@@ -5,7 +5,7 @@ import { env } from "cloudflare:workers";
 // Helper function to trigger activity feed updates
 export async function notifyActivityUpdate(organizationId: string) {
   try {
-    const realtimeKey = `/dashboard`;  // Match the client's key
+    const realtimeKey = `/sanctum`;  // Match the client's key
     
     console.log('📡 Triggering activity feed update for org:', organizationId);
     console.log('🔑 Using realtime key:', realtimeKey);

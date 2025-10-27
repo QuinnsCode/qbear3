@@ -29,6 +29,15 @@
       // INVASION
       invasionStats?: InvasionStats
       // ✅ REMOVED: pendingMoveIn should be on GameState, not Player
+
+      // scoutForcesTargets?: string[]  // Array of territory IDs drawn by Scout Forces cards
+      activeScoutForces?: ActiveScoutForce[]
+  }
+
+  export interface ActiveScoutForce {
+    cardId: string;
+    targetTerritoryId: string;
+    resolved: boolean;
   }
 
   export interface Territory {

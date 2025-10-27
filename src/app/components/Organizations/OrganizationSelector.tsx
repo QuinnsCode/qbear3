@@ -24,10 +24,8 @@ export function OrganizationSelector() {
       displayDomain = `.${hostname}${port ? `:${port}` : ''}`;
     } else if (hostname.includes('.workers.dev')) {
       // Cloudflare Workers environment
-      // Extract the base domain (e.g., "myapp.workers.dev" from "subdomain.myapp.workers.dev")
       const parts = hostname.split('.');
       if (parts.length > 3) {
-        // Already on a subdomain, get the base
         baseDomain = parts.slice(-3).join('.');
       } else {
         baseDomain = hostname;
@@ -35,10 +33,8 @@ export function OrganizationSelector() {
       displayDomain = `.${baseDomain}`;
     } else {
       // Production website (custom domain)
-      // Handle both subdomain and root domain cases
       const parts = hostname.split('.');
       if (parts.length > 2) {
-        // Already on a subdomain, get the base domain (last 2 parts)
         baseDomain = parts.slice(-2).join('.');
       } else {
         baseDomain = hostname;
@@ -53,7 +49,7 @@ export function OrganizationSelector() {
     e.preventDefault();
     
     if (!orgSlug.trim()) {
-      setError("Please enter an organization name");
+      setError("Please enter a lair name, brave adventurer");
       return;
     }
 
@@ -61,7 +57,7 @@ export function OrganizationSelector() {
     const cleanSlug = orgSlug.toLowerCase().replace(/[^a-z0-9-]/g, '').trim();
     
     if (!cleanSlug) {
-      setError("Please enter a valid organization name");
+      setError("Please enter a valid lair name (letters, numbers, and dashes only)");
       return;
     }
 
@@ -79,67 +75,83 @@ export function OrganizationSelector() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label htmlFor="orgSlug" className="block text-sm font-medium text-gray-700 mb-2">
-          Organization Name
+        <label htmlFor="orgSlug" className="block text-sm font-medium text-amber-200 mb-3">
+          🏰 Lair Name
         </label>
-        <div className="flex rounded-md shadow-sm">
+        <div className="flex rounded-lg shadow-lg overflow-hidden border border-amber-600/50">
           <input
             id="orgSlug"
             type="text"
             value={orgSlug}
             onChange={(e) => setOrgSlug(e.target.value)}
-            placeholder="your-company"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="mystic-tower"
+            className="flex-1 px-4 py-3 bg-black/60 text-amber-100 placeholder-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-500 border-0"
             required
           />
-          <span className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 bg-gray-50 text-gray-500 rounded-r-md text-sm">
+          <span className="inline-flex items-center px-4 py-3 bg-amber-800/60 text-amber-200 text-sm border-l border-amber-600/50">
             {displayDomain}
           </span>
         </div>
         
         {error && (
-          <p className="mt-1 text-sm text-red-600">{error}</p>
+          <p className="mt-2 text-sm text-red-400 flex items-center">
+            ⚠️ {error}
+          </p>
         )}
         
-        <p className="mt-2 text-xs text-gray-500">
-          Enter your organization's subdomain to access your workspace
+        <p className="mt-3 text-xs text-amber-300/80">
+          ✨ Enter your lair's mystical domain to access your virtual tabletop realm
         </p>
       </div>
 
       <button
         type="submit"
-        className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+        className="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white py-3 px-6 rounded-lg hover:from-amber-700 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 font-medium text-lg shadow-lg"
       >
-        Go to Organization
+        🗝️ Enter Lair
       </button>
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-300" />
+          <div className="w-full border-t border-amber-700/50" />
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-gray-50 text-gray-500">
-            {isLocalhost ? 'Quick select' : 'Popular organizations'}
+          <span className="px-3 bg-black/40 text-amber-300">
+            {isLocalhost ? '⚡ Quick portals' : '🌟 Renowned lairs'}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
           onClick={() => handleQuickSelect("test")}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-4 py-3 text-sm border border-amber-600/50 bg-black/30 text-amber-200 rounded-lg hover:bg-amber-900/30 hover:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all duration-200"
         >
-          test
+          🧪 Test Chambers
         </button>
         <button
           type="button"
           onClick={() => handleQuickSelect("demo")}
-          className="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-4 py-3 text-sm border border-amber-600/50 bg-black/30 text-amber-200 rounded-lg hover:bg-amber-900/30 hover:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all duration-200"
         >
-          demo
+          🎭 Demo Hall
+        </button>
+        <button
+          type="button"
+          onClick={() => handleQuickSelect("tavern")}
+          className="px-4 py-3 text-sm border border-amber-600/50 bg-black/30 text-amber-200 rounded-lg hover:bg-amber-900/30 hover:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all duration-200"
+        >
+          🍺 The Tavern
+        </button>
+        <button
+          type="button"
+          onClick={() => handleQuickSelect("sanctum")}
+          className="px-4 py-3 text-sm border border-amber-600/50 bg-black/30 text-amber-200 rounded-lg hover:bg-amber-900/30 hover:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all duration-200"
+        >
+          🔮 Sanctum
         </button>
       </div>
     </form>

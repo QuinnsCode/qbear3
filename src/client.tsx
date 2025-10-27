@@ -19,7 +19,8 @@ const NO_REALTIME_ROUTES = [
 const REALTIME_ROUTES = [
   '/search',
   '/orders/',
-  '/dashboard',
+  // '/dashboard',
+  '/sanctum',
   '/game',
   '/game/',
 ];

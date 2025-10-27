@@ -1,6 +1,6 @@
 //@/app/services/game/gameSetup.ts
 // Game Setup Functions
-import type { GameState, Player, Territory } from '@/app/lib/GameState'
+import type { GameState, Player, Territory, ActiveScoutForce } from '@/app/lib/GameState';
 import { TERRITORY_DATA, createInitialTerritories } from '@/app/services/game/gameFunctions'
 
 // Configuration
@@ -213,10 +213,7 @@ export function createInitialPlayers(player1Id: string, player2Id: string): Play
       id: player1Id,
       name: 'Human Player',
       color: 'blue',
-      cards: [
-        { id: 'land-commander-1', type: 'commander', name: 'Land Commander', data: { commanderType: 'land' } },
-        { id: 'diplomat-commander-1', type: 'commander', name: 'Diplomat Commander', data: { commanderType: 'diplomat' } }
-      ],
+      cards: [],
       territories: [],
       isActive: false,
       energy: 5,
@@ -240,10 +237,7 @@ export function createInitialPlayers(player1Id: string, player2Id: string): Play
       id: player2Id,
       name: 'AI Player', 
       color: 'red',
-      cards: [
-        { id: 'land-commander-2', type: 'commander', name: 'Land Commander', data: { commanderType: 'land' } },
-        { id: 'diplomat-commander-2', type: 'commander', name: 'Diplomat Commander', data: { commanderType: 'diplomat' } }
-      ],
+      cards: [],
       territories: [],
       isActive: false,
       energy: 5,

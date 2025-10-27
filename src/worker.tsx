@@ -10,7 +10,7 @@ import { auth, initAuth } from "@/lib/auth";
 import { type User, type Organization, db, setupDb } from "@/db";
 import AdminPage from "@/app/pages/admin/Admin";
 import HomePage from "@/app/pages/home/HomePage";
-import OrgDashboard from "@/app/components/Organizations/OrgDashboard";
+// import OrgDashboard from "@/app/components/Organizations/OrgDashboard";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { 
@@ -25,6 +25,7 @@ import CreateOrgPage from "@/app/pages/orgs/CreateOrgPage";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { uniqueNamesGenerator, adjectives, colors, animals } from "unique-names-generator";
 import GamePage from "@/app/pages/game/GamePage";
+import SanctumPage from "@/app/pages/sanctum/SanctumPage";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -32,73 +33,131 @@ export { GameStateDO } from "./gameDurableObject";
 
 export type AppContext = {
   session: any | null;
-  user: any | null; // Change from User | null to any | null
+  user: any | null;
   organization: Organization | null;
   userRole: string | null;
   orgError: 'ORG_NOT_FOUND' | 'NO_ACCESS' | 'ERROR' | null;
 };
 
+// Helper function to normalize URLs for main domain variants
+function normalizeUrl(request: Request): Response | null {
+  const url = new URL(request.url);
+  const PRIMARY_DOMAIN = 'qntbr.com';
+  const isLocalhost = url.hostname.includes('localhost');
+  
+  // Skip normalization for localhost during development
+  if (isLocalhost) {
+    return null;
+  }
+
+  let shouldRedirect = false;
+  let newHostname = url.hostname;
+  let newProtocol = url.protocol;
+
+  // Force HTTPS in production (except localhost)
+  if (url.protocol === 'http:' && !isLocalhost) {
+    newProtocol = 'https:';
+    shouldRedirect = true;
+  }
+
+  // Handle www removal for main domain only
+  if (url.hostname === `www.${PRIMARY_DOMAIN}`) {
+    newHostname = PRIMARY_DOMAIN;
+    shouldRedirect = true;
+  }
+
+  // If we need to redirect, construct the new URL
+  if (shouldRedirect) {
+    const newUrl = `${newProtocol}//${newHostname}${url.pathname}${url.search}${url.hash}`;
+    
+    return new Response(null, {
+      status: 301,
+      headers: { Location: newUrl },
+    });
+  }
+
+  return null;
+}
+
 export default defineApp([
   setCommonHeaders(),
   
-  // 🔧 CONDITIONAL MIDDLEWARE - Only runs for non-auth routes
-  async ({ ctx, request, headers }) => {
-    // Always initialize services
-    await initializeServices();
-    
-    // Skip middleware setup for auth routes
-    if (shouldSkipMiddleware(request)) {
-      console.log('🔍 Skipping middleware for:', new URL(request.url).pathname);
-      return;
+  // URL NORMALIZATION MIDDLEWARE - FIRST PRIORITY
+  async ({ request }) => {
+    const normalizeResponse = normalizeUrl(request);
+    if (normalizeResponse) {
+      return normalizeResponse;
     }
-    
-    // Setup context for other routes
-    await setupSessionContext(ctx, request);
-    await setupOrganizationContext(ctx, request);
-    
-    // Handle organization errors for frontend routes
-   if (ctx.orgError && 
-      !request.url.includes('/api/') && 
-      !request.url.includes('/__realtime') &&
-      !request.url.includes('/user/') &&
-      !request.url.includes('/orgs/new')) {
+  },
+  
+  // CONDITIONAL MIDDLEWARE - Only runs for non-auth routes
+  async ({ ctx, request, headers }) => {
+    try {
+      // Always initialize services
+      await initializeServices();
+      
+      // Skip middleware setup for auth routes
+      if (shouldSkipMiddleware(request)) {
+        return;
+      }
+      
+      // Setup context for other routes
+      await setupSessionContext(ctx, request);
+      await setupOrganizationContext(ctx, request);
+      
+      // Handle organization errors for frontend routes
+      if (ctx.orgError && 
+          !request.url.includes('/api/') && 
+          !request.url.includes('/__realtime') &&
+          !request.url.includes('/__gsync') &&
+          !request.url.includes('/user/') &&
+          !request.url.includes('/orgs/new')) {
 
-      const url = new URL(request.url);
-      
-      if (ctx.orgError === 'ORG_NOT_FOUND') {
-        // Redirect to main domain with org creation option
-        const mainDomain = url.hostname.includes('localhost') 
-          ? 'localhost:5173' 
-          : url.hostname.split('.').slice(-2).join('.');
+        const url = new URL(request.url);
         
-        const orgSlug = extractOrgFromSubdomain(request);
-        return new Response(null, {
-          status: 302,
-          headers: { 
-            Location: `${url.protocol}//${mainDomain}/orgs/new?suggested=${orgSlug}` 
-          },
-        });
+        if (ctx.orgError === 'ORG_NOT_FOUND') {
+          // Redirect to main domain with org creation option
+          const mainDomain = url.hostname.includes('localhost') 
+            ? 'localhost:5173' 
+            : 'qntbr.com';
+          
+          const orgSlug = extractOrgFromSubdomain(request);
+          return new Response(null, {
+            status: 302,
+            headers: { 
+              Location: `${url.protocol}//${mainDomain}/orgs/new?suggested=${orgSlug}` 
+            },
+          });
+        }
+        
+        if (ctx.orgError === 'NO_ACCESS') {
+          // User is logged in but not a member - show join page
+          return new Response(null, {
+            status: 302,
+            headers: { Location: `/user/login` },
+          });
+        }
       }
-      
-      if (ctx.orgError === 'NO_ACCESS') {
-        // User is logged in but not a member - show join page
-        return new Response(null, {
-          status: 302,
-          headers: { Location: `/user/login` },
-        });
-      }
+    } catch (error) {
+      console.error('Middleware error:', error);
+      // Continue with empty context rather than failing
+      ctx.session = null;
+      ctx.user = null;
+      ctx.organization = null;
+      ctx.userRole = null;
+      ctx.orgError = null;
     }
   },
 
-  // 🔌 REALTIME ROUTES - Handle WebSocket and presence
+  // REALTIME ROUTES - Handle WebSocket and presence
   prefix("/__realtime", realtimeRoutes),
   prefix("/__gsync", gameRoutes),
   realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
 
-  // 🚀 API ROUTES - All API endpoints
+  // API ROUTES - All API endpoints
   prefix("/api", [
     
-    // 🔐 AUTH ROUTES - HIGHEST PRIORITY, NO MIDDLEWARE INTERFERENCE
+    // AUTH ROUTES - HIGHEST PRIORITY, NO MIDDLEWARE INTERFERENCE
     route("/debug", async () => {
       return new Response("Debug route works!", { status: 200 });
     }),
@@ -107,7 +166,6 @@ export default defineApp([
       try {
         // Test basic database operations
         const userCount = await db.user.count();
-        console.log('User count:', userCount);
         
         // Test creating a simple user directly with Prisma
         const testUser = await db.user.create({
@@ -129,6 +187,7 @@ export default defineApp([
         }), { status: 500 });
       }
     }),
+
     route("/auth/test-main-instance", async ({ request }) => {
       try {
         await initializeServices();
@@ -154,6 +213,7 @@ export default defineApp([
         }), { status: 500 });
       }
     }),
+
    route("/auth/test-signup", async ({ request }) => {
       try {
         const { admin } = await import("better-auth/plugins");
@@ -219,18 +279,10 @@ export default defineApp([
         }), { status: 500 });
       }
     }),
+
     route("/auth/debug-main", async ({ request }) => {
       try {
-        console.log('🔍 About to import main auth...');
-        
         const authModule = await import("@/lib/auth");
-        console.log('🔍 Auth module imported:', !!authModule);
-        console.log('🔍 Auth instance exists:', !!authModule.auth);
-        console.log('🔍 Auth instance type:', typeof authModule.auth);
-        
-        // Try to access auth properties
-        console.log('🔍 Auth.api exists:', !!authModule.auth?.api);
-        console.log('🔍 Auth.api.signUpEmail exists:', !!authModule.auth?.api?.signUpEmail);
         
         return new Response(JSON.stringify({
           hasAuth: !!authModule.auth,
@@ -240,28 +292,24 @@ export default defineApp([
         }));
         
       } catch (error) {
-        console.error('🚨 Error importing main auth:', error);
         return new Response(JSON.stringify({ 
           error: error.message,
           stack: error.stack,
         }), { status: 500 });
       }
     }),
+
     route("/auth/*", async ({ request }) => {
       try {
         // Check if this is a signup request and verify Turnstile
         if (request.url.includes('/sign-up') && request.method === 'POST') {
           const body = await request.clone().json();
-          console.log('📋 Full signup request body:', JSON.stringify(body, null, 2));
           
           const { turnstileToken } = body;
-          console.log('🔍 Extracted turnstileToken:', turnstileToken);
           
           if (turnstileToken) {
-            console.log('🔒 Turnstile token received, verifying...');
             const isValid = await verifyTurnstileToken(turnstileToken);
             if (!isValid) {
-              console.log('❌ Turnstile verification FAILED');
               return new Response(JSON.stringify({ 
                 error: 'Bot protection verification failed' 
               }), {
@@ -269,9 +317,6 @@ export default defineApp([
                 headers: { 'Content-Type': 'application/json' }
               });
             }
-            console.log('✅ Turnstile verification PASSED');
-          } else {
-            console.log('⚠️ No Turnstile token provided in signup request');
           }
         }
         
@@ -281,7 +326,6 @@ export default defineApp([
         const response = await authInstance.handler(request);
         return response;
       } catch (error) {
-        console.error('🚨 Auth route error:', error);
         return new Response(JSON.stringify({ 
           error: 'Auth failed', 
           message: error?.message || String(error)
@@ -292,7 +336,7 @@ export default defineApp([
       }
     }),
 
-    // Other API routes follow...
+    // Other API routes
     route("/orders/:orderDbId/notes", async ({ request, params, ctx }) => {
       if (request.method !== "POST") {
         return new Response(null, { status: 405 });
@@ -325,14 +369,10 @@ export default defineApp([
       });
       
       if (order) {
-        console.log('🚀 Calling renderRealtimeClients with key:', `/search/${order.orderNumber}`);
-        
         await renderRealtimeClients({
           durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
           key: `/search/${order.orderNumber}`,
         });
-        
-        console.log('✅ renderRealtimeClients completed');
       }
       
       return new Response(JSON.stringify(note), {
@@ -342,11 +382,9 @@ export default defineApp([
 
     route("/webhooks/:service", async ({ request, params, ctx }) => {
       const webhookPath = params.service;
-      console.log('📦 API Service:', webhookPath);
       
       if (webhookPath === 'shipstation') {
         if (!ctx.organization) {
-          console.error('❌ No organization context for API webhook');
           return Response.json({ error: "Organization not found" }, { status: 404 });
         }
         
@@ -357,7 +395,7 @@ export default defineApp([
       return Response.json({ error: "Webhook not supported" }, { status: 404 });
     }),
 
-    // 🎯 CATCH-ALL API ROUTE - MUST BE LAST
+    // CATCH-ALL API ROUTE - MUST BE LAST
     route("/*", async ({ request, params, ctx }) => {
       const apiPath = params["*"];
       
@@ -381,8 +419,6 @@ export default defineApp([
           method: request.method 
         });
       } catch (error) {
-        console.error(`API route not found: /api/${apiPath}`, error);
-        
         if (error.message?.includes('Cannot resolve module')) {
           return new Response(
             JSON.stringify({ 
@@ -410,10 +446,9 @@ export default defineApp([
     })
   ]),
 
-  // 🔗 DIRECT WEBHOOK ROUTES
+  // DIRECT WEBHOOK ROUTES
   route("/webhooks/:service", async ({ request, params, ctx }) => {
     const webhookPath = params.service;
-    console.log('📦 Direct Webhook Service:', webhookPath);
     
     if (webhookPath === 'shipstation') {
       const { default: handler } = await import('@/app/api/webhooks/shipstation-wh');
@@ -423,7 +458,8 @@ export default defineApp([
     return Response.json({ error: "Webhook not supported" }, { status: 404 });
   }),
 
-  // 🎨 FRONTEND ROUTES
+  // FRONTEND ROUTES
+  // FRONTEND ROUTES - Fixed order
   render(Document, [
     route("/org-not-found", ({ request }) => {
       const url = new URL(request.url);
@@ -449,69 +485,14 @@ export default defineApp([
       );
     }),
 
-    route("/", [
-      ({ ctx, request }) => {
-        const url = new URL(request.url);
-        const pathname = url.pathname;
-        
-        if (pathname.startsWith('/user/') || pathname.startsWith('/auth/')) {
-          return;
-        }
-        
-        if (pathname !== '/') {
-          return;
-        }
-        
-        const orgSlug = extractOrgFromSubdomain(request);
-        
-        // 🔍 ADD DEBUG LOGGING
-        console.log('🔍 Debug info:', {
-          orgSlug,
-          hasOrganization: !!ctx.organization,
-          hasUser: !!ctx.user,
-          userRole: ctx.userRole,
-          orgError: ctx.orgError
-        });
-        
-        //send to landing page with logins if no org
-        if (!orgSlug) {
-          return new Response(null, {
-            status: 302,
-            headers: { Location: "/landing" },
-          });
-        }
-        
-        // 🚨 FIX: Handle org errors properly
-        if (ctx.orgError) {
-          // Let the middleware handle the org error redirects
-          return;
-        }
-        
-        // If we have an organization but user isn't logged in or doesn't have role
-        if (ctx.organization && (!ctx.user || !ctx.userRole)) {
-          return new Response(null, {
-            status: 302,
-            headers: { Location: "/user/login" },
-          });
-        }
-
-        if (ctx.organization && ctx.user && ctx.userRole) {
-          console.log('✅ Redirecting authenticated user to dashboard');
-          return new Response(null, {
-            status: 302,
-            headers: { Location: "/dashboard" },
-          });
-        }
-      },
-      HomePage,
-    ]),
-
-    //different that home page
+    // SPECIFIC ROUTES FIRST - before the root route
     route("/landing", HomePage),
     route("/admin", AdminPage),
     route("/orgs/new", CreateOrgPage),
+    route("/sanctum", SanctumPage),  // MOVED UP - must be before root route
+    
     prefix("/user", userRoutes),
-    route("/dashboard", OrgDashboard),
+    
     route("/game", () => {
       const randomName = uniqueNamesGenerator({
         dictionaries: [adjectives, colors, animals],
@@ -527,5 +508,77 @@ export default defineApp([
       });
     }),
     route("/game/:gameId", GamePage),
+
+    // ROOT ROUTE - AFTER all specific routes
+    route("/", [
+      ({ ctx, request }) => {
+        const url = new URL(request.url);
+        const pathname = url.pathname;
+        
+        // Skip processing for non-root paths
+        if (pathname !== '/') {
+          return;
+        }
+        
+        // Skip processing for auth routes
+        if (pathname.startsWith('/user/') || pathname.startsWith('/auth/')) {
+          return;
+        }
+        
+        const orgSlug = extractOrgFromSubdomain(request);
+        
+        // MAIN DOMAIN LOGIC (qntbr.com)
+        if (!orgSlug) {
+          // For main domain, always go to landing page
+          return new Response(null, {
+            status: 302,
+            headers: { Location: "/landing" },
+          });
+        }
+        
+        // SUBDOMAIN LOGIC (org.qntbr.com)
+        // Handle org errors
+        if (ctx.orgError) {
+          // Let the middleware handle the org error redirects
+          return;
+        }
+        
+        // If we have an organization but user isn't logged in or doesn't have role
+        if (ctx.organization && (!ctx.user || !ctx.userRole)) {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: "/user/login" },
+          });
+        }
+
+        // If user is authenticated and has access to org
+        if (ctx.organization && ctx.user && ctx.userRole) {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: "/sanctum" },
+          });
+        }
+      },
+      HomePage,
+    ]),
+
+    // CATCH-ALL ROUTE - Redirect unknown paths to home
+    route("/*", ({ request }) => {
+      const url = new URL(request.url);
+      
+      // Skip catch-all for API routes (already handled above)
+      if (url.pathname.startsWith('/api/') || 
+          url.pathname.startsWith('/__realtime') ||
+          url.pathname.startsWith('/__gsync') ||
+          url.pathname.startsWith('/webhooks/')) {
+        return;
+      }
+      
+      // Redirect all unknown routes to home page
+      return new Response(null, {
+        status: 301,
+        headers: { Location: "/" },
+      });
+    }),
   ]),
 ]);

@@ -67,6 +67,7 @@ export function useGameActions({
           // For example, update state or log it
           console.log('~~~Invasion result:', invasionResult);
           break;
+          
         case 'fortify_territory':
           result = await gameActions.fortifyTerritory(
             gameId,

@@ -1,6 +1,6 @@
 // src/app/services/game/gameFunctions/cards/CardManager.ts
 
-import type { GameState, GameAction, Player, Territory } from '@/app/lib/GameState';
+import type { GameState, GameAction, Player, Territory, ActiveScoutForce } from '@/app/lib/GameState';
 import { RAW_CARD_DATA } from '@/app/services/game/gameFunctions';
 
 export class CardManager {
@@ -216,7 +216,8 @@ export class CardManager {
 
       // Land Phase 0 Cards
       case 'Scout Forces':
-        this.applyScoutForcesEffect(newState, playerId, cardData, targets);
+        // Scout Forces doesn't need targets - it draws randomly
+        this.applyScoutForcesEffect(gameState, playerId, cardData);
         break;
 
       // Nuclear Phase 0 Cards
@@ -533,37 +534,83 @@ export class CardManager {
 
   // "Draw a land territory card and secretly place it facedown in front of you. Place 5 MODS on this card"
   static applyScoutForcesEffect(gameState: GameState, playerId: string, cardData: any, targets?: string[]): void {
-    if (!targets || targets.length !== 1) {
-      throw new Error('Scout Forces requires exactly one target territory');
-    }
-
-    const targetTerritoryId = targets[0];
-    const territory = gameState.territories[targetTerritoryId];
+    console.log('🕵️ Scout Forces: Drawing random land territory');
     
-    if (!territory) {
-      throw new Error('Target territory not found');
-    }
-
-    if (territory.type !== 'land') {
-      throw new Error('Scout Forces can only target land territories');
-    }
-
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) throw new Error('Player not found');
 
-    if (!player.pendingDecision) {
-      player.pendingDecision = { type: 'play_card', data: {} };
-    }
-    
-    if (!player.pendingDecision.data) {
-      player.pendingDecision.data = {};
-    }
-    player.pendingDecision.data.scoutForces = {
-      territoryId: targetTerritoryId,
-      mods: 5
-    };
+    // Get all land territories that are:
+    // 1. Not nuked  
+    // 2. Land type
+    // 3. Not already controlled by this player
+    const availableLandTerritories = Object.entries(gameState.territories)
+      .filter(([territoryId, territory]) => {
+        return territory.type === 'land' && 
+              !territory.isNuked && 
+              territory.ownerId !== playerId;
+      })
+      .map(([territoryId]) => territoryId);
 
-    console.log(`Scout Forces: 5 MODs prepared for deployment when ${territory.name} is conquered`);
+    if (availableLandTerritories.length === 0) {
+      throw new Error('No available land territories to draw - all are either nuked or you control them');
+    }
+
+    // Draw random land territory
+    const randomIndex = Math.floor(Math.random() * availableLandTerritories.length);
+    const drawnTerritoryId = availableLandTerritories[randomIndex];
+    const drawnTerritory = gameState.territories[drawnTerritoryId];
+
+    // ✅ ONLY initialize if it doesn't exist yet
+    if (!player.activeScoutForces) {
+      player.activeScoutForces = [];
+    }
+
+    // ✅ ADD TO activeScoutForces
+    player.activeScoutForces.push({
+      cardId: crypto.randomUUID(),
+      targetTerritoryId: drawnTerritoryId,
+      resolved: false
+    });
+
+    console.log(`🕵️ Scout Forces: Drew ${drawnTerritory.name} - will place 5 MODs when conquered`);
+  }
+
+  static checkScoutForcesConquest(gameState: GameState, playerId: string, territoryId: string): void {
+    const player = gameState.players.find(p => p.id === playerId);
+    if (!player || !player.activeScoutForces) return;
+
+    // ✅ CHECK activeScoutForces instead of scoutForcesTargets
+    const activeCard = player.activeScoutForces.find(
+      sf => sf.targetTerritoryId === territoryId && !sf.resolved
+    );
+
+    if (activeCard) {
+      const territory = gameState.territories[territoryId];
+      
+      // Place 5 MODs
+      territory.machineCount += 5;
+      
+      // ✅ MARK AS RESOLVED (don't remove, just mark)
+      activeCard.resolved = true;
+      
+      console.log(`🕵️ Scout Forces triggered: Placed 5 MODs on newly conquered ${territory.name}`);
+    }
+  }
+
+  // ✅ NEW: Cleanup function for resolved Scout Forces
+  static cleanupResolvedScoutForces(player: Player): void {
+    if (player.activeScoutForces) {
+      const beforeCount = player.activeScoutForces.length;
+      
+      // Remove resolved cards
+      player.activeScoutForces = player.activeScoutForces.filter(sf => !sf.resolved);
+      
+      const afterCount = player.activeScoutForces.length;
+      
+      if (beforeCount > afterCount) {
+        console.log(`🧹 Cleaned up ${beforeCount - afterCount} resolved Scout Forces cards for ${player.name}`);
+      }
+    }
   }
 
   // ================================
