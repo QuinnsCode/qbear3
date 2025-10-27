@@ -1227,7 +1227,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
 
   return (
-    <div className="h-screen font-sandall w-full bg-gradient-to-br from-zinc-900 via-stone-900 to-amber-950 flex flex-col relative overflow-hidden">
+    <div className="h-screen w-full bg-gradient-to-br from-zinc-900 via-stone-900 to-amber-950 flex flex-col relative overflow-hidden">
       {/* ✅ FIXED: Connection Status Indicator - Higher z-index, better positioning */}
       {!isConnected && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-900 to-orange-900 text-amber-100 px-4 py-2 rounded border-2 border-red-700/50 z-40 shadow-[0_4px_20px_rgba(153,27,27,0.6)]">

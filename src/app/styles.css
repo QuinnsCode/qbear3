@@ -1,19 +1,26 @@
-@font-face {
-  font-family: 'Sandall';
-  src: url('/fonts/sandall.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap; /* Recommended for performance */
-}
+
 
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+/* Define the custom font using @font-face */
+@font-face {
+  font-family: 'Strandall';
+  src: url('/fonts/PirataOne-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 
 @theme {
-  --font-sandall: 'Sandall', sans-serif;
+  /* Override or extend Tailwind's default sans-serif font stack */
+  --font-sans: 'Strandall', ui-sans-serif, system-ui, sans-serif;
+
+  /* Or, add a new, custom font utility class */
+  --font-strandall: 'Strandall', ui-sans-serif, system-ui, sans-serif
 }
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -85,6 +92,16 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
+}
+/* 
+This is the "cheaty" part. 
+This rule specifically targets any element that is using your custom 'Strandall' font.
+Because this rule is defined after the Tailwind imports, it will override 
+any conflicting styles from Tailwind's utility classes.
+*/
+.font-strandall {
+  font-size: 8rem !important; /* Double size */
+  letter-spaci1ng: 0.2em !important;
 }
 
 .dark {
