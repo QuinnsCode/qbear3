@@ -1298,7 +1298,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       )}
 
 
-      {/* Top Bar - Z-index 20 */}
+      {/* Top Bar - Z-index 20 */}  
       <div className="bg-gradient-to-b from-amber-900/85 via-orange-900/80 to-red-900/75 backdrop-blur-sm text-amber-100 p-4 flex items-center justify-between z-20 border-b-2 border-amber-600/60 shadow-[0_4px_20px_rgba(120,53,15,0.4)]">
         <button
           onClick={() => setShowStats(!showStats)}
@@ -1338,7 +1338,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       </div>
 
       {/* Main Map Area - Z-index 10 */}
-      <div className="flex-1 relative z-10">
+      <div className="flex-1 relative z-10 max-h-[70vh] overflow-hidden">
         <GameMap
           gameState={gameState}
           selectedTerritory={selectedTerritory}
