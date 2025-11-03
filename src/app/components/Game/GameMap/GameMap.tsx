@@ -249,7 +249,7 @@ export const GameMap = ({
   };
 
   return (
-    <div className="relative w-full h-full bg-gradient-to-br from-zinc-900 via-stone-900 to-amber-950 rounded-lg overflow-hidden border-2 border-amber-900/40 shadow-[inset_0_2px_20px_rgba(120,53,15,0.3)]">
+    <div className="relative w-full h-[70vh] bg-gradient-to-br from-zinc-900 via-stone-900 to-amber-950 rounded-lg overflow-hidden border-2 border-amber-900/40 shadow-[inset_0_2px_20px_rgba(120,53,15,0.3)]">
       {/* 🎨 FALLOUT ZOOM CONTROLS - Rusty buttons */}
       <div className="absolute top-4 right-4 z-10 flex flex-col space-y-2">
         <button
