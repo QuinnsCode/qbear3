@@ -1338,7 +1338,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       </div>
 
       {/* Main Map Area - Z-index 10 */}
-      <div className="flex-1 relative z-10 max-h-[70vh] overflow-hidden">
+      <div className="flex-1 relative z-10 overflow-hidden">
         <GameMap
           gameState={gameState}
           selectedTerritory={selectedTerritory}
