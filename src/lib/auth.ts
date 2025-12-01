@@ -19,6 +19,15 @@ export const createAuth = () => {
       enabled: true,
       requireEmailVerification: false,
     },
+    // ADD THIS:
+    socialProviders: {
+      discord: {
+        clientId: env.DISCORD_CLIENT_ID,
+        clientSecret: env.DISCORD_CLIENT_SECRET,
+        // Optional: add scopes if you want guild/server access
+        // scopes: ["identify", "email", "guilds", "guilds.join"],
+      },
+    },
     plugins: [
       admin({
         defaultRole: "admin",
@@ -37,18 +46,23 @@ export const createAuth = () => {
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
     },
+    advanced: {
+      crossSubDomainCookies: {
+        enabled: true,
+        domain: ".qntbr.com"
+      }
+    },
     trustedOrigins: [
-      "qntbr.com",
-      "*.qntbr.com", 
-      "localhost:5173",
-      "*.localhost:5173",
-      "localhost:8787",
-      "*.localhost:8787",
+      "https://qntbr.com",
+      "https://*.qntbr.com", 
+      "http://localhost:5173",
+      "http://*.localhost:5173",
+      "http://localhost:8787",
+      "http://*.localhost:8787",
     ],
   });
 };
 
-// Export the instance after ensuring db is ready
 export let auth: ReturnType<typeof createAuth>;
 
 export const initAuth = () => {

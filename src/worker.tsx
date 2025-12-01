@@ -4,15 +4,13 @@ import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
-import { gameRoutes } from "@/app/pages/game/gameRoutes";
+import { staticRoutes } from "@/app/pages/staticRoutes";
+import { gameRoutes } from "./app/pages/game/gameRoutes";
+import { cardGameRoutes } from "@/app/pages/cardGame/cardGameRoutes";
 import { realtimeRoutes } from "@/app/pages/realtime/realtimeRoutes";
 import { auth, initAuth } from "@/lib/auth";
 import { type User, type Organization, db, setupDb } from "@/db";
-import AdminPage from "@/app/pages/admin/Admin";
 import HomePage from "@/app/pages/home/HomePage";
-// import OrgDashboard from "@/app/components/Organizations/OrgDashboard";
-import { betterAuth } from "better-auth";
-import { prismaAdapter } from "better-auth/adapters/prisma";
 import { 
   initializeServices, 
   setupOrganizationContext, 
@@ -21,15 +19,22 @@ import {
   shouldSkipMiddleware 
 } from "@/lib/middlewareFunctions";
 import { env } from "cloudflare:workers";
-import CreateOrgPage from "@/app/pages/orgs/CreateOrgPage";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { uniqueNamesGenerator, adjectives, colors, animals } from "unique-names-generator";
 import GamePage from "@/app/pages/game/GamePage";
+import CardGamePage from "@/app/pages/cardGame/CardGamePage";
 import SanctumPage from "@/app/pages/sanctum/SanctumPage";
+import { createNewGame } from "./app/serverActions/gameRegistry";
+import { createNewCardGame } from "./app/serverActions/cardGame/cardGameRegistry";
+import LoginPage from "./app/pages/user/Login";
+import { isSandboxEnvironment, setupSandboxContext } from "./lib/middleware/sandboxMiddleware";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
 export { GameStateDO } from "./gameDurableObject";
+
+export { CardGameDO } from './cardGameDurableObject'
+
+
 
 export type AppContext = {
   session: any | null;
@@ -95,6 +100,15 @@ export default defineApp([
     try {
       // Always initialize services
       await initializeServices();
+
+      // Check if this is a sandbox environment
+      const isSandbox = isSandboxEnvironment(request);
+      
+      if (isSandbox) {
+        // Setup sandbox context with ephemeral user
+        await setupSandboxContext(ctx, request);
+        return; // Skip normal auth flow
+      }
       
       // Skip middleware setup for auth routes
       if (shouldSkipMiddleware(request)) {
@@ -151,155 +165,73 @@ export default defineApp([
 
   // REALTIME ROUTES - Handle WebSocket and presence
   prefix("/__realtime", realtimeRoutes),
-  prefix("/__gsync", gameRoutes),
+  prefix("/__gsync", [
+    async ({ request }) => {
+      if (request.headers.get('Upgrade') === 'websocket') {
+        const { rateLimitMiddleware } = await import('@/lib/middlewareFunctions');
+        const rateLimitResult = await rateLimitMiddleware(request, 'gsync');
+        if (rateLimitResult) return rateLimitResult;
+      }
+    },
+    ...gameRoutes
+  ]),
+
+  prefix("/__cgsync", [
+    async ({ request }) => {
+      if (request.headers.get('Upgrade') === 'websocket') {
+        const { rateLimitMiddleware } = await import('@/lib/middlewareFunctions');
+        const rateLimitResult = await rateLimitMiddleware(request, 'cgsync');
+        if (rateLimitResult) return rateLimitResult;
+      }
+    },
+    ...cardGameRoutes
+  ]),
+
   realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
 
   // API ROUTES - All API endpoints
   prefix("/api", [
+    route("/debug/cardgame/:gameId", async ({ params, ctx }) => {
+      if (!env.CARD_GAME_STATE_DO) {  // ✅ CARD_GAME_STATE_DO
+        return Response.json({ error: "Card Game DO not found" });
+      }
     
-    // AUTH ROUTES - HIGHEST PRIORITY, NO MIDDLEWARE INTERFERENCE
-    route("/debug", async () => {
-      return new Response("Debug route works!", { status: 200 });
-    }),
-
-    route("/auth/test-db", async () => {
+      const gameId = params.gameId;
+      
       try {
-        // Test basic database operations
-        const userCount = await db.user.count();
+        const id = env.CARD_GAME_STATE_DO.idFromName(gameId);  // ✅ CARD_GAME
+        const stub = env.CARD_GAME_STATE_DO.get(id);
         
-        // Test creating a simple user directly with Prisma
-        const testUser = await db.user.create({
-          data: {
-            id: "test-" + Date.now(),
-            email: "test@example.com",
-            name: "Test User",
-            emailVerified: false,
-          }
-        });
-        
-        return new Response(JSON.stringify({ 
-          userCount, 
-          testUser: testUser.id 
-        }));
-      } catch (error) {
-        return new Response(JSON.stringify({ 
-          error: error.message 
-        }), { status: 500 });
-      }
-    }),
-
-    route("/auth/test-main-instance", async ({ request }) => {
-      try {
-        await initializeServices();
-        const authInstance = initAuth();
-        
-        const uniqueEmail = `test-${Date.now()}@example.com`;
-        
-        const result = await authInstance.api.signUpEmail({
-          body: {
-            email: uniqueEmail,
-            password: "password123", 
-            name: "Test User"
-          },
-          headers: request.headers
-        });
-        
-        return new Response(JSON.stringify(result));
-        
-      } catch (error) {
-        return new Response(JSON.stringify({ 
-          error: error.message,
-          stack: error.stack,
-        }), { status: 500 });
-      }
-    }),
-
-   route("/auth/test-signup", async ({ request }) => {
-      try {
-        const { admin } = await import("better-auth/plugins");
-        const { organization } = await import("better-auth/plugins");
-        const { apiKey } = await import("better-auth/plugins");
-        const { multiSession } = await import("better-auth/plugins");
-        
-        const testAuth = betterAuth({
-          database: prismaAdapter(db, {
-            provider: "sqlite",
-          }),
-          secret: env.BETTER_AUTH_SECRET,
-          baseURL: env.BETTER_AUTH_URL,
-          emailAndPassword: {
-            enabled: true,
-            requireEmailVerification: false,
-          },
-          plugins: [
-            admin({
-              defaultRole: "admin",
-              adminRoles: ["admin"],
-              defaultBanReason: "Violated terms of service",
-              defaultBanExpiresIn: 60 * 60 * 24 * 7,
-              impersonationSessionDuration: 60 * 60,
-            }),
-            organization(),
-            apiKey(),
-            multiSession({
-              maximumSessions: 3
-            }),
-          ],
-          session: {
-            expiresIn: 60 * 60 * 24 * 7,
-            updateAge: 60 * 60 * 24,
-          },
-          trustedOrigins: [
-            "qntbr.com",
-            "*.qntbr.com",
-            "localhost:5173",
-            "*.localhost:5173",
-            "localhost:8787",
-            "*.localhost:8787",
-          ],
-        });
-        
-        const uniqueEmail = `test-${Date.now()}@example.com`;
-        
-        const result = await testAuth.api.signUpEmail({
-          body: {
-            email: uniqueEmail,
-            password: "password123", 
-            name: "Test User"
-          },
-          headers: request.headers
-        });
-        
-        return new Response(JSON.stringify(result));
-        
-      } catch (error) {
-        return new Response(JSON.stringify({ 
-          error: error.message,
-          stack: error.stack,
-        }), { status: 500 });
-      }
-    }),
-
-    route("/auth/debug-main", async ({ request }) => {
-      try {
-        const authModule = await import("@/lib/auth");
-        
-        return new Response(JSON.stringify({
-          hasAuth: !!authModule.auth,
-          hasApi: !!authModule.auth?.api,
-          hasSignUp: !!authModule.auth?.api?.signUpEmail,
-          authType: typeof authModule.auth,
+        const response = await stub.fetch(new Request('https://fake-host/', {
+          method: 'GET'
         }));
         
-      } catch (error) {
-        return new Response(JSON.stringify({ 
-          error: error.message,
-          stack: error.stack,
-        }), { status: 500 });
+        if (!response.ok) {
+          return Response.json({ error: "Failed to fetch card game state" });
+        }
+        
+        const gameState = await response.json() as any;
+        
+        return Response.json({
+          yourUserId: ctx.user?.id || null,
+          yourUserName: ctx.user?.name || ctx.user?.email || null,
+          playersInGame: (gameState.players || []).map((p: any) => ({
+            name: p.name,
+            id: p.id,
+            matchesYou: p.id === ctx.user?.id
+          })),
+          totalPlayers: gameState.players?.length || 0
+        });
+      } catch (error: any) {
+        return Response.json({ 
+          error: "Error fetching card game", 
+          message: error.message 
+        });
       }
     }),
-
     route("/auth/*", async ({ request }) => {
+
+      //some catchers for signup auth gotchas
       try {
         // Check if this is a signup request and verify Turnstile
         if (request.url.includes('/sign-up') && request.method === 'POST') {
@@ -486,28 +418,69 @@ export default defineApp([
     }),
 
     // SPECIFIC ROUTES FIRST - before the root route
-    route("/landing", HomePage),
-    route("/admin", AdminPage),
-    route("/orgs/new", CreateOrgPage),
+    route("/landing", LoginPage),
+    // route("/admin", AdminPage),
+    // route("/orgs/new", CreateOrgPage),
     route("/sanctum", SanctumPage),  // MOVED UP - must be before root route
     
     prefix("/user", userRoutes),
     
-    route("/game", () => {
-      const randomName = uniqueNamesGenerator({
-        dictionaries: [adjectives, colors, animals],
-        separator: "-",
-        length: 3,
-      });
+    // Add static content routes like changelog, about, legal, terms, privacy
+    ...staticRoutes,
 
+    //for now this is our board game
+    route("/game", async ({ request }) => {
+      // Get org slug from subdomain
+      const orgSlug = extractOrgFromSubdomain(request) || 'default';
+      
+      // Create new game and register in KV
+      const result = await createNewGame(orgSlug);
+      
+      if (!result.success) {
+        // Redirect to sanctum with error
+        return new Response(null, {
+          status: 302,
+          headers: { 
+            Location: `/sanctum?error=${encodeURIComponent(result.error || 'Failed to create game')}`
+          }
+        });
+      }
+      
+      // Redirect to the new game
       return new Response(null, {
         status: 302,
-        headers: {
-          Location: `/game/${randomName}`,
-        },
+        headers: { Location: `/game/${result.gameId}` }
       });
     }),
     route("/game/:gameId", GamePage),
+
+    //for now this is our virtual table top card game
+    route("/cardGame", async ({ request, ctx }) => {
+      const isSandbox = isSandboxEnvironment(request);
+      const orgSlug = isSandbox ? 'sandbox' : (extractOrgFromSubdomain(request) || 'default');
+      
+      const result = await createNewCardGame(orgSlug, {
+        creatorUserId: isSandbox ? undefined : ctx.user?.id,
+        isSandbox,
+        maxPlayers: isSandbox ? 256 : 8,
+      });
+      
+      if (!result.success) {
+        return new Response(null, {
+          status: 302,
+          headers: { 
+            Location: `/sanctum?error=${encodeURIComponent(result.error || 'Failed to create game')}`
+          }
+        });
+      }
+      
+      return new Response(null, {
+        status: 302,
+        headers: { Location: `/cardGame/${result.cardGameId}` }
+      });
+    }),
+    route("/cardGame/:cardGameId", CardGamePage),
+    
 
     // ROOT ROUTE - AFTER all specific routes
     route("/", [
@@ -524,6 +497,15 @@ export default defineApp([
         if (pathname.startsWith('/user/') || pathname.startsWith('/auth/')) {
           return;
         }
+
+        // CHECK FOR SANDBOX FIRST
+        if (isSandboxEnvironment(request)) {
+          // Sandbox users go directly to sanctum
+          return new Response(null, {
+            status: 302,
+            headers: { Location: "/sanctum" },
+          });
+        }
         
         const orgSlug = extractOrgFromSubdomain(request);
         
@@ -532,15 +514,13 @@ export default defineApp([
           // For main domain, always go to landing page
           return new Response(null, {
             status: 302,
-            headers: { Location: "/landing" },
+            headers: { Location: "/user/login" },
           });
         }
         
-        // SUBDOMAIN LOGIC (org.qntbr.com)
-        // Handle org errors
+        // SUBDOMAIN LOGIC (org.qntbr.com) - but NOT sandbox
         if (ctx.orgError) {
-          // Let the middleware handle the org error redirects
-          return;
+          return; // Let middleware handle redirects
         }
         
         // If we have an organization but user isn't logged in or doesn't have role

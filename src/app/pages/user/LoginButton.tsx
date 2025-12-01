@@ -12,7 +12,7 @@ interface LogoutButtonProps {
 export function LogoutButton({ 
   className = "bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600", 
   children = "Logout",
-  redirectTo = "/user/login"
+  redirectTo = "qntbr.com/user/login"
 }: LogoutButtonProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);

@@ -1,8 +1,9 @@
 // @/app/pages/user/login.tsx
-import { type AppContext } from "@/worker";
+import { type RequestInfo } from "rwsdk/worker";
 import { LogoutButton } from "./LoginButton";
 import { RoleToggleButton } from "./RoleToggleButton";
 import { FantasyLogin } from "./FantasyLogin";
+import { extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
 import { 
   FantasyBackground, 
   FantasyCard, 
@@ -11,7 +12,28 @@ import {
   FantasyButton 
 } from "@/app/components/theme/FantasyTheme";
 
-export default function LoginPage({ ctx }: { ctx: AppContext }) {
+export default function LoginPage({ ctx, request }: RequestInfo) {
+  // Check if we're on a subdomain
+  const orgSlug = extractOrgFromSubdomain(request);
+  
+  // If on subdomain, redirect to main domain
+  if (orgSlug) {
+    const currentUrl = new URL(request.url);
+    const protocol = currentUrl.protocol;
+    const mainDomain = currentUrl.hostname.includes('localhost') 
+      ? 'localhost:5173' 
+      : currentUrl.hostname.split('.').slice(-2).join('.');
+    const pathname = currentUrl.pathname; // preserves /user/login
+    
+    // Redirect to main domain, keeping the same path
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: `${protocol}//${mainDomain}${pathname}`
+      }
+    });
+  }
+
   // If user is already logged in, show fantasy-themed status page
   if (ctx.user) {
     return (
@@ -58,32 +80,32 @@ export default function LoginPage({ ctx }: { ctx: AppContext }) {
                   </a>
                 </FantasyButton>
                 
-                <FantasyButton variant="secondary">
+                {/* <FantasyButton variant="secondary">
                   <a href="/" className="block w-full h-full">
                     🏠 Return Home
                   </a>
-                </FantasyButton>
+                </FantasyButton> */}
                 
                 <LogoutButton 
                   className="bg-red-700 text-white px-6 py-3 rounded-lg hover:bg-red-800 transition-colors font-medium"
-                  redirectTo="/user/login"
+                  redirectTo="qntbr.com/user/login"
                 >
-                  🚪 Depart Lair
+                  🚪 Depart Lair (Signout / Logout)
                 </LogoutButton>
                 
-                <RoleToggleButton 
+                {/* <RoleToggleButton 
                   currentRole={ctx.user.role || "admin"}
                   userId={ctx.user.id}
                   className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm"
-                />
+                /> */}
                 
-                {ctx.user.role === "admin" && (
+                {/* {ctx.user.role === "admin" && (
                   <FantasyButton variant="magic">
                     <a href="/admin" className="block w-full h-full">
                       ⚙️ Lair Management
                     </a>
                   </FantasyButton>
-                )}
+                )} */}
               </div>
             </FantasyCard>
 

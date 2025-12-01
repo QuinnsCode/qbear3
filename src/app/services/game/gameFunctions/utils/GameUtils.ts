@@ -3,6 +3,7 @@
 // src/app/services/game/gameFunctions/utils/GameUtils.ts
 import type { GameState, GameAction, Player, Territory, CommanderType } from '@/app/lib/GameState';
 import { globalAIController } from '@/app/services/game/ADai';
+import { CONTINENTS } from '@/app/services/game/gameFunctions';
 
 export class GameUtils {
   
@@ -251,9 +252,43 @@ export class GameUtils {
     const baseIncome = 3; // Minimum
     const territoryIncome = Math.floor(player.territories.length / 3); // 1 per 3 territories
     
-    // ✅ ADD: Continental bonuses (expand based on your continent logic)
+    // ✅ DEBUG: Log player territories
+    console.log('🌎 CONTINENT BONUS DEBUG:', {
+      playerName: player.name,
+      playerTerritories: player.territories,
+      territoriesType: typeof player.territories[0]
+    });
+    
+    // ✅ FIXED: Calculate continent bonus
     let continentalBonus = 0;
-    // TODO: Add your continent control logic here
+    for (const [continentName, continent] of Object.entries(CONTINENTS)) {
+      const continentTerritoryStrings = continent.territories.map(id => id.toString());
+      
+      // ✅ DEBUG: Log for South America specifically
+      if (continentName === 'South America') {
+        console.log('🌎 South America check:', {
+          continentTerritories: continentTerritoryStrings,
+          playerHas: continentTerritoryStrings.filter(t => player.territories.includes(t)),
+          missing: continentTerritoryStrings.filter(t => !player.territories.includes(t))
+        });
+      }
+      
+      const controlsContinent = continentTerritoryStrings.every(territoryId => 
+        player.territories.includes(territoryId)
+      );
+      
+      if (controlsContinent) {
+        console.log(`✅ ${player.name} controls ${continentName} - Bonus: +${continent.bonus}`);
+        continentalBonus += continent.bonus;
+      }
+    }
+    
+    console.log('💰 Final income calculation:', {
+      baseIncome,
+      territoryIncome,
+      continentalBonus,
+      total: Math.max(baseIncome, territoryIncome + continentalBonus)
+    });
     
     return Math.max(baseIncome, territoryIncome + continentalBonus);
   }

@@ -1,0 +1,374 @@
+/* app/styles/sanctum.css */
+
+/* Base container */
+.sanctum-container {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2d1810 0%, #1a0f08 50%, #000000 100%);
+}
+
+/* Ambient glow effect */
+.ambient-glow {
+  position: absolute;
+  top: 20%;
+  left: 20%;
+  width: 400px;
+  height: 400px;
+  background: rgba(249, 115, 22, 0.08);
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+/* Main wrapper */
+.main-wrapper {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.content-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 1400px;
+  min-height: 600px;
+}
+
+/* Book frame */
+.book-frame-placeholder {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #3c2415 0%, #1e0f08 50%, #000000 100%);
+  border: 4px solid #2d1810;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.8), 0 20px 40px rgba(0,0,0,0.9);
+}
+
+/* Corner decorations */
+.corner-decoration {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: rgba(146, 64, 14, 0.6);
+  transform: rotate(45deg);
+}
+
+.corner-decoration.top-left { top: 12px; left: 12px; }
+.corner-decoration.top-right { top: 12px; right: 12px; }
+.corner-decoration.bottom-left { bottom: 12px; left: 12px; }
+.corner-decoration.bottom-right { bottom: 12px; right: 12px; }
+
+/* Parchment background */
+.parchment-background {
+  position: relative;
+  margin: 16px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #f4e4bc 0%, #e8d5a8 50%, #dcc794 100%);
+  min-height: 500px;
+  box-shadow: inset 0 0 30px rgba(139, 69, 19, 0.2);
+}
+
+/* Book binding */
+.book-binding {
+  position: absolute;
+  left: 50%;
+  top: 16px;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: 12px;
+  background: linear-gradient(to bottom, #3c2415 0%, #1e0f08 50%, #3c2415 100%);
+  box-shadow: inset -2px 0 4px rgba(0,0,0,0.8), inset 2px 0 4px rgba(0,0,0,0.8);
+  display: none;
+}
+
+.binding-stud {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background: #92400e;
+  border-radius: 50%;
+}
+
+/* Page grid */
+.page-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  height: 100%;
+  gap: 0;
+}
+
+.left-page, .right-page {
+  padding: 24px;
+}
+
+.right-page {
+  border-top: 2px solid rgba(180, 83, 9, 0.2);
+}
+
+/* Typography */
+.sanctum-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #92400e;
+  margin-bottom: 8px;
+  font-family: serif;
+}
+
+.sanctum-subtitle {
+  font-size: 13px;
+  color: #a16207;
+}
+
+.sanctum-divider {
+  height: 2px;
+  width: 100%;
+  margin-top: 12px;
+  background: linear-gradient(to right, transparent 0%, #a16207 20%, #92400e 50%, #a16207 80%, transparent 100%);
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 12px;
+  font-family: serif;
+}
+
+/* Action buttons */
+.action-button {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  background: rgba(251, 191, 36, 0.15);
+  border: 2px solid rgba(180, 83, 9, 0.4);
+  border-radius: 8px;
+  color: #92400e;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.action-button:hover {
+  background: rgba(251, 191, 36, 0.25);
+  border-color: rgba(180, 83, 9, 0.6);
+  transform: translateX(4px);
+}
+
+.action-button-icon {
+  font-size: 20px;
+  margin-right: 10px;
+}
+
+/* Status box */
+.status-box {
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid rgba(180, 83, 9, 0.3);
+  background: rgba(139, 69, 19, 0.1);
+  margin-bottom: 24px;
+}
+
+.status-title {
+  font-weight: 600;
+  color: #92400e;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #a16207;
+}
+
+/* Game cards */
+.game-card {
+  border: 2px solid rgba(180, 83, 9, 0.4);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(251, 191, 36, 0.15);
+}
+
+.game-card-title {
+  font-weight: 600;
+  color: #92400e;
+  font-size: 15px;
+}
+
+.game-card-badge {
+  font-size: 11px;
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.game-card-date {
+  font-size: 13px;
+  color: #a16207;
+  margin-bottom: 10px;
+}
+
+.game-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.game-link {
+  color: #92400e;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 6px 12px;
+  background: rgba(146, 64, 14, 0.2);
+  border-radius: 4px;
+  border: 1px solid rgba(146, 64, 14, 0.4);
+  transition: all 0.2s;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.game-link:hover {
+  background: rgba(146, 64, 14, 0.3);
+}
+
+/* Empty state */
+.empty-state {
+  border: 2px dashed rgba(180, 83, 9, 0.3);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  background: rgba(251, 191, 36, 0.05);
+}
+
+.empty-state-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.empty-state-title {
+  font-weight: 600;
+  color: #92400e;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.empty-state-text {
+  font-size: 13px;
+  color: #a16207;
+  margin-bottom: 12px;
+}
+
+.empty-state-button {
+  display: inline-block;
+  padding: 8px 16px;
+  background: rgba(146, 64, 14, 0.2);
+  border: 1px solid rgba(146, 64, 14, 0.4);
+  border-radius: 4px;
+  color: #92400e;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* Create game button */
+.create-game-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed rgba(180, 83, 9, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(251, 191, 36, 0.05);
+  color: #92400e;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.create-game-button:hover {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(180, 83, 9, 0.5);
+}
+
+.create-game-icon {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+/* Blurred sections */
+.coming-soon {
+  filter: blur(2px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.placeholder-blur {
+  filter: blur(3px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Footer */
+.footer-nav {
+  padding-top: 12px;
+  border-top: 1px solid rgba(180, 83, 9, 0.3);
+}
+
+.footer-link {
+  color: #a16207;
+  text-decoration: underline;
+  font-size: 13px;
+}
+
+/* Mobile landscape */
+@media (max-height: 600px) and (orientation: landscape) {
+  .sanctum-container { min-height: auto; }
+  .main-wrapper { padding: 0.5rem; min-height: auto; align-items: flex-start; }
+  .content-wrapper { min-height: auto; }
+  .parchment-background { margin: 8px; min-height: auto; }
+  .left-page, .right-page { padding: 16px; }
+  .ambient-glow { width: 200px; height: 200px; }
+  .corner-decoration { width: 16px; height: 16px; }
+}
+
+/* Tablet and above */
+@media (min-width: 768px) {
+  .book-binding { display: block; }
+  .page-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+  .left-page { padding: 32px 48px 32px 32px; }
+  .right-page { padding: 32px 48px 32px 48px; border-top: none; }
+  .parchment-background { margin: 20px; min-height: 700px; }
+  .main-wrapper { padding: 1.5rem; }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .left-page { padding: 48px 60px 48px 48px; }
+  .right-page { padding: 48px 48px 48px 60px; }
+  .parchment-background { margin: 24px; min-height: 750px; }
+  .main-wrapper { padding: 2rem; }
+  .content-wrapper { min-height: 800px; }
+  .corner-decoration { width: 24px; height: 24px; }
+  .sanctum-title { font-size: 32px; }
+  .section-title { font-size: 18px; }
+}
+
+/* Small mobile */
+@media (max-width: 400px) {
+  .book-frame-placeholder { border-width: 2px; }
+  .parchment-background { margin: 12px; }
+  .left-page, .right-page { padding: 20px; }
+  .corner-decoration { width: 16px; height: 16px; }
+}

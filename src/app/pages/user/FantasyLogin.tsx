@@ -36,15 +36,20 @@ export function FantasyLogin({
 }: FantasyLoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [result, setResult] = useState("");
-  const [isSignUp, setIsSignUp] = useState(forceSignUp);
   const [isPending, startTransition] = useTransition();
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  // If forceSignUp is true, redirect to signup page
+  useEffect(() => {
+    if (forceSignUp && isHydrated) {
+      window.location.href = "/user/signup";
+    }
+  }, [forceSignUp, isHydrated]);
 
   const handleAuthSuccess = (user: any, message: string) => {
     setResult(message);
@@ -77,41 +82,10 @@ export function FantasyLogin({
     }
   };
 
-  const handleSignUp = async () => {
-    try {
-      setResult("");
-
-      const { data, error } = await authClient.signUp.email({
-        email,
-        password,
-        name,
-      });
-
-      if (error) {
-        setResult(`Registration failed: ${error.message}`);
-        return;
-      }
-
-      if (redirectOnSuccess || onAuthSuccess) {
-        handleAuthSuccess(data?.user, "Your adventure begins!");
-      } else {
-        setResult("Account created successfully! You may now enter your lair.");
-        setIsSignUp(false);
-        setName("");
-      }
-    } catch (err) {
-      setResult(`Registration failed: ${err instanceof Error ? err.message : "Unknown error"}`);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(() => {
-      if (isSignUp) {
-        void handleSignUp();
-      } else {
-        void handleSignIn();
-      }
+      void handleSignIn();
     });
   };
 
@@ -134,7 +108,6 @@ export function FantasyLogin({
       setResult("Farewell, adventurer!");
       setEmail("");
       setPassword("");
-      setName("");
     } catch (err) {
       setResult(`Departure failed: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
@@ -142,25 +115,21 @@ export function FantasyLogin({
 
   const getTitle = () => {
     if (!isHydrated) {
-      return isSignUp ? "Join the Adventure" : "Enter Your Lair";
+      return "Enter Your Lair";
     }
     
     if (organizationName) {
-      return isSignUp 
-        ? `Establish ${organizationName} Lair` 
-        : `Enter ${organizationName} Lair`;
+      return `Enter ${organizationName} Lair`;
     }
     
-    return isSignUp ? "Begin Your Quest" : "Welcome Back, Traveler";
+    return "Welcome Back, Traveler";
   };
 
   const getSubtitle = () => {
     if (showOrgWarning && organizationName) {
-      return `Claim the "${organizationName}" domain and establish your lair.`;
+      return `Sign in or create an account to claim the "${organizationName}" domain.`;
     }
-    return isSignUp 
-      ? "Register to begin your adventure." 
-      : "Provide your credentials to continue your quest.";
+    return "Provide your credentials to continue your quest.";
   };
 
   const getResultVariant = () => {
@@ -171,6 +140,22 @@ export function FantasyLogin({
     }
     return "info";
   };
+
+  // Show loading while redirecting to signup
+  if (forceSignUp) {
+    return (
+      <FantasyBackground variant={variant}>
+        <div className="min-h-screen flex items-center justify-center px-4">
+          <FantasyCard className="p-8 text-center max-w-md" glowing={true}>
+            <div className="mb-6 text-6xl">🏰</div>
+            <FantasyTitle size="lg" className="mb-4">
+              Redirecting to Signup...
+            </FantasyTitle>
+          </FantasyCard>
+        </div>
+      </FantasyBackground>
+    );
+  }
 
   return (
     <FantasyBackground variant={variant}>
@@ -197,7 +182,7 @@ export function FantasyLogin({
                   <div>
                     <h3 className="text-yellow-200 font-medium mb-1">Unclaimed Territory</h3>
                     <FantasyText variant="secondary" className="text-sm">
-                      The "{organizationName}" lair awaits a master. Register to claim this domain!
+                      The "{organizationName}" lair awaits a master. Sign in or register to claim this domain!
                     </FantasyText>
                   </div>
                 </div>
@@ -218,25 +203,6 @@ export function FantasyLogin({
             <FantasyCard className="p-6 mb-6" glowing={true}>
               <form onSubmit={handleSubmit} className="space-y-5">
                 
-                {/* Name field for sign up */}
-                {isSignUp && (
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-amber-200 mb-2">
-                      Adventurer Name
-                    </label>
-                    <input
-                      id="name"
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Your name"
-                      className="w-full px-4 py-3 bg-black/50 border border-amber-700/50 rounded-lg text-amber-100 placeholder-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent backdrop-blur-sm"
-                      suppressHydrationWarning
-                      required
-                    />
-                  </div>
-                )}
-
                 {/* Email field */}
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-amber-200 mb-2">
@@ -280,28 +246,19 @@ export function FantasyLogin({
                   className="w-full"
                   suppressHydrationWarning
                 >
-                  {isPending ? "..." : (isSignUp ? "🏰 Establish Lair" : "🗝️ Enter Lair")}
+                  {isPending ? "..." : "🗝️ Enter Lair"}
                 </FantasyButton>
               </form>
 
-              {/* Toggle between sign in/up */}
-              {!forceSignUp && (
-                <div className="mt-6 text-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsSignUp(!isSignUp);
-                      setResult("");
-                    }}
-                    className="text-amber-300 hover:text-amber-100 text-sm font-medium underline decoration-amber-700 underline-offset-2 hover:decoration-amber-500 transition-colors"
-                  >
-                    {isSignUp 
-                      ? "Already have a lair? Enter here" 
-                      : "Need to establish a new lair? Register here"
-                    }
-                  </button>
-                </div>
-              )}
+              {/* Link to signup */}
+              <div className="mt-6 text-center">
+                <a
+                  href="/user/signup"
+                  className="text-amber-300 hover:text-amber-100 text-sm font-medium underline decoration-amber-700 underline-offset-2 hover:decoration-amber-500 transition-colors"
+                >
+                  Need to establish a new lair? Register here
+                </a>
+              </div>
             </FantasyCard>
 
             {/* Result message */}

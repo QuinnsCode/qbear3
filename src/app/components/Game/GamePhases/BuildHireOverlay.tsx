@@ -276,7 +276,7 @@ const BuildHireOverlay = ({
 
   // Phase 1: Main selection screen
   return (
-    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-60 flex items-center justify-center pt-16">
+    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-60 flex items-center justify-center">
       <div className="bg-white/95 backdrop-blur-lg rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl max-h-[80vh] overflow-y-auto">
         
         {/* Header */}

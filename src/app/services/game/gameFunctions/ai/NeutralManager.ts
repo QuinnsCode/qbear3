@@ -190,6 +190,17 @@ export class NeutralManager {
     // In zombie/aggressive mode, reinforce at start of each year
     return this.mode === 'zombie' || this.mode === 'aggressive';
   }
+
+  /**
+   * Clear all timeouts (for cleanup when game is deleted)
+   * NeutralManager doesn't currently use timeouts, but this method
+   * is here for consistency with other managers
+   */
+  clearAllTimeouts(): void {
+    console.log('✅ NeutralManager: No timeouts to clear (passive manager)');
+    // No timeouts to clear in current implementation
+    // This method exists for API consistency with AiManager
+  }
 }
 
 // Global instance (similar to globalAIManager)
@@ -209,3 +220,4 @@ export function getNeutralManager(): NeutralManager {
   }
   return globalNeutralManager;
 }
+

@@ -1,3 +1,4 @@
+// @/app/pages/admin/AdminTest.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -17,6 +18,7 @@ import {
   type CreateUserData,
   type ListUsersResponse,
 } from "./functions";
+import { forcePasswordReset } from "@/app/serverActions/admin/resetPassword";
 import { RoleToggleButton } from "@/app/pages/user/RoleToggleButton";
 
 interface AdminTestProps {
@@ -34,6 +36,13 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
+
+  // Password reset form
+  const [resetPasswordForm, setResetPasswordForm] = useState({
+    email: "",
+    password: "",
+  });
+  const [resetPasswordResult, setResetPasswordResult] = useState<string | null>(null);
 
   // Form states
   const [createUserForm, setCreateUserForm] = useState<CreateUserData>({
@@ -53,10 +62,10 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     setError(null);
     try {
       const result = await listUsers({ limit: 20 });
-      console.log('Users result:', result); // Add this line
+      console.log("Users result:", result);
       setUsers(result);
     } catch (err) {
-      console.error('Error loading users:', err); // Add this line
+      console.error("Error loading users:", err);
       setError(err instanceof Error ? err.message : "Failed to load users");
     } finally {
       setLoading(false);
@@ -70,9 +79,34 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     try {
       await createUser(createUserForm);
       setCreateUserForm({ name: "", email: "", password: "", role: "admin" });
-      await loadUsers(); // Refresh the list
+      await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create user");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setResetPasswordResult(null);
+    try {
+      const result = await forcePasswordReset(
+        resetPasswordForm.email,
+        resetPasswordForm.password
+      );
+      
+      if (result.success) {
+        setResetPasswordResult(`✅ ${result.message}`);
+        setResetPasswordForm({ email: "", password: "" });
+      } else {
+        setResetPasswordResult(`❌ ${result.error}`);
+      }
+    } catch (err) {
+      setResetPasswordResult(
+        `❌ ${err instanceof Error ? err.message : "Failed to reset password"}`
+      );
     } finally {
       setLoading(false);
     }
@@ -83,7 +117,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     setError(null);
     try {
       await setUserRole(userId, role);
-      await loadUsers(); // Refresh the list
+      await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to set role");
     } finally {
@@ -95,8 +129,8 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     setLoading(true);
     setError(null);
     try {
-      await banUser(userId, "Banned by admin", 60 * 60 * 24 * 7); // 7 days
-      await loadUsers(); // Refresh the list
+      await banUser(userId, "Banned by admin", 60 * 60 * 24 * 7);
+      await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to ban user");
     } finally {
@@ -109,7 +143,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     setError(null);
     try {
       await unbanUser(userId);
-      await loadUsers(); // Refresh the list
+      await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to unban user");
     } finally {
@@ -136,7 +170,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     try {
       await revokeUserSession(sessionToken);
       if (selectedUser) {
-        await handleViewSessions(selectedUser.id); // Refresh sessions
+        await handleViewSessions(selectedUser.id);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to revoke session");
@@ -151,10 +185,12 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     try {
       await revokeAllUserSessions(userId);
       if (selectedUser) {
-        await handleViewSessions(selectedUser.id); // Refresh sessions
+        await handleViewSessions(selectedUser.id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to revoke all sessions");
+      setError(
+        err instanceof Error ? err.message : "Failed to revoke all sessions"
+      );
     } finally {
       setLoading(false);
     }
@@ -180,7 +216,9 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
       await stopImpersonating();
       alert("Stopped impersonating!");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to stop impersonating");
+      setError(
+        err instanceof Error ? err.message : "Failed to stop impersonating"
+      );
     } finally {
       setLoading(false);
     }
@@ -194,7 +232,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     setError(null);
     try {
       await removeUser(userId);
-      await loadUsers(); // Refresh the list
+      await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove user");
     } finally {
@@ -202,8 +240,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     }
   };
 
-  //bounce em if they are not logged in or an admin
-  if (!currentUser || currentUser.role !== 'admin') {
+  if (!currentUser || currentUser.role !== "admin") {
     return (
       <div className="max-w-6xl mx-auto p-6">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -224,21 +261,6 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
             </div>
           </a>
         </div>
-        <div className="space-x-2">
-          {/* <button
-            onClick={handleStopImpersonating}
-            className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
-          >
-            Stop Impersonating
-          </button> */}
-          {/* {currentUser && (
-            <RoleToggleButton 
-              currentRole={currentUser.role || "user"}
-              userId={currentUser.id}
-              className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
-            />
-          )} */}
-        </div>
       </div>
 
       {error && (
@@ -247,15 +269,65 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
         </div>
       )}
 
+      {/* Password Reset Form */}
+      <div className="bg-white border rounded-lg p-6">
+        <h2 className="text-xl font-semibold mb-4">🔐 Force Password Reset</h2>
+        <form onSubmit={handleResetPassword} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input
+            type="email"
+            placeholder="User Email"
+            required
+            value={resetPasswordForm.email}
+            onChange={(e) =>
+              setResetPasswordForm({ ...resetPasswordForm, email: e.target.value })
+            }
+            className="border rounded px-3 py-2"
+          />
+          <input
+            type="password"
+            placeholder="New Password"
+            required
+            value={resetPasswordForm.password}
+            onChange={(e) =>
+              setResetPasswordForm({ ...resetPasswordForm, password: e.target.value })
+            }
+            className="border rounded px-3 py-2"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 disabled:opacity-50"
+          >
+            {loading ? "Resetting..." : "Reset Password"}
+          </button>
+        </form>
+        {resetPasswordResult && (
+          <div
+            className={`mt-4 px-4 py-3 rounded ${
+              resetPasswordResult.startsWith("✅")
+                ? "bg-green-100 border border-green-400 text-green-700"
+                : "bg-red-100 border border-red-400 text-red-700"
+            }`}
+          >
+            {resetPasswordResult}
+          </div>
+        )}
+      </div>
+
       {/* Create User Form */}
       <div className="bg-white border rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">Create New User</h2>
-        <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <form
+          onSubmit={handleCreateUser}
+          className="grid grid-cols-1 md:grid-cols-4 gap-4"
+        >
           <input
             type="text"
             placeholder="Name"
             value={createUserForm.name}
-            onChange={(e) => setCreateUserForm({ ...createUserForm, name: e.target.value })}
+            onChange={(e) =>
+              setCreateUserForm({ ...createUserForm, name: e.target.value })
+            }
             className="border rounded px-3 py-2"
           />
           <input
@@ -263,7 +335,9 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
             placeholder="Email"
             required
             value={createUserForm.email}
-            onChange={(e) => setCreateUserForm({ ...createUserForm, email: e.target.value })}
+            onChange={(e) =>
+              setCreateUserForm({ ...createUserForm, email: e.target.value })
+            }
             className="border rounded px-3 py-2"
           />
           <input
@@ -271,12 +345,16 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
             placeholder="Password"
             required
             value={createUserForm.password}
-            onChange={(e) => setCreateUserForm({ ...createUserForm, password: e.target.value })}
+            onChange={(e) =>
+              setCreateUserForm({ ...createUserForm, password: e.target.value })
+            }
             className="border rounded px-3 py-2"
           />
           <select
             value={createUserForm.role}
-            onChange={(e) => setCreateUserForm({ ...createUserForm, role: e.target.value })}
+            onChange={(e) =>
+              setCreateUserForm({ ...createUserForm, role: e.target.value })
+            }
             className="border rounded px-3 py-2"
           >
             <option value="user">User</option>
@@ -295,7 +373,9 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
       {/* Users List */}
       <div className="bg-white border rounded-lg p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Users ({users?.data?.total || 0})</h2>
+          <h2 className="text-xl font-semibold">
+            Users ({users?.data?.total || 0})
+          </h2>
           <button
             onClick={loadUsers}
             disabled={loading}
@@ -305,46 +385,69 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
           </button>
         </div>
 
-       {users && users.data?.users?.length > 0 ? (
+        {users && users.data?.users?.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse border border-gray-300">
               <thead>
                 <tr className="bg-gray-50">
                   <th className="border border-gray-300 px-4 py-2 text-left">Name</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Email</th>
+                  <th className="border border-gray-300 px-4 py-2 text-left">
+                    Email
+                  </th>
                   <th className="border border-gray-300 px-4 py-2 text-left">Role</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Status</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
+                  <th className="border border-gray-300 px-4 py-2 text-left">
+                    Status
+                  </th>
+                  <th className="border border-gray-300 px-4 py-2 text-left">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {users.data.users.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 px-4 py-2">{user.name || "N/A"}</td>
-                    <td className="border border-gray-300 px-4 py-2">{user.email}</td>
                     <td className="border border-gray-300 px-4 py-2">
-                      <span className={`px-2 py-1 text-xs rounded ${
-                        user.role === "admin" ? "bg-red-100 text-red-800" : "bg-blue-100 text-blue-800"
-                      }`}>
+                      {user.name || "N/A"}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      {user.email}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-2">
+                      <span
+                        className={`px-2 py-1 text-xs rounded ${
+                          user.role === "admin"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
                         {user.role || "user"}
                       </span>
                     </td>
                     <td className="border border-gray-300 px-4 py-2">
-                      <span className={`px-2 py-1 text-xs rounded ${
-                        user.banned ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
-                      }`}>
+                      <span
+                        className={`px-2 py-1 text-xs rounded ${
+                          user.banned
+                            ? "bg-red-100 text-red-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
                         {user.banned ? "Banned" : "Active"}
                       </span>
                     </td>
                     <td className="border border-gray-300 px-4 py-2">
                       <div className="flex flex-wrap gap-1">
                         <button
-                          onClick={() => handleSetRole(user.id, user.role === "admin" ? "user" : "admin")}
+                          onClick={() =>
+                            handleSetRole(
+                              user.id,
+                              user.role === "admin" ? "user" : "admin"
+                            )
+                          }
                           className="text-xs bg-purple-500 text-white px-2 py-1 rounded hover:bg-purple-600"
                         >
                           Toggle Role
                         </button>
-                        
+
                         {user.banned ? (
                           <button
                             onClick={() => handleUnbanUser(user.id)}
@@ -360,7 +463,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
                             Ban
                           </button>
                         )}
-                        
+
                         <button
                           onClick={() => {
                             setSelectedUser(user);
@@ -370,14 +473,14 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
                         >
                           Sessions
                         </button>
-                        
+
                         <button
                           onClick={() => handleImpersonate(user.id)}
                           className="text-xs bg-orange-500 text-white px-2 py-1 rounded hover:bg-orange-600"
                         >
                           Impersonate
                         </button>
-                        
+
                         <button
                           onClick={() => handleRemoveUser(user.id)}
                           className="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
@@ -418,16 +521,24 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
               </button>
             </div>
           </div>
-          
+
           {sessions.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse border border-gray-300">
                 <thead>
                   <tr className="bg-gray-50">
-                    <th className="border border-gray-300 px-4 py-2 text-left">Session ID</th>
-                    <th className="border border-gray-300 px-4 py-2 text-left">Created</th>
-                    <th className="border border-gray-300 px-4 py-2 text-left">Expires</th>
-                    <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
+                    <th className="border border-gray-300 px-4 py-2 text-left">
+                      Session ID
+                    </th>
+                    <th className="border border-gray-300 px-4 py-2 text-left">
+                      Created
+                    </th>
+                    <th className="border border-gray-300 px-4 py-2 text-left">
+                      Expires
+                    </th>
+                    <th className="border border-gray-300 px-4 py-2 text-left">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

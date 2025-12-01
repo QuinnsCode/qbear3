@@ -23,6 +23,8 @@ const REALTIME_ROUTES = [
   '/sanctum',
   '/game',
   '/game/',
+  '/cardGame',
+  '/cardGame'
 ];
 
 function shouldUseRealtime(pathname: string): boolean {
@@ -72,20 +74,28 @@ async function initRealtimeWithPresence(pathname: string) {
   const userInfo = getUserInfo();
   
   try {
-
     let realtimeKey = pathname;
+    
     // For game routes, use the specific game ID as key
     if (pathname.startsWith('/game/')) {
       realtimeKey = pathname; // This will be "/game/abc123" which matches renderRealtimeClients
+    } 
+    // For card game routes, use the specific card game ID as key
+    else if (pathname.startsWith('/cardGame/')) {
+      realtimeKey = pathname; // This will be "/cardGame/abc123"
+    }
+    // ✅ NEW: For all other routes, use user-specific notification key if logged in
+    else if (userInfo?.id) {
+      realtimeKey = `/user/${userInfo.id}/notifications`;
+      console.log('🔔 Using user-specific notification key:', realtimeKey);
     }
 
     // Initialize the standard realtime client
     await initRealtimeClient({
-      //we need to differ between game routes and other routes
       key: realtimeKey, // Now matches your server action keys
     });
     
-    console.log('✅ Realtime client initialized successfully');
+    console.log('✅ Realtime client initialized successfully with key:', realtimeKey);
     
     // If we have user info, send it to enable presence
     if (userInfo?.id && userInfo?.username) {
@@ -115,12 +125,6 @@ async function initRealtimeWithPresence(pathname: string) {
     
   } catch (error) {
     console.warn('⚠️ Realtime initialization failed (this is normal in dev mode):', error);
-    
-    // In development, continue without WebSocket
-    // if (process.env.NODE_ENV === 'development') {
-    //   console.log('📝 Development mode: Continuing without realtime WebSocket');
-    //   console.log('💡 Optimistic updates will provide immediate UI feedback');
-    // }
   }
 }
 

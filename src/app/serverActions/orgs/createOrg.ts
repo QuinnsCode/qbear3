@@ -6,6 +6,7 @@ import { db, setupDb } from "@/db";
 import { initializeServices } from "@/lib/middlewareFunctions";
 import { initAuth } from "@/lib/auth";
 import { env } from "cloudflare:workers";
+import { isSubdomainAvailable } from '@/lib/subdomains'; // ← Import your validation
 
 function getRedirectUrl(slug: string, request: Request): string {
   const url = new URL(request.url);
@@ -70,14 +71,15 @@ export async function createOrganization(formData: FormData) {
       throw new Error('Name and slug are required');
     }
 
-    // Validate slug format
-    if (!/^[a-z0-9\-]+$/.test(slug)) {
-      throw new Error('Slug can only contain lowercase letters, numbers, and hyphens');
+    // Use your proper subdomain validation
+    const validation = isSubdomainAvailable(slug);
+    if (!validation.available) {
+      throw new Error(validation.reason || 'Invalid subdomain');
     }
 
     console.log('Creating org with name:', name, 'slug:', slug, 'userId:', userId);
 
-    // Check if slug is taken
+    // Check if slug is taken in database
     const existing = await db.organization.findUnique({
       where: { slug }
     });

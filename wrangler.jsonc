@@ -28,6 +28,10 @@
       {
         "name": "GAME_STATE_DO",
         "class_name": "GameStateDO"
+      },
+      {
+        "name": "CARD_GAME_STATE_DO",
+        "class_name": "CardGameDO"
       }
     ]
   },
@@ -43,6 +47,10 @@
     {
       "tag": "v2", 
       "new_sqlite_classes": ["GameStateDO"]
+    },
+    {
+      "tag": "v3",
+      "new_sqlite_classes": ["CardGameDO"]
     }
   ],
   "d1_databases": [
@@ -50,6 +58,28 @@
       "binding": "DB",
       "database_name": "qntbr-db1",
       "database_id": "75b80f5a-6013-48cf-ba65-38ea0c97f275"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "GAME_REGISTRY_KV",
+      "id": "380205cd1f27416599725dddb8e1dd39"
+    },
+    {
+      "binding": "CARD_GAME_REGISTRY_KV",
+      "id": "4494cacc3d484b82a9be1f98059ad9f0"
+    },
+    {
+      "binding": "CARDS_KV",
+      "id": "27a15573752e412db8c0026055aad56c"
+    },
+    {
+      "binding": "DECKS_KV",
+      "id": "537030e82ec64f23a404d64bbe43c73d"
+    },
+    {
+      "binding":"RATELIMIT_KV",
+      "id":"20704f4f986f4c09ad4b2b6dd7cb7e04"
     }
   ]
 }

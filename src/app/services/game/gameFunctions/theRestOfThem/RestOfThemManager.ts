@@ -258,12 +258,12 @@ export class RestOfThemManager {
           }
           break;
         
-
-        //dont auto advance to next player; finalize the fortify phase
-        // case 6: // Fortify (last phase)
-        //   console.log(`📋 ✅ Phase 6 completed - advancing to next player`);
-        //   newState = this.advanceToNextMainGamePlayer(newState);
-        //   break;
+        case 6: // Fortify (last phase)
+          if (data?.phaseComplete) {
+            console.log(`📋 ✅ Phase 6 completed - advancing to next player`);
+            newState = this.advanceToNextMainGamePlayer(newState);
+          }
+          break;
       }
     } 
     // ✅ SETUP STATUS: Let setup phase progression handle this via setupFunctions

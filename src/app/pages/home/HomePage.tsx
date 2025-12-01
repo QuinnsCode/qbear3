@@ -17,6 +17,20 @@ export default function HomePage({ ctx, request }: RequestInfo) {
     : url.hostname.split('.').slice(-2).join('.');
   const mainSiteUrl = `${url.protocol}//${mainDomain}`;
 
+  // NEW: If we're on a subdomain and on /user route, redirect to main domain
+  const pathname = url.pathname;
+  if (attemptedLairSlug && pathname.startsWith('/user')) {
+    const protocol = url.protocol;
+    const fullUrl = `${protocol}//${mainDomain}${pathname}`;
+    
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: fullUrl
+      }
+    });
+  }
+
   // If no lair slug, we're on the main domain - show adaptive cave scene
   if (!attemptedLairSlug) {
     return (
@@ -634,7 +648,7 @@ export default function HomePage({ ctx, request }: RequestInfo) {
               
               <LogoutButton 
                 className="bg-red-700 text-white px-6 py-3 rounded-lg hover:bg-red-800 transition-colors font-medium"
-                redirectTo="/user/login"
+                redirectTo="qntbr.com/user/login"
               >
                 🚪 Depart
               </LogoutButton>

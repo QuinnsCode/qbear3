@@ -260,28 +260,28 @@ const DiceRollOverlay = ({
   if (!isVisible) return null;
 
   return (
-    <div className="absolute inset-0 bg-black/85 backdrop-blur-sm z-70 flex items-center justify-center">
-      <div className="bg-white/95 backdrop-blur-lg rounded-2xl p-8 max-w-3xl w-full mx-4 shadow-2xl">
+    <div className="dice-overlay-wrapper absolute inset-0 bg-black/85 backdrop-blur-sm z-70 flex items-center justify-center p-2 overflow-y-auto">
+      <div className="dice-overlay-content bg-white/95 backdrop-blur-lg rounded-2xl w-full shadow-2xl my-auto">
         
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-6 mb-6">
-            <div className="text-center">
-              <Sword className="text-red-500 mx-auto mb-2" size={32} />
-              <div className="font-bold text-xl text-gray-800">{fromTerritoryName}</div>
-              <div className="text-gray-600">{attackingUnits} attackers</div>
+        {/* Header - ✅ FIXED: Shows actual dice counts */}
+        <div className="text-center dice-header">
+          <div className="flex items-center justify-center space-x-4 mb-4 flex-wrap">
+            <div className="text-center min-w-0 flex-shrink">
+              <Sword className="text-red-500 mx-auto mb-1" size={24} />
+              <div className="font-bold text-base text-gray-800 truncate">{fromTerritoryName}</div>
+              <div className="text-gray-600 text-sm">{attackerDiceDisplay.length} dice</div>
             </div>
             
-            <div className="text-6xl animate-pulse">⚔️</div>
+            <div className="text-4xl animate-pulse flex-shrink-0">⚔️</div>
             
-            <div className="text-center">
-              <Shield className="text-blue-500 mx-auto mb-2" size={32} />
-              <div className="font-bold text-xl text-gray-800">{toTerritoryName}</div>
-              <div className="text-gray-600">{defendingUnits} defenders</div>
+            <div className="text-center min-w-0 flex-shrink">
+              <Shield className="text-blue-500 mx-auto mb-1" size={24} />
+              <div className="font-bold text-base text-gray-800 truncate">{toTerritoryName}</div>
+              <div className="text-gray-600 text-sm">{defenderDiceDisplay.length} dice</div>
             </div>
           </div>
           
-          <div className="text-xl font-semibold text-gray-700">
+          <div className="text-base font-semibold text-gray-700 px-2">
             {stage === 'setup' && 'Preparing for Battle...'}
             {stage === 'rolling' && '🎲 Rolling the Dice of War! 🎲'}
             {stage === 'finalizing' && '⏳ Dice are Settling...'}
@@ -295,31 +295,31 @@ const DiceRollOverlay = ({
           {canSkip && stage !== 'results' && stage !== 'extended_display' && (
             <button
               onClick={handleSkip}
-              className="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded-lg transition-colors flex items-center mx-auto space-x-2"
+              className="mt-3 px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-xs rounded-lg transition-colors flex items-center mx-auto space-x-2"
             >
-              <FastForward size={16} />
+              <FastForward size={14} />
               <span>Skip Animation</span>
             </button>
           )}
         </div>
 
         {/* Dice Display Area */}
-        <div className="grid grid-cols-2 gap-12 mb-8">
+        <div className="dice-display-grid">
           {/* Attacker Dice */}
           <div className="text-center">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <Sword size={20} className="text-red-500" />
-              <span className="font-bold text-red-700 text-lg">Attacker Dice</span>
+            <div className="flex items-center justify-center space-x-2 mb-3">
+              <Sword size={16} className="text-red-500" />
+              <span className="font-bold text-red-700 text-sm">Attacker Dice</span>
             </div>
             
-            <div className="flex flex-wrap justify-center gap-3">
+            <div className="flex flex-wrap justify-center gap-2">
               {attackerDiceDisplay.map((die, index) => (
                 <div
                   key={index}
-                  className={`relative w-20 h-20 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-xl transform transition-all duration-700 ${
+                  className={`dice-item relative flex items-center justify-center text-white font-bold shadow-xl transform transition-all duration-700 ${
                     getDiceAnimation()
                   } ${
-                    stage === 'sorting' && index === 0 ? 'ring-4 ring-yellow-400 scale-110' : ''
+                    stage === 'sorting' && index === 0 ? 'ring-2 ring-yellow-400 scale-110' : ''
                   } ${
                     stage === 'matching' && index < matches.length ? 'ring-2 ring-blue-400' : ''
                   } ${getDiceColor(die)}`}
@@ -328,15 +328,15 @@ const DiceRollOverlay = ({
                     transform: stage === 'rolling' ? `rotate(${Math.random() * 360}deg)` : 'rotate(0deg)'
                   }}
                 >
-                  <div className="absolute -top-1 -right-1 text-sm">
+                  <div className="absolute -top-1 -right-1 text-xs">
                     {getDiceIcon(die)}
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-black">{die.value}</div>
-                    <div className="text-xs opacity-90 font-semibold">{die.type}</div>
+                    <div className="text-lg font-black">{die.value}</div>
+                    <div className="text-[10px] opacity-90 font-semibold">{die.type}</div>
                   </div>
                   {die.isCommander && (
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white"></div>
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-yellow-400 rounded-full border-2 border-white"></div>
                   )}
                 </div>
               ))}
@@ -345,19 +345,19 @@ const DiceRollOverlay = ({
 
           {/* Defender Dice */}
           <div className="text-center">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <Shield size={20} className="text-blue-500" />
-              <span className="font-bold text-blue-700 text-lg">Defender Dice</span>
+            <div className="flex items-center justify-center space-x-2 mb-3">
+              <Shield size={16} className="text-blue-500" />
+              <span className="font-bold text-blue-700 text-sm">Defender Dice</span>
             </div>
             
-            <div className="flex flex-wrap justify-center gap-3">
+            <div className="flex flex-wrap justify-center gap-2">
               {defenderDiceDisplay.map((die, index) => (
                 <div
                   key={index}
-                  className={`relative w-20 h-20 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-xl transform transition-all duration-700 ${
+                  className={`dice-item relative flex items-center justify-center text-white font-bold shadow-xl transform transition-all duration-700 ${
                     getDiceAnimation()
                   } ${
-                    stage === 'sorting' && index === 0 ? 'ring-4 ring-yellow-400 scale-110' : ''
+                    stage === 'sorting' && index === 0 ? 'ring-2 ring-yellow-400 scale-110' : ''
                   } ${
                     stage === 'matching' && index < matches.length ? 'ring-2 ring-red-400' : ''
                   } ${getDiceColor(die)}`}
@@ -366,12 +366,12 @@ const DiceRollOverlay = ({
                     transform: stage === 'rolling' ? `rotate(${Math.random() * 360}deg)` : 'rotate(0deg)'
                   }}
                 >
-                  <div className="absolute -top-1 -right-1 text-sm">
+                  <div className="absolute -top-1 -right-1 text-xs">
                     {getDiceIcon(die)}
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-black">{die.value}</div>
-                    <div className="text-xs opacity-90 font-semibold">{die.type}</div>
+                    <div className="text-lg font-black">{die.value}</div>
+                    <div className="text-[10px] opacity-90 font-semibold">{die.type}</div>
                   </div>
                 </div>
               ))}
@@ -381,17 +381,17 @@ const DiceRollOverlay = ({
 
         {/* Dice Matches Display */}
         {(stage === 'matching' || stage === 'results' || stage === 'extended_display') && matches.length > 0 && (
-          <div className="mb-8">
-            <div className="text-center mb-6">
-              <h3 className="font-bold text-gray-700 mb-2 text-lg">⚡ Dice Matchups ⚡</h3>
-              <div className="text-gray-600">Highest vs Highest • Ties go to Defender</div>
+          <div className="dice-matches">
+            <div className="text-center mb-3">
+              <h3 className="font-bold text-gray-700 mb-1 text-sm">⚡ Dice Matchups ⚡</h3>
+              <div className="text-gray-600 text-xs">Highest vs Highest • Ties go to Defender</div>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-2">
               {matches.map((match, index) => (
                 <div
                   key={index}
-                  className={`flex items-center justify-center space-x-6 p-4 rounded-xl transition-all duration-700 border-2 ${
+                  className={`flex items-center justify-center space-x-3 p-2 rounded-xl transition-all duration-700 border-2 ${
                     match.winner === 'attacker' 
                       ? 'bg-red-50 border-red-300 shadow-red-100' 
                       : 'bg-blue-50 border-blue-300 shadow-blue-100'
@@ -403,28 +403,28 @@ const DiceRollOverlay = ({
                   }}
                 >
                   {/* Attacker Die */}
-                  <div className={`w-16 h-16 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg transition-all duration-500 ${
+                  <div className={`match-die flex items-center justify-center text-white font-bold shadow-lg transition-all duration-500 ${
                     getDiceColor(match.attackerDie)
-                  } ${match.winner === 'attacker' ? 'ring-4 ring-green-400 scale-110' : 'opacity-75 scale-95'}`}>
+                  } ${match.winner === 'attacker' ? 'ring-2 ring-green-400 scale-110' : 'opacity-75 scale-95'}`}>
                     <div className="text-center">
-                      <div className="text-xl">{match.attackerDie.value}</div>
+                      <div className="text-base">{match.attackerDie.value}</div>
                     </div>
                   </div>
                   
                   {/* VS with result */}
-                  <div className="text-center px-4">
-                    <div className="text-sm font-bold text-gray-600 mb-1">VS</div>
-                    <div className={`text-lg font-black flex items-center justify-center space-x-1 ${
+                  <div className="text-center px-2">
+                    <div className="text-[10px] font-bold text-gray-600 mb-0.5">VS</div>
+                    <div className={`text-xs font-black flex items-center justify-center space-x-1 ${
                       match.winner === 'attacker' ? 'text-red-600' : 'text-blue-600'
                     }`}>
                       {match.winner === 'attacker' ? (
                         <>
-                          <Sword size={16} />
+                          <Sword size={12} />
                           <span>WIN</span>
                         </>
                       ) : (
                         <>
-                          <Shield size={16} />
+                          <Shield size={12} />
                           <span>WIN</span>
                         </>
                       )}
@@ -432,11 +432,11 @@ const DiceRollOverlay = ({
                   </div>
                   
                   {/* Defender Die */}
-                  <div className={`w-16 h-16 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg transition-all duration-500 ${
+                  <div className={`match-die flex items-center justify-center text-white font-bold shadow-lg transition-all duration-500 ${
                     getDiceColor(match.defenderDie)
-                  } ${match.winner === 'defender' ? 'ring-4 ring-green-400 scale-110' : 'opacity-75 scale-95'}`}>
+                  } ${match.winner === 'defender' ? 'ring-2 ring-green-400 scale-110' : 'opacity-75 scale-95'}`}>
                     <div className="text-center">
-                      <div className="text-xl">{match.defenderDie.value}</div>
+                      <div className="text-base">{match.defenderDie.value}</div>
                     </div>
                   </div>
                 </div>
@@ -447,44 +447,44 @@ const DiceRollOverlay = ({
 
         {/* Combat Results */}
         {(stage === 'results' || stage === 'extended_display') && (
-          <div className="text-center mb-8">
-            <div className={`p-6 rounded-xl mb-6 border-2 shadow-lg ${
+          <div className="text-center combat-results">
+            <div className={`p-3 rounded-xl mb-4 border-2 shadow-lg ${
               territoryConquered 
                 ? 'bg-gradient-to-br from-green-50 to-emerald-100 border-green-300' 
                 : 'bg-gradient-to-br from-yellow-50 to-amber-100 border-yellow-300'
             }`}>
-              <div className="flex items-center justify-center space-x-3 mb-4">
+              <div className="flex items-center justify-center space-x-2 mb-3">
                 {territoryConquered ? (
                   <>
-                    <Crown className="text-green-600" size={32} />
-                    <span className="text-green-800 font-black text-2xl">VICTORY!</span>
-                    <Crown className="text-green-600" size={32} />
+                    <Crown className="text-green-600" size={24} />
+                    <span className="text-green-800 font-black text-lg">VICTORY!</span>
+                    <Crown className="text-green-600" size={24} />
                   </>
                 ) : (
                   <>
-                    <Shield className="text-yellow-600" size={32} />
-                    <span className="text-yellow-800 font-black text-2xl">DEFENDED!</span>
-                    <Shield className="text-yellow-600" size={32} />
+                    <Shield className="text-yellow-600" size={24} />
+                    <span className="text-yellow-800 font-black text-lg">DEFENDED!</span>
+                    <Shield className="text-yellow-600" size={24} />
                   </>
                 )}
               </div>
               
-              <div className="grid grid-cols-2 gap-6 text-lg">
+              <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="text-center">
-                  <div className="text-red-600 font-bold mb-2">💀 Attacker Losses</div>
-                  <div className="text-4xl font-black text-red-700">{combatResult.attackerLosses}</div>
-                  <div className="text-sm text-red-600 mt-1">units eliminated</div>
+                  <div className="text-red-600 font-bold mb-1 text-xs">💀 Attacker Losses</div>
+                  <div className="text-2xl font-black text-red-700">{combatResult.attackerLosses}</div>
+                  <div className="text-[10px] text-red-600 mt-0.5">units eliminated</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-blue-600 font-bold mb-2">💀 Defender Losses</div>
-                  <div className="text-4xl font-black text-blue-700">{combatResult.defenderLosses}</div>
-                  <div className="text-sm text-blue-600 mt-1">units eliminated</div>
+                  <div className="text-blue-600 font-bold mb-1 text-xs">💀 Defender Losses</div>
+                  <div className="text-2xl font-black text-blue-700">{combatResult.defenderLosses}</div>
+                  <div className="text-[10px] text-blue-600 mt-0.5">units eliminated</div>
                 </div>
               </div>
               
               {territoryConquered && (
-                <div className="mt-4 p-3 bg-green-200 rounded-lg">
-                  <div className="text-green-800 font-bold">🏆 Territory conquered! Select additional units to move in.</div>
+                <div className="mt-3 p-2 bg-green-200 rounded-lg">
+                  <div className="text-green-800 font-bold text-xs">🏆 Territory conquered! Select additional units to move in.</div>
                 </div>
               )}
             </div>
@@ -492,31 +492,31 @@ const DiceRollOverlay = ({
         )}
 
         {/* Action Buttons */}
-        <div className="flex justify-center space-x-4">
+        <div className="flex justify-center space-x-3 dice-actions">
           {(stage === 'results' || stage === 'extended_display') ? (
             <button
               onClick={onComplete}
-              className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-lg transition-colors shadow-lg"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg transition-colors shadow-lg"
             >
               {territoryConquered ? 'Select Move-In Forces' : 'Continue Game'}
             </button>
           ) : canSkip ? (
             <button
               onClick={handleSkip}
-              className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition-colors flex items-center space-x-2"
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold text-sm rounded-lg transition-colors flex items-center space-x-2"
             >
-              <FastForward size={20} />
+              <FastForward size={16} />
               <span>Skip to Results</span>
             </button>
           ) : (
-            <div className="text-gray-500 italic">Preparing combat resolution...</div>
+            <div className="text-gray-500 italic text-sm">Preparing combat resolution...</div>
           )}
         </div>
         
         {/* Dramatic flair for extended display */}
         {stage === 'extended_display' && (
-          <div className="absolute inset-0 pointer-events-none">
-            <div className={`absolute inset-0 ${territoryConquered ? 'bg-green-500' : 'bg-yellow-500'} opacity-10 animate-pulse`}></div>
+          <div className="absolute inset-0 pointer-events-none rounded-2xl overflow-hidden">
+            <div className={`absolute inset-0 ${territoryConquered ? 'bg-green-200' : 'bg-yellow-500'} opacity-10 animate-pulse`}></div>
           </div>
         )}
       </div>
@@ -525,6 +525,163 @@ const DiceRollOverlay = ({
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dice-overlay-content {
+          max-width: 800px;
+          padding: 1.5rem;
+          max-height: 95vh;
+          overflow-y: auto;
+        }
+
+        .dice-header {
+          margin-bottom: 1rem;
+        }
+
+        .dice-display-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1.5rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .dice-item {
+          width: 60px;
+          height: 60px;
+          border-radius: 0.75rem;
+        }
+
+        .match-die {
+          width: 48px;
+          height: 48px;
+          border-radius: 0.5rem;
+        }
+
+        .dice-matches {
+          margin-bottom: 1.5rem;
+        }
+
+        .combat-results {
+          margin-bottom: 1rem;
+        }
+
+        .dice-actions {
+          padding-bottom: 0.5rem;
+        }
+
+        /* Mobile landscape optimizations */
+        @media (max-height: 600px) and (orientation: landscape) {
+          .dice-overlay-wrapper {
+            align-items: flex-start;
+            padding: 0.5rem;
+          }
+
+          .dice-overlay-content {
+            padding: 1rem;
+            max-height: 98vh;
+            margin: 0.25rem auto;
+          }
+
+          .dice-header {
+            margin-bottom: 0.75rem;
+          }
+
+          .dice-display-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+          }
+
+          .dice-item {
+            width: 48px;
+            height: 48px;
+          }
+
+          .match-die {
+            width: 40px;
+            height: 40px;
+          }
+
+          .dice-matches {
+            margin-bottom: 1rem;
+          }
+
+          .combat-results {
+            margin-bottom: 0.75rem;
+          }
+
+          .dice-actions {
+            padding-bottom: 0.25rem;
+          }
+        }
+
+        /* Tablet and up */
+        @media (min-width: 640px) {
+          .dice-display-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+          }
+
+          .dice-item {
+            width: 70px;
+            height: 70px;
+          }
+
+          .match-die {
+            width: 56px;
+            height: 56px;
+          }
+        }
+
+        /* Desktop */
+        @media (min-width: 1024px) {
+          .dice-overlay-content {
+            padding: 2rem;
+          }
+
+          .dice-header {
+            margin-bottom: 2rem;
+          }
+
+          .dice-display-grid {
+            gap: 3rem;
+            margin-bottom: 2rem;
+          }
+
+          .dice-item {
+            width: 80px;
+            height: 80px;
+          }
+
+          .match-die {
+            width: 64px;
+            height: 64px;
+          }
+
+          .dice-matches {
+            margin-bottom: 2rem;
+          }
+
+          .combat-results {
+            margin-bottom: 2rem;
+          }
+
+          .dice-actions {
+            padding-bottom: 0;
+          }
+        }
+
+        /* Very small mobile screens */
+        @media (max-width: 380px) {
+          .dice-item {
+            width: 52px;
+            height: 52px;
+          }
+
+          .match-die {
+            width: 42px;
+            height: 42px;
+          }
         }
       `}</style>
     </div>

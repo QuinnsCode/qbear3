@@ -132,10 +132,61 @@ export class GameStateDO extends DurableObject {
     const url = new URL(request.url)
     const method = request.method
 
+    const isSandbox = request.headers.get('X-Is-Sandbox') === 'true';
+    if (isSandbox) {
+      // Sandbox mode - allow all actions
+      // Don't validate ownership
+      // Everyone can control everything
+      console.log('🏖️ Sandbox mode - free-for-all enabled');
+    }
+    
+
     try {
       // Handle WebSocket upgrades
       if (request.headers.get('Upgrade') === 'websocket') {
         return this.wsManager.handleUpgrade(request);
+      }
+
+      // ✅ NEW: Handle DELETE requests to wipe storage
+      if (method === 'DELETE') {
+        console.log('🗑️ DELETE request received - wiping Durable Object storage');
+        
+        try {
+          // 1. Clear all AI timeouts
+          this.aiManager.clearAllTimeouts();
+          if (this.neutralManager.clearAllTimeouts) {
+            this.neutralManager.clearAllTimeouts();
+          }
+          
+          // 2. Notify all connected WebSocket clients that game is being deleted
+          this.wsManager.broadcast({ 
+            type: 'game_deleted', 
+            message: 'This game has been deleted by an administrator' 
+          });
+          
+          // 3. Close all WebSocket connections with a clear message
+          if (this.wsManager.closeAll) {
+            this.wsManager.closeAll();
+          }
+          
+          // 4. Delete all storage
+          await this.ctx.storage.deleteAll();
+          
+          // 5. Clear in-memory state
+          this.gameState = null;
+          
+          console.log('✅ Durable Object storage completely wiped');
+          return Response.json({ 
+            success: true, 
+            message: 'Game storage deleted successfully' 
+          });
+        } catch (deleteError) {
+          console.error('❌ Error during DO deletion:', deleteError);
+          return Response.json({ 
+            success: false, 
+            error: deleteError instanceof Error ? deleteError.message : 'Deletion failed' 
+          }, { status: 500 });
+        }
       }
 
       // Handle HTTP requests for game actions
@@ -272,7 +323,7 @@ export class GameStateDO extends DurableObject {
   // ✅ ALTERNATIVE: If you want to start directly in main game (skipping setup)
   // ✅ CORRECT: Default game for SETUP mode (commanders placed during setup)
   async createDefaultGame(): Promise<GameState> {
-    const gameId = crypto.randomUUID()
+    const gameId = this.ctx.id.toString()
 
     const players: Player[] = [
       {
@@ -817,10 +868,10 @@ export class GameStateDO extends DurableObject {
   }
 
   async createGame(data: { playerNames: string[], territoryConfig: Record<string, any> }): Promise<GameState> {
-    const gameId = crypto.randomUUID()
+    const gameId = this.ctx.id.toString()
     
     const players: Player[] = data.playerNames.map((name, index) => ({
-      id: crypto.randomUUID(),
+      id: gameId,
       name,
       color: ['blue', 'red', 'green', 'yellow'][index % 4],
       cards: [],

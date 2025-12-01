@@ -11,7 +11,7 @@ export default function AdminPage({ ctx }: { ctx: AppContext }) {
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
           <p className="text-gray-600 mb-4">You must be logged in to access this page.</p>
           <a 
-            href="/user/login" 
+            href="qntbr.com/user/login" 
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
           >
             Login
@@ -21,7 +21,7 @@ export default function AdminPage({ ctx }: { ctx: AppContext }) {
     );
   }
 
-  if (ctx.user.role !== "admin") {
+  if (ctx.user.role !== "SUPERADMIN") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

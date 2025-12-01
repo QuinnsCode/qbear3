@@ -140,8 +140,8 @@ export const GameMap = ({
 
   const handleWheel = (e) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newZoom = Math.max(0.5, Math.min(3, zoom * delta));
+    const delta = e.deltaY > 0 ? 0.92 : 1.08; // 8% per scroll
+    const newZoom = clampZoom(zoom * delta);
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -169,8 +169,12 @@ export const GameMap = ({
     if (touchArray.length === 2 && touches.length === 2) {
       const dist1 = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
       const dist2 = Math.hypot(touchArray[0].clientX - touchArray[1].clientX, touchArray[0].clientY - touchArray[1].clientY);
-      const scale = dist2 / dist1;
-      const newZoom = Math.max(0.5, Math.min(3, zoom * scale));
+      const rawScale = dist2 / dist1;
+      
+      // Dampen the pinch sensitivity
+      const dampenedScale = 1 + (rawScale - 1) * ZOOM_CONFIG.PINCH_DAMPENING;
+      const newZoom = clampZoom(zoom * dampenedScale);
+
       const centerX = (touchArray[0].clientX + touchArray[1].clientX) / 2;
       const centerY = (touchArray[0].clientY + touchArray[1].clientY) / 2;
       const rect = e.currentTarget.getBoundingClientRect();
@@ -212,7 +216,7 @@ export const GameMap = ({
 
   const zoomIn = () => {
     const centerPoint = { x: 450, y: 225 };
-    const newZoom = Math.max(0.5, Math.min(3, zoom * 1.1));
+    const newZoom = clampZoom(zoom * 1.15); // 15% increment
     const worldX = viewBox.x + (centerPoint.x / 900) * viewBox.width;
     const worldY = viewBox.y + (centerPoint.y / 450) * viewBox.height;
     const newWidth = 900 / newZoom;
@@ -228,7 +232,7 @@ export const GameMap = ({
 
   const zoomOut = () => {
     const centerPoint = { x: 450, y: 225 };
-    const newZoom = Math.max(0.5, Math.min(3, zoom * 0.9));
+    const newZoom = clampZoom(zoom * 0.85); // 15% decrement
     const worldX = viewBox.x + (centerPoint.x / 900) * viewBox.width;
     const worldY = viewBox.y + (centerPoint.y / 450) * viewBox.height;
     const newWidth = 900 / newZoom;
@@ -248,22 +252,109 @@ export const GameMap = ({
     // You can add additional logic here if needed
   };
 
+  // At the top with other constants
+  const ZOOM_CONFIG = {
+    MIN: 0.5,
+    MAX: 2.2,
+    DEFAULT: 1.0,
+    WHEEL_DELTA: 0.08,
+    PINCH_DAMPENING: 0.3,
+  };
+
+  // Helper to clamp zoom
+  const clampZoom = (newZoom: number) => {
+    return Math.max(ZOOM_CONFIG.MIN, Math.min(ZOOM_CONFIG.MAX, newZoom));
+  };
+
   return (
-    <div className="relative w-full h-full bg-gradient-to-br from-zinc-900 via-stone-900 to-amber-950 rounded-lg overflow-hidden border-2 border-amber-900/40 shadow-[inset_0_2px_20px_rgba(120,53,15,0.3)]">
-      {/* 🎨 FALLOUT ZOOM CONTROLS - Rusty buttons */}
-      <div className="absolute top-4 right-4 z-10 flex flex-col space-y-2">
+    <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-stone-900 to-amber-950 rounded-lg overflow-hidden border-2 border-amber-900/40 shadow-[inset_0_2px_20px_rgba(120,53,15,0.3)]">
+      
+      {/* 🎨 {/* 🎨 FALLOUT ZOOM CONTROLS - Vertical slider */}
+      <div className="absolute top-4 right-4 z-10 flex flex-col items-center space-y-2">
+        {/* Zoom In Button */}
         <button
           onClick={zoomIn}
           className="bg-gradient-to-br from-amber-800/90 to-orange-900/90 hover:from-amber-700 hover:to-orange-800 text-amber-100 w-10 h-10 rounded border-2 border-amber-600/50 flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.5)] transition-all font-bold"
         >
           +
         </button>
+        
+        {/* Vertical Zoom Slider */}
+        <div className="relative w-10 h-32 bg-gradient-to-b from-stone-900/90 to-amber-950/90 border-2 border-amber-600/50 rounded-lg shadow-[0_4px_10px_rgba(0,0,0,0.5)] flex items-center justify-center">
+          {/* Track background */}
+          <div className="absolute inset-y-2 w-2 bg-amber-950/50 rounded-full" />
+          
+          {/* Filled track */}
+          <div 
+            className="absolute bottom-2 w-2 bg-gradient-to-t from-amber-600 to-amber-500 rounded-full transition-all"
+            style={{ 
+              height: `${((zoom - ZOOM_CONFIG.MIN) / (ZOOM_CONFIG.MAX - ZOOM_CONFIG.MIN)) * (128 - 16)}px` 
+            }}
+          />
+          
+          {/* Slider thumb */}
+          <input
+            type="range"
+            min={ZOOM_CONFIG.MIN}
+            max={ZOOM_CONFIG.MAX}
+            step={0.01}
+            value={zoom}
+            onChange={(e) => {
+              const newZoom = parseFloat(e.target.value);
+              const centerPoint = { x: 450, y: 225 };
+              const worldX = viewBox.x + (centerPoint.x / 900) * viewBox.width;
+              const worldY = viewBox.y + (centerPoint.y / 450) * viewBox.height;
+              const newWidth = 900 / newZoom;
+              const newHeight = 450 / newZoom;
+              setViewBox({
+                x: worldX - (centerPoint.x / 900) * newWidth,
+                y: worldY - (centerPoint.y / 450) * newHeight,
+                width: newWidth,
+                height: newHeight
+              });
+              setZoom(newZoom);
+            }}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+            style={{
+              WebkitAppearance: 'slider-vertical' as any,
+              writingMode: 'bt-lr' as any,
+              appearance: 'slider-vertical' as any
+            }}
+          />
+          
+          {/* Thumb indicator */}
+          <div 
+            className="absolute w-4 h-4 bg-amber-500 border-2 border-amber-200 rounded-full shadow-lg pointer-events-none transition-all"
+            style={{ 
+              bottom: `${((zoom - ZOOM_CONFIG.MIN) / (ZOOM_CONFIG.MAX - ZOOM_CONFIG.MIN)) * (128 - 16) + 4}px`,
+              left: '50%',
+              transform: 'translateX(-50%)'
+            }}
+          />
+          
+          {/* Tick marks */}
+          {[0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((tick) => (
+            <div
+              key={tick}
+              className="absolute w-1 h-0.5 bg-amber-700/50 pointer-events-none"
+              style={{
+                bottom: `${((tick - ZOOM_CONFIG.MIN) / (ZOOM_CONFIG.MAX - ZOOM_CONFIG.MIN)) * (128 - 16) + 6}px`,
+                left: tick === 1.0 ? '2px' : '4px',
+                width: tick === 1.0 ? '6px' : '4px'
+              }}
+            />
+          ))}
+        </div>
+        
+        {/* Zoom Out Button */}
         <button
           onClick={zoomOut}
           className="bg-gradient-to-br from-amber-800/90 to-orange-900/90 hover:from-amber-700 hover:to-orange-800 text-amber-100 w-10 h-10 rounded border-2 border-amber-600/50 flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.5)] transition-all font-bold"
         >
           -
         </button>
+        
+        {/* Reset Button */}
         <button
           onClick={resetView}
           className="bg-gradient-to-br from-amber-800/90 to-orange-900/90 hover:from-amber-700 hover:to-orange-800 text-amber-100 w-10 h-10 rounded border-2 border-amber-600/50 flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.5)] transition-all text-xs"
@@ -272,8 +363,8 @@ export const GameMap = ({
         </button>
       </div>
 
-      {/* 🎨 FALLOUT ZOOM INDICATOR */}
-      <div className="absolute bottom-4 right-4 z-10 bg-gradient-to-br from-amber-900/90 to-orange-950/90 border-2 border-amber-600/40 text-amber-100 px-3 py-1 rounded text-xs font-bold shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+      {/* 🎨 FALLOUT ZOOM INDICATOR - now shows percentage */}
+      <div className="absolute bottom-4 right-4 z-10 bg-gradient-to-br from-amber-900/90 to-orange-950/90 border-2 border-amber-600/40 text-amber-100 px-3 py-1 rounded text-xs font-bold shadow-[0_2px_8px_rgba(0,0,0,0.6)] font-mono">
         {Math.round(zoom * 100)}%
       </div>
 

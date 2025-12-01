@@ -2,7 +2,8 @@
 import { type User, type Organization, db, setupDb } from "@/db";
 import type { AppContext } from "@/worker";
 import { env } from "cloudflare:workers";
-
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimit'
+import { RateLimitScope } from "@/lib/rateLimit";
 let dbInitialized = false;
 
 export async function initializeServices() {
@@ -10,6 +11,35 @@ export async function initializeServices() {
     await setupDb(env);
     dbInitialized = true;
   }
+}
+
+export function isSandboxOrg(request: Request): boolean {
+  const orgSlug = extractOrgFromSubdomain(request);
+  const SANDBOX_ORGS = ['sandbox', 'default', 'test', 'trial'];
+  return SANDBOX_ORGS.includes(orgSlug || '');
+}
+
+export async function rateLimitMiddleware(
+  request: Request,
+  scope: RateLimitScope
+): Promise<Response | null> {
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown'
+  
+  const result = await checkRateLimit(scope, ip)
+  
+  if (!result.allowed) {
+    const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000)
+    
+    return new Response('Rate limit exceeded', {
+      status: 429,
+      headers: {
+        ...getRateLimitHeaders(result),
+        'Retry-After': retryAfter.toString(),
+      }
+    })
+  }
+  
+  return null // Allow request
 }
 
 export function shouldSkipMiddleware(request: Request): boolean {
@@ -46,6 +76,7 @@ export async function setupSessionContext(ctx: AppContext, request: Request) {
     
     try {
       const authInstance = initAuth();
+      console.log('🔍 Request cookies:', request.headers.get('cookie')?.substring(0, 100))
       const session = await authInstance.api.getSession({
         headers: request.headers
       });
@@ -75,11 +106,33 @@ export async function setupOrganizationContext(ctx: AppContext, request: Request
       return;
     }
     
+    // Skip if sandbox (already handled by sandboxMiddleware)
+    const { isSandboxEnvironment } = await import('@/lib/middleware/sandboxMiddleware');
+    if (isSandboxEnvironment(request)) {
+      console.log('🔍 Skipping org context - sandbox already handled');
+      return;
+    }
+    
     const url = new URL(request.url);
     console.log('🔍 Setting up organization context for:', url.pathname);
     
     const orgSlug = extractOrgFromSubdomain(request);
     console.log('🔍 Extracted org slug:', orgSlug, 'from URL:', request.url);
+
+    // Sandbox orgs don't require membership
+    if (isSandboxOrg(request)) {
+      const organization = await db.organization.findUnique({
+        where: { slug: orgSlug }
+      });
+      
+      if (organization) {
+        ctx.organization = organization;
+        ctx.userRole = 'viewer'; // Everyone is a viewer
+        ctx.orgError = null;
+        console.log('✅ Sandbox org - public access granted');
+        return;
+      }
+    }
     
     if (!orgSlug) {
       // No organization context (main domain)

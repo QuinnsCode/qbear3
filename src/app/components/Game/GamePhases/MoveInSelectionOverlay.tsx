@@ -82,8 +82,8 @@ const MoveInSelectionOverlay = ({
   if (!isVisible) return null;
 
   return (
-    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-70 flex items-center justify-center">
-      <div className="bg-white/95 backdrop-blur-lg rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-2xl">
+    <div className="absolute max-h-full inset-0 bg-black/60 backdrop-blur-sm z-70 flex items-center justify-center">
+      <div className="bg-white/95 backdrop-blur-lg rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-2xl overflow-y-scroll">
         
         {/* Victory Header */}
         <div className="text-center mb-6">

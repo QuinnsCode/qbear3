@@ -1059,13 +1059,15 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
   
   const saveGameState = () => {
     try {
+      // ✅ FIXED: Deep clone to avoid reference issues
+      const gameStateCopy = JSON.parse(JSON.stringify(gameState));
+      
       const gameStateToSave = {
-        ...gameState,
+        ...gameStateCopy,  // Use the deep copy
         timestamp: new Date().toISOString(),
         version: "1.0"
       };
       
-      // ✅ OPTIMIZED: No formatting = smaller file size
       const dataStr = JSON.stringify(gameStateToSave);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       
@@ -1074,15 +1076,43 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       link.download = `game-state-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
       link.click();
       
-      // ✅ IMPROVED: Show file size info
       const fileSizeKB = Math.round(dataBlob.size / 1024);
       console.log(`Game state saved successfully (${fileSizeKB}KB)`);
-      
-      // ✅ IMPROVED: User feedback with file info
       alert(`Game state saved successfully!\nFile size: ${fileSizeKB}KB`);
       
     } catch (error) {
       console.error('Failed to save game state:', error);
+      alert('Failed to save game state: ' + error.message);
+    }
+  };
+
+  const saveGameStateCompact = () => {
+    try {
+      // ✅ Deep clone and remove actions array
+      const gameStateCopy = JSON.parse(JSON.stringify(gameState));
+      const { actions, ...essentialState } = gameStateCopy;
+      
+      const gameStateToSave = {
+        ...essentialState,
+        actions: [], // Keep empty array for structure compatibility
+        timestamp: new Date().toISOString(),
+        version: "1.0"
+      };
+      
+      const dataStr = JSON.stringify(gameStateToSave);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(dataBlob);
+      link.download = `game-state-compact-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+      link.click();
+      
+      const fileSizeKB = Math.round(dataBlob.size / 1024);
+      console.log(`Compact game state saved (${fileSizeKB}KB, no history)`);
+      alert(`Compact game state saved!\nFile size: ${fileSizeKB}KB\n(History removed for easier editing)`);
+      
+    } catch (error) {
+      console.error('Failed to save compact game state:', error);
       alert('Failed to save game state: ' + error.message);
     }
   };
@@ -1140,7 +1170,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
             
             // ✅ ENHANCED: Better error handling for server communication
             try {
-              const response = await fetch(`/api/game/${gameId}`, {
+              const response = await fetch(`/__gsync/game/${gameId}`, {
                 method: 'PATCH',
                 headers: {
                   'Content-Type': 'application/json',
@@ -1298,47 +1328,53 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       )}
 
 
-      {/* Top Bar - Z-index 20 */}  
-      <div className="bg-gradient-to-b from-amber-900/85 via-orange-900/80 to-red-900/75 backdrop-blur-sm text-amber-100 p-4 flex items-center justify-between z-20 border-b-2 border-amber-600/60 shadow-[0_4px_20px_rgba(120,53,15,0.4)]">
+      {/* Top Bar - Responsive for both portrait and landscape */}  
+      <div className="bg-gradient-to-b flex-none from-amber-900/85 via-orange-900/80 to-red-900/75 backdrop-blur-sm text-amber-100 p-4 flex items-center justify-between z-20 border-b-2 border-amber-600/60 shadow-[0_4px_20px_rgba(120,53,15,0.4)]">
         <button
           onClick={() => setShowStats(!showStats)}
-          className="p-2 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-800 to-orange-900 hover:from-amber-700 hover:to-orange-800 transition-all shadow-md"
+          className="p-2 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-800 to-orange-900 hover:from-amber-700 hover:to-orange-800 transition-all shadow-md flex-shrink-0"
         >
           <Menu size={20} />
         </button>
         
-        <div className="text-center">
+        {/* Center section - changes layout based on screen height */}
+        <div className="text-center mx-2 flex-1">
           <div className="text-sm opacity-95 font-bold">
             {getPhaseDisplay()}
           </div>
-          <div className={`text-xs px-2 py-1 rounded-full border ${
+          <div className={`text-xs px-2 py-1 rounded-full border inline-block ${
             isMyTurn 
               ? 'bg-lime-700 border-lime-500/50 shadow-[0_0_10px_rgba(132,204,22,0.4)]' 
               : 'bg-yellow-700 border-yellow-500/50'
           }`}>
             {isMyTurn ? 'Your Turn' : `${currentPlayer?.name}'s Turn`}
           </div>
-          {gameState?.status === 'setup' && (
-            <div className="text-xs text-lime-300 mt-1 font-semibold">
-              {getSetupProgress()}
-            </div>
-          )}
           
-          <div className={`text-xs mt-1 font-bold ${isConnected ? 'text-lime-300' : 'text-red-300'}`}>
-            {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+          {/* Status row - stacks in portrait, inline in landscape */}
+          <div className='flex flex-col landscape:flex-row items-center justify-center gap-1 landscape:gap-3 mt-1'>
+            {gameState?.status === 'setup' && (
+              <div className="text-xs text-lime-300 font-semibold whitespace-nowrap">
+                {getSetupProgress()}
+              </div>
+            )}
+            
+            <div className={`text-xs font-bold whitespace-nowrap flex items-center gap-1 ${isConnected ? 'text-lime-300' : 'text-red-300'}`}>
+              <span className={`inline-block w-2 h-2 rounded-full ${isConnected ? 'bg-lime-400' : 'bg-red-400'} animate-pulse`}></span>
+              {isConnected ? 'Connected' : 'Disconnected'}
+            </div>
           </div>
         </div>
 
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className="p-2 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-800 to-orange-900 hover:from-amber-700 hover:to-orange-800 transition-all shadow-md"
+          className="p-2 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-800 to-orange-900 hover:from-amber-700 hover:to-orange-800 transition-all shadow-md flex-shrink-0"
         >
           <Settings size={20} />
         </button>
       </div>
 
       {/* Main Map Area - Z-index 10 */}
-      <div className="flex-1 relative z-10 overflow-hidden">
+      <div className="flex-1 min-h-0 relative z-10 overflow-hidden">
         <GameMap
           gameState={gameState}
           selectedTerritory={selectedTerritory}
@@ -1375,7 +1411,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       )}
 
       {/* ✅ FIXED: Bottom Action Bar - Z-index 20, CLEAR SPACE ABOVE */}
-      <div className="bg-gradient-to-b from-zinc-800/95 via-amber-900/92 to-orange-900/88 backdrop-blur-sm border-t-2 border-amber-600/60 p-4 z-20 shadow-[0_-4px_20px_rgba(120,53,15,0.3)]">
+      <div className="bg-gradient-to-b flex-none from-zinc-800/95 via-amber-900/92 to-orange-900/88 backdrop-blur-sm border-t-2 border-amber-600/60 p-4 z-20 shadow-[0_-4px_20px_rgba(120,53,15,0.3)]">
 
         {gameState?.status === 'setup' ? (
           // 🎨 Setup phase buttons with themed icons
@@ -1582,7 +1618,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
           </div>
         )}
 
-        {/* 🎨 ENHANCED: Action Instructions with themed descriptions */}
+        {/* 🎨 ENHANCED: Action Instructions with themed descriptions
         <div className="mt-3 text-center">
           <div className="text-xs text-amber-200 bg-gradient-to-r from-amber-950/80 to-orange-950/80 border border-amber-700/40 rounded-full px-3 py-2 inline-block shadow-inner font-semibold">
             {gameState?.status === 'setup' ? (
@@ -1610,7 +1646,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
               'Game state unknown'
             )}
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Stats Sidebar - Z-index 50 */}
@@ -1667,7 +1703,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
             </button>
             
             <button 
-              onClick={saveGameState}
+              onClick={saveGameStateCompact}
               className="w-full p-3 text-left bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-green-800"
             >
               💾 Save Game State
@@ -1689,9 +1725,16 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
               📋 Game Rules
             </button>
             
-            <button className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
+            {/* <button className="w-full p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
               🏁 End Game
-            </button>
+            </button> */}
+
+            <a 
+              href={"/sanctum"}
+              className="w-full p-3 text-left bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-green-800"
+            >
+              Back to Sanctum
+            </a>
           </div>
         </div>
       )}

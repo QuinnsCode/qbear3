@@ -1,3 +1,4 @@
+// need location added
 import { GameState, Player, Territory } from '@/app/lib/GameState';
 import { GAME_CONFIG } from '@/app/services/game/gameSetup';
 import { setupNewGame } from '@/app/services/game/gameSetup';

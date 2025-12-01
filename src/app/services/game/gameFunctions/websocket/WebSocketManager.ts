@@ -141,4 +141,26 @@ export class WebSocketManager {
       console.error('Problem message object:', message);
     }
   }
+
+  // ✅ NEW: Close all WebSocket connections (e.g., when game is deleted)
+  closeAll(): void {
+    console.log(`🔌 Closing all WebSocket connections (${this.gameConnections.size} total)`);
+    
+    for (const ws of this.gameConnections) {
+      try {
+        // Send close frame with code 1000 (normal closure) and reason
+        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+          ws.close(1000, 'Game deleted');
+          console.log(`✅ Closed WebSocket connection`);
+        }
+      } catch (error) {
+        console.error(`❌ Failed to close connection:`, error);
+      }
+    }
+    
+    // Clear both maps/sets
+    this.gameConnections.clear();
+    this.wsToPlayer.clear();
+    console.log('✅ All WebSocket connections closed and cleared');
+  }
 }
