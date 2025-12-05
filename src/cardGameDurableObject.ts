@@ -24,6 +24,7 @@ import { CardManager } from '@/app/services/cardGame/managers/CardManager';
 import { ZoneManager } from '@/app/services/cardGame/managers/ZoneManager';
 import { DeckImportManager } from '@/app/services/cardGame/managers/DeckImportManager';
 import { SandboxManager } from '@/app/services/cardGame/managers/SandboxManager';
+import { getStarterDeck } from './app/serverActions/cardGame/starterDecks';
 
 const CURSOR_COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B'];
 
@@ -232,6 +233,52 @@ export class CardGameDO extends DurableObject {
     const existingPlayer = this.gameState.players.find(p => p.id === data.playerId);
     if (existingPlayer) {
       console.log(`Player ${data.playerName} already in game`);
+      
+      // ✅ CHECK: Does this player have a deck?
+      const isSandbox = await this.ctx.storage.get('isSandbox');
+      const hasDeck = existingPlayer.deckList !== undefined;
+      
+      if (isSandbox && !hasDeck) {
+        console.log(`🔄 Existing player ${data.playerName} has no deck - assigning starter deck...`);
+        
+        try {
+          const starterDeck = await getStarterDeck();
+          
+          const cardData = starterDeck.cards.map(card => ({
+            id: card.scryfallId || card.id,
+            name: card.name,
+            image_uris: {
+              small: card.imageUrl,
+              normal: card.imageUrl,
+              large: card.imageUrl,
+            },
+            type_line: card.type || '',
+            mana_cost: card.manaCost || '',
+            colors: card.colors || [],
+            color_identity: card.colors || [],
+            set: '',
+            set_name: '',
+            collector_number: '',
+            rarity: 'common'
+          }));
+          
+          await this.applyAction({
+            type: 'import_deck',
+            playerId: data.playerId,
+            data: {
+              deckListText: '',
+              deckName: starterDeck.name,
+              cardData,
+            }
+          });
+          
+          console.log(`✅ Retroactively assigned deck to ${data.playerName}`);
+          
+        } catch (error) {
+          console.error('❌ Failed to assign deck to existing player:', error);
+        }
+      }
+      
       return this.gameState;
     }
   
@@ -277,30 +324,47 @@ export class CardGameDO extends DurableObject {
       player: newPlayer 
     });
   
-    // AUTO-ASSIGN DECK IN SANDBOX MODE
+    // AUTO-ASSIGN DECK IN SANDBOX MODE (NEW PLAYERS)
     if (isSandbox) {
-      const starterDecks = await this.ctx.storage.get('starterDecks') as any[];
-      const playerIndex = this.gameState.players.length - 1;
+      console.log(`🎴 Auto-assigning Hei Bai starter deck to ${data.playerName}`);
       
-      const assignedDeck = SandboxManager.getDeckForPlayer(playerIndex, starterDecks);
-      
-      if (assignedDeck) {
-        console.log(`🎴 Auto-assigning deck "${assignedDeck.deckName}" to ${data.playerName}`);
+      try {
+        const starterDeck = await getStarterDeck();
+
+        console.log(`📦 Loaded starter deck: ${starterDeck.name} (${starterDeck.totalCards} cards)`);
         
-        const cardData = SandboxManager.buildCardDataForImport(assignedDeck);
+        const cardData = starterDeck.cards.map(card => ({
+          id: card.scryfallId || card.id,
+          name: card.name,
+          image_uris: {
+            small: card.imageUrl,
+            normal: card.imageUrl,
+            large: card.imageUrl,
+          },
+          type_line: card.type || '',
+          mana_cost: card.manaCost || '',
+          colors: card.colors || [],
+          color_identity: card.colors || [],
+          set: '',
+          set_name: '',
+          collector_number: '',
+          rarity: 'common'
+        }));
         
-        // Import deck for this player
         await this.applyAction({
           type: 'import_deck',
           playerId: data.playerId,
           data: {
             deckListText: '',
-            deckName: assignedDeck.deckName,
+            deckName: starterDeck.name,
             cardData,
           }
         });
         
-        console.log(`✅ Auto-imported ${assignedDeck.deckName} for ${data.playerName}`);
+        console.log(`✅ Auto-imported ${starterDeck.name} for ${data.playerName}`);
+        
+      } catch (error) {
+        console.error('❌ Failed to auto-import starter deck:', error);
       }
     }
   
@@ -311,17 +375,27 @@ export class CardGameDO extends DurableObject {
     if (!this.gameState) {
       await this.getState();
     }
-
+  
     if (!this.gameState) {
       throw new Error('No game state found');
     }
-
-    // CHECK PERMISSIONS BEFORE PROCESSING (for sandbox shared battlefield)
-    if (action.type === 'move_card' || action.type === 'move_card_position') {
+  
+    // ✅ CHECK PERMISSIONS BEFORE PROCESSING (for sandbox shared battlefield)
+    const actionsRequiringPermission = [
+      'move_card',
+      'move_card_position',
+      'tap_card',          // ✅ ADD THIS
+      'untap_card',        // ✅ ADD THIS
+      'flip_card',         // ✅ ADD THIS
+      'rotate_card',       // ✅ ADD THIS
+    ];
+    
+    if (actionsRequiringPermission.includes(action.type)) {
       const isSandbox = await this.ctx.storage.get('isSandbox') as boolean;
       const sandboxConfig = await this.ctx.storage.get('sandboxConfig');
       
-      const canMove = SandboxManager.canPlayerMoveCard(
+      // ✅ Use the new canPlayerInteractWithCard method
+      const canInteract = SandboxManager.canPlayerInteractWithCard(
         action.playerId, 
         action.data.cardId, 
         this.gameState,
@@ -329,21 +403,21 @@ export class CardGameDO extends DurableObject {
         sandboxConfig
       );
       
-      if (!canMove) {
-        console.warn(`❌ Player ${action.playerId} cannot move card ${action.data.cardId}`);
-        return this.gameState; // Reject - return unchanged state
+      if (!canInteract) {
+        console.warn(`❌ Player ${action.playerId} cannot ${action.type} card ${action.data.cardId}`);
+        return this.gameState; // ✅ Reject - return unchanged state
       }
     }
-
+  
     console.log(`🎬 Applying action: ${action.type} from ${action.playerId}`);
     console.log(`🎬 Action data:`, action.data);
-
+  
     const gameAction: CardGameAction = {
       ...action,
       id: crypto.randomUUID(),
       timestamp: new Date(),
     };
-
+  
     const newState = this.reduceAction(this.gameState, gameAction);
     
     if (newState === this.gameState) {
@@ -357,7 +431,7 @@ export class CardGameDO extends DurableObject {
       this.gameState.actions.push(gameAction);
       this.gameState.currentActionIndex = this.gameState.actions.length - 1;
       this.gameState.updatedAt = new Date();
-
+  
       await this.persist();
       
       this.wsManager.broadcast({ 
@@ -365,7 +439,7 @@ export class CardGameDO extends DurableObject {
         state: this.gameState 
       });
     }
-
+  
     return this.gameState;
   }
 

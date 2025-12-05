@@ -14,6 +14,7 @@ import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameAction
 import { createDeck, getUserDecks, deleteDeck, updateDeckFromEditor } from '@/app/serverActions/deckBuilder/deckActions'
 import type { Deck, DeckCard } from '@/app/types/Deck'
 import MobileGameLayout from '../Mobile/MobileGameLayout'
+import CardGameMenu from '../CardGameMenu'
 
 interface Props {
   gameState: CardGameState
@@ -22,6 +23,7 @@ interface Props {
   gameName: string
   spectatorMode?: boolean
   onBattlefieldScroll?: null
+  isSandbox?: boolean
 }
 
 export default function CardGameBoard({ 
@@ -30,8 +32,11 @@ export default function CardGameBoard({
   cardGameId,
   gameName,
   spectatorMode = false,
-  onBattlefieldScroll
+  onBattlefieldScroll,
+  isSandbox = false
 }: Props) {
+
+  console.log('Spectator mode: ', spectatorMode)
 
   const { 
     isLargeBattlefieldView, 
@@ -274,15 +279,26 @@ export default function CardGameBoard({
   
   return (
     <div className="h-screen w-screen bg-slate-900 flex flex-col relative">
-      
+      {/* Game Menu - Top Right of mobile and desktop! */}
+      {!spectatorMode && (
+        <div className="absolute top-2 right-2 z-30">
+          <CardGameMenu
+            cardGameId={cardGameId}
+            gameName={gameName}
+            initialThreadUrl={null}
+            isSandbox={isSandbox}
+          />
+        </div>
+      )}
+
       {/* Mobile Layout */}
       <div className="lg:hidden">
         <MobileGameLayout
+          currentPlayer={currentPlayer || gameState.players[0]}  // Safe fallback
+          spectatorMode={spectatorMode}
           gameState={gameState}
-          currentPlayer={currentPlayer!}
           cardGameId={cardGameId}
           gameName={gameName}
-          spectatorMode={spectatorMode}
           decks={decks}
           userId={currentPlayerId}
           onCreateDeck={handleCreateDeck}
@@ -461,6 +477,8 @@ export default function CardGameBoard({
               onSelectDeck={handleSelectDeck}
               onEditDeck={handleEditDeck}
               onPrefetchDecks={prefetchDecks}
+              spectatorMode={spectatorMode}
+              isSandbox={isSandbox}
             />
           </div>
         )}

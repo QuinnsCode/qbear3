@@ -26,32 +26,50 @@ export default async function GameContent({
   
   let currentPlayer: MTGPlayer | null = initialGameState.players.find(p => p.id === userId) || null
   
-  // app/components/CardGame/GameContent.tsx
-
-  if (isLoggedIn && !currentPlayer && initialGameState.players.length < 4) {
-    console.log('🔍 BEFORE JOIN:');
-    console.log('  - Looking for userId:', userId);
-    console.log('  - Players in game:', initialGameState.players.map(p => `${p.name} (${p.id})`));
+  // ✅ Determine max players based on mode
+  const maxPlayers = isSandbox ? 256 : 4
+  
+  // ✅ Detect user type FIRST (before any logic)
+  const isSpectatorId = userId?.startsWith('spectator-') || userId?.startsWith('spectator_')
+  const isSandboxPlayerId = userId?.startsWith('sandbox-') || userId?.startsWith('sandbox_')
+  
+  // ✅ Spectator mode is ONLY based on user ID prefix
+  const spectatorMode = isSpectatorId
+  
+  // ✅ Auto-join logic: logged-in users OR sandbox players (but NOT spectators)
+  const shouldAutoJoin = 
+    !isSpectatorId && 
+    !currentPlayer && 
+    initialGameState.players.length < maxPlayers && 
+    (isLoggedIn || isSandboxPlayerId)
+  
+  if (shouldAutoJoin) {
+    console.log(`🎮 Auto-joining ${isSandboxPlayerId ? 'sandbox player' : 'user'}:`, { userId, userName });
     
     initialGameState = await joinCardGame(cardGameId, userId, userName);
     
-    console.log('🔍 AFTER JOIN:');
-    console.log('  - Looking for userId:', userId);
-    console.log('  - Players in game:', initialGameState.players.map(p => `${p.name} (${p.id})`));
-    
     currentPlayer = initialGameState.players.find(p => p.id === userId) ?? null
     
-    console.log('🔍 SEARCH RESULT:');
-    console.log('  - Found player?', !!currentPlayer);
     if (currentPlayer) {
-      console.log('  - Player name:', currentPlayer.name);
+      console.log('✅ Successfully joined game as player:', currentPlayer.name);
     } else {
-      console.log('  - ❌ NO MATCH! Searching for:', userId);
-      console.log('  - Available IDs:', initialGameState.players.map(p => p.id));
+      console.error('❌ Join succeeded but player not found in state!');
     }
   }
   
-  const isSpectator = !currentPlayer
+  console.log('🔍 User mode:', {
+    userId,
+    userName,
+    isSandbox,
+    isSandboxPlayerId,
+    isSpectatorId,
+    isLoggedIn,
+    spectatorMode,
+    hasPlayer: !!currentPlayer,
+    playerCount: initialGameState.players.length,
+    maxPlayers,
+    shouldAutoJoin
+  });
   
   // Check for Discord thread on server
   let discordThreadUrl: string | null = null
@@ -66,7 +84,7 @@ export default async function GameContent({
     }
   }
   
-  console.log(`👤 User ${userName} ${isSpectator ? 'spectating' : 'playing in'} game ${cardGameId}`)
+  console.log(`👤 User ${userName} ${spectatorMode ? 'spectating' : 'playing in'} game ${cardGameId}`)
 
   // Build game URL and name (server-side safe)
   const gameName = cardGameId.split('-').map((w: string) => 
@@ -80,8 +98,9 @@ export default async function GameContent({
         cardGameId={cardGameId}
         currentUserId={userId}
         initialState={initialGameState}
-        spectatorMode={isSpectator}
-        discordThreadUrl={discordThreadUrl} // Pass thread URL
+        spectatorMode={spectatorMode}
+        discordThreadUrl={discordThreadUrl}
+        isSandbox={isSandbox}
       />
     </div>
   );

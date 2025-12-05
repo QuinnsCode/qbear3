@@ -13,6 +13,7 @@ interface Props {
   position: { x: number, y: number }
   onClose: () => void
   spectatorMode?: boolean
+  isSandbox?: boolean  // ✅ ADD THIS
 }
 
 export default function CardContextMenu({
@@ -21,7 +22,8 @@ export default function CardContextMenu({
   playerId,
   position,
   onClose,
-  spectatorMode = false
+  spectatorMode = false,
+  isSandbox = false  // ✅ ADD THIS
 }: Props) {
   const menuRef = useRef<HTMLDivElement>(null)
   
@@ -38,8 +40,27 @@ export default function CardContextMenu({
   }, [onClose])
 
   const handleAction = async (action: string) => {
+    // ✅ Block spectators completely (read-only observers)
     if (spectatorMode) {
       alert('Spectators cannot modify cards')
+      onClose()
+      return
+    }
+
+    // ✅ Sandbox chaos mode: Allow battlefield card manipulation by ANYONE
+    const isBattlefieldCard = card.zone === 'battlefield'
+    const isOwnCard = card.ownerId === playerId
+    
+    // ✅ Check ownership for non-battlefield zones
+    if (!isSandbox && !isBattlefieldCard && !isOwnCard) {
+      alert('You can only interact with your own cards in hand/library/graveyard')
+      onClose()
+      return
+    }
+    
+    // ✅ In normal mode (not sandbox), check ownership for ALL zones
+    if (!isSandbox && !isOwnCard) {
+      alert('This is not your card')
       onClose()
       return
     }
@@ -76,6 +97,12 @@ export default function CardContextMenu({
           })
           break
         case 'toHand':
+          // ✅ In sandbox, can only return cards to YOUR hand
+          if (isSandbox && !isOwnCard) {
+            alert('In sandbox mode, you can only return cards to your own hand')
+            onClose()
+            return
+          }
           await applyCardGameAction(cardGameId, {
             type: 'move_card',
             playerId,
@@ -97,6 +124,12 @@ export default function CardContextMenu({
           })
           break
         case 'toLibraryTop':
+          // ✅ In sandbox, can only return cards to YOUR library
+          if (isSandbox && !isOwnCard) {
+            alert('In sandbox mode, you can only return cards to your own library')
+            onClose()
+            return
+          }
           await applyCardGameAction(cardGameId, {
             type: 'move_card',
             playerId,
@@ -104,6 +137,12 @@ export default function CardContextMenu({
           })
           break
         case 'toLibraryBottom':
+          // ✅ In sandbox, can only return cards to YOUR library
+          if (isSandbox && !isOwnCard) {
+            alert('In sandbox mode, you can only return cards to your own library')
+            onClose()
+            return
+          }
           await applyCardGameAction(cardGameId, {
             type: 'move_card',
             playerId,
@@ -144,7 +183,7 @@ export default function CardContextMenu({
 
       {/* Move Actions */}
       <MenuItem onClick={() => handleAction('toHand')}>
-        🃏 To Hand
+        🃏 To Hand {isSandbox && card.ownerId !== playerId ? '(Owner Only)' : ''}
       </MenuItem>
       <MenuItem onClick={() => handleAction('toGraveyard')}>
         🪦 To Graveyard
@@ -156,11 +195,20 @@ export default function CardContextMenu({
       <div className="border-t border-slate-600 my-1" />
       
       <MenuItem onClick={() => handleAction('toLibraryTop')}>
-        📜⬆️ To Library Top
+        📜⬆️ To Library Top {isSandbox && card.ownerId !== playerId ? '(Owner Only)' : ''}
       </MenuItem>
       <MenuItem onClick={() => handleAction('toLibraryBottom')}>
-        📜⬇️ To Library Bottom
+        📜⬇️ To Library Bottom {isSandbox && card.ownerId !== playerId ? '(Owner Only)' : ''}
       </MenuItem>
+      
+      {isSandbox && (
+        <>
+          <div className="border-t border-slate-600 my-1" />
+          <div className="px-2 py-1 text-xs text-purple-400">
+            🎮 Chaos Mode: Battlefield cards are shared!
+          </div>
+        </>
+      )}
     </div>
   )
 }

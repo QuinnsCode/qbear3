@@ -124,7 +124,7 @@ const getVisibleCursors = useCallback((allCursors: Record<string, { x: number, y
         
         {/* Connection Status Indicator */}
         {!spectatorMode && (
-          <div className="flex items-center gap-2 bg-black/50 px-3 py-2 rounded-full">
+          <div className="flex items-center gap-2 bg-black/50 px-3 py-2 mr-2 rounded-full">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
             {/* <span className={`text-sm font-semibold ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
               {isConnected ? 'Connected' : 'Disconnected'}
@@ -177,6 +177,7 @@ const getVisibleCursors = useCallback((allCursors: Record<string, { x: number, y
         currentPlayerId={currentUserId || ''}
         spectatorMode={spectatorMode}
         onBattlefieldScroll={handleBattlefieldScroll}
+        isSandbox={isSandbox}
       />
     </div>
   )

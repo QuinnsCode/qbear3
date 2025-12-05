@@ -59,7 +59,7 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   return (
     <>
       <SanctumStyles />
-      {ctx.user?.id && <NotificationBadgeServer ctx={ctx} />}
+      {/* {ctx.user?.id && <NotificationBadgeServer ctx={ctx} />} */}
       <div className="sanctum-container">
         <div className="ambient-glow" />
 

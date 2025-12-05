@@ -31,6 +31,8 @@ interface Props {
   onSelectDeck?: (deckId: string) => void
   onEditDeck?: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
   onPrefetchDecks?: () => Promise<void>
+  spectatorMode?: boolean
+  isSandbox?: boolean
 }
 
 export default function YourZones({ 
@@ -46,7 +48,9 @@ export default function YourZones({
   onDeleteDeck,
   onSelectDeck,
   onEditDeck,
-  onPrefetchDecks
+  onPrefetchDecks,
+  spectatorMode,
+  isSandbox
 }: Props) {
   const [isImporting, setIsImporting] = useState(false)
   const [isDeckBuilderOpen, setIsDeckBuilderOpen] = useState(false)
@@ -55,6 +59,8 @@ export default function YourZones({
   const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 })
   const [decksLoaded, setDecksLoaded] = useState(false)
   const [isLoadingDecks, setIsLoadingDecks] = useState(false)
+  const [showDrawModal, setShowDrawModal] = useState(false)
+  const [drawCount, setDrawCount] = useState(1)
   
   useEffect(() => {
     if (libraryMenuOpen && libraryButtonRef.current) {
@@ -95,6 +101,7 @@ export default function YourZones({
   
   const handleDrawCards = async (count: number) => {
     setLibraryMenuOpen(false)
+    setShowDrawModal(false)
     try {
       await applyCardGameAction(cardGameId, {
         type: 'draw_cards',
@@ -177,6 +184,12 @@ export default function YourZones({
     }
   }
 
+  const openDrawModal = () => {
+    setLibraryMenuOpen(false)
+    setShowDrawModal(true)
+    setDrawCount(1)
+  }
+
   return (
     <>
       {/* MOBILE LAYOUT */}
@@ -230,6 +243,7 @@ export default function YourZones({
                     e.stopPropagation()
                     setLibraryMenuOpen(!libraryMenuOpen)
                 }}
+                disabled={spectatorMode || isSandbox}
                 className="text-white hover:bg-slate-700 rounded px-2 py-1 text-sm z-10 transition-colors"
                 >
                 ⋯
@@ -272,16 +286,16 @@ export default function YourZones({
                 style={{
                     top: `${menuPosition.top}px`,
                     right: `${menuPosition.right}px`,
-                    maxHeight: 'calc(100vh - 16px)', // ✅ Prevents cutoff
-                    overflowY: 'auto',                 // ✅ Adds scroll
-                    scrollbarWidth: 'thin',            // ✅ Prettier scrollbar
+                    maxHeight: 'calc(100vh - 16px)',
+                    overflowY: 'auto',
+                    scrollbarWidth: 'thin',
                     scrollbarColor: '#475569 #1e293b',
                 }}
                 >
                     <div className="p-2">
                         <button
                         onClick={handleImportDeck}
-                        disabled={isImporting}
+                        disabled={isImporting || spectatorMode}
                         className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm disabled:opacity-50"
                         >
                         📦 Import Deck
@@ -291,6 +305,7 @@ export default function YourZones({
                                 setLibraryMenuOpen(false)
                                 setIsDeckBuilderOpen(true)
                             }}    
+                            disabled={spectatorMode}
                             onMouseEnter={onPrefetchDecks}
                             onTouchStart={onPrefetchDecks}
                             className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
@@ -299,12 +314,18 @@ export default function YourZones({
                         </button>
                         {player.deckList && (
                         <>
-                            <div className="border-t border-slate-600 my-1"></div>
-                            <button
+                          <button
                             onClick={() => handleDrawCards(1)}
                             className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
                             >
                             Draw 1 Card
+                            </button>
+                            <div className="border-t border-slate-600 my-1"></div>
+                            <button
+                            onClick={openDrawModal}
+                            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                            >
+                            {`🎴 Draw X Card(s)`}
                             </button>
                             <button
                             onClick={() => handleDrawCards(7)}
@@ -427,6 +448,7 @@ export default function YourZones({
                   e.stopPropagation()
                   setLibraryMenuOpen(!libraryMenuOpen)
                 }}
+                disabled={spectatorMode || isSandbox}
                 className="text-white hover:bg-slate-700 rounded-full w-8 h-8 flex items-center justify-center text-lg transition-colors"
               >
                 ⋯
@@ -468,16 +490,10 @@ export default function YourZones({
                     <>
                         <div className="border-t border-slate-600 my-1"></div>
                         <button
-                            onClick={() => handleDrawCards(1)}
+                            onClick={openDrawModal}
                             className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
                         >
-                            Draw 1 Card
-                        </button>
-                        <button
-                            onClick={() => handleDrawCards(7)}
-                            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                        >
-                            Draw 7 Cards
+                            🎴 Draw X Cards
                         </button>
                         <div className="border-t border-slate-600 my-1"></div>
                         <button 
@@ -596,6 +612,70 @@ export default function YourZones({
           </button>
         </div>
       </div>
+      
+      {/* Draw X Cards Modal */}
+      {showDrawModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-slate-800 rounded-xl shadow-2xl border-2 border-slate-600 p-6 w-80">
+            <h3 className="text-white text-xl font-bold mb-4">Draw Cards</h3>
+            
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <button
+                onClick={() => setDrawCount(Math.max(1, drawCount - 1))}
+                className="w-12 h-12 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-xl transition-colors"
+              >
+                -
+              </button>
+              
+              <input
+                type="number"
+                min="1"
+                max={player.zones.library.length}
+                value={drawCount}
+                onChange={(e) => setDrawCount(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-24 h-12 bg-slate-900 border-2 border-slate-600 rounded-lg text-white text-center text-2xl font-bold focus:outline-none focus:border-blue-500"
+              />
+              
+              <button
+                onClick={() => setDrawCount(Math.min(player.zones.library.length, drawCount + 1))}
+                className="w-12 h-12 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-xl transition-colors"
+              >
+                +
+              </button>
+            </div>
+            
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setDrawCount(Math.min(player.zones.library.length, drawCount + 5))}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-lg py-2 font-semibold transition-colors"
+              >
+                +5
+              </button>
+              <button
+                onClick={() => setDrawCount(Math.min(player.zones.library.length, drawCount + 10))}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-lg py-2 font-semibold transition-colors"
+              >
+                +10
+              </button>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDrawModal(false)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white rounded-lg py-3 font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDrawCards(drawCount)}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-3 font-bold transition-colors"
+              >
+                Draw {drawCount}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Deck Builder Modal */}
       {isDeckBuilderOpen && onCreateDeck && onDeleteDeck && onSelectDeck && (

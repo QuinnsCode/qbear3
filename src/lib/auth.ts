@@ -7,6 +7,10 @@ import { apiKey } from "better-auth/plugins"
 import { multiSession } from "better-auth/plugins"
 import { env } from "cloudflare:workers";
 import { db } from "@/db";
+import { Resend } from "resend";
+import { getPasswordResetEmailHTML } from "./email/passwordReset";
+
+const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
 export const createAuth = () => {
   return betterAuth({
@@ -18,6 +22,66 @@ export const createAuth = () => {
     emailAndPassword: {  
       enabled: true,
       requireEmailVerification: false,
+      sendResetPassword: async ({ user, url, token }, request) => {
+        // Validate user data exists
+        if (!user?.email) {
+          console.error('❌ sendResetPassword: No user email provided');
+          return;
+        }
+  
+        // Validate URL exists
+        if (!url) {
+          console.error('❌ sendResetPassword: No reset URL provided');
+          return;
+        }
+  
+        // Validate token exists
+        if (!token) {
+          console.error('❌ sendResetPassword: No reset token provided');
+          return;
+        }
+  
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(user.email)) {
+          console.error('❌ sendResetPassword: Invalid email format:', user.email);
+          return;
+        }
+  
+        console.log('📧 Sending password reset email to:', user.email);
+  
+        // Use void to prevent timing attacks (don't await)
+        void resend.emails.send({
+          from: "QNTBR <no-reply@doubledragonsupply.com>",
+          to: [user.email],
+          subject: "Reset Your Password - QNTBR",
+          html: getPasswordResetEmailHTML(url),
+        }).then(() => {
+          console.log('✅ Password reset email sent to:', user.email);
+        }).catch((error) => {
+          console.error('❌ Failed to send password reset email:', error);
+        });
+      },
+      
+      onPasswordReset: async ({ user }, request) => {
+        // Log successful password reset
+        console.log(`✅ Password reset completed for user: ${user.email}`);
+        
+        // Optional: Send confirmation email
+        void resend.emails.send({
+          from: "QNTBR <no-reply@doubledragonsupply.com>",
+          to: [user.email],
+          subject: "Password Changed - QNTBR",
+          html: `
+            <h2>Password Changed</h2>
+            <p>Your password has been successfully changed.</p>
+            <p>If you did not make this change, please contact us immediately.</p>
+            <p>May your draws be legendary,<br>The QNTBR team</p>
+          `,
+        }).catch((error) => {
+          console.error('❌ Failed to send password changed confirmation:', error);
+        });
+      }
     },
     // ADD THIS:
     socialProviders: {

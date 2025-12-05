@@ -7,7 +7,7 @@ import { MenuItem } from "./MenuItem";
 export interface MenuItemConfig {
   label: string;
   icon?: string;
-  onClick: () => void;
+  onClick: () => void | false;  // ✅ Can return false to keep menu open
   disabled?: boolean;
   separator?: boolean;
 }
@@ -133,8 +133,11 @@ export function MenuButton({
               ) : (
                 <MenuItem
                   onClick={() => {
-                    item.onClick();
-                    setIsOpen(false);
+                    const result = item.onClick();
+                    // Only close menu if onClick doesn't return false
+                    if (result !== false) {
+                      setIsOpen(false);
+                    }
                   }}
                 >
                   <div className="flex items-center gap-2 py-1 md:py-0">

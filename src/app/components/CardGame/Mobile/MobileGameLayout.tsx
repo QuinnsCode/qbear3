@@ -23,7 +23,6 @@ interface Props {
   onDeleteDeck?: (deckId: string) => Promise<void>
   onSelectDeck?: (deckId: string) => void
   onEditDeck?: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
-  initialThreadUrl?: string | null // ADD THIS
 }
 
 export default function MobileGameLayout({
@@ -38,7 +37,6 @@ export default function MobileGameLayout({
   onDeleteDeck,
   onSelectDeck,
   onEditDeck,
-  initialThreadUrl // ADD THIS
 }: Props) {
   const [drawerOpen, setDrawerOpen] = useState<'zones' | 'hand' | null>(null)
   const [viewingPlayer, setViewingPlayer] = useState<string>(currentPlayer.id)
@@ -54,16 +52,6 @@ export default function MobileGameLayout({
 
   return (
     <div className="h-screen w-screen bg-slate-900 relative overflow-hidden">
-      {/* Game Menu - Top Right */}
-      {!spectatorMode && (
-        <div className="absolute top-2 right-2 z-30">
-          <CardGameMenu
-            cardGameId={cardGameId}
-            gameName={gameName}
-            initialThreadUrl={initialThreadUrl}
-          />
-        </div>
-      )}
 
       {/* Opponent Bubbles - Top */}
       <div className="absolute top-2 left-2 right-16 z-20 flex gap-2">

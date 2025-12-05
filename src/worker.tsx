@@ -10,7 +10,6 @@ import { cardGameRoutes } from "@/app/pages/cardGame/cardGameRoutes";
 import { realtimeRoutes } from "@/app/pages/realtime/realtimeRoutes";
 import { auth, initAuth } from "@/lib/auth";
 import { type User, type Organization, db, setupDb } from "@/db";
-import HomePage from "@/app/pages/home/HomePage";
 import { 
   initializeServices, 
   setupOrganizationContext, 
@@ -26,15 +25,18 @@ import SanctumPage from "@/app/pages/sanctum/SanctumPage";
 import { createNewGame } from "./app/serverActions/gameRegistry";
 import { createNewCardGame } from "./app/serverActions/cardGame/cardGameRegistry";
 import LoginPage from "./app/pages/user/Login";
-import { isSandboxEnvironment, setupSandboxContext } from "./lib/middleware/sandboxMiddleware";
+import { isSandboxEnvironment, setupSandboxContext, createSandboxCookieHeader } from "./lib/middleware/sandboxMiddleware";
+import LandingPage from "./app/pages/landing/LandingPage";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
 export { GameStateDO } from "./gameDurableObject";
-
 export { CardGameDO } from './cardGameDurableObject'
 
-
+// ============================================
+// 🎮 HARDCODED SANDBOX GAME
+// ============================================
+const SANDBOX_GAME_ID = 'regal-gray-wolf';
 
 export type AppContext = {
   session: any | null;
@@ -105,8 +107,14 @@ export default defineApp([
       const isSandbox = isSandboxEnvironment(request);
       
       if (isSandbox) {
-        // Setup sandbox context with ephemeral user
         await setupSandboxContext(ctx, request);
+        
+        // Set cookie for stable sandbox player ID
+        const sandboxPlayerId = ctx.user?.id;
+        if (sandboxPlayerId) {
+          headers.set('Set-Cookie', createSandboxCookieHeader(sandboxPlayerId));
+        }
+        
         return; // Skip normal auth flow
       }
       
@@ -124,8 +132,11 @@ export default defineApp([
           !request.url.includes('/api/') && 
           !request.url.includes('/__realtime') &&
           !request.url.includes('/__gsync') &&
+          !request.url.includes('/__cgsync') &&
           !request.url.includes('/user/') &&
-          !request.url.includes('/orgs/new')) {
+          !request.url.includes('/orgs/new') &&
+          !request.url.includes('/sanctum')
+        ) {
 
         const url = new URL(request.url);
         
@@ -192,14 +203,14 @@ export default defineApp([
   // API ROUTES - All API endpoints
   prefix("/api", [
     route("/debug/cardgame/:gameId", async ({ params, ctx }) => {
-      if (!env.CARD_GAME_STATE_DO) {  // ✅ CARD_GAME_STATE_DO
+      if (!env.CARD_GAME_STATE_DO) {
         return Response.json({ error: "Card Game DO not found" });
       }
     
       const gameId = params.gameId;
       
       try {
-        const id = env.CARD_GAME_STATE_DO.idFromName(gameId);  // ✅ CARD_GAME
+        const id = env.CARD_GAME_STATE_DO.idFromName(gameId);
         const stub = env.CARD_GAME_STATE_DO.get(id);
         
         const response = await stub.fetch(new Request('https://fake-host/', {
@@ -229,9 +240,8 @@ export default defineApp([
         });
       }
     }),
+    
     route("/auth/*", async ({ request }) => {
-
-      //some catchers for signup auth gotchas
       try {
         // Check if this is a signup request and verify Turnstile
         if (request.url.includes('/sign-up') && request.method === 'POST') {
@@ -252,8 +262,8 @@ export default defineApp([
           }
         }
         
-        await initializeServices(); // Sets up db
-        const authInstance = initAuth(); // Now creates auth with valid db
+        await initializeServices();
+        const authInstance = initAuth();
         
         const response = await authInstance.handler(request);
         return response;
@@ -391,7 +401,6 @@ export default defineApp([
   }),
 
   // FRONTEND ROUTES
-  // FRONTEND ROUTES - Fixed order
   render(Document, [
     route("/org-not-found", ({ request }) => {
       const url = new URL(request.url);
@@ -417,27 +426,22 @@ export default defineApp([
       );
     }),
 
-    // SPECIFIC ROUTES FIRST - before the root route
-    route("/landing", LoginPage),
-    // route("/admin", AdminPage),
-    // route("/orgs/new", CreateOrgPage),
-    route("/sanctum", SanctumPage),  // MOVED UP - must be before root route
+    // SPECIFIC ROUTES FIRST
+    // FIND THE /sanctum ROUTE AND ADD THIS CHECK AT THE TOP:
+    route("/sanctum", SanctumPage),
+
     
     prefix("/user", userRoutes),
     
-    // Add static content routes like changelog, about, legal, terms, privacy
+    // Static content routes
     ...staticRoutes,
 
-    //for now this is our board game
+    // Game routes
     route("/game", async ({ request }) => {
-      // Get org slug from subdomain
       const orgSlug = extractOrgFromSubdomain(request) || 'default';
-      
-      // Create new game and register in KV
       const result = await createNewGame(orgSlug);
       
       if (!result.success) {
-        // Redirect to sanctum with error
         return new Response(null, {
           status: 302,
           headers: { 
@@ -446,7 +450,6 @@ export default defineApp([
         });
       }
       
-      // Redirect to the new game
       return new Response(null, {
         status: 302,
         headers: { Location: `/game/${result.gameId}` }
@@ -454,15 +457,40 @@ export default defineApp([
     }),
     route("/game/:gameId", GamePage),
 
-    //for now this is our virtual table top card game
+    // ============================================
+    // 🎮 CARD GAME ROUTES - SANDBOX HARDCODED
+    // ============================================
     route("/cardGame", async ({ request, ctx }) => {
       const isSandbox = isSandboxEnvironment(request);
-      const orgSlug = isSandbox ? 'sandbox' : (extractOrgFromSubdomain(request) || 'default');
+      
+      // ✅ SANDBOX: Use existing createOrGetSandboxGame()
+      if (isSandbox) {
+        const { createOrGetSandboxGame } = await import('./app/serverActions/cardGame/cardGameRegistry');
+        const result = await createOrGetSandboxGame();
+        
+        if (!result.success) {
+          return new Response(null, {
+            status: 302,
+            headers: { 
+              Location: `/sanctum?error=${encodeURIComponent(result.error || 'Failed to get sandbox game')}`
+            }
+          });
+        }
+        
+        // Redirect to the hardcoded game
+        return new Response(null, {
+          status: 302,
+          headers: { Location: `/cardGame/${result.cardGameId}` }
+        });
+      }
+      
+      // ✅ NORMAL: Create new org game (keep existing code)
+      const orgSlug = extractOrgFromSubdomain(request) || 'default';
       
       const result = await createNewCardGame(orgSlug, {
-        creatorUserId: isSandbox ? undefined : ctx.user?.id,
-        isSandbox,
-        maxPlayers: isSandbox ? 256 : 8,
+        creatorUserId: ctx.user?.id,
+        isSandbox: false,
+        maxPlayers: 8,
       });
       
       if (!result.success) {
@@ -479,8 +507,8 @@ export default defineApp([
         headers: { Location: `/cardGame/${result.cardGameId}` }
       });
     }),
-    route("/cardGame/:cardGameId", CardGamePage),
     
+    route("/cardGame/:cardGameId", CardGamePage),
 
     // ROOT ROUTE - AFTER all specific routes
     route("/", [
@@ -498,27 +526,22 @@ export default defineApp([
           return;
         }
 
-        // CHECK FOR SANDBOX FIRST
+        // ✅ SANDBOX: Redirect to /cardGame (which handles hardcoded game)
         if (isSandboxEnvironment(request)) {
-          // Sandbox users go directly to sanctum
           return new Response(null, {
             status: 302,
-            headers: { Location: "/sanctum" },
+            headers: { Location: "/cardGame" },
           });
         }
         
         const orgSlug = extractOrgFromSubdomain(request);
         
-        // MAIN DOMAIN LOGIC (qntbr.com)
+        // ✅ MAIN DOMAIN: Show landing page
         if (!orgSlug) {
-          // For main domain, always go to landing page
-          return new Response(null, {
-            status: 302,
-            headers: { Location: "/user/login" },
-          });
+          return; // Fall through to LandingPage
         }
         
-        // SUBDOMAIN LOGIC (org.qntbr.com) - but NOT sandbox
+        // ✅ ORG SUBDOMAIN: Handle based on auth
         if (ctx.orgError) {
           return; // Let middleware handle redirects
         }
@@ -539,7 +562,7 @@ export default defineApp([
           });
         }
       },
-      HomePage,
+      LandingPage,  // ✅ Changed from HomePage (if it was HomePage before)
     ]),
 
     // CATCH-ALL ROUTE - Redirect unknown paths to home
@@ -550,6 +573,7 @@ export default defineApp([
       if (url.pathname.startsWith('/api/') || 
           url.pathname.startsWith('/__realtime') ||
           url.pathname.startsWith('/__gsync') ||
+          url.pathname.startsWith('/__cgsync') ||
           url.pathname.startsWith('/webhooks/')) {
         return;
       }

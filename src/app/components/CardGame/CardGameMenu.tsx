@@ -10,6 +10,7 @@ interface Props {
   gameName: string
   initialThreadUrl?: string | null
   className?: string
+  isSandbox?: boolean
 }
 
 export default function CardGameMenu({ 
@@ -24,20 +25,34 @@ export default function CardGameMenu({
   const [creatingThread, setCreatingThread] = useState(false)
   const [discordError, setDiscordError] = useState<string | null>(null)
 
-  const handleRestartClick = async () => {
+  const handleRestartClick = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    e?.preventDefault()
+    
+    console.log('Restart clicked, count:', restartClickCount)
+    
     if (restartClickCount === 0) {
+      console.log('First click - showing confirmation')
       setRestartClickCount(1)
       setTimeout(() => setRestartClickCount(0), 3000)
+      return false  // ✅ Keep menu open for confirmation
     } else if (restartClickCount === 1) {
+      console.log('Second click - restarting game')
       setIsRestarting(true)
-      try {
-        await restartCardGame(cardGameId)
-        setRestartClickCount(0)
-      } catch (error) {
-        console.error('Failed to restart game:', error)
-        setIsRestarting(false)
-        setRestartClickCount(0)
-      }
+      
+      restartCardGame(cardGameId)
+        .then(() => {
+          console.log('Restart successful, reloading page')
+          window.location.reload()
+        })
+        .catch((error) => {
+          console.error('Failed to restart game:', error)
+          alert('Failed to restart game. Please try again.')
+          setIsRestarting(false)
+          setRestartClickCount(0)
+        })
+      
+      // Menu will close automatically since we don't return false
     }
   }
 
@@ -95,7 +110,7 @@ export default function CardGameMenu({
   const getRestartLabel = () => {
     if (isRestarting) return 'Restarting...'
     if (restartClickCount === 1) return '⚠️ Are You Sure?'
-    return 'Restart Game'
+    return 'Restart Card Game'
   }
 
   const getDiscordLabel = () => {
@@ -150,9 +165,9 @@ export default function CardGameMenu({
     {
       label: getRestartLabel(),
       icon: restartClickCount === 1 ? '⚠️' : '🔄',
-      onClick: handleRestartClick,
+      onClick: (e) => handleRestartClick(e), // Pass the event
       disabled: isRestarting,
-    },
+    }
   ]
 
   return (

@@ -1,7 +1,7 @@
 // @/lib/sandbox/config.ts
 
 export const SANDBOX_CONFIG = {
-  GAME_ID: 'sandbox-shared-game',
+  GAME_ID: 'regal-gray-wolf',
   MAX_PLAYERS: 256,
   SHARED_BATTLEFIELD: true,
   AUTO_ASSIGN_DECK: true,
