@@ -1,8 +1,7 @@
 import styles from "./styles.css?url";
 
-export const Document: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => (
+export function Document({ children }: { children: React.ReactNode }) {
+  return (
   <html lang="en">
     <head>
       <meta charSet="utf-8" />
@@ -28,4 +27,5 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
       />
     </body>
   </html>
-);
+  )
+};

@@ -7,6 +7,7 @@ import { parseDeckList } from '@/app/lib/cardGame/deckListParser'
 import { getCardsByIdentifiers } from '@/app/serverActions/cardData/cardDataActions'
 import type { Deck, DeckCard } from '@/app/types/Deck'
 import { migrateDeck, needsMigration, CURRENT_DECK_VERSION } from '@/app/types/Deck'
+import { ScryfallCard } from "@/app/services/cardGame/CardGameState"
 
 /**
  * KV Key structure:
@@ -17,6 +18,140 @@ import { migrateDeck, needsMigration, CURRENT_DECK_VERSION } from '@/app/types/D
  */
 
 const DECK_CACHE_TTL = 60 * 60 * 24 * 90 // 90 days in seconds
+
+
+/**
+ * Parse deck list and fetch card data from Scryfall
+ * Shared logic extracted from createDeck() - no KV storage
+ * 
+ * @returns Parsed deck cards with full Scryfall data
+ */
+// Replace parseDeckAndFetchCards() in deckActions.ts with this:
+
+export async function parseDeckAndFetchCards(deckListText: string) {
+  try {
+    // 1. Parse the deck list
+    const parseResult = parseDeckList(deckListText)
+    
+    if (parseResult.errors.length > 0) {
+      return {
+        success: false as const,
+        errors: parseResult.errors,
+      }
+    }
+
+    if (parseResult.cards.length > 225) {
+      return {
+        success: false as const,
+        errors: [`Deck too large: ${parseResult.cards.length} cards. Maximum is 225 cards.`],
+      }
+    }
+
+    console.log(`[parseDeckAndFetchCards] Parsing deck with ${parseResult.cards.length} unique cards`)
+
+    // 2. Add commander to cards list if not already present
+    let cardsWithCommander = [...parseResult.cards];
+    
+    if (parseResult.commander) {
+      const commanderInList = parseResult.cards.some(c => 
+        c.name.toLowerCase() === parseResult.commander?.toLowerCase()
+      );
+      
+      if (!commanderInList) {
+        cardsWithCommander = [
+          { name: parseResult.commander, quantity: 1 },
+          ...parseResult.cards
+        ];
+        console.log(`[parseDeckAndFetchCards] Added commander "${parseResult.commander}" to card list`);
+      }
+    }
+    
+    const uniqueCardNames = [...new Set(cardsWithCommander.map(c => c.name))];
+    
+    if (uniqueCardNames.length === 0) {
+      return {
+        success: false as const,
+        errors: ['No cards found in deck list'],
+      };
+    }
+    
+    const identifiers = uniqueCardNames.map(name => ({ name }));
+    
+    console.log(`[parseDeckAndFetchCards] Fetching ${uniqueCardNames.length} unique cards from Scryfall`);
+
+    // 3. Fetch card data (with KV caching)
+    const fetchResult = await getCardsByIdentifiers(identifiers)
+    
+    if (!fetchResult.success) {
+      return {
+        success: false as const,
+        errors: ['Failed to fetch cards: ' + fetchResult.error],
+      }
+    }
+
+    console.log(`[parseDeckAndFetchCards] Fetched ${fetchResult.cards.length}/${uniqueCardNames.length} cards`);
+
+    // 4. Create lookup map
+    const cardLookup = new Map(
+      fetchResult.cards.map(card => [card.name.toLowerCase(), card])
+    )
+
+    // 5. Convert CardData to ScryfallCard format and expand quantities
+    const scryfallCards: ScryfallCard[] = []
+    
+    for (const { name, quantity } of cardsWithCommander) {
+      const cardData = cardLookup.get(name.toLowerCase())
+      
+      if (!cardData) {
+        console.warn(`[parseDeckAndFetchCards] Card not found: ${name}`)
+        continue
+      }
+
+      // Convert CardData (camelCase) to ScryfallCard (snake_case)
+      const scryfallCard: ScryfallCard = {
+        id: cardData.id,
+        name: cardData.name,
+        mana_cost: cardData.manaCost,
+        type_line: cardData.typeLine,
+        oracle_text: cardData.oracleText,
+        power: cardData.power,
+        toughness: cardData.toughness,
+        colors: cardData.colors,
+        color_identity: cardData.colorIdentity,
+        image_uris: cardData.imageUris ? {
+          small: cardData.imageUris.small,
+          normal: cardData.imageUris.normal,
+          large: cardData.imageUris.large,
+          art_crop: cardData.imageUris.artCrop,
+        } : undefined,
+        set: cardData.setCode,
+        set_name: cardData.setName,
+        collector_number: cardData.collectorNumber,
+        rarity: cardData.rarity,
+        legalities: cardData.legalities,
+      }
+
+      // Add quantity copies
+      for (let i = 0; i < quantity; i++) {
+        scryfallCards.push(scryfallCard)
+      }
+    }
+
+    return {
+      success: true as const,
+      cards: scryfallCards, // Now returns ScryfallCard[] instead of DeckCard[]
+      commander: parseResult.commander,
+      totalCards: scryfallCards.length,
+    }
+  } catch (error) {
+    console.error('[parseDeckAndFetchCards] Error:', error)
+    return {
+      success: false as const,
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
+    }
+  }
+}
+
 
 /**
  * Create a new deck from a text deck list - OPTIMIZED VERSION
@@ -29,127 +164,37 @@ const DECK_CACHE_TTL = 60 * 60 * 24 * 90 // 90 days in seconds
  * 
  * Performance: 5-10x faster than individual card fetches!
  */
+
+//now uses parseDeckAndFetchCards
 export async function createDeck(
   userId: string,
   deckName: string,
   deckListText: string
 ) {
   try {
-    // 1. Parse the deck list
-    const parseResult = parseDeckList(deckListText)
-    
-    if (parseResult.errors.length > 0) {
-      return {
-        success: false,
-        errors: parseResult.errors,
-      }
-    }
-
-    // Safety limit: max 225 cards
-    if (parseResult.cards.length > 225) {
-      return {
-        success: false,
-        errors: [`Deck too large: ${parseResult.cards.length} cards. Maximum is 225 cards.`],
-      }
-    }
-
-    console.log(`[DeckBuilder] Creating deck "${deckName}" with ${parseResult.cards.length} unique cards`)
     const startTime = Date.now()
-
-    // 2. Extract unique card names and create identifiers
-    // IMPORTANT: Add commander to cards list if not already present
-    let cardsWithCommander = [...parseResult.cards];
     
-    if (parseResult.commander) {
-      const commanderInList = parseResult.cards.some(c => 
-        c.name.toLowerCase() === parseResult.commander?.toLowerCase()
-      );
-      
-      if (!commanderInList) {
-        // Commander is specified but not in the card list - add it
-        cardsWithCommander = [
-          { name: parseResult.commander, quantity: 1 },
-          ...parseResult.cards
-        ];
-        console.log(`[DeckBuilder] Added commander "${parseResult.commander}" to card list`);
-      }
+    // Use extracted helper
+    const parseAndFetchResult = await parseDeckAndFetchCards(deckListText)
+    
+    if (!parseAndFetchResult.success) {
+      return parseAndFetchResult // Return errors
     }
     
-    const uniqueCardNames = [...new Set(cardsWithCommander.map(c => c.name))];
-    
-    // Validate we have cards to fetch
-    if (uniqueCardNames.length === 0) {
-      return {
-        success: false,
-        errors: ['No cards found in deck list'],
-      };
-    }
-    
-    const identifiers = uniqueCardNames.map(name => ({ name }));
-    
-    console.log(`[DeckBuilder] Fetching ${uniqueCardNames.length} unique cards (${cardsWithCommander.length} total with quantities)`);
-    
-    console.log(`[DeckBuilder] Fetching ${uniqueCardNames.length} unique cards via CardDataService (with cache + batching)`)
+    const { cards: deckCards, commander, totalCards } = parseAndFetchResult
 
-    // 3. Bulk fetch using existing CardDataService
-    // This automatically:
-    // - Checks KV cache first (30-day TTL)
-    // - Batches uncached cards (75 per request to Scryfall)
-    // - Caches all fetched cards for future use
-    const fetchResult = await getCardsByIdentifiers(identifiers)
-    
-    if (!fetchResult.success) {
-      return {
-        success: false,
-        errors: ['Failed to fetch cards: ' + fetchResult.error],
-      }
-    }
+    console.log(`[DeckBuilder] Creating deck "${deckName}" with ${deckCards.length} unique cards`)
 
-    const fetchedCards = fetchResult.cards
-    const fetchTime = Date.now() - startTime
-    
-    console.log(`[DeckBuilder] Fetched ${fetchedCards.length}/${uniqueCardNames.length} cards in ${fetchTime}ms`)
-    console.log(`[DeckBuilder] Cache efficiency: Check CardDataService logs above for hits/misses`)
-
-    // 4. Create a lookup map for quick access
-    const cardLookup = new Map(
-      fetchedCards.map(card => [card.name.toLowerCase(), card])
-    )
-
-    // 5. Map parsed cards to deck cards with quantities
-    const deckCards: DeckCard[] = cardsWithCommander.map(({ name, quantity }) => {
-      const cardData = cardLookup.get(name.toLowerCase())
-      
-      if (!cardData) {
-        console.warn(`[DeckBuilder] Card not found: ${name}`)
-      }
-
-      return {
-        id: cardData?.id || `temp-${name}`,
-        name: name, // Use original name from deck list
-        quantity,
-        scryfallId: cardData?.id,
-        imageUrl: cardData?.imageUris?.normal || cardData?.imageUris?.small || '',
-        type: cardData?.typeLine || '',
-        manaCost: cardData?.manaCost || '',
-        colors: cardData?.colors || [],
-        isCommander: name === parseResult.commander,
-      }
-    })
-
-    // 6. Get commander card for deck metadata
+    // Get commander card for deck metadata
     const commanderCard = deckCards.find(c => c.isCommander)
     const colors = commanderCard?.colors || []
 
-    // 7. Calculate total cards
-    const totalCards = deckCards.reduce((sum, card) => sum + card.quantity, 0)
-
-    // 8. Create deck object
+    // Create deck object
     const deck: Deck = {
       version: CURRENT_DECK_VERSION,
       id: `deck-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: deckName,
-      commander: parseResult.commander || 'Unknown Commander',
+      commander: commander || 'Unknown Commander',
       commanderImageUrl: commanderCard?.imageUrl,
       colors,
       cards: deckCards,
@@ -158,7 +203,7 @@ export async function createDeck(
       updatedAt: Date.now(),
     }
 
-    // 9. Store deck in KV with 90-day expiration
+    // Store deck in KV
     if (!env?.DECKS_KV) {
       throw new Error('DECKS_KV binding not found')
     }
@@ -178,7 +223,7 @@ export async function createDeck(
       }
     )
     
-    // Update user's deck list (keep max 50 decks)
+    // Update user's deck list
     const deckListKey = `deck:${userId}:list`
     const existingListJson = await env.DECKS_KV.get(deckListKey)
     const existingList: string[] = existingListJson ? JSON.parse(existingListJson) : []
@@ -193,8 +238,7 @@ export async function createDeck(
     )
 
     const totalTime = Date.now() - startTime
-    console.log(`[DeckBuilder] ✅ Created deck "${deckName}" in ${totalTime}ms (${(totalTime / 1000).toFixed(2)}s)`)
-    console.log(`[DeckBuilder] Total: ${totalCards} cards, Unique: ${uniqueCardNames.length}, Found: ${fetchedCards.length}`)
+    console.log(`[DeckBuilder] ✅ Created deck "${deckName}" in ${totalTime}ms`)
 
     // Trigger realtime update
     if (env?.REALTIME_DURABLE_OBJECT) {
@@ -208,10 +252,8 @@ export async function createDeck(
       success: true,
       deck,
       stats: {
-        totalTime: totalTime,
-        fetchTime: fetchTime,
-        cardsFound: fetchedCards.length,
-        cardsRequested: uniqueCardNames.length,
+        totalTime,
+        cardsFound: deckCards.length,
       }
     }
   } catch (error) {

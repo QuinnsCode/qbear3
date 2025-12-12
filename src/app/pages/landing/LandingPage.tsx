@@ -62,7 +62,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
   const userOrg = ctx.organization?.slug;
   
   // Generate URLs based on environment
-  const sandboxUrl = getDomainUrl('sandbox', '/sanctum', request);
+  const sandboxUrl = getDomainUrl('sandbox', '/cardGame/regal-gray-wolf', request);
   const orgUrl = userOrg ? getDomainUrl(userOrg, '/sanctum', request) : null;
 
   return (
@@ -74,7 +74,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           <a href="/" className="flex items-center space-x-2">
              <div className="text-3xl text-amber-400">🛡️</div>
              <FantasyTitle size="sm" className="!text-white tracking-widest">
-               THE SANCTUM VTT
+               QNTBR
              </FantasyTitle>
           </a>
           

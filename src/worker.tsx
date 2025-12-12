@@ -4,7 +4,7 @@ import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
-import { staticRoutes } from "@/app/pages/staticRoutes";
+import { changelogRoute, aboutRoute,termsRoute  } from "@/app/pages/staticRoutes";
 import { gameRoutes } from "./app/pages/game/gameRoutes";
 import { cardGameRoutes } from "@/app/pages/cardGame/cardGameRoutes";
 import { realtimeRoutes } from "@/app/pages/realtime/realtimeRoutes";
@@ -22,11 +22,14 @@ import { verifyTurnstileToken } from "@/lib/turnstile";
 import GamePage from "@/app/pages/game/GamePage";
 import CardGamePage from "@/app/pages/cardGame/CardGamePage";
 import SanctumPage from "@/app/pages/sanctum/SanctumPage";
+import OrgNotFoundPage from "@/app/pages/errors/OrgNotFoundPage";
+import NoAccessPage from "@/app/pages/errors/NoAccessPage";
 import { createNewGame } from "./app/serverActions/gameRegistry";
 import { createNewCardGame } from "./app/serverActions/cardGame/cardGameRegistry";
 import LoginPage from "./app/pages/user/Login";
 import { isSandboxEnvironment, setupSandboxContext, createSandboxCookieHeader } from "./lib/middleware/sandboxMiddleware";
 import LandingPage from "./app/pages/landing/LandingPage";
+import { SANDBOX_CONFIG } from "./lib/sandbox/config";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -98,7 +101,7 @@ export default defineApp([
   },
   
   // CONDITIONAL MIDDLEWARE - Only runs for non-auth routes
-  async ({ ctx, request, headers }) => {
+  async ({ ctx, request, response }) => {
     try {
       // Always initialize services
       await initializeServices();
@@ -112,7 +115,7 @@ export default defineApp([
         // Set cookie for stable sandbox player ID
         const sandboxPlayerId = ctx.user?.id;
         if (sandboxPlayerId) {
-          headers.set('Set-Cookie', createSandboxCookieHeader(sandboxPlayerId));
+          response.headers.set('Set-Cookie', createSandboxCookieHeader(sandboxPlayerId));
         }
         
         return; // Skip normal auth flow
@@ -402,29 +405,9 @@ export default defineApp([
 
   // FRONTEND ROUTES
   render(Document, [
-    route("/org-not-found", ({ request }) => {
-      const url = new URL(request.url);
-      const slug = url.searchParams.get('slug');
-      return (
-        <div style={{ padding: '20px', textAlign: 'center' }}>
-          <h1>Organization Not Found</h1>
-          <p>The organization "{slug}" doesn't exist.</p>
-          <a href="/">Return to Home</a>
-        </div>
-      );
-    }),
+    route("/org-not-found", OrgNotFoundPage),
     
-    route("/no-access", ({ request }) => {
-      const url = new URL(request.url);
-      const slug = url.searchParams.get('slug');
-      return (
-        <div style={{ padding: '20px', textAlign: 'center' }}>
-          <h1>Access Denied</h1>
-          <p>You don't have access to the organization "{slug}".</p>
-          <a href="/">Return to Home</a>
-        </div>
-      );
-    }),
+    route("/no-access", NoAccessPage),
 
     // SPECIFIC ROUTES FIRST
     // FIND THE /sanctum ROUTE AND ADD THIS CHECK AT THE TOP:
@@ -434,9 +417,12 @@ export default defineApp([
     prefix("/user", userRoutes),
     
     // Static content routes
-    ...staticRoutes,
+    changelogRoute,
+    aboutRoute,
+    termsRoute,
 
     // Game routes
+    // @ts-expect-error - RWSDK type inference issue
     route("/game", async ({ request }) => {
       const orgSlug = extractOrgFromSubdomain(request) || 'default';
       const result = await createNewGame(orgSlug);
@@ -460,6 +446,7 @@ export default defineApp([
     // ============================================
     // 🎮 CARD GAME ROUTES - SANDBOX HARDCODED
     // ============================================
+    // @ts-expect-error - RWSDK type inference issue
     route("/cardGame", async ({ request, ctx }) => {
       const isSandbox = isSandboxEnvironment(request);
       
@@ -508,7 +495,23 @@ export default defineApp([
       });
     }),
     
-    route("/cardGame/:cardGameId", CardGamePage),
+    route("/cardGame/:cardGameId", [
+      async ({ params, request }) => {
+        const isSandbox = isSandboxEnvironment(request);
+        
+        // ✅ Force sandbox to ONLY use the hardcoded game
+        if (isSandbox && params.cardGameId !== SANDBOX_CONFIG.GAME_ID) {
+          console.log(`🚫 Blocked sandbox access to ${params.cardGameId}, redirecting to ${SANDBOX_CONFIG.GAME_ID}`);
+          return new Response(null, {
+            status: 302,
+            headers: { Location: `/cardGame/${SANDBOX_CONFIG.GAME_ID}` }
+          });
+        }
+        // ✅ Important: return undefined to allow next handler to run
+        return undefined;
+      },
+      CardGamePage
+    ]),
 
     // ROOT ROUTE - AFTER all specific routes
     route("/", [

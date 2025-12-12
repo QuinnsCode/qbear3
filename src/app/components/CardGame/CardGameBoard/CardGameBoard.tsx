@@ -318,49 +318,29 @@ export default function CardGameBoard({
         {/* Row 1: Opponent Panels (hidden in large view) */}
         {!isLargeBattlefieldView && (
           <>
-            {/* Col 1: Three opponents in a row */}
-            <div className="flex gap-2">
-              <div className="flex-1 bg-slate-800 rounded-lg overflow-hidden">
-                {opponents.north ? (
-                  <OpponentPanel
-                    player={opponents.north}
-                    position="north"
-                    isSelected={selectedPlayerId === opponents.north.id}
-                    onClick={() => setSelectedPlayerId(opponents.north!.id)}
-                    onViewZone={(zone) => setViewingZone({ playerId: opponents.north!.id, zone })}
-                  />
-                ) : (
-                  <EmptySlot position="opponent-1" />
-                )}
-              </div>
+            {/* Col 1: Horizontally scrollable opponent panels */}
+            <div className="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800">
+              {/* Show ALL opponents (not just north/west/east) */}
+              {gameState.players
+                .filter(p => p.id !== currentPlayerId)
+                .map((opponent, index) => (
+                  <div key={opponent.id} className="flex-shrink-0 w-80 bg-slate-800 rounded-lg overflow-hidden">
+                    <OpponentPanel
+                      player={opponent}
+                      position={index === 0 ? 'north' : index === 1 ? 'west' : 'east'}
+                      isSelected={selectedPlayerId === opponent.id}
+                      onClick={() => setSelectedPlayerId(opponent.id)}
+                      onViewZone={(zone) => setViewingZone({ playerId: opponent.id, zone })}
+                    />
+                  </div>
+                ))}
               
-              <div className="flex-1 bg-slate-800 rounded-lg overflow-hidden">
-                {opponents.west ? (
-                  <OpponentPanel
-                    player={opponents.west}
-                    position="west"
-                    isSelected={selectedPlayerId === opponents.west.id}
-                    onClick={() => setSelectedPlayerId(opponents.west!.id)}
-                    onViewZone={(zone) => setViewingZone({ playerId: opponents.west!.id, zone })}
-                  />
-                ) : (
-                  <EmptySlot position="opponent-2" />
-                )}
-              </div>
-              
-              <div className="flex-1 bg-slate-800 rounded-lg overflow-hidden">
-                {opponents.east ? (
-                  <OpponentPanel
-                    player={opponents.east}
-                    position="east"
-                    isSelected={selectedPlayerId === opponents.east.id}
-                    onClick={() => setSelectedPlayerId(opponents.east!.id)}
-                    onViewZone={(zone) => setViewingZone({ playerId: opponents.east!.id, zone })}
-                  />
-                ) : (
-                  <EmptySlot position="opponent-3" />
-                )}
-              </div>
+              {/* Show empty slots if less than 3 opponents */}
+              {gameState.players.length < 4 && Array.from({ length: 4 - gameState.players.length }).map((_, i) => (
+                <div key={`empty-${i}`} className="flex-shrink-0 w-80 bg-slate-800 rounded-lg overflow-hidden">
+                  <EmptySlot position={`opponent-${i + gameState.players.length}`} />
+                </div>
+              ))}
             </div>
             
             {/* Col 2: Turn Order */}
@@ -374,28 +354,30 @@ export default function CardGameBoard({
         
         {/* Large View: Compact header bar */}
         {isLargeBattlefieldView && (
-          <div className="col-span-full bg-slate-800 rounded-lg p-3 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {/* Opponent buttons */}
-              {[opponents.north, opponents.west, opponents.east].filter(Boolean).map((opp) => opp && (
-                <button
-                  key={opp.id}
-                  onClick={() => setSelectedPlayerId(opp.id)}
-                  className={`px-3 py-2 rounded-lg font-medium transition-all text-sm ${
-                    selectedPlayerId === opp.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-                >
-                  {opp.name}
-                  <span className="ml-2 text-xs opacity-75">❤️ {opp.lifeTotal}</span>
-                </button>
-              ))}
+          <div className="col-span-full bg-slate-800 rounded-lg p-3 flex items-center justify-between overflow-x-auto">
+            <div className="flex items-center gap-4 min-w-0">
+              {/* Opponent buttons - ALL opponents, scrollable */}
+              {gameState.players
+                .filter(p => p.id !== currentPlayerId)
+                .map((opp) => (
+                  <button
+                    key={opp.id}
+                    onClick={() => setSelectedPlayerId(opp.id)}
+                    className={`flex-shrink-0 px-3 py-2 rounded-lg font-medium transition-all text-sm ${
+                      selectedPlayerId === opp.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    {opp.name}
+                    <span className="ml-2 text-xs opacity-75">❤️ {opp.lifeTotal}</span>
+                  </button>
+                ))}
             </div>
             
             {/* Life total */}
             {currentPlayer && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0 ml-4">
                 <span className="text-slate-400 text-sm">{currentPlayer.name}</span>
                 <span className="text-xl">💚</span>
                 <span className="text-xl font-bold text-green-400">{currentPlayer.lifeTotal}</span>

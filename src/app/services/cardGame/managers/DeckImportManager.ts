@@ -70,7 +70,7 @@ import { parseDeckList } from '@/app/lib/cardGame/deckListParser'
         // UPDATED: Use card data from action if provided, otherwise fall back to player's deck list
         const cardDataSource = action.data.cardData || player.deckList?.cardData || []
         
-        cardDataSource.forEach((cardData: ScryfallCard) => {
+        cardDataSource.forEach((cardData: any) => {
           cardDataMap.set(cardData.id, cardData)
         })
         

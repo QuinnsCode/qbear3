@@ -71,6 +71,7 @@
  * 
  */
 
+//we eventually need to add hibernation for duration charges on cloudflare
 import { WebSocketManager } from '@/app/services/game/gameFunctions/websocket/WebSocketManager';
 import { AiManager } from '@/app/services/game/gameFunctions/ai/AiManager';
 import { NeutralManager } from './app/services/game/gameFunctions/ai/NeutralManager';

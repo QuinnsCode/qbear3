@@ -6,6 +6,8 @@ import DeckCard from './DeckCard'
 import CreateDeckModal from './CreateDeckModal'
 import type { Deck } from '@/app/types/Deck'
 import EditDeckModal from './EditDeckModal'
+import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
+import { SANDBOX_STARTER_DECKS_ARRAY } from '../Sandbox/sandboxStarterDecks'
 
 
 interface Props {
@@ -15,7 +17,25 @@ interface Props {
     onDeleteDeck: (deckId: string) => Promise<void>
     onSelectDeck: (deckId: string) => void
     onEditDeck: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
+    isSandbox?: boolean // ✅ NEW
+    cardGameId?: string // ✅ NEW - needed to import sandbox deck
 }
+
+// ✅ NEW: Convert sandbox starter decks to Deck format
+// ✅ NEW: Convert sandbox starter decks to Deck format
+const SANDBOX_STARTER_DECKS: Deck[] = SANDBOX_STARTER_DECKS_ARRAY.map((deck, index) => ({
+  id: `sandbox-${index}`,
+  name: deck.name,
+  commander: deck.commander,
+  colors: [deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '⚪' ? 'W' : 
+           deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '⚫' ? 'B' :
+           deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '🔴' ? 'R' :
+           deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '🟢' ? 'G' : 'U'] as ('W' | 'U' | 'B' | 'R' | 'G')[],
+  cards: [], // Not needed for display
+  totalCards: 100,
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+}));
 
 export default function DeckBuilder({ 
     decks,
@@ -23,7 +43,9 @@ export default function DeckBuilder({
     onCreateDeck, 
     onDeleteDeck, 
     onSelectDeck,
-    onEditDeck
+    onEditDeck,
+    isSandbox = false, // ✅ NEW
+    cardGameId, // ✅ NEW
   }: Props) {
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -31,9 +53,12 @@ export default function DeckBuilder({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
-  // Filter out any undefined/null decks and apply search
+  // ✅ NEW: In sandbox mode, show starter decks instead of user decks
+  const displayDecks = isSandbox ? SANDBOX_STARTER_DECKS : decks;
+
+  // Filter decks with search
   const filteredDecks = useMemo(() => {
-    const validDecks = (decks || []).filter(deck => deck != null)
+    const validDecks = (displayDecks || []).filter(deck => deck != null)
     
     if (!searchQuery.trim()) return validDecks
     
@@ -43,17 +68,48 @@ export default function DeckBuilder({
       deck.commander?.toLowerCase().includes(query) ||
       deck.colors?.some(color => color.toLowerCase().includes(query))
     )
-  }, [decks, searchQuery])
+  }, [displayDecks, searchQuery])
+
+  const handleSelectDeck = async (deckId: string) => {
+    if (isSandbox && cardGameId) {
+      const deckIndex = parseInt(deckId.replace('sandbox-', ''));
+      const selectedDeck = SANDBOX_STARTER_DECKS_ARRAY[deckIndex];
+      if (!selectedDeck) return;
+  
+      setIsSaving(true);
+      try {
+        await applyCardGameAction(cardGameId, {
+          type: 'import_deck',
+          playerId: userId,
+          data: {
+            deckListText: selectedDeck.deckList,
+            deckName: selectedDeck.name
+          }
+        });
+        
+        // ✅ DON'T call onSelectDeck - it tries to find deck in user's saved decks
+        // Just close the modal by not calling anything - parent will close it
+        console.log(`✅ Imported sandbox deck: ${selectedDeck.name}`);
+      } catch (error) {
+        console.error('Failed to import:', error);
+        alert('Failed to import deck: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      onSelectDeck(deckId);
+    }
+  };
 
   const handleCreateDeck = async (deckList: string, deckName: string) => {
     setIsCreating(true)
     try {
       await onCreateDeck(deckList, deckName)
       setIsCreateModalOpen(false)
-      setSearchQuery('') // Clear search to show new deck
+      setSearchQuery('')
     } catch (error) {
       console.error('Failed to create deck:', error)
-      throw error // Re-throw so modal can handle it
+      throw error
     } finally {
       setIsCreating(false)
     }
@@ -76,22 +132,35 @@ export default function DeckBuilder({
     }
   }
 
-  const validDecksCount = (decks || []).filter(d => d != null).length
-  const canCreateMore = validDecksCount < 5
+  const validDecksCount = (displayDecks || []).filter(d => d != null).length
+  const canCreateMore = !isSandbox && validDecksCount < 5 // ✅ Can't create in sandbox
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
+        {/* ✅ NEW: Sandbox Banner */}
+        {isSandbox && (
+          <div className="mb-6 bg-purple-600/20 border-2 border-purple-500 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🎮</span>
+              <div>
+                <h2 className="text-white font-bold text-lg">Sandbox Mode - Starter Decks</h2>
+                <p className="text-purple-200 text-sm">Choose a pre-made deck to get started!</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header with Search and Create */}
         <div className="mb-8 flex flex-col md:flex-row gap-4">
-          {/* Search - 2/3 width */}
+          {/* Search */}
           <div className="flex-[2]">
             <div className="relative">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search your decks by name, commander, or colors..."
+                placeholder={isSandbox ? "Search starter decks..." : "Search your decks by name, commander, or colors..."}
                 className="w-full bg-slate-800/50 backdrop-blur-sm text-white px-6 py-4 pl-14 rounded-xl border border-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-gray-500"
               />
               <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-xl">
@@ -108,18 +177,20 @@ export default function DeckBuilder({
             </div>
           </div>
 
-          {/* Create Button - 1/3 width */}
-          <div className="flex-1">
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              disabled={!canCreateMore}
-              className="w-full h-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-slate-700 disabled:to-slate-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-3"
-            >
-              <span className="text-2xl">+</span>
-              <span>Create Deck</span>
-              {!canCreateMore && <span className="text-xs">(Max 5)</span>}
-            </button>
-          </div>
+          {/* Create Button - Hidden in sandbox */}
+          {!isSandbox && (
+            <div className="flex-1">
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                disabled={!canCreateMore}
+                className="w-full h-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-slate-700 disabled:to-slate-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-3"
+              >
+                <span className="text-2xl">+</span>
+                <span>Create Deck</span>
+                {!canCreateMore && <span className="text-xs">(Max 5)</span>}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Deck Count */}
@@ -128,40 +199,45 @@ export default function DeckBuilder({
             {filteredDecks.length} {filteredDecks.length === 1 ? 'deck' : 'decks'}
             {searchQuery && ` matching "${searchQuery}"`}
           </p>
-          <p className="text-gray-500 text-xs">
-            {validDecksCount} / 5 decks created
-          </p>
+          {!isSandbox && (
+            <p className="text-gray-500 text-xs">
+              {validDecksCount} / 5 decks created
+            </p>
+          )}
         </div>
 
         {/* Decks Grid */}
-      {filteredDecks.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredDecks.map((deck) => (
-            <DeckCard
-              key={deck.id}
-              deck={deck}
-              onSelect={() => onSelectDeck(deck.id)}
-              onEdit={() => setEditingDeck(deck)} // ADD THIS
-              onDelete={() => {
-                if (confirm(`Delete "${deck.name}"? This cannot be undone.`)) {
-                  onDeleteDeck(deck.id)
-                }
-              }}
-            />
-          ))}
-        </div>
-      ) : (
+        {filteredDecks.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredDecks.map((deck) => (
+              <DeckCard
+                key={deck.id}
+                deck={deck}
+                onSelect={() => handleSelectDeck(deck.id)} // ✅ Uses new handler
+                onEdit={isSandbox ? undefined : () => setEditingDeck(deck)} // ✅ No edit in sandbox
+                onDelete={isSandbox ? undefined : () => { // ✅ No delete in sandbox
+                  if (confirm(`Delete "${deck.name}"? This cannot be undone.`)) {
+                    onDeleteDeck(deck.id)
+                  }
+                }}
+                isSandbox={isSandbox} // ✅ Pass to DeckCard for styling
+              />
+            ))}
+          </div>
+        ) : (
           <div className="flex flex-col items-center justify-center py-20">
             <div className="text-8xl mb-6">🃏</div>
             <h3 className="text-2xl font-bold text-white mb-3">
-              {searchQuery ? 'No decks found' : 'No decks yet'}
+              {searchQuery ? 'No decks found' : isSandbox ? 'No starter decks available' : 'No decks yet'}
             </h3>
             <p className="text-gray-400 mb-8 text-center max-w-md">
               {searchQuery
                 ? `No decks match "${searchQuery}". Try a different search term.`
+                : isSandbox 
+                ? 'Starter decks are being loaded...'
                 : 'Create your first Commander deck to get started!'}
             </p>
-            {!searchQuery && canCreateMore && (
+            {!searchQuery && !isSandbox && canCreateMore && (
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl"
@@ -172,22 +248,34 @@ export default function DeckBuilder({
           </div>
         )}
 
-        {/* Create Deck Modal */}
-        <CreateDeckModal
+        {/* Create Deck Modal - Only in normal mode */}
+        {!isSandbox && (
+          <CreateDeckModal
             isOpen={isCreateModalOpen}
             onClose={() => setIsCreateModalOpen(false)}
             onCreate={handleCreateDeck}
             isCreating={isCreating}
-        />
+          />
+        )}
 
-        {/* ADD THIS - Edit Deck Modal */}
-        {editingDeck && (
-            <EditDeckModal
+        {/* Edit Deck Modal - Only in normal mode */}
+        {!isSandbox && editingDeck && (
+          <EditDeckModal
             deck={editingDeck}
             onClose={() => setEditingDeck(null)}
             onSave={handleEditDeck}
             isSaving={isSaving}
-            />
+          />
+        )}
+        
+        {/* ✅ Loading overlay for sandbox deck import */}
+        {isSaving && isSandbox && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="bg-slate-800 rounded-xl p-8 flex flex-col items-center gap-4">
+              <div className="animate-spin text-6xl">⚙️</div>
+              <div className="text-white text-xl font-bold">Importing Deck...</div>
+            </div>
+          </div>
         )}
       </div>
     </div>

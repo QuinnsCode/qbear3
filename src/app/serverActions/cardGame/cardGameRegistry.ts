@@ -94,6 +94,7 @@ export async function createOrGetSandboxGame(): Promise<{
       // Update last activity
       await updateCardGameActivity(orgSlug, cardGameId, true);
       
+      // ✅ Game already exists, just return it
       return { 
         success: true, 
         cardGameId,

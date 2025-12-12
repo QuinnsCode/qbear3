@@ -61,6 +61,17 @@ export default function YourZones({
   const [isLoadingDecks, setIsLoadingDecks] = useState(false)
   const [showDrawModal, setShowDrawModal] = useState(false)
   const [drawCount, setDrawCount] = useState(1)
+
+  //show ui bubble to load a deck in sandbox mode!
+  const hasNoDeck = !player.deckList && isSandbox;
+  
+  useEffect(() => {
+    console.log('🔍 Player deck status:', {
+      hasDeckList: !!player.deckList,
+      deckName: player.deckList?.deckName,
+      libraryCount: player.zones.library.length
+    });
+  }, [player]);
   
   useEffect(() => {
     if (libraryMenuOpen && libraryButtonRef.current) {
@@ -426,39 +437,54 @@ export default function YourZones({
         <div className="w-64 flex flex-col gap-3">
           {/* Library with menu */}
           <div className="relative">
-            <button
-              onClick={() => onViewZone('library')}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault()
-                const cardId = e.dataTransfer.getData('cardId')
-                const fromZone = e.dataTransfer.getData('fromZone')
-                handleMoveCard(cardId, fromZone, 'library')
-              }}
-              className="w-full bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 p-4 rounded-lg hover:scale-105 transition-all shadow-md flex items-center justify-between group relative"
-            >
-              <div className="flex items-center gap-3 text-white">
-                <BookOpen className="w-12 h-12 group-hover:drop-shadow-[0_0_12px_rgba(59,130,246,0.8)] transition-all" />
-                <div className="text-3xl font-bold">
-                  {player.zones.library.length}
-                </div>
+          <button
+            onClick={() => hasNoDeck ? setIsDeckBuilderOpen(true) : onViewZone('library')}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              if (hasNoDeck) return;
+              e.preventDefault();
+              const cardId = e.dataTransfer.getData('cardId');
+              const fromZone = e.dataTransfer.getData('fromZone');
+              handleMoveCard(cardId, fromZone, 'library');
+            }}
+            className={`w-full bg-slate-900 hover:bg-slate-800 border-2 ${
+              hasNoDeck ? 'border-yellow-500 animate-pulse' : 'border-slate-700'
+            } p-4 rounded-lg hover:scale-105 transition-all shadow-md flex items-center justify-between group relative`}
+          >
+            <div className="flex items-center gap-3 text-white">
+              <BookOpen className={`w-12 h-12 ${
+                hasNoDeck ? 'text-yellow-500' : ''
+              } group-hover:drop-shadow-[0_0_12px_rgba(59,130,246,0.8)] transition-all`} />
+              <div className="flex flex-col items-start">
+                {hasNoDeck ? (
+                  <>
+                    <div className="text-xs text-yellow-400 font-semibold">No Assigned Deck</div>
+                    <div className="text-sm text-yellow-300">Load Your Deck!</div>
+                  </>
+                ) : (
+                  <div className="text-3xl font-bold">{player.zones.library.length}</div>
+                )}
               </div>
+            </div>
+            
+            {!hasNoDeck && (
               <button
                 onClick={(e) => {
-                  e.stopPropagation()
-                  setLibraryMenuOpen(!libraryMenuOpen)
+                  e.stopPropagation();
+                  setLibraryMenuOpen(!libraryMenuOpen);
                 }}
-                disabled={spectatorMode || isSandbox}
+                disabled={spectatorMode}
                 className="text-white hover:bg-slate-700 rounded-full w-8 h-8 flex items-center justify-center text-lg transition-colors"
               >
                 ⋯
               </button>
-              
-              {/* Tooltip */}
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none z-10">
-                Library
-              </div>
-            </button>
+            )}
+            
+            {/* ✅ TOOLTIP - Restored! */}
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none z-10">
+              {hasNoDeck ? 'Click to load deck' : 'Library'}
+            </div>
+          </button>
             
             {/* Library Menu - Desktop */}
             {libraryMenuOpen && (
@@ -699,6 +725,8 @@ export default function YourZones({
                   setIsDeckBuilderOpen(false)
                 }}
                 onEditDeck={onEditDeck || (async () => {})}
+                isSandbox={isSandbox}
+                cardGameId={cardGameId}
               />
             </div>
           </div>

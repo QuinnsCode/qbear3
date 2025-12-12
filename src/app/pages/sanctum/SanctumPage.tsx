@@ -9,7 +9,7 @@ import { SanctumClientActions } from "@/app/pages/sanctum/SanctumClientActions";
 import { DiscordConnect } from "@/app/components/Sanctum/DiscordConnect";
 import { db } from "@/db";
 import { SanctumStyles } from "@/app/styles/SanctumStyles";
-import { NotificationBadgeServer } from "@/app/components/Social/NotificationBadgeServer";
+// import { NotificationBadgeServer } from "@/app/components/Social/NotificationBadgeServer";
 
 
 export default async function SanctumPage({ ctx, request }: RequestInfo) {
