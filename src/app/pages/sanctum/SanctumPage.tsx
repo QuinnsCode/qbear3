@@ -9,12 +9,37 @@ import { SanctumClientActions } from "@/app/pages/sanctum/SanctumClientActions";
 import { DiscordConnect } from "@/app/components/Sanctum/DiscordConnect";
 import { db } from "@/db";
 import { SanctumStyles } from "@/app/styles/SanctumStyles";
-// import { NotificationBadgeServer } from "@/app/components/Social/NotificationBadgeServer";
-
 
 export default async function SanctumPage({ ctx, request }: RequestInfo) {
   const orgSlug = extractOrgFromSubdomain(request);
   let usersFirstOrgSlugFound = null;
+
+  // ✅ Check subscription tier
+  let currentTier = 'free';
+  let subscriptionStatus = null;
+  let tierLimits = {
+    maxGames: 1,
+    maxPlayers: 4,
+  };
+  
+  if (ctx.user?.id) {
+    const user = await db.user.findUnique({
+      where: { id: ctx.user.id },
+      include: { squeezeSubscription: true }
+    });
+    
+    if (user?.squeezeSubscription) {
+      currentTier = user.squeezeSubscription.tier;
+      subscriptionStatus = user.squeezeSubscription.status;
+      
+      // Set limits based on tier
+      if (currentTier === 'starter') {
+        tierLimits = { maxGames: 3, maxPlayers: 6 };
+      } else if (currentTier === 'pro') {
+        tierLimits = { maxGames: 10, maxPlayers: 8 };
+      }
+    }
+  }
 
   // Check Discord status
   let hasDiscord = false;
@@ -50,7 +75,7 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   const mainActions = [
     { id: 'friends', label: 'Friends', action: '#', icon: '👥' },
     { id: 'add-friend', label: 'Add a Friend', action: '#', icon: '➕' },
-    { id: 'game-invites', label: 'Game Invites', action: '#', icon: '🎮' }, // ✅ NEW
+    { id: 'game-invites', label: 'Game Invites', action: '#', icon: '🎮' },
     { id: 'invite-pvp', label: 'Invite Friend to PVP', action: '#', icon: '⚔️' },
     { id: 'watch-games', label: 'Watch Games', action: '#', icon: '👁️' },
     { id: 'play-game', label: 'Play Game', action: '/game', icon: '🎮' }
@@ -59,7 +84,6 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   return (
     <>
       <SanctumStyles />
-      {/* {ctx.user?.id && <NotificationBadgeServer ctx={ctx} />} */}
       <div className="sanctum-container">
         <div className="ambient-glow" />
 
@@ -87,11 +111,15 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
                     ctx={ctx}
                     mainActions={mainActions}
                     hasDiscord={hasDiscord}
+                    currentTier={currentTier}
+                    subscriptionStatus={subscriptionStatus}
                   />
                   <RightPage
                     orgSlug={orgSlug}
                     activeGames={activeGames}
                     activeCardGames={activeCardGames}
+                    currentTier={currentTier}
+                    tierLimits={tierLimits}
                   />
                 </div>
               )}
@@ -120,7 +148,16 @@ function NoOrgSelected({ firstOrgSlug }: { firstOrgSlug: string | null }) {
   );
 }
 
-function LeftPage({ ctx, mainActions, hasDiscord }: any) {
+function LeftPage({ ctx, mainActions, hasDiscord, currentTier, subscriptionStatus }: any) {
+  // Tier display config
+  const tierConfig: Record<string, { icon: string; name: string; color: string }> = {
+    free: { icon: '🏕️', name: 'Free', color: '#78716c' },
+    starter: { icon: '⚔️', name: 'Starter', color: '#f59e0b' },
+    pro: { icon: '👑', name: 'Pro', color: '#eab308' }
+  };
+  
+  const tier = tierConfig[currentTier] || tierConfig.free;
+  
   return (
     <div className="left-page">
       {/* Header */}
@@ -132,9 +169,48 @@ function LeftPage({ ctx, mainActions, hasDiscord }: any) {
         <div className="sanctum-divider" />
       </div>
 
-      {/* ✅ Social Actions - Friends, Add Friend, Game Invites */}
+      {/* ✅ Subscription Tier Badge */}
+      <div style={{ 
+        marginBottom: '20px',
+        padding: '12px',
+        background: 'rgba(251, 191, 36, 0.1)',
+        border: `2px solid ${tier.color}`,
+        borderRadius: '8px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '24px' }}>{tier.icon}</span>
+          <div>
+            <div style={{ fontWeight: 'bold', color: tier.color }}>{tier.name} Tier</div>
+            {currentTier === 'free' && (
+              <div style={{ fontSize: '11px', color: '#92400e' }}>
+                Limited to 1 game, 4 players
+              </div>
+            )}
+          </div>
+        </div>
+        {currentTier === 'free' && (
+          <a 
+            href="/pricing" 
+            style={{ 
+              padding: '6px 12px',
+              background: tier.color,
+              color: 'white',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              textDecoration: 'none'
+            }}
+          >
+            Upgrade
+          </a>
+        )}
+      </div>
+
+      {/* Social Actions */}
       <SanctumClientActions userId={ctx.user?.id} mainActions={mainActions} />
-      {/* ✅ NEW: Add notification badge */}
       
       {/* Coming Soon Actions */}
       <div style={{ marginBottom: '24px' }}>
@@ -163,6 +239,12 @@ function LeftPage({ ctx, mainActions, hasDiscord }: any) {
             <span>Lair:</span>
             <span style={{ fontWeight: '500' }}>{ctx.organization?.name || 'None'}</span>
           </div>
+          <div className="status-item">
+            <span>Subscription:</span>
+            <span style={{ fontWeight: '500', color: tier.color }}>
+              {tier.icon} {tier.name}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -176,11 +258,19 @@ function LeftPage({ ctx, mainActions, hasDiscord }: any) {
   );
 }
 
-function RightPage({ orgSlug, activeGames, activeCardGames }: any) {
+function RightPage({ orgSlug, activeGames, activeCardGames, currentTier, tierLimits }: any) {
+  const atLimit = activeCardGames.length >= tierLimits.maxGames;
+  
   return (
     <div className="right-page">
-      {/* <GameSection games={activeGames} type="game" /> */}
-      <GameSection games={activeCardGames} type="cardGame" orgSlug={orgSlug} />
+      <GameSection 
+        games={activeCardGames} 
+        type="cardGame" 
+        orgSlug={orgSlug}
+        currentTier={currentTier}
+        tierLimits={tierLimits}
+        atLimit={atLimit}
+      />
       
       {/* Placeholder activity */}
       <div className="placeholder-blur">
@@ -198,7 +288,7 @@ function RightPage({ orgSlug, activeGames, activeCardGames }: any) {
   );
 }
 
-function GameSection({ games, type, orgSlug }: any) {
+function GameSection({ games, type, orgSlug, currentTier, tierLimits, atLimit }: any) {
   const isCardGame = type === 'cardGame';
   const title = isCardGame ? 'Card Games' : 'Active Games';
   const icon = isCardGame ? '🃏' : '🎲';
@@ -208,8 +298,45 @@ function GameSection({ games, type, orgSlug }: any) {
   return (
     <div style={{ marginBottom: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h2 className="section-title">{title} ({games.length}/5)</h2>
+        <h2 className="section-title">
+          {title} ({games.length}/{tierLimits.maxGames})
+        </h2>
       </div>
+      
+      {/* ✅ Upgrade prompt if at limit */}
+      {atLimit && currentTier !== 'pro' && (
+        <div style={{
+          marginBottom: '12px',
+          padding: '12px',
+          background: 'rgba(239, 68, 68, 0.1)',
+          border: '2px solid #dc2626',
+          borderRadius: '8px'
+        }}>
+          <div style={{ fontWeight: 'bold', color: '#dc2626', marginBottom: '4px' }}>
+            🚨 Game Limit Reached
+          </div>
+          <div style={{ fontSize: '12px', color: '#991b1b', marginBottom: '8px' }}>
+            You've reached your limit of {tierLimits.maxGames} {tierLimits.maxGames === 1 ? 'game' : 'games'}.
+            {currentTier === 'free' && ' Upgrade to Starter for 3 games ($1/mo)'}
+            {currentTier === 'starter' && ' Upgrade to Pro for 10 games ($5/mo)'}
+          </div>
+          <a 
+            href="/pricing"
+            style={{
+              display: 'inline-block',
+              padding: '6px 12px',
+              background: '#dc2626',
+              color: 'white',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              textDecoration: 'none'
+            }}
+          >
+            Upgrade Now →
+          </a>
+        </div>
+      )}
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {games.length === 0 ? (
@@ -233,7 +360,7 @@ function GameSection({ games, type, orgSlug }: any) {
                   Created {new Date(game.createdAt).toLocaleDateString()}
                 </div>
                 <div className="game-card-footer">
-                  <span style={{ color: '#d97706' }}>Players: {game.playerCount}</span>
+                  <span style={{ color: '#d97706' }}>Players: {game.playerCount}/{tierLimits.maxPlayers}</span>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <a href={`${route}/${game[idField]}`} className="game-link">
                       Enter →
@@ -250,7 +377,8 @@ function GameSection({ games, type, orgSlug }: any) {
               </div>
             ))}
             
-            {games.length < 5 && (
+            {/* ✅ Only show create button if under limit */}
+            {!atLimit && (
               <a href={route} className="create-game-button">
                 <span className="create-game-icon">➕</span>
                 Create New {isCardGame ? 'Card Game' : 'Game'}

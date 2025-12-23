@@ -25,8 +25,14 @@ import { DeckImportManager } from '@/app/services/cardGame/managers/DeckImportMa
 import { SandboxManager } from '@/app/services/cardGame/managers/SandboxManager';
 import { getStarterDeck } from './app/serverActions/cardGame/starterDecks';
 import { WebSocketHelper } from './app/services/cardGame/WebSocketHelper';
+import { env } from "cloudflare:workers";
+
 
 const CURSOR_COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B'];
+
+// ✅ Cleanup configuration
+const INACTIVE_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours
+const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;   // Run cleanup every 24 hours
 
 export class CardGameDO extends DurableObject {
   private gameState: CardGameState | null = null;
@@ -41,10 +47,168 @@ export class CardGameDO extends DurableObject {
 
   private lastCursorBroadcast: Map<string, number> = new Map();
   private spectatorCount = 0;
+  
+  // ✅ Track player activity for cleanup
+  private playerActivity: Map<string, number> = new Map();
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     this.wsHelper = new WebSocketHelper();
+  
+    // ⚠️ NEEDS blockConcurrencyWhile: Async storage initialization
+    this.ctx.blockConcurrencyWhile(async () => {
+      const initialized = await this.ctx.storage.get('initialized');
+      if (!initialized) {
+        await this.ctx.storage.put('initialized', true);
+        await this.ctx.storage.put('createdAt', Date.now());
+      }
+      
+      // ✅ Schedule cleanup alarm for sandbox games
+      const isSandbox = await this.ctx.storage.get('isSandbox');
+      if (isSandbox) {
+        const hasAlarm = await this.ctx.storage.get('cleanupScheduled');
+        if (!hasAlarm) {
+          // Schedule first cleanup in 24 hours
+          await this.ctx.storage.setAlarm(Date.now() + CLEANUP_INTERVAL);
+          await this.ctx.storage.put('cleanupScheduled', true);
+          console.log('⏰ Scheduled first cleanup alarm for sandbox game');
+        }
+      }
+      
+      // ✅ Load player activity timestamps
+      const storedActivity = await this.ctx.storage.get<Record<string, number>>('playerActivity');
+      if (storedActivity) {
+        this.playerActivity = new Map(Object.entries(storedActivity));
+      }
+    });
+  }
+
+  /**
+   * ✅ ALARM HANDLER - Called automatically every 24 hours
+   * Removes inactive players from sandbox games
+   */
+  async alarm(): Promise<void> {
+    const isSandbox = await this.ctx.storage.get('isSandbox');
+    
+    if (!isSandbox) {
+      console.log('⏰ Alarm fired but not sandbox - skipping cleanup');
+      return;
+    }
+    
+    console.log('🧹 Running sandbox cleanup...');
+    
+    const state = await this.getState();
+    const now = Date.now();
+    let removedCount = 0;
+    
+    // Check each player's last activity
+    const activePlayers = state.players.filter(player => {
+      const lastActivity = this.playerActivity.get(player.id) || 0;
+      const timeSinceActivity = now - lastActivity;
+      
+      if (timeSinceActivity > INACTIVE_THRESHOLD) {
+        console.log(`🗑️ Removing inactive player: ${player.name} (inactive for ${Math.round(timeSinceActivity / 1000 / 60 / 60)} hours)`);
+        removedCount++;
+        return false; // Remove this player
+      }
+      
+      return true; // Keep this player
+    });
+    
+    if (removedCount > 0) {
+      // Update game state
+      this.gameState = {
+        ...state,
+        players: activePlayers,
+        updatedAt: new Date()
+      };
+      
+      // Clean up their cards from the battlefield
+      const activePlayerIds = new Set(activePlayers.map(p => p.id));
+      const updatedCards: Record<string, Card> = {};
+      
+      for (const [cardId, card] of Object.entries(state.cards)) {
+        if (activePlayerIds.has(card.ownerId)) {
+          updatedCards[cardId] = card;
+        }
+      }
+      
+      this.gameState.cards = updatedCards;
+      
+      // Persist changes
+      this.persist();
+      
+      // Clean up activity tracking
+      for (const player of state.players) {
+        if (!activePlayers.find(p => p.id === player.id)) {
+          this.playerActivity.delete(player.id);
+        }
+      }
+      await this.ctx.storage.put('playerActivity', Object.fromEntries(this.playerActivity));
+      
+      // Broadcast update
+      this.broadcast({
+        type: 'players_cleaned_up',
+        state: this.gameState,
+        removedCount
+      });
+      
+      console.log(`✅ Cleanup complete: removed ${removedCount} inactive player(s)`);
+    } else {
+      console.log('✅ Cleanup complete: all players active');
+    }
+    
+    // Schedule next cleanup
+    await this.ctx.storage.setAlarm(Date.now() + CLEANUP_INTERVAL);
+    console.log('⏰ Scheduled next cleanup in 24 hours');
+  }
+
+  /**
+   * ✅ Update player activity timestamp on ANY action
+   */
+  private updatePlayerActivity(playerId: string): void {
+    this.playerActivity.set(playerId, Date.now());
+    // Persist activity (no await - output gate handles it)
+    this.ctx.storage.put('playerActivity', Object.fromEntries(this.playerActivity));
+  }
+
+  /**
+   * Initialize this DO as a sandbox game with pre-loaded starter decks
+   * Called once when creating/accessing a sandbox game
+   * This is an RPC method callable from the Worker
+   */
+  async initializeSandbox(config: { 
+    starterDecks: any[] 
+  }): Promise<{ success: boolean; alreadyInitialized?: boolean }> {
+    const alreadyInit = await this.ctx.storage.get('isSandbox');
+    
+    if (alreadyInit) {
+      console.log('✅ Sandbox already initialized, skipping');
+      return { success: true, alreadyInitialized: true };
+    }
+    
+    console.log('🎮 Initializing sandbox with', config.starterDecks.length, 'starter decks');
+    
+    // ✅ Import here instead of at module level
+    if (!config.starterDecks || config.starterDecks.length === 0) {
+      const { EDH_SANDBOX_STARTER_DECK_DATA } = await import('@/app/components/CardGame/Sandbox/starterDeckData');
+      config.starterDecks = EDH_SANDBOX_STARTER_DECK_DATA;
+    }
+    
+    this.ctx.storage.put('isSandbox', true);
+    this.ctx.storage.put('starterDecks', config.starterDecks);
+    this.ctx.storage.put('sandboxConfig', {
+      maxPlayers: 256,
+      sharedBattlefield: true,
+    });
+    
+    // ✅ Schedule cleanup alarm
+    await this.ctx.storage.setAlarm(Date.now() + CLEANUP_INTERVAL);
+    await this.ctx.storage.put('cleanupScheduled', true);
+    console.log('⏰ Scheduled cleanup alarm');
+    
+    console.log('✅ Sandbox initialized successfully');
+    return { success: true, alreadyInitialized: false };
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -57,54 +221,14 @@ export class CardGameDO extends DurableObject {
         return this.handleWebSocketUpgrade(request);
       }
 
-      // Handle sandbox initialization
-      if (url.pathname === '/init-sandbox' && method === 'POST') {
-        try {
-          const { starterDecks, config } = await request.json();
-          
-          console.log('📦 Initializing sandbox with', starterDecks.length, 'decks');
-          
-          // Store in DO storage
-          await this.ctx.storage.put('isSandbox', true);
-          await this.ctx.storage.put('sandboxConfig', config);
-          await this.ctx.storage.put('starterDecks', starterDecks);
-          
-          console.log('✅ Sandbox initialized in DO storage');
-          
-          return Response.json({ success: true });
-        } catch (error) {
-          console.error('❌ Error initializing sandbox:', error);
-          return Response.json({ 
-            success: false, 
-            error: error instanceof Error ? error.message : 'Unknown error' 
-          }, { status: 500 });
-        }
-      }
-
-      if (url.pathname === '/reinit-sandbox' && method === 'POST') {
-        try {
-          console.log('🔄 Reinitializing sandbox data...');
-          
-          // Clear old data
-          await this.ctx.storage.delete('starterDecks');
-          
-          console.log('✅ Cleared old sandbox data, will reinit on next game load');
-          
-          return Response.json({ success: true });
-        } catch (error) {
-          console.error('❌ Error reinitializing:', error);
-          return Response.json({ 
-            success: false, 
-            error: error instanceof Error ? error.message : 'Unknown error' 
-          }, { status: 500 });
-        }
-      }
-    
       // Handle DELETE - wipe storage
       if (method === 'DELETE') {
         console.log('🗑️ DELETE request received - wiping Card Game storage');
         
         try {
+          // ✅ Cancel cleanup alarm
+          await this.ctx.storage.deleteAlarm();
+          
           // ✅ Use new broadcast method
           this.broadcast({ 
             type: 'game_deleted', 
@@ -115,6 +239,7 @@ export class CardGameDO extends DurableObject {
           this.closeAllWebSockets();
           await this.ctx.storage.deleteAll();
           this.gameState = null;
+          this.playerActivity.clear();
           
           console.log('✅ Card Game storage completely wiped');
           return Response.json({ 
@@ -131,40 +256,8 @@ export class CardGameDO extends DurableObject {
       }
     
       // GET - return current state
-      // In the fetch() method, after "if (method === 'GET')" around line 120:
       if (method === 'GET') {
-        let state = await this.getState();
-        
-        // 🔧 SELF-HEALING: Fix broken sandbox decks
-        const isSandbox = await this.ctx.storage.get('isSandbox');
-        if (isSandbox) {
-          let needsHealing = false;
-          
-          for (const player of state.players) {
-            // Detect broken deck: has deckList but library is empty
-            if (player.deckList?.deckName && player.zones.library.length === 0) {
-              console.log(`[HEAL] 🔧 Detected broken deck for ${player.name}, reimporting...`);
-              needsHealing = true;
-              
-              // Auto-reimport their deck
-              await this.applyAction({
-                type: 'import_deck',
-                playerId: player.id,
-                data: {
-                  deckListText: '', // Will be ignored
-                  deckName: player.deckList.deckName,
-                }
-              });
-            }
-          }
-          
-          if (needsHealing) {
-            // Reload state after healing
-            state = await this.getState();
-            console.log(`[HEAL] ✅ Self-healing complete`);
-          }
-        }
-        
+        const state = await this.getState();
         return Response.json(state);
       }
       
@@ -184,6 +277,8 @@ export class CardGameDO extends DurableObject {
         if (requestData.playerId && requestData.playerName && !requestData.type) {
           console.log('👋 Join game request detected');
           const joinResult = await this.joinGame(requestData);
+          // ✅ Update activity on join
+          this.updatePlayerActivity(requestData.playerId);
           return Response.json(joinResult);
         }
         
@@ -191,6 +286,10 @@ export class CardGameDO extends DurableObject {
         if (requestData.type) {
           console.log(`🎬 Action request detected: ${requestData.type}`);
           const result = await this.applyAction(requestData);
+          // ✅ Update activity on any action
+          if (requestData.playerId) {
+            this.updatePlayerActivity(requestData.playerId);
+          }
           return Response.json(result);
         }
         
@@ -215,7 +314,7 @@ export class CardGameDO extends DurableObject {
   }
 
   // Direct WebSocket upgrade handler using Hibernation API
-  private handleWebSocketUpgrade(request: Request): Response {
+  private async handleWebSocketUpgrade(request: Request): Promise<Response> {
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
     
@@ -233,19 +332,20 @@ export class CardGameDO extends DurableObject {
     
     console.log(`🃏 WebSocket connected (hibernation enabled)`);
     
+    // ✅ LOAD STATE FIRST before trying to send it
+    const state = await this.getState();
+    
     // Send initial state
     try {
-      if (this.gameState) {
-        server.send(JSON.stringify({
-          type: 'state_update',
-          state: this.gameState
-        }));
-        console.log('📤 Sent initial state to new connection');
-      }
+      server.send(JSON.stringify({
+        type: 'state_update',
+        state: state  // ✅ Use the loaded state
+      }));
+      console.log('📤 Sent initial state to new connection');
     } catch (error) {
       console.error('Failed to send initial state:', error);
     }
-
+  
     return new Response(null, {
       status: 101,
       webSocket: client,
@@ -274,6 +374,9 @@ export class CardGameDO extends DurableObject {
       }
 
       if (data.type === 'cursor_move' && data.playerId) {
+        // ✅ Update activity on cursor movement (throttled)
+        this.updatePlayerActivity(data.playerId);
+        
         const result = this.wsHelper.handleCursorUpdate(data.playerId, data.x, data.y);
         if (result.shouldBroadcast) {
           this.broadcastExcept(result.message, data.playerId);
@@ -445,7 +548,7 @@ export class CardGameDO extends DurableObject {
       updatedAt: new Date()
     };
   
-    await this.persist();
+    this.persist();
     return this.gameState;
   }
 
@@ -463,7 +566,11 @@ export class CardGameDO extends DurableObject {
       updatedAt: new Date()
     };
   
-    await this.persist();
+    // ✅ Clear activity tracking on restart
+    this.playerActivity.clear();
+    await this.ctx.storage.put('playerActivity', {});
+  
+    this.persist();
     
     this.broadcast({
       type: 'game_restarted', 
@@ -485,6 +592,16 @@ export class CardGameDO extends DurableObject {
     // Check if player already exists
     const existingPlayer = this.gameState?.players.find(p => p.id === data.playerId);
     if (existingPlayer) {
+      // ✅ AUTO-MIGRATE: Add gameStateInfo if missing
+      if (!existingPlayer.hasOwnProperty('gameStateInfo')) {
+        existingPlayer.gameStateInfo = undefined;
+        
+        // ✅ Null check before persist
+        if (this.gameState) {
+          this.persist();
+        }
+      }
+      
       console.log(`✅ Player ${data.playerName} already in game`);
       console.log(`📋 Player deck status:`, {
         hasDeck: !!existingPlayer.deckList,
@@ -492,7 +609,11 @@ export class CardGameDO extends DurableObject {
         libraryCount: existingPlayer.zones.library.length
       });
       
-      // ✅ Just broadcast current state - deck is already there!
+      // ✅ Null check before broadcast and return
+      if (!this.gameState) {
+        throw new Error('Game state is null');
+      }
+      
       this.broadcast({ 
         type: 'player_rejoined', 
         state: this.gameState 
@@ -535,85 +656,109 @@ export class CardGameDO extends DurableObject {
     this.gameState.players.push(newPlayer);
     this.gameState.updatedAt = new Date();
   
-    await this.persist();
-    
+    this.persist();
+
     console.log(`✅ Player ${data.playerName} joined as ${assignedPosition} (${cursorColor})`);
+
+    // ✅ AUTO-ASSIGN DECK IN SANDBOX MODE (NEW PLAYERS) - BEFORE broadcast and return!
+    if (isSandbox) {
+      await this.assignSandboxDeck(data.playerId, this.gameState.players.length - 1);
+    }
+
     this.broadcast({ 
       type: 'player_joined', 
       player: newPlayer 
     });
-  
-    // ✅ AUTO-ASSIGN DECK IN SANDBOX MODE (NEW PLAYERS)
-    if (isSandbox) {
-      await this.assignSandboxDeck(data.playerId, this.gameState.players.length - 1);
-    }
-  
+
     return this.gameState;
+  }
+
+  // Add this method to the class
+  private validateSandboxDecks(decks: any): boolean {
+    if (!Array.isArray(decks) || decks.length === 0) {
+      console.warn('⚠️ Deck validation failed: Not an array or empty');
+      return false;
+    }
+    
+    // Check first deck has required structure
+    const deck = decks[0];
+    const isValid = !!(
+      deck?.name &&
+      deck?.deckList &&
+      Array.isArray(deck?.cards) &&
+      deck.cards.length > 0 &&
+      deck.cards[0]?.id &&
+      deck.cards[0]?.name
+    );
+    
+    if (!isValid) {
+      console.warn('⚠️ Deck validation failed:', {
+        hasName: !!deck?.name,
+        hasDeckList: !!deck?.deckList,
+        hasCards: Array.isArray(deck?.cards),
+        cardCount: deck?.cards?.length || 0,
+        firstCardValid: !!(deck?.cards?.[0]?.id && deck?.cards?.[0]?.name)
+      });
+    }
+    
+    return isValid;
   }
 
   private async assignSandboxDeck(playerId: string, playerIndex: number): Promise<void> {
     try {
-      const starterDecks = await this.ctx.storage.get('starterDecks') as any[];
+      let starterDecks = await this.ctx.storage.get('starterDecks') as any[];
       
-      if (!starterDecks || starterDecks.length === 0) {
-        console.error('❌ No starter decks available in storage');
-        return;
+      if (!this.validateSandboxDecks(starterDecks)) {
+        console.warn('⚠️ Corrupted deck data detected - self-healing...');
+        
+        const { EDH_SANDBOX_STARTER_DECK_DATA } = await import('@/app/components/CardGame/Sandbox/starterDeckData');
+        
+        await this.ctx.storage.put('starterDecks', EDH_SANDBOX_STARTER_DECK_DATA);
+        starterDecks = EDH_SANDBOX_STARTER_DECK_DATA;
+        
+        console.log('✅ Self-healed:', starterDecks.length, 'valid decks');
       }
       
-      const assignedDeck = SandboxManager.getDeckForPlayer(playerIndex, starterDecks);
+      const assignedDeck = starterDecks[playerIndex % starterDecks.length];
       
-      if (!assignedDeck) {
-        console.error('❌ Failed to get deck from SandboxManager');
-        return;
-      }
+      console.log(`🎴 Assigning "${assignedDeck.name}" to player ${playerId}`);
       
-      console.log(`🎴 Assigning "${assignedDeck.deckName}" to player ${playerId} (player #${playerIndex})`);
-      
-      const cardData = SandboxManager.buildCardDataForImport(assignedDeck);
-      
-      // ✅ BUILD A FAKE DECK LIST TEXT - This tricks the parser
-      // The parser expects "4 Lightning Bolt\n3 Mountain\n..." format
-      const fakeDeckList = assignedDeck.cards
-        .reduce((acc: any[], card: any) => {
-          const existing = acc.find(c => c.name === card.name);
-          if (existing) {
-            existing.quantity++;
-          } else {
-            acc.push({ name: card.name, quantity: 1 });
-          }
-          return acc;
-        }, [])
-        .map((c: any) => `${c.quantity} ${c.name}`)
-        .join('\n');
-      
+      // Import deck
       await this.applyAction({
         type: 'import_deck',
         playerId: playerId,
         data: {
-          deckListText: fakeDeckList, // ✅ This will parse successfully now
-          deckName: assignedDeck.deckName,
-          cardData: cardData, // ✅ And this provides the actual card data
+          deckListText: assignedDeck.deckList,
+          deckName: assignedDeck.name,
+          cardData: assignedDeck.cards
         }
       });
       
-      console.log(`✅ Successfully assigned "${assignedDeck.deckName}" to player ${playerId}`);
+      // Auto-shuffle library
+      await this.applyAction({
+        type: 'shuffle_library',
+        playerId: playerId,
+        data: {}
+      });
+      
+      // Auto-draw 7 cards
+      await this.applyAction({
+        type: 'draw_cards',
+        playerId: playerId,
+        data: { count: 7 }
+      });
+      
+      console.log(`✅ Assigned "${assignedDeck.name}", shuffled, drew 7`);
       
     } catch (error) {
       console.error('❌ Failed to assign sandbox deck:', error);
+      throw error;
     }
   }
 
   async applyAction(action: Omit<CardGameAction, 'id' | 'timestamp'>): Promise<CardGameState> {
     if (!this.gameState) {
       await this.getState();
-    }
-  
-    // ✅ INJECT CARDDATA FOR SANDBOX MANUAL IMPORTS
-    if (action.type === 'import_deck') {
-      const isSandbox = await this.ctx.storage.get('isSandbox');
-      if (isSandbox && !action.data.cardData) {
-        await this.injectSandboxCardData(action);
-      }
     }
   
     if (!this.gameState) {
@@ -672,7 +817,7 @@ export class CardGameDO extends DurableObject {
       this.gameState.currentActionIndex = this.gameState.actions.length - 1;
       this.gameState.updatedAt = new Date();
   
-      await this.persist();
+      this.persist();
       
       this.broadcast({ 
         type: 'state_update', 
@@ -745,7 +890,35 @@ export class CardGameDO extends DurableObject {
           cards: updatedCards
         }
       }
+
+      case 'update_life':
+        console.log('💚 Processing update_life action');
+        return {
+          ...gameState,
+          players: gameState.players.map(p =>
+            p.id === action.playerId
+              ? { ...p, life: action.data.life }
+              : p
+          )
+        };
       
+        case 'update_game_state_info':
+          console.log('📊 Processing update_game_state_info action');
+          const targetPlayer = gameState.players.find(p => p.id === action.playerId);
+          if (!targetPlayer) {
+            console.warn(`Player ${action.playerId} not found`);
+            return gameState;
+          }
+          
+          return {
+            ...gameState,
+            players: gameState.players.map(p =>
+              p.id === action.playerId
+                ? { ...p, gameStateInfo: action.data.gameStateInfo }
+                : p
+            )
+          };
+
       case 'reset_game':
         console.log('🔄 Processing reset_game action');
         return {
@@ -773,49 +946,6 @@ export class CardGameDO extends DurableObject {
     }
   }
 
-  /**
-   * Fetch and inject card data for sandbox deck imports
-   */
-  private async injectSandboxCardData(action: any): Promise<void> {
-    const starterDecks = await this.ctx.storage.get('starterDecks') as Array<{
-      name: string;
-      commander: string;
-      deckList: string;
-    }>;
-    
-    if (!starterDecks?.length) return;
-    
-    const deck = starterDecks.find(d => d.name === action.data.deckName);
-    if (!deck) return;
-    
-    // Use the extracted helper - no KV storage, just parsing + fetching
-    const { parseDeckAndFetchCards } = await import('@/app/serverActions/deckBuilder/deckActions');
-    const result = await parseDeckAndFetchCards(deck.deckList);
-
-    if (result.success) {
-      // Convert DeckCard[] to ScryfallCard[] (same as frontend does)
-      action.data.cardData = result.cards.map(deckCard => ({
-        id: deckCard.scryfallId || deckCard.id,
-        name: deckCard.name,
-        image_uris: {
-          small: deckCard.imageUrl,
-          normal: deckCard.imageUrl,
-          large: deckCard.imageUrl
-        },
-        type_line: deckCard.type || '',
-        mana_cost: deckCard.manaCost || '',
-        colors: deckCard.colors || [],
-        color_identity: deckCard.colors || [],
-        set: '',
-        set_name: '',
-        collector_number: '',
-        rarity: 'common'
-      }));
-    } else {
-      console.error(`[DO] ❌ Failed to parse/fetch cards:`, result.errors);
-    }
-  }
-
   
 
   // REMOVE the old canPlayerMoveCard method - it's now in SandboxManager
@@ -835,16 +965,17 @@ export class CardGameDO extends DurableObject {
   
     console.warn('⚠️ Rewind not yet fully implemented - StateManager needed');
   
-    await this.persist();
+    this.persist();
     // ✅ Use new broadcast method
     this.broadcast({ type: 'state_update', state: this.gameState });
     
     return this.gameState;
   }
 
-  private async persist() {
+  //you don't need the explicit await: This gives you better throughput because the output gate handles consistency automatically
+  private persist() {
     if (this.gameState) {
-      await this.ctx.storage.put('cardGameState', this.gameState);
+      this.ctx.storage.put('cardGameState', this.gameState);
     }
   }
 }

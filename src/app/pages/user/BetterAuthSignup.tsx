@@ -12,6 +12,32 @@ import {
   WizardStudy
 } from "@/app/components/theme/FantasyTheme";
 
+// Tier configuration
+const TIERS = {
+  free: {
+    name: 'Free',
+    icon: '🏕️',
+    price: 0,
+    features: ['1 active game', '4 players per table', '3 deck slots', '24h game cleanup'],
+    color: 'border-stone-600'
+  },
+  starter: {
+    name: 'Founding Starter',
+    icon: '⚔️',
+    price: 1,
+    features: ['3 active games', '6 players per table', '10 deck slots', '1-week game cleanup', 'Priority support'],
+    color: 'border-amber-500',
+    popular: true
+  },
+  pro: {
+    name: 'Founding Pro',
+    icon: '👑',
+    price: 5,
+    features: ['10 active games', '8 players per table', 'Unlimited deck slots', '1-month game cleanup', 'Discord integration', 'Priority support'],
+    color: 'border-amber-400'
+  }
+};
+
 export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
   // User fields
   const [displayName, setDisplayName] = useState("");
@@ -22,6 +48,12 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
   // Lair/Org fields
   const [lairName, setLairName] = useState("");
   const [lairSlug, setLairSlug] = useState("");
+  
+  // ✅ Tier selection
+  const [selectedTier, setSelectedTier] = useState<'free' | 'starter' | 'pro'>('free');
+  
+  // ✅ Terms agreement
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -50,7 +82,6 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
                          (hostname.includes('localhost') && hostname.startsWith('localhost') === false);
       
       if (isSubdomain) {
-        // Redirect to main domain
         const parts = hostname.split('.');
         const mainDomain = hostname.includes('localhost') 
           ? 'localhost:5173' 
@@ -126,7 +157,7 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
 
   const handleSignup = async () => {
     try {
-      console.log('Starting signup for:', lairSlug);
+      console.log('Starting signup for:', lairSlug, 'with tier:', selectedTier);
       setResult("");
       
       // Validate passwords match
@@ -146,6 +177,12 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
         setResult("Lair subdomain is not available");
         return;
       }
+
+      // ✅ Validate terms agreement
+      if (!agreedToTerms) {
+        setResult("You must agree to the Terms of Service");
+        return;
+      }
       
       // Import the server action
       const { signupWithOrg } = await import("@/app/serverActions/admin/signup");
@@ -157,6 +194,7 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
       formData.append('email', email);
       formData.append('password', password);
       formData.append('lairName', lairName);
+      formData.append('selectedTier', selectedTier);
       
       // Call server action to create user + org
       const result = await signupWithOrg(formData);
@@ -167,9 +205,26 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
       }
       
       console.log('✅ Signup successful:', result);
-      setResult("Account created! Redirecting to your lair...");
       
-      // Redirect to their personal subdomain
+      // ✅ If paid tier selected, redirect to Lemon Squeezy checkout
+      if (selectedTier !== 'free' && result.userId) {
+        setResult("Account created! Redirecting to checkout...");
+        
+        // Get variant ID based on tier
+        const variantId = selectedTier === 'starter' 
+          ? process.env.NEXT_PUBLIC_LEMON_SQUEEZY_STARTER_VARIANT_ID
+          : process.env.NEXT_PUBLIC_LEMON_SQUEEZY_PRO_VARIANT_ID;
+        
+        const checkoutUrl = `https://qntbr.lemonsqueezy.com/checkout/buy/${variantId}?checkout[email]=${encodeURIComponent(email)}&checkout[custom][user_id]=${result.userId}`;
+        
+        setTimeout(() => {
+          window.location.href = checkoutUrl;
+        }, 1500);
+        return;
+      }
+      
+      // ✅ Free tier - redirect to their subdomain
+      setResult("Account created! Redirecting to your lair...");
       setTimeout(() => {
         window.location.href = result.redirectUrl;
       }, 1500);
@@ -205,6 +260,11 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
       setResult("Lair subdomain is not available");
       return;
     }
+
+    if (!agreedToTerms) {
+      setResult("You must agree to the Terms of Service");
+      return;
+    }
     
     startTransition(() => void handleSignup());
   };
@@ -217,7 +277,7 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
   const getResultVariant = () => {
     if (result.includes("created") || result.includes("Redirecting")) {
       return "success";
-    } else if (result.includes("failed") || result.includes("not match") || result.includes("required") || result.includes("not available") || result.includes("must be at least")) {
+    } else if (result.includes("failed") || result.includes("not match") || result.includes("required") || result.includes("not available") || result.includes("must be at least") || result.includes("must agree")) {
       return "error";
     }
     return "warning";
@@ -422,16 +482,136 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
                   </div>
                 </div>
 
+                {/* ✅ TIER SELECTION SECTION */}
+                <div className="space-y-4">
+                  <div className="pb-2 border-b border-amber-700/30">
+                    <h3 className="text-sm font-bold text-amber-200 uppercase tracking-wide">
+                      Choose Your Tier
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {Object.entries(TIERS).map(([key, tier]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedTier(key as 'free' | 'starter' | 'pro')}
+                        className={`
+                          relative p-4 rounded-lg border-2 text-left transition-all
+                          ${selectedTier === key 
+                            ? `${tier.color} bg-amber-900/20` 
+                            : 'border-stone-700 bg-black/30 hover:border-amber-700/50'
+                          }
+                        `}
+                      >
+                        {tier.popular && (
+                          <div className="absolute -top-2 right-4 bg-amber-500 text-stone-900 px-2 py-0.5 rounded text-xs font-bold">
+                            POPULAR
+                          </div>
+                        )}
+                        
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">{tier.icon}</span>
+                            <div>
+                              <div className="font-bold text-amber-200">{tier.name}</div>
+                              <div className="text-2xl font-bold text-white">
+                                ${tier.price}
+                                {tier.price > 0 && <span className="text-sm text-amber-400/70">/month</span>}
+                              </div>
+                            </div>
+                          </div>
+                          {selectedTier === key && (
+                            <span className="text-green-400 text-xl">✓</span>
+                          )}
+                        </div>
+                        
+                        <ul className="space-y-1 text-xs text-amber-100/80">
+                          {tier.features.map((feature, i) => (
+                            <li key={i} className="flex items-start gap-1">
+                              <span className="text-green-400 mt-0.5">•</span>
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </button>
+                    ))}
+                  </div>
+
+                  {selectedTier !== 'free' && (
+                    <FantasyText variant="secondary" className="text-xs text-amber-400">
+                      💳 You'll be redirected to secure checkout after creating your account
+                    </FantasyText>
+                  )}
+                </div>
+
+                {/* ✅ TERMS AGREEMENT SECTION */}
+                <div className="space-y-3">
+                  <div className="pb-2 border-b border-amber-700/30">
+                    <h3 className="text-sm font-bold text-amber-200 uppercase tracking-wide">
+                      Terms & Conditions
+                    </h3>
+                  </div>
+
+                  <div className="bg-black/30 border border-amber-700/30 rounded-lg p-4">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={agreedToTerms}
+                        onChange={(e) => setAgreedToTerms(e.target.checked)}
+                        className="mt-1 w-4 h-4 rounded border-amber-700 bg-black/50 text-amber-500 focus:ring-2 focus:ring-amber-500"
+                        required
+                      />
+                      <span className="text-sm text-amber-100 flex-1">
+                        I have read and agree to the{' '}
+                        <a 
+                          href="/terms" 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-amber-300 hover:text-amber-100 underline decoration-amber-700 underline-offset-2 hover:decoration-amber-500 transition-colors font-medium"
+                        >
+                          Terms of Service
+                        </a>
+                        {' '}and{' '}
+                        <a 
+                          href="/privacy" 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-amber-300 hover:text-amber-100 underline decoration-amber-700 underline-offset-2 hover:decoration-amber-500 transition-colors font-medium"
+                        >
+                          Privacy Policy
+                        </a>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
                 {/* Submit button */}
                 <FantasyButton 
                   type="submit"
                   variant="primary"
                   size="lg"
-                  disabled={isPending || lairSlug.length < 6 || slugAvailable === false || !displayName || !email || !password || !confirmPassword || !lairName || !lairSlug}
+                  disabled={
+                    isPending || 
+                    lairSlug.length < 6 || 
+                    slugAvailable === false || 
+                    !displayName || 
+                    !email || 
+                    !password || 
+                    !confirmPassword || 
+                    !lairName || 
+                    !lairSlug ||
+                    !agreedToTerms
+                  }
                   className="w-full"
                   suppressHydrationWarning
                 >
-                  {isPending ? "Creating your account..." : "🏰 Create Account & Lair"}
+                  {isPending 
+                    ? "Creating your account..." 
+                    : selectedTier === 'free'
+                    ? "🏰 Create Free Account"
+                    : `🏰 Create Account & Subscribe ($${TIERS[selectedTier].price}/mo)`
+                  }
                 </FantasyButton>
               </form>
 

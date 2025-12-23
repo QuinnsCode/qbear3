@@ -89,6 +89,8 @@ export const MAX_PLAYERS = 4
       exile: string[]        // Card instanceIds
       command: string[]      // Commander(s)
     }
+
+    gameStateInfo?: string
   }
   
   // ============================================================================
@@ -246,6 +248,22 @@ export const MAX_PLAYERS = 4
     playerId: string
     data: {}
   }
+
+  export type UpdateLifeAction = {
+    type: 'update_life'
+    playerId: string
+    data: {
+      life: number
+    }
+  }
+
+  export type UpdateGameStateInfoAction = {
+    type: 'update_game_state_info'
+    playerId: string
+    data: {
+      gameStateInfo: string
+    }
+  }
   
   // Union type of all action types
   export type TypedCardGameAction = 
@@ -258,6 +276,8 @@ export const MAX_PLAYERS = 4
     | FlipCardAction
     | RotateCardAction
     | ResetGameAction
+    | UpdateLifeAction
+    | UpdateGameStateInfoAction
   
   // ============================================================================
   // WEBSOCKET MESSAGES (ephemeral, not persisted)

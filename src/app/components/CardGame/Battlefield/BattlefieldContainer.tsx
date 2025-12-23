@@ -351,7 +351,7 @@ export function BattlefieldContainer({
         )}
         
         {/* Scroll indicator */}
-        <div className="fixed bottom-4 right-4 bg-slate-900/90 text-white px-3 py-1 rounded-lg text-xs z-50 pointer-events-none">
+        <div className="fixed bottom-24 right-4 bg-slate-900/90 text-white px-3 py-1 rounded-lg text-xs z-50 pointer-events-none border border-slate-700">
           📍 {Math.round(scrollOffset.left)} x {Math.round(scrollOffset.top)}
         </div>
       </div>

@@ -5,9 +5,8 @@ import { useState, useEffect, useRef } from 'react'
 import type { MTGPlayer, CardGameState } from '@/app/services/cardGame/CardGameState'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
 import DeckBuilder from '@/app/components/CardGame/DeckBuilder/DeckBuilder'
-import { ZoneViewer } from '../ZoneViewer/ZoneViewer' // ADD THIS IMPORT
+import { ZoneViewer } from '../ZoneViewer/ZoneViewer'
 import type { Deck } from '@/app/types/Deck'
-// Import Lucide icons
 import { 
   BookOpen, 
   Skull, 
@@ -32,6 +31,7 @@ interface Props {
   onDeleteDeck?: (deckId: string) => Promise<void>
   onSelectDeck?: (deckId: string) => void
   onEditDeck?: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
+  isSandbox?: boolean
 }
 
 export default function MobileZoneDrawer({
@@ -46,7 +46,8 @@ export default function MobileZoneDrawer({
   onCreateDeck,
   onDeleteDeck,
   onSelectDeck,
-  onEditDeck
+  onEditDeck,
+  isSandbox
 }: Props) {
   const [selectedZone, setSelectedZone] = useState<string | null>(null)
   const [isDeckBuilderOpen, setIsDeckBuilderOpen] = useState(false)
@@ -87,18 +88,18 @@ export default function MobileZoneDrawer({
   if (type === 'zones') {
     return (
       <>
-        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose}>
           <div 
-            className="absolute bottom-0 left-0 right-0 bg-slate-900 rounded-t-3xl max-h-[80vh] overflow-y-auto border-t-2 border-slate-700"
+            className="absolute bottom-0 left-0 right-0 bg-slate-800 rounded-t-2xl max-h-[85vh] overflow-y-auto border-t border-slate-700 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Handle bar */}
-            <div className="flex justify-center py-3">
+            <div className="flex justify-center py-3 border-b border-slate-700/50">
               <div className="w-12 h-1 bg-slate-600 rounded-full" />
             </div>
 
             {/* Title */}
-            <div className="px-4 pb-3 border-b border-slate-700">
+            <div className="px-4 py-3 border-b border-slate-700">
               <h2 className="text-white text-lg font-bold">Your Zones</h2>
             </div>
 
@@ -136,22 +137,22 @@ export default function MobileZoneDrawer({
 
             {/* Deck Management */}
             {!spectatorMode && (
-              <div className="p-4 border-t border-slate-700 space-y-2">
+              <div className="p-4 border-t border-slate-700 space-y-3">
                 <h3 className="text-white text-sm font-bold mb-2">Deck Management</h3>
                 <button
                   onClick={() => setIsDeckBuilderOpen(true)}
-                  className="w-full bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+                  className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
                 >
                   <span className="text-xl">🎴</span>
                   <span>{player.deckList ? 'Change Deck' : 'Import Deck'}</span>
                 </button>
                 
                 {player.deckList && (
-                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                  <div className="bg-slate-900 border border-slate-700 rounded-lg p-3">
                     <div className="text-white text-sm font-semibold mb-1">
                       ✅ {player.deckList.deckName || 'Deck Loaded'}
                     </div>
-                    <div className="text-gray-400 text-xs">
+                    <div className="text-slate-400 text-xs">
                       {player.zones.library.length} cards in library
                     </div>
                   </div>
@@ -166,13 +167,48 @@ export default function MobileZoneDrawer({
                 
                 <button
                   onClick={async () => {
+                    if (!confirm('Mulligan? This will shuffle your hand into library and draw 7 new cards.')) {
+                      return
+                    }
+                    
+                    try {
+                      for (const cardId of player.zones.hand) {
+                        await applyCardGameAction(cardGameId, {
+                          type: 'move_card',
+                          playerId: player.id,
+                          data: { cardId, fromZone: 'hand', toZone: 'library' }
+                        })
+                      }
+                      
+                      await applyCardGameAction(cardGameId, {
+                        type: 'shuffle_library',
+                        playerId: player.id,
+                        data: {}
+                      })
+                      
+                      await applyCardGameAction(cardGameId, {
+                        type: 'draw_cards',
+                        playerId: player.id,
+                        data: { count: 7 }
+                      })
+                    } catch (error) {
+                      console.error('Failed to mulligan:', error)
+                    }
+                  }}
+                  className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white py-3 rounded-lg font-semibold transition-colors"
+                >
+                  🔄 Mulligan
+                </button>
+                
+                <button
+                  onClick={async () => {
                     await applyCardGameAction(cardGameId, {
                       type: 'draw_cards',
                       playerId: player.id,
                       data: { count: 1 }
                     })
                   }}
-                  className="w-full bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 text-white py-3 rounded-lg font-semibold transition-colors"
+                  className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white py-3 rounded-lg font-semibold transition-colors"
                 >
                   🃏 Draw 1 Card
                 </button>
@@ -185,9 +221,32 @@ export default function MobileZoneDrawer({
                       data: { count: 7 }
                     })
                   }}
-                  className="w-full bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 text-white py-3 rounded-lg font-semibold transition-colors"
+                  className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white py-3 rounded-lg font-semibold transition-colors"
                 >
                   🃏 Draw 7 Cards
+                </button>
+                
+                <button
+                  onClick={async () => {
+                    const topCardId = player.zones.library[0]
+                    if (!topCardId) {
+                      alert('Library is empty')
+                      return
+                    }
+                    
+                    await applyCardGameAction(cardGameId, {
+                      type: 'move_card',
+                      playerId: player.id,
+                      data: { 
+                        cardId: topCardId,
+                        fromZone: 'library',
+                        toZone: 'hand'
+                      }
+                    })
+                  }}
+                  className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white py-3 rounded-lg font-semibold transition-colors"
+                >
+                  📤 Library → Hand
                 </button>
                 
                 <button
@@ -198,14 +257,13 @@ export default function MobileZoneDrawer({
                       data: {}
                     })
                   }}
-                  className="w-full bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 text-white py-3 rounded-lg font-semibold transition-colors"
+                  className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white py-3 rounded-lg font-semibold transition-colors"
                 >
                   🔀 Shuffle Library
                 </button>
                 
                 <button
                   onClick={async () => {
-                    // Mill top 3 cards
                     for (let i = 0; i < 3; i++) {
                       const topCardId = player.zones.library[i]
                       if (!topCardId) break
@@ -221,9 +279,38 @@ export default function MobileZoneDrawer({
                       })
                     }
                   }}
-                  className="w-full bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 text-white py-3 rounded-lg font-semibold transition-colors"
+                  className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white py-3 rounded-lg font-semibold transition-colors"
                 >
                   ⚰️ Mill 3 Cards
+                </button>
+                
+                <button
+                  onClick={async () => {
+                    if (player.zones.hand.length === 0) {
+                      alert('Your hand is empty')
+                      return
+                    }
+                    
+                    if (confirm('Move all cards from hand to battlefield tapped?')) {
+                      for (const cardId of player.zones.hand) {
+                        await applyCardGameAction(cardGameId, {
+                          type: 'move_card',
+                          playerId: player.id,
+                          data: {
+                            cardId,
+                            fromZone: 'hand',
+                            toZone: 'battlefield',
+                            position: { x: Math.random() * 200, y: Math.random() * 200 },
+                            isFaceUp: true,
+                            isTapped: true
+                          }
+                        })
+                      }
+                    }
+                  }}
+                  className="w-full bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white py-3 rounded-lg font-semibold transition-colors"
+                >
+                  🎴 Hand → Battlefield (Tapped)
                 </button>
               </div>
             )}
@@ -234,15 +321,13 @@ export default function MobileZoneDrawer({
         {isDeckBuilderOpen && onCreateDeck && onDeleteDeck && onSelectDeck && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
             <div className="relative w-full h-full max-w-7xl max-h-[95vh] m-2">
-              {/* Close button */}
               <button
                 onClick={() => setIsDeckBuilderOpen(false)}
-                className="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white rounded-full w-10 h-10 flex items-center justify-center font-bold shadow-lg"
+                className="absolute top-2 right-2 z-10 bg-red-600 hover:bg-red-700 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold shadow-lg transition-colors"
               >
                 ✕
               </button>
               
-              {/* Deck Builder */}
               <div className="w-full h-full overflow-auto rounded-xl shadow-2xl">
                 <DeckBuilder
                   decks={decks}
@@ -255,6 +340,12 @@ export default function MobileZoneDrawer({
                     onClose()
                   }}
                   onEditDeck={onEditDeck || (async () => {})}
+                  isSandbox={isSandbox}
+                  cardGameId={cardGameId}
+                  onClose={() => {
+                    setIsDeckBuilderOpen(false)
+                    onClose() // Close the drawer too - this DOES exist as a prop
+                  }}
                 />
               </div>
             </div>
@@ -268,26 +359,26 @@ export default function MobileZoneDrawer({
   if (type === 'hand') {
     return (
       <>
-        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose}>
           <div 
-            className="absolute bottom-0 left-0 right-0 bg-slate-900 rounded-t-3xl max-h-[80vh] overflow-y-auto border-t-2 border-slate-700"
+            className="absolute bottom-0 left-0 right-0 bg-slate-800 rounded-t-2xl max-h-[85vh] overflow-y-auto border-t border-slate-700 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Handle bar */}
-            <div className="flex justify-center py-3">
+            <div className="flex justify-center py-3 border-b border-slate-700/50">
               <div className="w-12 h-1 bg-slate-600 rounded-full" />
             </div>
 
             {/* Title & Grid Controls */}
-            <div className="px-4 pb-3 border-b border-slate-700 flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
               <h2 className="text-white text-lg font-bold">Your Hand ({player.zones.hand.length})</h2>
               
               {/* Grid size toggle */}
-              <div className="flex gap-1 bg-slate-800 border border-slate-600 rounded-lg p-1">
+              <div className="flex gap-1 bg-slate-900 border border-slate-600 rounded-lg p-1">
                 <button
                   onClick={() => setHandColumns(1)}
                   className={`p-2 rounded transition-colors ${
-                    handColumns === 1 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                    handColumns === 1 ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'
                   }`}
                 >
                   <LayoutGrid className="w-4 h-4" />
@@ -295,7 +386,7 @@ export default function MobileZoneDrawer({
                 <button
                   onClick={() => setHandColumns(2)}
                   className={`p-2 rounded transition-colors ${
-                    handColumns === 2 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                    handColumns === 2 ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'
                   }`}
                 >
                   <Grid2x2 className="w-4 h-4" />
@@ -303,7 +394,7 @@ export default function MobileZoneDrawer({
                 <button
                   onClick={() => setHandColumns(3)}
                   className={`p-2 rounded transition-colors ${
-                    handColumns === 3 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                    handColumns === 3 ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'
                   }`}
                 >
                   <Grid3x3 className="w-4 h-4" />
@@ -326,7 +417,7 @@ export default function MobileZoneDrawer({
                 return (
                   <div key={cardId} className="relative">
                     {/* Card Image */}
-                    <div className="aspect-[2/3] rounded-lg overflow-hidden border-2 border-slate-600">
+                    <div className="aspect-[2/3] rounded-lg overflow-hidden border border-slate-600 shadow-lg">
                       {imageUrl ? (
                         <img 
                           src={imageUrl} 
@@ -338,7 +429,7 @@ export default function MobileZoneDrawer({
                           }}
                         />
                       ) : (
-                        <div className="w-full h-full bg-slate-800 flex items-center justify-center p-2">
+                        <div className="w-full h-full bg-slate-900 flex items-center justify-center p-2">
                           <p className="text-white text-xs text-center">{cardData?.name || 'Card'}</p>
                         </div>
                       )}
@@ -355,7 +446,7 @@ export default function MobileZoneDrawer({
                           y: rect.top
                         })
                       }}
-                      className="absolute top-1 right-1 bg-slate-900/90 hover:bg-slate-800 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-lg border border-slate-600"
+                      className="absolute top-1 right-1 bg-slate-900/90 hover:bg-slate-800 text-white rounded-lg w-7 h-7 flex items-center justify-center text-sm font-bold shadow-lg border border-slate-600 transition-colors"
                     >
                       ⋯
                     </button>
@@ -368,80 +459,80 @@ export default function MobileZoneDrawer({
 
         {/* Card Menu */}
         {cardMenu && (
-        <>
+          <>
             <div 
-            className="fixed inset-0 z-50 bg-black/30"
-            onClick={() => setCardMenu(null)}
+              className="fixed inset-0 z-50 bg-black/30"
+              onClick={() => setCardMenu(null)}
             />
             <SmartCardMenu
-            cardId={cardMenu.cardId}
-            position={{ x: cardMenu.x, y: cardMenu.y }}
-            onClose={() => setCardMenu(null)}
-            onAction={async (action) => {
+              cardId={cardMenu.cardId}
+              position={{ x: cardMenu.x, y: cardMenu.y }}
+              onClose={() => setCardMenu(null)}
+              onAction={async (action) => {
                 if (spectatorMode) return
                 
                 const actions: Record<string, any> = {
-                battlefield: {
+                  battlefield: {
                     type: 'move_card',
                     playerId: player.id,
                     data: {
-                    cardId: cardMenu.cardId,
-                    fromZone: 'hand',
-                    toZone: 'battlefield',
-                    position: { x: 100, y: 100 },
-                    isFaceUp: true
+                      cardId: cardMenu.cardId,
+                      fromZone: 'hand',
+                      toZone: 'battlefield',
+                      position: { x: 100, y: 100 },
+                      isFaceUp: true
                     }
-                },
-                graveyard: {
+                  },
+                  graveyard: {
                     type: 'move_card',
                     playerId: player.id,
                     data: {
-                    cardId: cardMenu.cardId,
-                    fromZone: 'hand',
-                    toZone: 'graveyard'
+                      cardId: cardMenu.cardId,
+                      fromZone: 'hand',
+                      toZone: 'graveyard'
                     }
-                },
-                exile: {
+                  },
+                  exile: {
                     type: 'move_card',
                     playerId: player.id,
                     data: {
-                    cardId: cardMenu.cardId,
-                    fromZone: 'hand',
-                    toZone: 'exile'
+                      cardId: cardMenu.cardId,
+                      fromZone: 'hand',
+                      toZone: 'exile'
                     }
-                },
-                library_top: {
+                  },
+                  library_top: {
                     type: 'move_card',
                     playerId: player.id,
                     data: {
-                    cardId: cardMenu.cardId,
-                    fromZone: 'hand',
-                    toZone: 'library',
-                    position: 'top'
+                      cardId: cardMenu.cardId,
+                      fromZone: 'hand',
+                      toZone: 'library',
+                      position: 'top'
                     }
-                },
-                library_bottom: {
+                  },
+                  library_bottom: {
                     type: 'move_card',
                     playerId: player.id,
                     data: {
-                    cardId: cardMenu.cardId,
-                    fromZone: 'hand',
-                    toZone: 'library',
-                    position: 'bottom'
+                      cardId: cardMenu.cardId,
+                      fromZone: 'hand',
+                      toZone: 'library',
+                      position: 'bottom'
                     }
-                }
+                  }
                 }
                 
                 if (actions[action]) {
-                await applyCardGameAction(cardGameId, actions[action])
-                setCardMenu(null)
-                if (action === 'battlefield') {
+                  await applyCardGameAction(cardGameId, actions[action])
+                  setCardMenu(null)
+                  if (action === 'battlefield') {
                     onClose()
+                  }
                 }
-                }
-            }}
+              }}
             />
-        </>
+          </>
         )}
       </>
     )
@@ -460,7 +551,7 @@ function ZoneCard({ icon, glowColor, label, count, onClick }: {
   return (
     <button
       onClick={onClick}
-      className="bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 rounded-xl p-4 flex flex-col items-center gap-2 transition-colors group"
+      className="bg-slate-700 hover:bg-slate-600 border border-slate-600 rounded-lg p-4 flex flex-col items-center gap-2 transition-colors group"
       style={{
         ['--glow-color' as string]: glowColor
       }}
@@ -475,126 +566,122 @@ function ZoneCard({ icon, glowColor, label, count, onClick }: {
 }
 
 function SmartCardMenu({ 
-    cardId, 
-    position, 
-    onClose, 
-    onAction 
-  }: {
-    cardId: string
-    position: { x: number; y: number }
-    onClose: () => void
-    onAction: (action: string) => void
-  }) {
-    const menuRef = useRef<HTMLDivElement>(null)
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, maxHeight: 'auto' })
-  
-    useEffect(() => {
-      if (menuRef.current) {
-        const menuRect = menuRef.current.getBoundingClientRect()
-        const viewportWidth = window.innerWidth
-        const viewportHeight = window.innerHeight
-        
-        let top = position.y
-        let left = position.x
-        let maxHeight: string | number = 'auto'
-        
-        // Center horizontally around click point
-        left = position.x - (menuRect.width / 2)
-        
-        // Keep within horizontal bounds
-        if (left < 8) {
-          left = 8
-        } else if (left + menuRect.width > viewportWidth - 8) {
-          left = viewportWidth - menuRect.width - 8
-        }
-        
-        // Vertical positioning
-        const spaceBelow = viewportHeight - position.y - 8
-        const spaceAbove = position.y - 8
-        
-        if (spaceBelow >= menuRect.height) {
-          // Enough space below - position below click
-          top = position.y + 8
-        } else if (spaceAbove >= menuRect.height) {
-          // More space above - position above click
-          top = position.y - menuRect.height - 8
-        } else if (spaceAbove > spaceBelow) {
-          // Use space above with scrolling
-          top = 8
-          maxHeight = spaceAbove - 8
-        } else {
-          // Use space below with scrolling
-          top = position.y + 8
-          maxHeight = spaceBelow - 8
-        }
-        
-        setMenuPosition({
-          top,
-          left,
-          maxHeight: typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight
-        })
+  cardId, 
+  position, 
+  onClose, 
+  onAction 
+}: {
+  cardId: string
+  position: { x: number; y: number }
+  onClose: () => void
+  onAction: (action: string) => void
+}) {
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, maxHeight: 'auto' })
+
+  useEffect(() => {
+    if (menuRef.current) {
+      const menuRect = menuRef.current.getBoundingClientRect()
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      
+      let top = position.y
+      let left = position.x
+      let maxHeight: string | number = 'auto'
+      
+      // Center horizontally around click point
+      left = position.x - (menuRect.width / 2)
+      
+      // Keep within horizontal bounds
+      if (left < 8) {
+        left = 8
+      } else if (left + menuRect.width > viewportWidth - 8) {
+        left = viewportWidth - menuRect.width - 8
       }
-    }, [position])
-  
-    return (
-      <div
-        ref={menuRef}
-        className="fixed z-[60] bg-slate-900 rounded-lg shadow-2xl border-2 border-slate-700 min-w-[200px]"
-        style={{
-          top: `${menuPosition.top}px`,
-          left: `${menuPosition.left}px`,
-          maxHeight: menuPosition.maxHeight
-        }}
-        onClick={(e) => e.stopPropagation()}
+      
+      // Vertical positioning
+      const spaceBelow = viewportHeight - position.y - 8
+      const spaceAbove = position.y - 8
+      
+      if (spaceBelow >= menuRect.height) {
+        top = position.y + 8
+      } else if (spaceAbove >= menuRect.height) {
+        top = position.y - menuRect.height - 8
+      } else if (spaceAbove > spaceBelow) {
+        top = 8
+        maxHeight = spaceAbove - 8
+      } else {
+        top = position.y + 8
+        maxHeight = spaceBelow - 8
+      }
+      
+      setMenuPosition({
+        top,
+        left,
+        maxHeight: typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight
+      })
+    }
+  }, [position])
+
+  return (
+    <div
+      ref={menuRef}
+      className="fixed z-[60] bg-slate-800 rounded-lg shadow-2xl border border-slate-600 min-w-[200px]"
+      style={{
+        top: `${menuPosition.top}px`,
+        left: `${menuPosition.left}px`,
+        maxHeight: menuPosition.maxHeight
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div 
+        className={menuPosition.maxHeight !== 'auto' ? 'overflow-y-auto' : ''}
+        style={{ maxHeight: menuPosition.maxHeight }}
       >
-        <div 
-          className={menuPosition.maxHeight !== 'auto' ? 'overflow-y-auto' : ''}
-          style={{ maxHeight: menuPosition.maxHeight }}
-        >
-          <div className="p-2 space-y-1">
-            <button
-              onClick={() => onAction('battlefield')}
-              className="w-full text-left px-3 py-2 text-white hover:bg-slate-800 rounded transition-colors text-sm flex items-center gap-2"
-            >
-              <Swords className="w-4 h-4" />
-              Play to Battlefield
-            </button>
-            
-            <button
-              onClick={() => onAction('graveyard')}
-              className="w-full text-left px-3 py-2 text-white hover:bg-slate-800 rounded transition-colors text-sm flex items-center gap-2"
-            >
-              <Skull className="w-4 h-4" />
-              Discard
-            </button>
-  
-            <button
-              onClick={() => onAction('exile')}
-              className="w-full text-left px-3 py-2 text-white hover:bg-slate-800 rounded transition-colors text-sm flex items-center gap-2"
-            >
-              <Flame className="w-4 h-4" />
-              Exile
-            </button>
-  
-            <div className="border-t border-slate-700 my-1" />
-  
-            <button
-              onClick={() => onAction('library_top')}
-              className="w-full text-left px-3 py-2 text-white hover:bg-slate-800 rounded transition-colors text-sm flex items-center gap-2"
-            >
-              <BookOpen className="w-4 h-4" />
-              To Library Top
-            </button>
-  
-            <button
-              onClick={() => onAction('library_bottom')}
-              className="w-full text-left px-3 py-2 text-white hover:bg-slate-800 rounded transition-colors text-sm flex items-center gap-2"
-            >
-              <BookOpen className="w-4 h-4" />
-              To Library Bottom
-            </button>
-          </div>
+        <div className="p-2 space-y-1">
+          <button
+            onClick={() => onAction('battlefield')}
+            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
+          >
+            <Swords className="w-4 h-4" />
+            Play to Battlefield
+          </button>
+          
+          <button
+            onClick={() => onAction('graveyard')}
+            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
+          >
+            <Skull className="w-4 h-4" />
+            Discard
+          </button>
+
+          <button
+            onClick={() => onAction('exile')}
+            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
+          >
+            <Flame className="w-4 h-4" />
+            Exile
+          </button>
+
+          <div className="border-t border-slate-700 my-1" />
+
+          <button
+            onClick={() => onAction('library_top')}
+            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
+          >
+            <BookOpen className="w-4 h-4" />
+            To Library Top
+          </button>
+
+          <button
+            onClick={() => onAction('library_bottom')}
+            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
+          >
+            <BookOpen className="w-4 h-4" />
+            To Library Bottom
+          </button>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
+}

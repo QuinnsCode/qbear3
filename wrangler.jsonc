@@ -32,6 +32,10 @@
       {
         "name": "CARD_GAME_STATE_DO",
         "class_name": "CardGameDO"
+      },
+      {
+        "name": "CARD_CACHE_DO",
+        "class_name": "CardCacheDO"
       }
     ]
   },
@@ -51,6 +55,10 @@
     {
       "tag": "v3",
       "new_sqlite_classes": ["CardGameDO"]
+    },
+    {
+      "tag": "v4",
+      "new_sqlite_classes": ["CardCacheDO"]
     }
   ],
   "d1_databases": [
@@ -68,10 +76,6 @@
     {
       "binding": "CARD_GAME_REGISTRY_KV",
       "id": "4494cacc3d484b82a9be1f98059ad9f0"
-    },
-    {
-      "binding": "CARDS_KV",
-      "id": "27a15573752e412db8c0026055aad56c"
     },
     {
       "binding": "DECKS_KV",

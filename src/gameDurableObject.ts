@@ -308,7 +308,7 @@ export class GameStateDO extends DurableObject {
     await this.initializeAIPlayers(this.gameState);
     
     // Persist the loaded state
-    await this.persist();
+    this.persist();
     
     // Broadcast the new state to all connected clients
     this.wsManager.broadcast({ 
@@ -427,7 +427,7 @@ export class GameStateDO extends DurableObject {
       yearlyTurnOrders: {}
     }
 
-    await this.persist()
+    this.persist()
     return this.gameState
   }
 
@@ -492,7 +492,7 @@ export class GameStateDO extends DurableObject {
       this.gameState.currentActionIndex = this.gameState.actions.length - 1
       this.gameState.updatedAt = new Date()
 
-      await this.persist()
+      this.persist()
       
       this.wsManager.broadcast({ type: 'state_update', state: this.gameState })
       
@@ -518,7 +518,7 @@ export class GameStateDO extends DurableObject {
     
     if (result.newState !== this.gameState) {
       this.gameState = result.newState
-      await this.persist()
+      this.persist()
       
       console.log(`📡 Broadcasting state update after progression`)
       this.wsManager.broadcast({ type: 'state_update', state: this.gameState })
@@ -655,7 +655,7 @@ export class GameStateDO extends DurableObject {
         // console.log(`📋 ${currentPlayer.name} advanced to Phase ${nextPhase}`);
       }
       
-      await this.persist();
+      this.persist();
       console.log(`📡 Broadcasting state update after main game progression`);
       this.wsManager.broadcast({ type: 'state_update', state: this.gameState });
       
@@ -682,7 +682,7 @@ export class GameStateDO extends DurableObject {
     this.gameState.setupPhase = 'units'
     
     await this.initializeAIPlayers(this.gameState)
-    await this.persist()
+    this.persist()
     
     this.wsManager.broadcast({ 
       type: 'game_restarted', 
@@ -862,7 +862,7 @@ export class GameStateDO extends DurableObject {
       currentActionIndex: actionIndex
     }
 
-    await this.persist()
+    this.persist()
     this.wsManager.broadcast({ type: 'state_update', state: this.gameState })
     
     return this.gameState
@@ -920,7 +920,7 @@ export class GameStateDO extends DurableObject {
       yearlyTurnOrders: {}
     }
 
-    await this.persist()
+    this.persist()
     return this.gameState
   }
 
@@ -955,16 +955,16 @@ export class GameStateDO extends DurableObject {
       this.gameState.turnOrder.push(data.playerId)
       this.gameState.updatedAt = new Date()
       
-      await this.persist()
+      this.persist()
       this.wsManager.broadcast({ type: 'player_joined', player: newPlayer })
     }
 
     return this.gameState
   }
   
-  private async persist() {
+  private persist() {
     if (this.gameState) {
-      await this.ctx.storage.put('gameState', this.gameState)
+      this.ctx.storage.put('gameState', this.gameState)
     }
   }
   

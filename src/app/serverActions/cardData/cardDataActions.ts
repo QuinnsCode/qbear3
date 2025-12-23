@@ -3,21 +3,24 @@
 
 import { env } from "cloudflare:workers"
 import { ScryfallProvider } from '@/app/services/cardData/providers/ScryfallProvider'
-import { KVCardCache } from '@/app/services/cardData/KVCardCache'
+// import { KVCardCache } from '@/app/services/cardData/KVCardCache'
 import { CardDataService } from '@/app/services/cardData/CardDataService'
 import type { CardData, CardIdentifier } from '@/app/services/cardData/types'
+import { DOCardCache } from '@/app/services/cardData/DOCardCache'
+
 
 /**
  * Get the card data service instance with cache
  * This should be called in each server action to get fresh bindings
  */
 function getCardDataService(): CardDataService {
-  if (!env?.CARDS_KV) {
-    throw new Error('CARDS_KV binding not found')
+  if (!env?.CARD_CACHE_DO) {
+    throw new Error('CARD_CACHE_DO binding not found')
   }
   
   const provider = new ScryfallProvider()
-  const cache = new KVCardCache(env.CARDS_KV)
+  // const cache = new KVCardCache(env.CARDS_KV)
+  const cache = new DOCardCache(env.CARD_CACHE_DO)
   return new CardDataService(provider, cache)
 }
 

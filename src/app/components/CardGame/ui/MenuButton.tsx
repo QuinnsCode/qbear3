@@ -7,7 +7,7 @@ import { MenuItem } from "./MenuItem";
 export interface MenuItemConfig {
   label: string;
   icon?: string;
-  onClick: () => void | false;  // ✅ Can return false to keep menu open
+  onClick: (e?: React.MouseEvent) => void | false;  // ✅ Can accept event and return false to keep menu open
   disabled?: boolean;
   separator?: boolean;
 }
@@ -121,7 +121,7 @@ export function MenuButton({
       {/* Dropdown menu - responsive width */}
       {isOpen && (
         <div 
-          className={`absolute ${getPositionClasses()} w-64 sm:w-56 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl backdrop-blur-md z-50 py-1`}
+          className={`absolute ${getPositionClasses()} w-64 sm:w-56 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl backdrop-blur-md z-90 py-1`}
         >
           {items.map((item, index) => (
             <div key={index}>
@@ -132,8 +132,8 @@ export function MenuButton({
                 </div>
               ) : (
                 <MenuItem
-                  onClick={() => {
-                    const result = item.onClick();
+                  onClick={(e) => {
+                    const result = item.onClick(e);
                     // Only close menu if onClick doesn't return false
                     if (result !== false) {
                       setIsOpen(false);

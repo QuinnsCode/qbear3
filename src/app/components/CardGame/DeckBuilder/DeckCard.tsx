@@ -7,15 +7,15 @@ import type { Deck } from '@/app/types/Deck'
 interface Props {
   deck: Deck
   onSelect: () => void
-  onDelete: () => void
-  onEdit: () => void
+  onDelete?: () => void
+  onEdit?: () => void
+  isSandbox?: boolean
 }
 
-export default function DeckCard({ deck, onSelect, onDelete, onEdit }: Props) {
+export default function DeckCard({ deck, onSelect, onDelete, onEdit, isSandbox = false }: Props) {
   const [isHovered, setIsHovered] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
-  // Safety check - if deck is undefined/null, render nothing
   if (!deck) {
     console.error('DeckCard: deck is undefined')
     return null
@@ -28,21 +28,21 @@ export default function DeckCard({ deck, onSelect, onDelete, onEdit }: Props) {
     setMousePos({ x, y })
   }
 
-  // Calculate parallax offset (moves opposite to mouse for depth effect)
-  const parallaxX = isHovered ? (mousePos.x - 0.5) * -20 : 0
-  const parallaxY = isHovered ? (mousePos.y - 0.5) * -20 : 0
+  // Subtle parallax - less movement for elegance
+  const parallaxX = isHovered ? (mousePos.x - 0.5) * -15 : 0
+  const parallaxY = isHovered ? (mousePos.y - 0.5) * -15 : 0
   
-  // Calculate shine position
+  // Shine position
   const glareX = mousePos.x * 100
   const glareY = mousePos.y * 100
 
   // Color indicators
-  const colorMap: Record<string, string> = {
-    W: 'bg-yellow-100',
-    U: 'bg-blue-500',
-    B: 'bg-gray-900',
-    R: 'bg-red-600',
-    G: 'bg-green-600',
+  const colorMap: Record<string, { bg: string, glow: string }> = {
+    W: { bg: 'bg-yellow-50', glow: 'rgba(254, 240, 138, 0.6)' },
+    U: { bg: 'bg-blue-500', glow: 'rgba(59, 130, 246, 0.6)' },
+    B: { bg: 'bg-gray-900', glow: 'rgba(0, 0, 0, 0.8)' },
+    R: { bg: 'bg-red-600', glow: 'rgba(220, 38, 38, 0.6)' },
+    G: { bg: 'bg-green-600', glow: 'rgba(22, 163, 74, 0.6)' },
   }
 
   return (
@@ -51,200 +51,160 @@ export default function DeckCard({ deck, onSelect, onDelete, onEdit }: Props) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onMouseMove={handleMouseMove}
-      className="group relative bg-slate-800 rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl border-2 border-slate-700 hover:border-blue-500"
+      className="group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] border-2 border-slate-700/50 hover:border-blue-500/50 shadow-xl hover:shadow-2xl"
       style={{
-        height: '320px',
-        perspective: '1000px',
+        height: '380px',
+        perspective: '1200px',
+        transformStyle: 'preserve-3d',
       }}
     >
-      {/* Commander Image with Parallax */}
+      {/* Commander Art Background with Parallax */}
       <div className="absolute inset-0 overflow-hidden">
         {deck.commanderImageUrl ? (
-          <div
-            className="absolute inset-0 transition-transform duration-200 ease-out"
-            style={{
-              transform: `translate(${parallaxX}px, ${parallaxY}px) scale(${isHovered ? 1.1 : 1})`,
-              willChange: 'transform',
-            }}
-          >
-            <img
-              src={deck.commanderImageUrl}
-              alt={deck.commander || 'Commander'}
-              className="w-full h-full object-cover"
-            />
-            
-            {/* Holographic Shine Effect */}
+          <>
+            {/* Parallax Image Layer */}
             <div
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              className="absolute inset-0 transition-transform duration-300 ease-out"
               style={{
-                background: `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.8) 0%, transparent 50%)`,
+                transform: `translate(${parallaxX}px, ${parallaxY}px) scale(${isHovered ? 1.08 : 1.05})`,
+                willChange: 'transform',
+              }}
+            >
+              <img
+                src={deck.commanderImageUrl}
+                alt={deck.commander || 'Commander'}
+                className="w-full h-full object-cover"
+                style={{ objectPosition: 'center 20%' }}
+              />
+            </div>
+            
+            {/* Edge Fade Vignette */}
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-transparent to-slate-900/90" />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/60 via-transparent to-slate-900/60" />
+            
+            {/* Holographic Shine */}
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+              style={{
+                background: `radial-gradient(circle 400px at ${glareX}% ${glareY}%, rgba(255,255,255,0.15) 0%, transparent 60%)`,
                 mixBlendMode: 'overlay',
               }}
             />
             
-            {/* Rainbow Gradient Overlay */}
+            {/* Subtle Rainbow Refraction */}
             <div
-              className="absolute inset-0 opacity-0 group-hover:opacity-50 transition-opacity duration-300"
+              className="absolute inset-0 opacity-0 group-hover:opacity-40 transition-opacity duration-700 pointer-events-none"
               style={{
-                background: `linear-gradient(${glareX * 3.6}deg, 
-                  rgba(255, 0, 255, 0.3) 0%,
-                  rgba(0, 255, 255, 0.3) 25%,
-                  rgba(255, 255, 0, 0.3) 50%,
-                  rgba(255, 0, 255, 0.3) 75%,
-                  rgba(0, 255, 255, 0.3) 100%)`,
-                mixBlendMode: 'color-dodge',
+                background: `linear-gradient(${glareX * 2}deg, 
+                  rgba(147, 51, 234, 0.15) 0%,
+                  rgba(59, 130, 246, 0.15) 33%,
+                  rgba(16, 185, 129, 0.15) 66%,
+                  rgba(251, 191, 36, 0.15) 100%)`,
+                mixBlendMode: 'screen',
               }}
             />
             
-            {/* Animated Ripple Effect */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {/* Animated Scan Lines */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none">
               <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-30"
+                className="h-full w-full"
                 style={{
-                  background: 'radial-gradient(circle, transparent 10%, rgba(255,255,255,0.15) 10%, rgba(255,255,255,0.15) 20%, transparent 20%)',
-                  backgroundSize: '30px 30px',
-                  animation: 'ripple 4s linear infinite',
+                  background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)',
                 }}
               />
             </div>
-            
-            {/* Sparkle Effect */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-              <div
-                className="absolute w-2 h-2 bg-white rounded-full"
-                style={{
-                  top: `${20 + Math.sin(glareX) * 30}%`,
-                  left: `${30 + Math.cos(glareY) * 40}%`,
-                  animation: 'sparkle 2s ease-in-out infinite',
-                  boxShadow: '0 0 10px rgba(255,255,255,0.8)',
-                }}
-              />
-              <div
-                className="absolute w-1.5 h-1.5 bg-white rounded-full"
-                style={{
-                  top: `${60 + Math.cos(glareX) * 20}%`,
-                  left: `${70 + Math.sin(glareY) * 30}%`,
-                  animation: 'sparkle 2.5s ease-in-out infinite 0.5s',
-                  boxShadow: '0 0 8px rgba(255,255,255,0.8)',
-                }}
-              />
-              <div
-                className="absolute w-1 h-1 bg-white rounded-full"
-                style={{
-                  top: `${40 + Math.sin(glareY) * 25}%`,
-                  left: `${15 + Math.cos(glareX) * 35}%`,
-                  animation: 'sparkle 3s ease-in-out infinite 1s',
-                  boxShadow: '0 0 6px rgba(255,255,255,0.8)',
-                }}
-              />
-            </div>
-            
-            {/* Gradient overlay for readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent" />
-          </div>
+          </>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
-            <div className="text-6xl">🃏</div>
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center">
+            <div className="text-8xl opacity-20">🃏</div>
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div className="relative h-full flex flex-col justify-between p-4">
-        {/* Top: Colors */}
-        <div className="flex gap-1">
+      {/* Content Card - Frosted Glass Effect */}
+      <div className="relative h-full flex flex-col justify-between p-5">
+        {/* Top Section: Color Pips */}
+        <div className="flex gap-2 drop-shadow-lg">
           {deck.colors && deck.colors.length > 0 ? (
-            deck.colors.map((color) => (
+            deck.colors.map((color, idx) => (
               <div
-                key={color}
-                className={`w-6 h-6 rounded-full ${colorMap[color] || 'bg-gray-500'} border-2 border-white shadow-lg transition-transform group-hover:scale-110`}
+                key={`${color}-${idx}`}
+                className={`w-7 h-7 rounded-full ${colorMap[color]?.bg || 'bg-gray-500'} border-2 border-white/80 shadow-lg backdrop-blur-sm transition-all duration-300 group-hover:scale-110 group-hover:rotate-12`}
+                style={{
+                  boxShadow: isHovered ? `0 0 20px ${colorMap[color]?.glow || 'rgba(100,100,100,0.5)'}` : undefined,
+                  transitionDelay: `${idx * 50}ms`
+                }}
                 title={color}
               />
             ))
           ) : (
-            <div className="w-6 h-6 rounded-full bg-gray-400 border-2 border-white shadow-lg transition-transform group-hover:scale-110" title="Colorless" />
+            <div className="w-7 h-7 rounded-full bg-gray-400 border-2 border-white/80 shadow-lg" title="Colorless" />
           )}
         </div>
 
-        {/* Bottom: Deck Info */}
-        <div className="space-y-2">
-          <h3 className="text-white font-bold text-xl line-clamp-2 drop-shadow-lg">
+        {/* Bottom Section: Info Card with Frosted Glass */}
+        <div 
+          className="bg-slate-900/85 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-2xl transition-all duration-300 group-hover:bg-slate-900/90 group-hover:border-white/20"
+          style={{
+            boxShadow: isHovered ? '0 8px 32px rgba(0,0,0,0.6)' : '0 4px 16px rgba(0,0,0,0.4)'
+          }}
+        >
+          <h3 className="text-white font-bold text-xl mb-2 line-clamp-2 drop-shadow-lg tracking-tight">
             {deck.name || 'Unnamed Deck'}
           </h3>
           
           {deck.commander && (
-            <p className="text-blue-300 text-sm font-semibold drop-shadow-lg">
-              Commander: {deck.commander}
+            <p className="text-blue-300/90 text-sm font-medium mb-3 drop-shadow-md line-clamp-1">
+              ⚔️ {deck.commander}
             </p>
           )}
 
-          <div className="flex items-center justify-between text-xs text-gray-300">
-            <span>{deck.totalCards || 0} cards</span>
-            <span>{deck.updatedAt ? new Date(deck.updatedAt).toLocaleDateString() : 'N/A'}</span>
+          <div className="flex items-center justify-between text-xs text-slate-400/80 font-medium">
+            <span className="flex items-center gap-1">
+              <span className="text-slate-500">🃏</span>
+              {deck.totalCards || 0} cards
+            </span>
+            <span className="text-slate-500">
+              {deck.updatedAt ? new Date(deck.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Delete button action bar */}
-      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-10">
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onEdit()
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
-          title="Edit deck"
-        >
-          ✏️
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete()
-          }}
-          className="bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg"
-          title="Delete deck"
-        >
-          ×
-        </button>
-      </div>
+      {/* Action Buttons - Only show if not sandbox */}
+      {!isSandbox && onEdit && onDelete && (
+        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all duration-300 flex gap-2 z-20">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit()
+            }}
+            className="bg-blue-600/90 hover:bg-blue-700 backdrop-blur-sm text-white rounded-lg w-9 h-9 flex items-center justify-center shadow-xl transition-all hover:scale-110 active:scale-95 border border-blue-400/30"
+            title="Edit deck"
+          >
+            ✏️
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+            className="bg-red-600/90 hover:bg-red-700 backdrop-blur-sm text-white rounded-lg w-9 h-9 flex items-center justify-center shadow-xl transition-all hover:scale-110 active:scale-95 border border-red-400/30"
+            title="Delete deck"
+          >
+            🗑️
+          </button>
+        </div>
+      )}
 
-      {/* Border Glow Effect */}
+      {/* Border Glow on Hover */}
       <div
-        className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+        className="absolute -inset-[2px] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none -z-10"
         style={{
-          background: `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(59, 130, 246, 0.4) 0%, transparent 60%)`,
-          filter: 'blur(15px)',
+          background: `radial-gradient(circle 600px at ${glareX}% ${glareY}%, rgba(59, 130, 246, 0.4), transparent 70%)`,
+          filter: 'blur(20px)',
         }}
       />
-
-      {/* Hover glow effect */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-t from-blue-500/20 to-transparent" />
-      </div>
-      
-      {/* CSS Animations */}
-      <style jsx>{`
-        @keyframes ripple {
-          0% {
-            transform: translate(0, 0);
-          }
-          100% {
-            transform: translate(30px, 30px);
-          }
-        }
-        
-        @keyframes sparkle {
-          0%, 100% {
-            opacity: 0;
-            transform: scale(0);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-      `}</style>
     </div>
   )
 }

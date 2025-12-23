@@ -50,6 +50,10 @@ model User {
 
   apikeys Apikey[]
 
+  squeezeSubscription SqueezeSubscription?
+  stripeSubscription StripeSubscription?
+
+
   @@map("user")
 }
 
@@ -337,4 +341,67 @@ model Note {
   @@index([userId])
   @@index([createdAt])
   @@map("notes")
+}
+
+model SqueezeSubscription {
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Tier & Status
+  tier   String @default("free") // 'free', 'starter', 'pro'
+  status String @default("active") // 'active', 'cancelled', 'expired', 'past_due'
+  
+  // Lemon Squeezy Integration
+  lemonSqueezySubscriptionId String? @unique @map("lemon_squeezy_subscription_id")
+  lemonSqueezyCustomerId     String? @map("lemon_squeezy_customer_id")
+  lemonSqueezyVariantId      String? @map("lemon_squeezy_variant_id")
+  
+  // Billing Dates
+  currentPeriodStart DateTime? @map("current_period_start")
+  currentPeriodEnd   DateTime? @map("current_period_end")
+  trialEndsAt        DateTime? @map("trial_ends_at")
+  endsAt             DateTime? @map("ends_at") // When cancelled sub ends
+  
+  // Metadata
+  metadata  String?   // JSON blob for raw webhook data
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  
+  @@index([tier])
+  @@index([status])
+  @@index([lemonSqueezySubscriptionId])
+  @@map("squeeze_subscriptions")
+}
+
+model StripeSubscription {
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Tier & Status
+  tier   String @default("free") // 'free', 'starter', 'pro'
+  status String @default("active") // 'active', 'canceled', 'past_due', 'unpaid'
+  
+  // Stripe Integration
+  stripeSubscriptionId String? @unique @map("stripe_subscription_id")
+  stripeCustomerId     String? @map("stripe_customer_id")
+  stripePriceId        String? @map("stripe_price_id")
+  
+  // Billing Dates
+  currentPeriodStart DateTime? @map("current_period_start")
+  currentPeriodEnd   DateTime? @map("current_period_end")
+  cancelAtPeriodEnd  Boolean   @default(false) @map("cancel_at_period_end")
+  canceledAt         DateTime? @map("canceled_at")
+  
+  // Metadata
+  metadata  String?   // JSON blob for Stripe data
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  
+  @@index([tier])
+  @@index([status])
+  @@index([stripeSubscriptionId])
+  @@index([stripeCustomerId])
+  @@map("stripe_subscriptions")
 }

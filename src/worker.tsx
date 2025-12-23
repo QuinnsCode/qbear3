@@ -24,6 +24,7 @@ import CardGamePage from "@/app/pages/cardGame/CardGamePage";
 import SanctumPage from "@/app/pages/sanctum/SanctumPage";
 import OrgNotFoundPage from "@/app/pages/errors/OrgNotFoundPage";
 import NoAccessPage from "@/app/pages/errors/NoAccessPage";
+import PricingPage from "@/app/pages/pricing/PricingPage";
 import { createNewGame } from "./app/serverActions/gameRegistry";
 import { createNewCardGame } from "./app/serverActions/cardGame/cardGameRegistry";
 import LoginPage from "./app/pages/user/Login";
@@ -35,6 +36,7 @@ export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
 export { GameStateDO } from "./gameDurableObject";
 export { CardGameDO } from './cardGameDurableObject'
+export { CardCacheDO } from './cardCacheDO'
 
 // ============================================
 // 🎮 HARDCODED SANDBOX GAME
@@ -205,6 +207,11 @@ export default defineApp([
 
   // API ROUTES - All API endpoints
   prefix("/api", [
+    route("/stripe/create-checkout", async ({ request }) => {
+      const { default: handler } = await import('@/app/api/stripe/create-checkout');
+      return handler({ request });
+    }),
+
     route("/debug/cardgame/:gameId", async ({ params, ctx }) => {
       if (!env.CARD_GAME_STATE_DO) {
         return Response.json({ error: "Card Game DO not found" });
@@ -336,13 +343,23 @@ export default defineApp([
         const { default: handler } = await import('@/app/api/webhooks/shipstation-wh');
         return handler({ request, params, ctx });
       }
+
+      if (webhookPath === 'stripe') {
+        const { default: handler } = await import('@/app/api/webhooks/stripe-wh');
+        return handler({ request });
+      }
+
+      if (webhookPath === 'lemonsqueezy') {
+        const { default: handler } = await import('@/app/api/webhooks/lemonsqueezy-wh');
+        return handler({ request, params, ctx });
+      }
       
       return Response.json({ error: "Webhook not supported" }, { status: 404 });
     }),
 
     // CATCH-ALL API ROUTE - MUST BE LAST
-    route("/*", async ({ request, params, ctx }) => {
-      const apiPath = params["*"];
+    route("*", async ({ request, params, ctx }) => {  // Changed from "/*"
+      const apiPath = params.$0;  // Changed from params["*"]
       
       if (!apiPath) {
         return new Response(
@@ -399,6 +416,11 @@ export default defineApp([
       const { default: handler } = await import('@/app/api/webhooks/shipstation-wh');
       return handler({ request, params, ctx });
     }
+
+    if (webhookPath === 'stripe') {
+      const { default: handler } = await import('@/app/api/webhooks/stripe-wh');
+      return handler({ request });
+    }
     
     return Response.json({ error: "Webhook not supported" }, { status: 404 });
   }),
@@ -409,9 +431,9 @@ export default defineApp([
     
     route("/no-access", NoAccessPage),
 
-    // SPECIFIC ROUTES FIRST
-    // FIND THE /sanctum ROUTE AND ADD THIS CHECK AT THE TOP:
     route("/sanctum", SanctumPage),
+
+    route("/pricing", PricingPage),
 
     
     prefix("/user", userRoutes),

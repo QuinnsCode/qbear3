@@ -18,9 +18,11 @@ export default function CardSearch({ hoveredCard, onCardSelect }: Props) {
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fullscreenCard, setFullscreenCard] = useState<(Card & { validatedImageUrl?: string | null }) | null>(null)
   
   const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const autocompleteTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  const searchContainerRef = useRef<HTMLDivElement>(null)
 
   // Debounced autocomplete
   useEffect(() => {
@@ -51,6 +53,34 @@ export default function CardSearch({ hoveredCard, onCardSelect }: Props) {
     }
   }, [searchQuery])
 
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Handle escape key to close fullscreen
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && fullscreenCard) {
+        setFullscreenCard(null)
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [fullscreenCard])
+
   // Debounced search
   const handleSearch = async (query: string) => {
     if (query.length < 2) {
@@ -60,6 +90,7 @@ export default function CardSearch({ hoveredCard, onCardSelect }: Props) {
 
     setIsSearching(true)
     setError(null)
+    setShowSuggestions(false) // Close suggestions when searching
 
     try {
       // Request 'small' for thumbnails, fallback enabled
@@ -99,11 +130,20 @@ export default function CardSearch({ hoveredCard, onCardSelect }: Props) {
     onCardSelect?.(card)
   }
 
+  const handleClearSearch = () => {
+    setSearchQuery('')
+    setSearchResults([])
+    setSelectedCard(null)
+    setSuggestions([])
+    setShowSuggestions(false)
+    setError(null)
+  }
+
   return (
     <div className="h-full flex flex-col bg-slate-800">
       {/* Search Header */}
       <div className="p-4 border-b border-slate-700">
-        <form onSubmit={handleSearchSubmit} className="relative">
+        <form onSubmit={handleSearchSubmit} className="relative" ref={searchContainerRef}>
           <div className="relative flex gap-2">
             <div className="relative flex-1">
               <input
@@ -117,6 +157,16 @@ export default function CardSearch({ hoveredCard, onCardSelect }: Props) {
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
                 </div>
+              )}
+              {searchQuery && !isSearching && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
               )}
             </div>
             <button
@@ -155,13 +205,13 @@ export default function CardSearch({ hoveredCard, onCardSelect }: Props) {
       {/* Results Area */}
       <div className="flex-1 overflow-y-auto">
         {searchResults.length > 0 ? (
-          <div className="flex flex-col h-full">
-            {/* Results List */}
+          <div className="h-full overflow-y-auto">
+            {/* Results List - Scrollable */}
             <div className="border-b border-slate-700 p-2">
               <div className="text-gray-400 text-xs px-2 mb-2">
                 {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
               </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2">
                 {searchResults.map((card) => (
                   <button
                     key={card.id}
@@ -199,11 +249,9 @@ export default function CardSearch({ hoveredCard, onCardSelect }: Props) {
               </div>
             </div>
             
-            {/* Selected Card Detail */}
+            {/* Selected Card Detail - Scrollable */}
             {selectedCard && (
-              <div className="flex-1 overflow-y-auto">
-                <CardDetail card={selectedCard} />
-              </div>
+              <CardDetail card={selectedCard} onImageClick={setFullscreenCard} />
             )}
           </div>
         ) : (
@@ -218,11 +266,41 @@ export default function CardSearch({ hoveredCard, onCardSelect }: Props) {
           </div>
         )}
       </div>
+
+      {/* Fullscreen Card Modal */}
+      {fullscreenCard && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setFullscreenCard(null)}
+        >
+          <div className="relative max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setFullscreenCard(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors text-2xl w-8 h-8 flex items-center justify-center"
+              aria-label="Close fullscreen"
+            >
+              ✕
+            </button>
+            <img
+              src={fullscreenCard.validatedImageUrl || fullscreenCard.image_uris?.normal}
+              alt={fullscreenCard.name}
+              className="w-full h-auto rounded-lg shadow-2xl"
+              onError={(e) => {
+                e.currentTarget.src = '/placeholder-card.png'
+                e.currentTarget.onerror = null
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function CardDetail({ card }: { card: Card & { validatedImageUrl?: string | null } }) {
+function CardDetail({ card, onImageClick }: { 
+  card: Card & { validatedImageUrl?: string | null }
+  onImageClick?: (card: Card & { validatedImageUrl?: string | null }) => void
+}) {
   // Use validatedImageUrl for the main display, fallback to normal size
   const imageUrl = card.validatedImageUrl || card.image_uris?.normal
 
@@ -230,7 +308,11 @@ function CardDetail({ card }: { card: Card & { validatedImageUrl?: string | null
     <div className="p-4 space-y-4">
       {/* Card Image */}
       {imageUrl && (
-        <div className="rounded-lg overflow-hidden border-2 border-slate-600">
+        <div 
+          className="rounded-lg overflow-hidden border-2 border-slate-600 cursor-pointer transition-all duration-200 hover:shadow-[0_0_20px_rgba(59,130,246,0.5)] hover:border-blue-500"
+          onDoubleClick={() => onImageClick?.(card)}
+          title="Double-click to view fullscreen"
+        >
           <img
             src={imageUrl}
             alt={card.name}
@@ -333,15 +415,25 @@ function CardDetail({ card }: { card: Card & { validatedImageUrl?: string | null
           </div>
         </div>
 
-        {/* Scryfall Link */}
-        <a
-          href={card.scryfall_uri}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 rounded-lg transition-colors"
-        >
-          View on Scryfall →
-        </a>
+        {/* External Links */}
+        <div className="space-y-2">
+          <a
+            href={card.scryfall_uri}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full text-center bg-purple-600 hover:bg-purple-700 text-white text-sm py-2.5 rounded-lg transition-colors font-medium"
+          >
+            View on Scryfall →
+          </a>
+          <button
+            disabled
+            className="block w-full text-center bg-slate-700 text-gray-400 text-sm py-2.5 rounded-lg cursor-not-allowed relative font-medium"
+            title="TCGPlayer affiliate link coming soon"
+          >
+            <span className="opacity-50">Buy on TCGPlayer</span>
+            <span className="ml-2 text-xs bg-slate-600 px-2 py-0.5 rounded">Coming Soon</span>
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -8,3 +8,4 @@ import TermsPage from "./legal/TermsPage";
 export const changelogRoute = route("/changelog", ChangelogPage);
 export const aboutRoute = route("/about", AboutPage);
 export const termsRoute = route("/terms", TermsPage);
+export const legalRoute = route("/legal", TermsPage)

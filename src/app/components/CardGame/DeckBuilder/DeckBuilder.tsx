@@ -7,8 +7,7 @@ import CreateDeckModal from './CreateDeckModal'
 import type { Deck } from '@/app/types/Deck'
 import EditDeckModal from './EditDeckModal'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
-import { SANDBOX_STARTER_DECKS_ARRAY } from '../Sandbox/sandboxStarterDecks'
-
+import { EDH_SANDBOX_STARTER_DECK_DATA } from '../Sandbox/starterDeckData'
 
 interface Props {
     decks: Deck[]
@@ -17,25 +16,34 @@ interface Props {
     onDeleteDeck: (deckId: string) => Promise<void>
     onSelectDeck: (deckId: string) => void
     onEditDeck: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
-    isSandbox?: boolean // ✅ NEW
-    cardGameId?: string // ✅ NEW - needed to import sandbox deck
+    isSandbox?: boolean
+    cardGameId?: string // needed to import sandbox deck
+    onClose?: () => void
 }
 
 // ✅ NEW: Convert sandbox starter decks to Deck format
 // ✅ NEW: Convert sandbox starter decks to Deck format
-const SANDBOX_STARTER_DECKS: Deck[] = SANDBOX_STARTER_DECKS_ARRAY.map((deck, index) => ({
-  id: `sandbox-${index}`,
-  name: deck.name,
-  commander: deck.commander,
-  colors: [deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '⚪' ? 'W' : 
-           deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '⚫' ? 'B' :
-           deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '🔴' ? 'R' :
-           deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '🟢' ? 'G' : 'U'] as ('W' | 'U' | 'B' | 'R' | 'G')[],
-  cards: [], // Not needed for display
-  totalCards: 100,
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-}));
+const SANDBOX_STARTER_DECKS: Deck[] = EDH_SANDBOX_STARTER_DECK_DATA.map((deck, index) => {
+  // Find commander card in the deck's cards array
+  const commanderCard = deck.cards.find(card => 
+    card.name.toLowerCase() === deck.commander.toLowerCase()
+  );
+  
+  return {
+    id: `sandbox-${index}`,
+    name: deck.name,
+    commander: deck.commander,
+    commanderImageUrl: commanderCard?.image_uris?.art_crop || commanderCard?.image_uris?.large || commanderCard?.image_uris?.normal,
+    colors: [deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '⚪' ? 'W' : 
+             deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '⚫' ? 'B' :
+             deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '🔴' ? 'R' :
+             deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '🟢' ? 'G' : 'U'] as ('W' | 'U' | 'B' | 'R' | 'G')[],
+    cards: [],
+    totalCards: 100,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+});
 
 export default function DeckBuilder({ 
     decks,
@@ -46,6 +54,7 @@ export default function DeckBuilder({
     onEditDeck,
     isSandbox = false, // ✅ NEW
     cardGameId, // ✅ NEW
+    onClose
   }: Props) {
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -73,29 +82,50 @@ export default function DeckBuilder({
   const handleSelectDeck = async (deckId: string) => {
     if (isSandbox && cardGameId) {
       const deckIndex = parseInt(deckId.replace('sandbox-', ''));
-      const selectedDeck = SANDBOX_STARTER_DECKS_ARRAY[deckIndex];
+      const selectedDeck = EDH_SANDBOX_STARTER_DECK_DATA[deckIndex];
       if (!selectedDeck) return;
   
       setIsSaving(true);
-      try {
-        await applyCardGameAction(cardGameId, {
-          type: 'import_deck',
+      
+      // Import deck
+      applyCardGameAction(cardGameId, {
+        type: 'import_deck',
+        playerId: userId,
+        data: {
+          deckListText: selectedDeck.deckList,
+          deckName: selectedDeck.name,
+          cardData: selectedDeck.cards
+        }
+      })
+      .then(() => {
+        // THEN shuffle
+        return applyCardGameAction(cardGameId, {
+          type: 'shuffle_library',
           playerId: userId,
-          data: {
-            deckListText: selectedDeck.deckList,
-            deckName: selectedDeck.name
-          }
+          data: {}
         });
-        
-        // ✅ DON'T call onSelectDeck - it tries to find deck in user's saved decks
-        // Just close the modal by not calling anything - parent will close it
-        console.log(`✅ Imported sandbox deck: ${selectedDeck.name}`);
-      } catch (error) {
+      })
+      .then(() => {
+        // THEN draw
+        return applyCardGameAction(cardGameId, {
+          type: 'draw_cards',
+          playerId: userId,
+          data: { count: 7 }
+        });
+      })
+      .then(() => {
+        // THEN close modal (call onClose prop instead)
+        console.log(`✅ Imported, shuffled, drew 7: ${selectedDeck.name}`);
+        onClose?.();
+      })
+      .catch((error) => {
         console.error('Failed to import:', error);
         alert('Failed to import deck: ' + (error instanceof Error ? error.message : 'Unknown error'));
-      } finally {
+      })
+      .finally(() => {
         setIsSaving(false);
-      }
+      });
+      
     } else {
       onSelectDeck(deckId);
     }

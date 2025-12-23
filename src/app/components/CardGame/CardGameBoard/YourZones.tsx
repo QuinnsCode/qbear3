@@ -28,7 +28,7 @@ interface Props {
   userId: string
   onCreateDeck?: (deckList: string, deckName: string) => Promise<void>
   onDeleteDeck?: (deckId: string) => Promise<void>
-  onSelectDeck?: (deckId: string) => void
+  onSelectDeck?: (deckId: string) => Promise<void>
   onEditDeck?: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
   onPrefetchDecks?: () => Promise<void>
   spectatorMode?: boolean
@@ -82,22 +82,13 @@ export default function YourZones({
       })
     }
   }, [libraryMenuOpen])
-  
-  const handleImportTestDeck = async () => {
-    setIsImporting(true)
-    setLibraryMenuOpen(false)
-    try {
-        await applyCardGameAction(cardGameId, {
-        type: 'import_deck',
-        playerId: player.id,
-        data: { deckListText: 'Test Deck' }
-      })
-    } catch (error) {
-      console.error('Failed to import deck:', error)
-    } finally {
-      setIsImporting(false)
+
+  useEffect(() => {
+    if (hasNoDeck && !isDeckBuilderOpen) {
+      setIsDeckBuilderOpen(true)
     }
-  }
+  }, [hasNoDeck, isDeckBuilderOpen])
+
 
   const handleOnSelectBattlefield = () => {
     setLibraryMenuOpen(false)
@@ -119,6 +110,8 @@ export default function YourZones({
         playerId: player.id,
         data: { count: count }
       })
+      // Auto-open hand after drawing
+      onViewZone('hand')
     } catch (error) {
       console.error('Failed to draw cards:', error)
     }
@@ -192,6 +185,97 @@ export default function YourZones({
       })
     } catch (error) {
       console.error('Failed to reveal top card:', error)
+    }
+  }
+
+  const handleMulligan = async () => {
+    setLibraryMenuOpen(false)
+    if (!confirm('Mulligan? This will shuffle your hand into library and draw 7 new cards.')) {
+      return
+    }
+    
+    try {
+      // Move all cards from hand to library
+      for (const cardId of player.zones.hand) {
+        await applyCardGameAction(cardGameId, {
+          type: 'move_card',
+          playerId: player.id,
+          data: { cardId, fromZone: 'hand', toZone: 'library' }
+        })
+      }
+      
+      // Shuffle library
+      await applyCardGameAction(cardGameId, {
+        type: 'shuffle_library',
+        playerId: player.id,
+        data: {}
+      })
+      
+      // Draw 7 cards
+      await applyCardGameAction(cardGameId, {
+        type: 'draw_cards',
+        playerId: player.id,
+        data: { count: 7 }
+      })
+      
+      onViewZone('hand')
+    } catch (error) {
+      console.error('Failed to mulligan:', error)
+    }
+  }
+  
+  const handleLibraryToHand = async () => {
+    setLibraryMenuOpen(false)
+    const topCardId = player.zones.library[0]
+    if (!topCardId) {
+      alert('Library is empty')
+      return
+    }
+    
+    try {
+      await applyCardGameAction(cardGameId, {
+        type: 'move_card',
+        playerId: player.id,
+        data: { 
+          cardId: topCardId,
+          fromZone: 'library',
+          toZone: 'hand'
+        }
+      })
+    } catch (error) {
+      console.error('Failed to move card to hand:', error)
+    }
+  }
+  
+  const handleHandToBattlefieldTapped = async () => {
+    setLibraryMenuOpen(false)
+    if (player.zones.hand.length === 0) {
+      alert('Your hand is empty')
+      return
+    }
+    
+    // Show hand and let them drag, OR move all cards
+    if (confirm('Move all cards from hand to battlefield tapped?')) {
+      try {
+        for (const cardId of player.zones.hand) {
+          await applyCardGameAction(cardGameId, {
+            type: 'move_card',
+            playerId: player.id,
+            data: {
+              cardId,
+              fromZone: 'hand',
+              toZone: 'battlefield',
+              position: { x: Math.random() * 200, y: Math.random() * 200 },
+              isFaceUp: true,
+              isTapped: true
+            }
+          })
+        }
+      } catch (error) {
+        console.error('Failed to move cards to battlefield:', error)
+      }
+    } else {
+      onViewZone('hand') // Just open hand so they can drag individually
     }
   }
 
@@ -287,88 +371,108 @@ export default function YourZones({
     </div>
       
     {libraryMenuOpen && (
-        <>
-            <div 
-                className="fixed inset-0 z-40 lg:hidden"
-                onClick={() => setLibraryMenuOpen(false)}
-            />
-                <div 
-                className="fixed z-50 bg-slate-800 rounded-lg shadow-xl border border-slate-600 min-w-[160px] max-w-[240px] lg:hidden"
-                style={{
-                    top: `${menuPosition.top}px`,
-                    right: `${menuPosition.right}px`,
-                    maxHeight: 'calc(100vh - 16px)',
-                    overflowY: 'auto',
-                    scrollbarWidth: 'thin',
-                    scrollbarColor: '#475569 #1e293b',
-                }}
+      <>
+        <div 
+          className="fixed inset-0 z-40 lg:hidden"
+          onClick={() => setLibraryMenuOpen(false)}
+        />
+        <div 
+          className="fixed z-50 bg-slate-800 rounded-lg shadow-xl border border-slate-600 min-w-[160px] max-w-[240px] lg:hidden"
+          style={{
+            top: `${menuPosition.top}px`,
+            right: `${menuPosition.right}px`,
+            maxHeight: 'calc(100vh - 16px)',
+            overflowY: 'auto',
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#475569 #1e293b',
+          }}
+        >
+          <div className="p-2">
+            <button
+              onClick={handleImportDeck}
+              disabled={isImporting || spectatorMode}
+              className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm disabled:opacity-50"
+            >
+              📦 Import Deck
+            </button>
+            <button
+              onClick={() => {
+                setLibraryMenuOpen(false)
+                setIsDeckBuilderOpen(true)
+              }}    
+              disabled={spectatorMode}
+              onMouseEnter={onPrefetchDecks}
+              onTouchStart={onPrefetchDecks}
+              className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+            >
+              🎴 My Decks
+            </button>
+            {player.deckList && (
+              <>
+                <div className="border-t border-slate-600 my-1"></div>
+                <button
+                  onClick={handleMulligan}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
                 >
-                    <div className="p-2">
-                        <button
-                        onClick={handleImportDeck}
-                        disabled={isImporting || spectatorMode}
-                        className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm disabled:opacity-50"
-                        >
-                        📦 Import Deck
-                        </button>
-                        <button
-                            onClick={() => {
-                                setLibraryMenuOpen(false)
-                                setIsDeckBuilderOpen(true)
-                            }}    
-                            disabled={spectatorMode}
-                            onMouseEnter={onPrefetchDecks}
-                            onTouchStart={onPrefetchDecks}
-                            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                            >
-                            🎴 My Decks
-                        </button>
-                        {player.deckList && (
-                        <>
-                          <button
-                            onClick={() => handleDrawCards(1)}
-                            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                            >
-                            Draw 1 Card
-                            </button>
-                            <div className="border-t border-slate-600 my-1"></div>
-                            <button
-                            onClick={openDrawModal}
-                            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                            >
-                            {`🎴 Draw X Card(s)`}
-                            </button>
-                            <button
-                            onClick={() => handleDrawCards(7)}
-                            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                            >
-                            Draw 7 Cards
-                            </button>
-                            <div className="border-t border-slate-600 my-1"></div>
-                            <button 
-                            onClick={() => handleShuffleLibrary()}
-                            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                            >
-                            🔀 Shuffle Library
-                            </button>
-                            <button 
-                            onClick={() => handleMillCards(3)}
-                            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                            >
-                            ⚰️ Mill 3 Cards
-                            </button>
-                            <button 
-                            onClick={() => handleRevealTopCard()}
-                            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                            >
-                            👁️ Reveal Top Card
-                            </button>
-                        </>
-                    )}
-                </div>
-            </div>
-        </>
-      )}
+                  🔄 Mulligan
+                </button>
+                <div className="border-t border-slate-600 my-1"></div>
+                <button
+                  onClick={() => handleDrawCards(1)}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                >
+                  🃏 Draw 1 Card
+                </button>
+                <button
+                  onClick={openDrawModal}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                >
+                  🎴 Draw X Card(s)
+                </button>
+                <button
+                  onClick={() => handleDrawCards(7)}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                >
+                  🃏 Draw 7 Cards
+                </button>
+                <div className="border-t border-slate-600 my-1"></div>
+                <button
+                  onClick={handleLibraryToHand}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                >
+                  📤 Library → Hand
+                </button>
+                <button 
+                  onClick={handleShuffleLibrary}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                >
+                  🔀 Shuffle Library
+                </button>
+                <button 
+                  onClick={() => handleMillCards(3)}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                >
+                  ⚰️ Mill 3 Cards
+                </button>
+                <button 
+                  onClick={handleRevealTopCard}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                >
+                  👁️ Reveal Top Card
+                </button>
+                <div className="border-t border-slate-600 my-1"></div>
+                <button
+                  onClick={handleHandToBattlefieldTapped}
+                  className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                >
+                  🎴 Hand → Battlefield (Tapped)
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </>
+    )}
       
       {/* DESKTOP LAYOUT */}
       <div className="hidden lg:flex h-full p-3 gap-3">
@@ -493,7 +597,7 @@ export default function YourZones({
                   className="fixed inset-0 z-40"
                   onClick={() => setLibraryMenuOpen(false)}
                 />
-                <div className="absolute top-full right-0 mt-2 bg-slate-800 rounded-lg shadow-xl border border-slate-600 p-2 min-w-[180px] z-50">
+                <div className="absolute top-full right-0 mt-2 bg-slate-800 rounded-lg shadow-xl border border-slate-600 p-2 min-w-[200px] z-50">
                   <button
                     onClick={handleImportDeck}
                     disabled={isImporting}
@@ -503,9 +607,9 @@ export default function YourZones({
                   </button>
                   <button
                     onClick={() => {
-                        setLibraryMenuOpen(false)
-                        setIsDeckBuilderOpen(true)
-                      }}    
+                      setLibraryMenuOpen(false)
+                      setIsDeckBuilderOpen(true)
+                    }}    
                     onMouseEnter={onPrefetchDecks}
                     onTouchStart={onPrefetchDecks}
                     className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
@@ -514,32 +618,64 @@ export default function YourZones({
                   </button>
                   {player.deckList && (
                     <>
-                        <div className="border-t border-slate-600 my-1"></div>
-                        <button
-                            onClick={openDrawModal}
-                            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                        >
-                            🎴 Draw X Cards
-                        </button>
-                        <div className="border-t border-slate-600 my-1"></div>
-                        <button 
-                          onClick={() => handleShuffleLibrary()}
-                          className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                        >
+                      <div className="border-t border-slate-600 my-1"></div>
+                      <button
+                        onClick={handleMulligan}
+                        className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                      >
+                        🔄 Mulligan
+                      </button>
+                      <div className="border-t border-slate-600 my-1"></div>
+                      <button
+                        onClick={() => handleDrawCards(1)}
+                        className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                      >
+                        🃏 Draw 1 Card
+                      </button>
+                      <button
+                        onClick={openDrawModal}
+                        className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                      >
+                        🎴 Draw X Cards
+                      </button>
+                      <button
+                        onClick={() => handleDrawCards(7)}
+                        className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                      >
+                        🃏 Draw 7 Cards
+                      </button>
+                      <div className="border-t border-slate-600 my-1"></div>
+                      <button
+                        onClick={handleLibraryToHand}
+                        className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                      >
+                        📤 Library → Hand
+                      </button>
+                      <button 
+                        onClick={handleShuffleLibrary}
+                        className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                      >
                         🔀 Shuffle Library
-                        </button>
-                        <button 
-                          onClick={() => handleMillCards(3)}
-                          className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                        >
+                      </button>
+                      <button 
+                        onClick={() => handleMillCards(3)}
+                        className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                      >
                         ⚰️ Mill 3 Cards
-                        </button>
-                        <button 
-                          onClick={() => handleRevealTopCard()}
-                          className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
-                        >
+                      </button>
+                      <button 
+                        onClick={handleRevealTopCard}
+                        className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                      >
                         👁️ Reveal Top Card
-                        </button>
+                      </button>
+                      <div className="border-t border-slate-600 my-1"></div>
+                      <button
+                        onClick={handleHandToBattlefieldTapped}
+                        className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                      >
+                        🎴 Hand → Battlefield (Tapped)
+                      </button>
                     </>
                   )}
                 </div>
@@ -727,6 +863,9 @@ export default function YourZones({
                 onEditDeck={onEditDeck || (async () => {})}
                 isSandbox={isSandbox}
                 cardGameId={cardGameId}
+                onClose={() => {
+                  setIsDeckBuilderOpen(false)
+                }}
               />
             </div>
           </div>

@@ -1,0 +1,4 @@
+Total cards fetched: 800
+Total cards failed: 0
+
+Failed cards by deck:

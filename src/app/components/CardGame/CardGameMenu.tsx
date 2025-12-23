@@ -17,7 +17,8 @@ export default function CardGameMenu({
   cardGameId, 
   gameName,
   initialThreadUrl,
-  className 
+  className,
+  isSandbox = false
 }: Props) {
   const [restartClickCount, setRestartClickCount] = useState(0)
   const [isRestarting, setIsRestarting] = useState(false)
@@ -101,6 +102,10 @@ export default function CardGameMenu({
     window.location.href = '/sanctum'
   }
 
+  const handleSignIn = () => {
+    window.location.href = '/user/signup'
+  }
+
   const handleCopyGameLink = () => {
     navigator.clipboard.writeText(window.location.href)
     // TODO: Replace with toast notification
@@ -120,6 +125,14 @@ export default function CardGameMenu({
   }
 
   const menuItems: MenuItemConfig[] = [
+    // Sign in/Sign up for sandbox mode
+    ...(isSandbox ? [{
+      label: 'Sign In / Sign Up',
+      icon: '🔐',
+      onClick: handleSignIn,
+      separator: true,
+    }] : []),
+    
     // Game actions
     {
       label: 'Copy Game Link',
@@ -131,7 +144,7 @@ export default function CardGameMenu({
       icon: creatingThread ? '⏳' : '💬',
       onClick: handleOpenDiscord,
       disabled: creatingThread,
-      separator: true,
+      separator: !isSandbox, // Only add separator if not in sandbox (more items below)
     },
     
     // TODO: Future features
@@ -153,21 +166,21 @@ export default function CardGameMenu({
     //   separator: true,
     // },
     
-    // Navigation
-    {
+    // Navigation - Hidden in sandbox mode
+    ...(!isSandbox ? [{
       label: 'Return to Sanctum',
       icon: '🏰',
       onClick: handleReturnToSanctum,
       separator: true,
-    },
+    }] : []),
     
-    // Dangerous actions
-    {
+    // Dangerous actions - Hidden in sandbox mode
+    ...(!isSandbox ? [{
       label: getRestartLabel(),
       icon: restartClickCount === 1 ? '⚠️' : '🔄',
       onClick: (e) => handleRestartClick(e), // Pass the event
       disabled: isRestarting,
-    }
+    }] : [])
   ]
 
   return (

@@ -115,6 +115,20 @@ export function CardMenu({
             }
           })
           break
+        case 'play_tapped':
+          await applyCardGameAction(cardGameId, {
+            type: 'move_card',
+            playerId,
+            data: {
+              cardId: card.instanceId,
+              fromZone: zone,
+              toZone: 'battlefield',
+              position: { x: 100, y: 50 },
+              isFaceUp: true,
+              isTapped: true
+            }
+          })
+          break
         case 'discard':
           await applyCardGameAction(cardGameId, {
             type: 'move_card',
@@ -161,6 +175,7 @@ export function CardMenu({
             }
           })
           break
+        
       }
       onClose()
     } catch (err) {
@@ -236,6 +251,15 @@ export function CardMenu({
                   <span>🎴</span>
                   <span>Play to Battlefield</span>
                 </button>
+                
+                <button 
+                  onClick={() => handleAction('play_tapped')} 
+                  className="w-full text-left px-3 py-2 text-white hover:bg-slate-800 rounded transition-colors text-sm flex items-center gap-2"
+                >
+                  <span>💤</span>
+                  <span>Play Tapped</span>
+                </button>
+                
                 <button 
                   onClick={() => handleAction('play_facedown')} 
                   className="w-full text-left px-3 py-2 text-white hover:bg-slate-800 rounded transition-colors text-sm flex items-center gap-2"

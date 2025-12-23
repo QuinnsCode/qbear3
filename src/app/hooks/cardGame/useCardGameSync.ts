@@ -31,6 +31,9 @@ export function useCardGameSync({
   onDeckImported,
   onCursorUpdate
 }: UseCardGameSyncOptions) {
+  const lastCursorSendRef = useRef<number>(0);
+  const cursorThrottleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const [gameState, setGameState] = useState<CardGameState | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -194,13 +197,14 @@ export function useCardGameSync({
 
   useEffect(() => {
     if (!enabled || !cardGameId) return;
-
+  
     initializeCardGameSync();
-
+  
     return () => {
       initializingRef.current = false;
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      if (cursorThrottleTimeoutRef.current) clearTimeout(cursorThrottleTimeoutRef.current); // ✅ ADD THIS
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
@@ -211,14 +215,42 @@ export function useCardGameSync({
     };
   }, [cardGameId, playerId, enabled, initializeCardGameSync]);
 
-  const sendCursorUpdate = useCallback((x: number, y: number) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN && playerId) {
-      wsRef.current.send(JSON.stringify({
+  const sendCursorUpdate = useCallback((x: number, y: number, force: boolean = false) => {
+    if (wsRef.current?.readyState !== WebSocket.OPEN || !playerId) return;
+        
+    const now = Date.now();
+    const timeSinceLastSend = now - lastCursorSendRef.current;
+    const THROTTLE_MS = 300; // Only send every 300ms
+    
+    // Clear any pending throttled send
+    if (cursorThrottleTimeoutRef.current) {
+      clearTimeout(cursorThrottleTimeoutRef.current);
+      cursorThrottleTimeoutRef.current = null;
+    }
+    
+    // Force send (on click) OR enough time has passed
+    if (force || timeSinceLastSend >= THROTTLE_MS) {
+      wsRef.current?.send(JSON.stringify({
         type: 'cursor_move',
         playerId,
         x,
         y
       }));
+      lastCursorSendRef.current = now;
+    } else {
+      // Schedule a throttled send
+      const delay = THROTTLE_MS - timeSinceLastSend;
+      cursorThrottleTimeoutRef.current = setTimeout(() => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({
+            type: 'cursor_move',
+            playerId,
+            x,
+            y
+          }));
+          lastCursorSendRef.current = Date.now();
+        }
+      }, delay);
     }
   }, [playerId]);
 

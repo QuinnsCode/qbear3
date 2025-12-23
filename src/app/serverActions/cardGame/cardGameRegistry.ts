@@ -15,7 +15,7 @@ export interface CardGameInfo {
   lastActivity: string;
   playerCount: number;
   status: 'active' | 'completed';
-  isSandbox?: boolean; // NEW: Track if this is a sandbox game
+  isSandbox?: boolean;
 }
 
 function generateGameName() {
@@ -44,7 +44,6 @@ async function generateUniqueCardGameName(
   while (attempts < maxAttempts) {
     const cardGameId = generateGameName();
     
-    // For sandbox, prefix with 'sandbox-' for easy identification
     const finalGameId = isSandbox ? `sandbox-${cardGameId}` : cardGameId;
     
     const existingGames = await getOrgCardGames(orgSlug, isSandbox);
@@ -63,12 +62,12 @@ async function generateUniqueCardGameName(
   return finalGameId;
 }
 
-// Different limits for sandbox vs regular games
 const MAX_CARD_GAMES_PER_ORG = 5;
 const MAX_SANDBOX_CARD_GAMES = 50;
 
 /**
- * NEW: Create or get the persistent sandbox game
+ * Create or get the persistent sandbox game
+ * ✅ NOW: Initializes the DO with starter decks
  */
 export async function createOrGetSandboxGame(): Promise<{ 
   success: boolean; 
@@ -80,66 +79,77 @@ export async function createOrGetSandboxGame(): Promise<{
     return { success: false, error: 'CARD_GAME_REGISTRY_KV binding not found' };
   }
 
+  if (!env.CARD_GAME_STATE_DO) {
+    return { success: false, error: 'CARD_GAME_STATE_DO binding not found' };
+  }
+
   const cardGameId = SANDBOX_CONFIG.GAME_ID;
   const orgSlug = 'sandbox';
 
   try {
-    // Check if sandbox game already exists
+    // 1. Handle KV registry (existing code)
     const existingGames = await getOrgCardGames(orgSlug, true);
     const sandboxGame = existingGames.find(g => g.cardGameId === cardGameId);
 
-    if (sandboxGame) {
-      console.log('✅ Sandbox game already exists:', cardGameId);
-      
-      // Update last activity
-      await updateCardGameActivity(orgSlug, cardGameId, true);
-      
-      // ✅ Game already exists, just return it
-      return { 
-        success: true, 
+    if (!sandboxGame) {
+      // Create registry entry
+      const gameName = 'Sandbox Playground';
+
+      const newGame: CardGameInfo = {
         cardGameId,
-        name: sandboxGame.name,
+        name: `🎮 ${gameName}`,
+        createdAt: new Date().toISOString(),
+        lastActivity: new Date().toISOString(),
+        playerCount: 0,
+        status: 'active',
+        isSandbox: true
       };
+
+      const updatedGames = [...existingGames, newGame];
+      const key = `sandbox:card-games`;
+      
+      await env.CARD_GAME_REGISTRY_KV.put(
+        key, 
+        JSON.stringify(updatedGames),
+        { expirationTtl: 24 * 60 * 60 }
+      );
+
+      console.log(`✅ Created sandbox game registry entry ${cardGameId}`);
+    } else {
+      // Update activity for existing game
+      await updateCardGameActivity(orgSlug, cardGameId, true);
+      console.log('✅ Sandbox game registry exists:', cardGameId);
     }
 
-    // Create new sandbox game
-    const gameName = 'Sandbox Playground';
-
-    const newGame: CardGameInfo = {
-      cardGameId,
-      name: `🎮 ${gameName}`,
-      createdAt: new Date().toISOString(),
-      lastActivity: new Date().toISOString(),
-      playerCount: 0,
-      status: 'active',
-      isSandbox: true
-    };
-
-    const updatedGames = [...existingGames, newGame];
-    const key = `sandbox:card-games`;
+    // 2. ✅ NEW: Initialize the Durable Object with starter decks
+    const doId = env.CARD_GAME_STATE_DO.idFromName(cardGameId);
+    const doStub = env.CARD_GAME_STATE_DO.get(doId);
     
-    await env.CARD_GAME_REGISTRY_KV.put(
-      key, 
-      JSON.stringify(updatedGames),
-      { expirationTtl: 24 * 60 * 60 } // 24 hours
-    );
-
-    console.log(`✅ Created sandbox game ${cardGameId}`);
+    // Import starter decks from the same place DeckBuilder uses
+    const { EDH_SANDBOX_STARTER_DECK_DATA } = await import('@/app/components/CardGame/Sandbox/starterDeckData');
     
-    // Initialize the game in the Durable Object
-    if (env.CARD_GAME_STATE_DO) {
-      const { initializeSandboxGame } = await import('./sandboxInit');
-      await initializeSandboxGame(cardGameId);
+    // ✅ Call the RPC method to initialize
+    const initResult = await doStub.initializeSandbox({
+      starterDecks: EDH_SANDBOX_STARTER_DECK_DATA
+    });
+    
+    if (initResult.alreadyInitialized) {
+      console.log('✅ Sandbox DO was already initialized');
+    } else {
+      console.log('✅ Sandbox DO initialized with starter decks');
     }
     
     return { 
       success: true, 
       cardGameId,
-      name: newGame.name,
+      name: sandboxGame?.name || '🎮 Sandbox Playground',
     };
   } catch (error) {
     console.error('Failed to create/get sandbox game:', error);
-    return { success: false, error: 'Failed to create sandbox game' };
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to create sandbox game' 
+    };
   }
 }
 
@@ -157,7 +167,7 @@ export async function getOrgCardGames(
 
   try {
     const key = isSandbox 
-      ? `sandbox:card-games` // All sandbox games in one key
+      ? `sandbox:card-games`
       : `org:${orgSlug}:card-games`;
       
     const gamesJson = await env.CARD_GAME_REGISTRY_KV.get(key);
@@ -168,7 +178,6 @@ export async function getOrgCardGames(
     
     const games: CardGameInfo[] = JSON.parse(gamesJson);
     
-    // Sandbox games expire faster (24 hours), regular games 30 days
     const expiryHours = isSandbox ? 24 : 30 * 24;
     const expiryDate = new Date();
     expiryDate.setHours(expiryDate.getHours() - expiryHours);
@@ -184,10 +193,8 @@ export async function getOrgCardGames(
 }
 
 /**
- * Create a new card game with optional sandbox mode
+ * Create a new card game with subscription tier enforcement
  */
-
-
 export async function createNewCardGame(
   orgSlug: string,
   options?: {
@@ -201,6 +208,9 @@ export async function createNewCardGame(
   name?: string;
   discordThreadUrl?: string;
   error?: string;
+  requiresUpgrade?: boolean;
+  currentTier?: string;
+  upgradeUrl?: string;
 }> {
   if (!env.CARD_GAME_REGISTRY_KV) {
     return { success: false, error: 'CARD_GAME_REGISTRY_KV binding not found' };
@@ -213,6 +223,47 @@ export async function createNewCardGame(
   } = options || {};
 
   try {
+    // ✅ CHECK SUBSCRIPTION TIER LIMITS (skip for sandbox)
+    if (!isSandbox && creatorUserId) {
+      const user = await db.user.findUnique({
+        where: { id: creatorUserId },
+        include: { squeezeSubscription: true }
+      });
+
+      const tier = user?.squeezeSubscription?.tier || 'free';
+      const tierLimits: Record<string, number> = {
+        free: 1,
+        starter: 3,
+        pro: 10
+      };
+
+      // Count games in DB (persistent games)
+      const currentGameCount = await db.cardGame.count({
+        where: { ownerId: creatorUserId }
+      });
+
+      if (currentGameCount >= tierLimits[tier]) {
+        const tierNames: Record<string, string> = {
+          free: 'Free',
+          starter: 'Starter',
+          pro: 'Pro'
+        };
+        
+        const nextTier = tier === 'free' ? 'Starter ($1/mo)' : tier === 'starter' ? 'Pro ($5/mo)' : null;
+        const nextTierLimit = tier === 'free' ? 3 : tier === 'starter' ? 10 : null;
+        
+        return { 
+          success: false,
+          requiresUpgrade: true,
+          currentTier: tier,
+          upgradeUrl: '/pricing',
+          error: nextTier 
+            ? `🎮 Game limit reached! You have ${currentGameCount}/${tierLimits[tier]} games on the ${tierNames[tier]} tier. Upgrade to ${nextTier} for ${nextTierLimit} games!`
+            : `You've reached your limit of ${tierLimits[tier]} games.`
+        };
+      }
+    }
+
     const existingGames = await getOrgCardGames(orgSlug, isSandbox);
     
     const maxGames = isSandbox ? MAX_SANDBOX_CARD_GAMES : MAX_CARD_GAMES_PER_ORG;
@@ -236,7 +287,7 @@ export async function createNewCardGame(
 
     const newGame: CardGameInfo = {
       cardGameId,
-      name: isSandbox ? `🎮 ${gameName}` : gameName, // Add emoji for sandbox games
+      name: isSandbox ? `🎮 ${gameName}` : gameName,
       createdAt: new Date().toISOString(),
       lastActivity: new Date().toISOString(),
       playerCount: 0,
@@ -249,12 +300,11 @@ export async function createNewCardGame(
       ? `sandbox:card-games`
       : `org:${orgSlug}:card-games`;
     
-    // For sandbox, set TTL of 24 hours
     if (isSandbox) {
       await env.CARD_GAME_REGISTRY_KV.put(
         key, 
         JSON.stringify(updatedGames),
-        { expirationTtl: 24 * 60 * 60 } // 24 hours
+        { expirationTtl: 24 * 60 * 60 }
       );
     } else {
       await env.CARD_GAME_REGISTRY_KV.put(key, JSON.stringify(updatedGames));
@@ -471,7 +521,6 @@ export async function deleteCardGameCompletely(
       }
     } catch (discordError) {
       console.error(`⚠️ Could not delete Discord thread:`, discordError);
-      // Continue anyway
     }
 
     // 2. Remove from KV registry

@@ -187,7 +187,7 @@ export default function CardGameBoard({
       console.log('[CardGameBoard] This will reset all game state for this player')
       
       // Import deck into game using existing action
-      await applyCardGameAction(cardGameId, {
+      const updatedGameState = await applyCardGameAction(cardGameId, {
         type: 'import_deck',
         playerId: currentPlayerId,
         data: { 
@@ -213,7 +213,23 @@ export default function CardGameBoard({
         }
       })
       
-      console.log('[CardGameBoard] Deck imported successfully')
+      // Auto-shuffle library
+      await applyCardGameAction(cardGameId, {
+        type: 'shuffle_library',
+        playerId: currentPlayerId,
+        data: {}
+      });
+
+      // Auto-draw 7 cards
+      await applyCardGameAction(cardGameId, {
+        type: 'draw_cards',
+        playerId: currentPlayerId,
+        data: { count: 7 }
+      });
+
+      console.log('[CardGameBoard] Deck imported, shuffled, drew 7')
+      return updatedGameState
+
     } catch (error) {
       console.error('Failed to import deck:', error)
       alert('Failed to import deck: ' + (error instanceof Error ? error.message : 'Unknown error'))
@@ -305,6 +321,7 @@ export default function CardGameBoard({
           onDeleteDeck={handleDeleteDeck}
           onSelectDeck={handleSelectDeck}
           onEditDeck={handleEditDeck}
+          isSandbox={isSandbox}
         />
       </div>
 
@@ -370,7 +387,7 @@ export default function CardGameBoard({
                     }`}
                   >
                     {opp.name}
-                    <span className="ml-2 text-xs opacity-75">❤️ {opp.lifeTotal}</span>
+                    <span className="ml-2 text-xs opacity-75">❤️ {opp.life}</span>
                   </button>
                 ))}
             </div>
@@ -380,7 +397,7 @@ export default function CardGameBoard({
               <div className="flex items-center gap-2 flex-shrink-0 ml-4">
                 <span className="text-slate-400 text-sm">{currentPlayer.name}</span>
                 <span className="text-xl">💚</span>
-                <span className="text-xl font-bold text-green-400">{currentPlayer.lifeTotal}</span>
+                <span className="text-xl font-bold text-green-400">{currentPlayer.life}</span>
               </div>
             )}
           </div>
