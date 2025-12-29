@@ -7,6 +7,9 @@ import { extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
 import { SanctumDeleteGameButton } from "@/app/components/Sanctum/SanctumDeleteGameButton";
 import { SanctumClientActions } from "@/app/pages/sanctum/SanctumClientActions";
 import { DiscordConnect } from "@/app/components/Sanctum/DiscordConnect";
+import { DeckSection } from "@/app/pages/sanctum/DeckSection";
+import { getUserDecks } from "@/app/serverActions/deckBuilder/deckActions";
+import { getEffectiveTier, getTierConfig } from "@/app/lib/subscriptions/tiers";
 import { db } from "@/db";
 import { SanctumStyles } from "@/app/styles/SanctumStyles";
 
@@ -20,24 +23,27 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   let tierLimits = {
     maxGames: 1,
     maxPlayers: 4,
+    maxDecks: 2,
   };
   
   if (ctx.user?.id) {
     const user = await db.user.findUnique({
       where: { id: ctx.user.id },
-      include: { squeezeSubscription: true }
+      include: { 
+        squeezeSubscription: true,
+        stripeSubscription: true // ✅ NEW - also check Stripe
+      }
     });
     
-    if (user?.squeezeSubscription) {
-      currentTier = user.squeezeSubscription.tier;
-      subscriptionStatus = user.squeezeSubscription.status;
+    if (user) {
+      currentTier = getEffectiveTier(user);
+      const tierConfig = getTierConfig(currentTier as any);
       
-      // Set limits based on tier
-      if (currentTier === 'starter') {
-        tierLimits = { maxGames: 3, maxPlayers: 6 };
-      } else if (currentTier === 'pro') {
-        tierLimits = { maxGames: 10, maxPlayers: 8 };
-      }
+      tierLimits = {
+        maxGames: tierConfig.features.maxGamesPerOrg,
+        maxPlayers: tierConfig.features.maxPlayersPerGame,
+        maxDecks: tierConfig.features.maxDecksPerUser,
+      };
     }
   }
 
@@ -70,6 +76,13 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   // Fetch active games
   const activeGames = orgSlug ? await getOrgGames(orgSlug) : [];
   const activeCardGames = orgSlug ? await getOrgCardGames(orgSlug) : [];
+  
+  // ✅ NEW: Fetch user's decks
+  let userDecks: any[] = [];
+  if (ctx.user?.id) {
+    const { decks } = await getUserDecks(ctx.user.id);
+    userDecks = decks;
+  }
 
   // Main actions for left sidebar
   const mainActions = [
@@ -118,6 +131,7 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
                     orgSlug={orgSlug}
                     activeGames={activeGames}
                     activeCardGames={activeCardGames}
+                    userDecks={userDecks} 
                     currentTier={currentTier}
                     tierLimits={tierLimits}
                   />
@@ -186,7 +200,7 @@ function LeftPage({ ctx, mainActions, hasDiscord, currentTier, subscriptionStatu
             <div style={{ fontWeight: 'bold', color: tier.color }}>{tier.name} Tier</div>
             {currentTier === 'free' && (
               <div style={{ fontSize: '11px', color: '#92400e' }}>
-                Limited to 1 game, 4 players
+                Limited features
               </div>
             )}
           </div>
@@ -258,18 +272,28 @@ function LeftPage({ ctx, mainActions, hasDiscord, currentTier, subscriptionStatu
   );
 }
 
-function RightPage({ orgSlug, activeGames, activeCardGames, currentTier, tierLimits }: any) {
-  const atLimit = activeCardGames.length >= tierLimits.maxGames;
+function RightPage({ orgSlug, activeGames, activeCardGames, userDecks, currentTier, tierLimits }: any) {
+  const atGameLimit = activeCardGames.length >= tierLimits.maxGames;
+  const atDeckLimit = userDecks.length >= tierLimits.maxDecks; // ✅ NEW
   
   return (
     <div className="right-page">
+      {/* ✅ NEW: Deck Section FIRST (above games) */}
+      <DeckSection
+        decks={userDecks}
+        currentTier={currentTier}
+        maxDecks={tierLimits.maxDecks}
+        atLimit={atDeckLimit}
+      />
+      
+      {/* Games Section */}
       <GameSection 
         games={activeCardGames} 
         type="cardGame" 
         orgSlug={orgSlug}
         currentTier={currentTier}
         tierLimits={tierLimits}
-        atLimit={atLimit}
+        atLimit={atGameLimit}
       />
       
       {/* Placeholder activity */}
@@ -291,7 +315,7 @@ function RightPage({ orgSlug, activeGames, activeCardGames, currentTier, tierLim
 function GameSection({ games, type, orgSlug, currentTier, tierLimits, atLimit }: any) {
   const isCardGame = type === 'cardGame';
   const title = isCardGame ? 'Card Games' : 'Active Games';
-  const icon = isCardGame ? '🃏' : '🎲';
+  const icon = isCardGame ? '🎮' : '🎲';
   const route = isCardGame ? '/cardGame' : '/game';
   const idField = isCardGame ? 'cardGameId' : 'gameId';
 
@@ -317,7 +341,7 @@ function GameSection({ games, type, orgSlug, currentTier, tierLimits, atLimit }:
           </div>
           <div style={{ fontSize: '12px', color: '#991b1b', marginBottom: '8px' }}>
             You've reached your limit of {tierLimits.maxGames} {tierLimits.maxGames === 1 ? 'game' : 'games'}.
-            {currentTier === 'free' && ' Upgrade to Starter for 3 games ($1/mo)'}
+            {currentTier === 'free' && ' Upgrade to Starter for 5 games ($1/mo)'}
             {currentTier === 'starter' && ' Upgrade to Pro for 10 games ($5/mo)'}
           </div>
           <a 

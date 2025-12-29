@@ -8,6 +8,8 @@ import { getCardsByIdentifiers } from '@/app/serverActions/cardData/cardDataActi
 import type { Deck, DeckCard } from '@/app/types/Deck'
 import { migrateDeck, needsMigration, CURRENT_DECK_VERSION } from '@/app/types/Deck'
 import { ScryfallCard } from "@/app/services/cardGame/CardGameState"
+import { db } from '@/db' // ✅ ADDED
+import { getTierConfig, getEffectiveTier } from '@/app/lib/subscriptions/tiers' // ✅ ADDED
 
 /**
  * KV Key structure:
@@ -26,8 +28,6 @@ const DECK_CACHE_TTL = 60 * 60 * 24 * 90 // 90 days in seconds
  * 
  * @returns Parsed deck cards with full Scryfall data
  */
-// Replace parseDeckAndFetchCards() in deckActions.ts with this:
-
 export async function parseDeckAndFetchCards(deckListText: string) {
   try {
     // 1. Parse the deck list
@@ -139,7 +139,7 @@ export async function parseDeckAndFetchCards(deckListText: string) {
 
     return {
       success: true as const,
-      cards: scryfallCards, // Now returns ScryfallCard[] instead of DeckCard[]
+      cards: scryfallCards,
       commander: parseResult.commander,
       totalCards: scryfallCards.length,
     }
@@ -154,18 +154,10 @@ export async function parseDeckAndFetchCards(deckListText: string) {
 
 
 /**
- * Create a new deck from a text deck list - OPTIMIZED VERSION
+ * Create a new deck from a text deck list - NOW WITH TIER LIMIT CHECKING
  * 
- * Uses existing CardDataService which provides:
- * ✅ KV caching (30-day TTL) - cards fetched once are cached
- * ✅ Scryfall Collection API batching (75 cards per request)
- * ✅ Smart rate limiting and error handling
- * ✅ Automatic retry on failures
- * 
- * Performance: 5-10x faster than individual card fetches!
+ * ✅ Enforces subscription tier limits (2 decks for all tiers)
  */
-
-//now uses parseDeckAndFetchCards
 export async function createDeck(
   userId: string,
   deckName: string,
@@ -173,6 +165,44 @@ export async function createDeck(
 ) {
   try {
     const startTime = Date.now()
+    
+    // ✅ CHECK DECK COUNT LIMIT
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      include: { 
+        stripeSubscription: true,
+        squeezeSubscription: true 
+      }
+    })
+
+    if (!user) {
+      return {
+        success: false,
+        errors: ['User not found'],
+      }
+    }
+
+    const tier = getEffectiveTier(user)
+    const tierConfig = getTierConfig(tier)
+    const maxDecks = tierConfig.features.maxDecksPerUser
+
+    // Count existing decks
+    const { decks: existingDecks } = await getUserDecks(userId)
+    const currentDeckCount = existingDecks.length
+
+    if (currentDeckCount >= maxDecks) {
+      return {
+        success: false,
+        requiresUpgrade: true,
+        currentTier: tier,
+        errors: [
+          `🃏 Deck limit reached! You have ${currentDeckCount}/${maxDecks} decks. ` +
+          `All tiers currently support ${maxDecks} decks.`
+        ],
+      }
+    }
+
+    console.log(`[DeckBuilder] User ${userId} has ${currentDeckCount}/${maxDecks} decks (${tier} tier)`)
     
     // Use extracted helper
     const parseAndFetchResult = await parseDeckAndFetchCards(deckListText)

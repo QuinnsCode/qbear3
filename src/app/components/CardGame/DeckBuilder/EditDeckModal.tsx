@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react'
 import type { Deck } from '@/app/types/Deck'
-import CardSearch from '../CardSearch'
+import CardSearch from '../CardGameBoard/MiddleRow/CardSearch'
 import type { Card as ScryfallCard } from '@/app/api/scryfall/scryfallTypes'
 
 interface Props {

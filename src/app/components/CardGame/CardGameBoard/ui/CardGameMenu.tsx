@@ -1,8 +1,8 @@
 // @/app/components/CardGame/CardGameMenu.tsx
 'use client'
 
-import { useState } from 'react'
-import { MenuButton, type MenuItemConfig } from "@/app/components/CardGame/ui/MenuButton"
+import { ReactEventHandler, useState } from 'react'
+import { MenuButton, type MenuItemConfig } from "./MenuButton"
 import { restartCardGame } from '@/app/serverActions/cardGame/cardGameActions'
 
 interface Props {
@@ -103,7 +103,7 @@ export default function CardGameMenu({
   }
 
   const handleSignIn = () => {
-    window.location.href = '/user/signup'
+    window.location.href = '/user/login'
   }
 
   const handleCopyGameLink = () => {
@@ -178,7 +178,7 @@ export default function CardGameMenu({
     ...(!isSandbox ? [{
       label: getRestartLabel(),
       icon: restartClickCount === 1 ? '⚠️' : '🔄',
-      onClick: (e) => handleRestartClick(e), // Pass the event
+      onClick: (e: any) => handleRestartClick(e), // Pass the event
       disabled: isRestarting,
     }] : [])
   ]

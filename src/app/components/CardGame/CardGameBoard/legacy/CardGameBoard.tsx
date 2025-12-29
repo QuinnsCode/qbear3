@@ -1,20 +1,19 @@
-// app/components/CardGame/CardGameBoard.tsx
+// app/components/CardGame/CardGameBoard/legacy/CardGameBoard.tsx
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useCardGameLargeBattlefieldView } from '@/app/hooks/useCardGameLargeBattlefieldView'
 import type { CardGameState, MTGPlayer } from '@/app/services/cardGame/CardGameState'
 import { getRelativePosition } from '@/app/services/cardGame/CardGameState'
-import OpponentPanel from './OpponentPanel'
+import OpponentPanel from '../TopBar/OpponentPanel'
 import MainViewer from './MainViewer'
 import YourZones from './YourZones'
-import CardSearch from '../CardSearch'
+import CardSearch from '@/app/components/CardGame/CardGameBoard/MiddleRow/CardSearch'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
 import { createDeck, getUserDecks, deleteDeck, updateDeckFromEditor } from '@/app/serverActions/deckBuilder/deckActions'
 import type { Deck, DeckCard } from '@/app/types/Deck'
-import MobileGameLayout from '../Mobile/MobileGameLayout'
-import CardGameMenu from '../CardGameMenu'
+import MobileGameLayout from '../../Mobile/MobileGameLayout'
+import CardGameMenu from '../ui/CardGameMenu'
 
 interface Props {
   gameState: CardGameState

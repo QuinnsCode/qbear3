@@ -27,9 +27,9 @@ import NoAccessPage from "@/app/pages/errors/NoAccessPage";
 import PricingPage from "@/app/pages/pricing/PricingPage";
 import { createNewGame } from "./app/serverActions/gameRegistry";
 import { createNewCardGame } from "./app/serverActions/cardGame/cardGameRegistry";
-import LoginPage from "./app/pages/user/Login";
 import { isSandboxEnvironment, setupSandboxContext, createSandboxCookieHeader } from "./lib/middleware/sandboxMiddleware";
 import LandingPage from "./app/pages/landing/LandingPage";
+import DeckBuilderPage from "./app/pages/deckBuilder/DeckBuilderPage";
 import { SANDBOX_CONFIG } from "./lib/sandbox/config";
 
 export { SessionDurableObject } from "./session/durableObject";
@@ -432,6 +432,13 @@ export default defineApp([
     route("/no-access", NoAccessPage),
 
     route("/sanctum", SanctumPage),
+
+    route("/deckbuilder", DeckBuilderPage),
+    route("/deckBuilder", DeckBuilderPage),
+    route("/deck-builder", DeckBuilderPage),
+    route("/deckbuilder/:deckId", DeckBuilderPage),
+    route("/deckBuilder/:deckId", DeckBuilderPage),
+    route("/deck-builder/:deckId", DeckBuilderPage),
 
     route("/pricing", PricingPage),
 

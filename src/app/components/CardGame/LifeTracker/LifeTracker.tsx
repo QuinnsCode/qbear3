@@ -1,7 +1,7 @@
 // app/components/CardGame/LifeTracker/LifeTracker.tsx
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'
 import { useCounterSync } from './useCounterSync'
 

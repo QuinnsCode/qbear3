@@ -1,7 +1,5 @@
-// app/components/CardGame/Zones/ZoneButtons.tsx
+// app/components/CardGame/CardGameBoard/Zones/ZoneButtons.tsx
 'use client'
-
-import { useRef } from 'react'
 import { BookOpen, Skull, Flame, Crown, Swords } from 'lucide-react'
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'

@@ -1,10 +1,10 @@
 // app/components/CardGame/CardContextMenu.tsx
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import type { Card } from '@/app/services/cardGame/CardGameState'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
-import { MenuItem } from './ui/MenuItem'
+import { MenuItem } from './MenuItem'
 
 interface Props {
   card: Card

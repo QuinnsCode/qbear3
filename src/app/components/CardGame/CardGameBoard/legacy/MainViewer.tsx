@@ -4,9 +4,9 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { MTGPlayer, CardGameState } from '@/app/services/cardGame/CardGameState'
-import { ZoneViewer } from '../ZoneViewer/ZoneViewer'
-import { BattlefieldContainer } from '../Battlefield/BattlefieldContainer'
-import LifeTracker from '../LifeTracker/LifeTracker'
+import { ZoneViewer } from '../../ZoneViewer/ZoneViewer'
+import { BattlefieldContainer } from '../MiddleRow/Battlefield/BattlefieldContainer'
+import LifeTracker from '../../LifeTracker/LifeTracker'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
 
 interface Props {

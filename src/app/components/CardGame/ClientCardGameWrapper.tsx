@@ -1,16 +1,16 @@
 // app/components/CardGame/ClientCardGameWrapper.tsx
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import { useCardGameSync } from '@/app/hooks/cardGame/useCardGameSync'
 import { useCursorInterpolation } from '@/app/hooks/useCursorInterpolation'
 import type { CardGameState } from '@/app/services/cardGame/CardGameState'
-import CardGameBoard from './CardGameBoard/CardGameBoard'
+import CardGameBoardDraggable from './CardGameBoard/CardGameBoard-draggable'
 import { SandboxIndicator } from "./Sandbox/SandboxIndicator"
 
 interface Props {
   cardGameId: string
-  gameName: string
+  gameName?: string
   currentUserId: string | null
   initialState: CardGameState
   spectatorMode?: boolean
@@ -198,9 +198,10 @@ export default function ClientCardGameWrapper({
         />
       )}
       
-      <CardGameBoard 
+      <CardGameBoardDraggable 
         cardGameId={cardGameId}
-        gameState={currentState} 
+        gameState={currentState}
+        gameName={gameName}
         currentPlayerId={currentUserId || ''}
         spectatorMode={spectatorMode}
         onBattlefieldScroll={handleBattlefieldScroll}

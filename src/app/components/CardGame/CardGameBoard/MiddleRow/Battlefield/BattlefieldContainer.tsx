@@ -7,7 +7,7 @@ import { BattlefieldCard } from './BattlefieldCard'
 import { SelectionBox } from './SelectionBox'
 import { useMultiSelect } from '@/app/hooks/cardGame/useMultiSelect'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
-import CardContextMenu from '../CardContextMenu'
+import CardContextMenu from '@/app/components/CardGame/CardGameBoard/ui/CardContextMenu'
 import { 
   BATTLEFIELD_CONFIG, 
   screenToBattlefield,

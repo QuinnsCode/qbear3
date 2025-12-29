@@ -1,4 +1,4 @@
-// app/components/CardGame/Zones/LibraryMenu.tsx
+// app/components/CardGame/CardGameBoard/Zones/LibraryMenu.tsx
 'use client'
 
 import { useEffect, useRef, useState } from 'react'

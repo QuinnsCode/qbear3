@@ -10,6 +10,7 @@ export const SQUEEZE_TIERS = {
     features: {
       maxGamesPerOrg: 3,
       maxPlayersPerGame: 4,
+      maxDecksPerUser: 2, // ✅ ADDED
       canUseDiscord: false,
       prioritySupport: false,
     },
@@ -24,6 +25,7 @@ export const SQUEEZE_TIERS = {
     features: {
       maxGamesPerOrg: 5,
       maxPlayersPerGame: 6,
+      maxDecksPerUser: 5, // ✅ ADDED
       canUseDiscord: false,
       prioritySupport: true,
     },
@@ -38,6 +40,7 @@ export const SQUEEZE_TIERS = {
     features: {
       maxGamesPerOrg: 10,
       maxPlayersPerGame: 8,
+      maxDecksPerUser: 12, // ✅ ADDED
       canUseDiscord: true,
       prioritySupport: true,
     },
@@ -86,6 +89,14 @@ export function canCreateGame(user: any, currentGameCount: number) {
   const tier = subscription?.tier || 'free'
   const config = getTierConfig(tier as SqueezeTier)
   return currentGameCount < config.features.maxGamesPerOrg
+}
+
+// ✅ NEW: Check if user can create another deck
+export function canCreateDeck(user: any, currentDeckCount: number) {
+  const subscription = getActiveSubscription(user)
+  const tier = subscription?.tier || 'free'
+  const config = getTierConfig(tier as SqueezeTier)
+  return currentDeckCount < config.features.maxDecksPerUser
 }
 
 // ✅ UPDATED: Now checks both sources

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react'
 import type { MTGPlayer, CardGameState, Card } from '@/app/services/cardGame/CardGameState'
-import { CardMenu } from '../CardMenu/CardMenu'
+import { CardMenu } from '@/app/components/CardGame/CardMenu/CardMenu'
 
 interface ZoneViewerProps {
   player: MTGPlayer

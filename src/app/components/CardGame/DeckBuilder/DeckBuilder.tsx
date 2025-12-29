@@ -1,30 +1,24 @@
-// app/components/DeckBuilder/DeckBuilder.tsx
+// app/components/DeckBuilder/Deckbuilder.tsx
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import DeckCard from './DeckCard'
 import CreateDeckModal from './CreateDeckModal'
 import type { Deck } from '@/app/types/Deck'
 import EditDeckModal from './EditDeckModal'
-import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
-import { EDH_SANDBOX_STARTER_DECK_DATA } from '../Sandbox/starterDeckData'
+import { EDH_SANDBOX_STARTER_DECK_DATA } from '@/app/components/CardGame/Sandbox/starterDeckData'
 
 interface Props {
     decks: Deck[]
     userId: string
-    onCreateDeck: (deckList: string, deckName: string) => Promise<void>
-    onDeleteDeck: (deckId: string) => Promise<void>
-    onSelectDeck: (deckId: string) => void
-    onEditDeck: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
     isSandbox?: boolean
-    cardGameId?: string // needed to import sandbox deck
+    cardGameId?: string
     onClose?: () => void
+    maxDecks?: number
+    currentTier?: string
 }
 
-// ✅ NEW: Convert sandbox starter decks to Deck format
-// ✅ NEW: Convert sandbox starter decks to Deck format
 const SANDBOX_STARTER_DECKS: Deck[] = EDH_SANDBOX_STARTER_DECK_DATA.map((deck, index) => {
-  // Find commander card in the deck's cards array
   const commanderCard = deck.cards.find(card => 
     card.name.toLowerCase() === deck.commander.toLowerCase()
   );
@@ -46,23 +40,20 @@ const SANDBOX_STARTER_DECKS: Deck[] = EDH_SANDBOX_STARTER_DECK_DATA.map((deck, i
 });
 
 export default function DeckBuilder({ 
-    decks,
-    userId,
-    onCreateDeck, 
-    onDeleteDeck, 
-    onSelectDeck,
-    onEditDeck,
-    isSandbox = false, // ✅ NEW
-    cardGameId, // ✅ NEW
-    onClose
-  }: Props) {
+  decks,
+  userId,
+  isSandbox = false,
+  cardGameId,
+  onClose,
+  maxDecks = 2,
+  currentTier = 'free'
+}: Props) {
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
 
-  // ✅ NEW: In sandbox mode, show starter decks instead of user decks
   const displayDecks = isSandbox ? SANDBOX_STARTER_DECKS : decks;
 
   // Filter decks with search
@@ -79,69 +70,45 @@ export default function DeckBuilder({
     )
   }, [displayDecks, searchQuery])
 
-  const handleSelectDeck = async (deckId: string) => {
-    if (isSandbox && cardGameId) {
-      const deckIndex = parseInt(deckId.replace('sandbox-', ''));
-      const selectedDeck = EDH_SANDBOX_STARTER_DECK_DATA[deckIndex];
-      if (!selectedDeck) return;
-  
-      setIsSaving(true);
-      
-      // Import deck
-      applyCardGameAction(cardGameId, {
-        type: 'import_deck',
-        playerId: userId,
-        data: {
-          deckListText: selectedDeck.deckList,
-          deckName: selectedDeck.name,
-          cardData: selectedDeck.cards
-        }
-      })
-      .then(() => {
-        // THEN shuffle
-        return applyCardGameAction(cardGameId, {
-          type: 'shuffle_library',
-          playerId: userId,
-          data: {}
-        });
-      })
-      .then(() => {
-        // THEN draw
-        return applyCardGameAction(cardGameId, {
-          type: 'draw_cards',
-          playerId: userId,
-          data: { count: 7 }
-        });
-      })
-      .then(() => {
-        // THEN close modal (call onClose prop instead)
-        console.log(`✅ Imported, shuffled, drew 7: ${selectedDeck.name}`);
-        onClose?.();
-      })
-      .catch((error) => {
-        console.error('Failed to import:', error);
-        alert('Failed to import deck: ' + (error instanceof Error ? error.message : 'Unknown error'));
-      })
-      .finally(() => {
-        setIsSaving(false);
-      });
-      
-    } else {
-      onSelectDeck(deckId);
-    }
-  };
-
   const handleCreateDeck = async (deckList: string, deckName: string) => {
     setIsCreating(true)
     try {
-      await onCreateDeck(deckList, deckName)
-      setIsCreateModalOpen(false)
-      setSearchQuery('')
+      const response = await fetch('/api/decks/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deckList, deckName })
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create deck')
+      }
+      
+      // Refresh the page to show new deck
+      window.location.reload()
     } catch (error) {
       console.error('Failed to create deck:', error)
       throw error
     } finally {
       setIsCreating(false)
+    }
+  }
+
+  const handleDeleteDeck = async (deckId: string) => {
+    try {
+      const response = await fetch(`/api/decks/${deckId}`, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete deck')
+      }
+      
+      // Refresh the page
+      window.location.reload()
+    } catch (error) {
+      console.error('Failed to delete deck:', error)
+      alert('Failed to delete deck')
     }
   }
 
@@ -152,8 +119,19 @@ export default function DeckBuilder({
   ) => {
     setIsSaving(true)
     try {
-      await onEditDeck(deckId, updatedCards, deckName)
+      const response = await fetch(`/api/decks/${deckId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cards: updatedCards, deckName })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to update deck')
+      }
+      
       setEditingDeck(null)
+      // Refresh to show updated deck
+      window.location.reload()
     } catch (error) {
       console.error('Failed to save deck:', error)
       throw error
@@ -163,12 +141,12 @@ export default function DeckBuilder({
   }
 
   const validDecksCount = (displayDecks || []).filter(d => d != null).length
-  const canCreateMore = !isSandbox && validDecksCount < 5 // ✅ Can't create in sandbox
+  const canCreateMore = !isSandbox && validDecksCount < maxDecks // ✅ Use maxDecks prop
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        {/* ✅ NEW: Sandbox Banner */}
+        {/* ✅ Sandbox Banner */}
         {isSandbox && (
           <div className="mb-6 bg-purple-600/20 border-2 border-purple-500 rounded-xl p-4">
             <div className="flex items-center gap-3">
@@ -176,6 +154,21 @@ export default function DeckBuilder({
               <div>
                 <h2 className="text-white font-bold text-lg">Sandbox Mode - Starter Decks</h2>
                 <p className="text-purple-200 text-sm">Choose a pre-made deck to get started!</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ✅ Deck Limit Warning */}
+        {!isSandbox && validDecksCount >= maxDecks && (
+          <div className="mb-6 bg-amber-600/20 border-2 border-amber-500 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🃏</span>
+              <div className="flex-1">
+                <h2 className="text-white font-bold text-lg">Deck Limit Reached</h2>
+                <p className="text-amber-200 text-sm">
+                  You have {validDecksCount}/{maxDecks} decks. All tiers currently support {maxDecks} decks maximum.
+                </p>
               </div>
             </div>
           </div>
@@ -207,7 +200,7 @@ export default function DeckBuilder({
             </div>
           </div>
 
-          {/* Create Button - Hidden in sandbox */}
+          {/* Create Button - Hidden in sandbox or at limit */}
           {!isSandbox && (
             <div className="flex-1">
               <button
@@ -217,7 +210,7 @@ export default function DeckBuilder({
               >
                 <span className="text-2xl">+</span>
                 <span>Create Deck</span>
-                {!canCreateMore && <span className="text-xs">(Max 5)</span>}
+                {!canCreateMore && <span className="text-xs">(Max {maxDecks})</span>}
               </button>
             </div>
           )}
@@ -231,7 +224,7 @@ export default function DeckBuilder({
           </p>
           {!isSandbox && (
             <p className="text-gray-500 text-xs">
-              {validDecksCount} / 5 decks created
+              {validDecksCount} / {maxDecks} decks created
             </p>
           )}
         </div>
@@ -243,14 +236,14 @@ export default function DeckBuilder({
               <DeckCard
                 key={deck.id}
                 deck={deck}
-                onSelect={() => handleSelectDeck(deck.id)} // ✅ Uses new handler
-                onEdit={isSandbox ? undefined : () => setEditingDeck(deck)} // ✅ No edit in sandbox
-                onDelete={isSandbox ? undefined : () => { // ✅ No delete in sandbox
+                onSelect={() => handleSelectDeck(deck.id)}
+                onEdit={isSandbox ? undefined : () => setEditingDeck(deck)}
+                onDelete={isSandbox ? undefined : () => {
                   if (confirm(`Delete "${deck.name}"? This cannot be undone.`)) {
                     onDeleteDeck(deck.id)
                   }
                 }}
-                isSandbox={isSandbox} // ✅ Pass to DeckCard for styling
+                isSandbox={isSandbox}
               />
             ))}
           </div>
@@ -298,7 +291,7 @@ export default function DeckBuilder({
           />
         )}
         
-        {/* ✅ Loading overlay for sandbox deck import */}
+        {/* Loading overlay for sandbox deck import */}
         {isSaving && isSandbox && (
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
             <div className="bg-slate-800 rounded-xl p-8 flex flex-col items-center gap-4">

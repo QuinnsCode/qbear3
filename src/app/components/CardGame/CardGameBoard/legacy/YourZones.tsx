@@ -1,4 +1,4 @@
-// app/components/CardGame/YourZones-refactored.tsx
+// @/app/components/CardGame/CardGameBoard/legacy/YourZones.tsx
 'use client'
 
 import type { MTGPlayer, CardGameState } from '@/app/services/cardGame/CardGameState'
@@ -15,7 +15,7 @@ import { useDeckManagement } from '@/app/hooks/useDeckManagement'
 import LibraryMenu from '../Zones/LibraryMenu'
 import HandCarousel from '../Zones/HandCarousel'
 import ZoneButtons from '../Zones/ZoneButtons'
-import DrawCardsModal from '../Modals/DrawCardsModal'
+import DrawCardsModal from '../ui/Modals/DrawCardsModal'
 
 interface Props {
   player: MTGPlayer
@@ -55,7 +55,7 @@ export default function YourZones({
   const [libraryMenuOpen, setLibraryMenuOpen] = useState(false)
   const libraryButtonRef = useRef<HTMLButtonElement>(null)
 
-  const hasNoDeck = !player.deckList && isSandbox
+  const hasNoDeck = player.zones.library.length === 0 && isSandbox
 
   // Use extracted hooks
   const libraryActions = useLibraryActions({ cardGameId, player, onViewZone })
@@ -194,6 +194,7 @@ export default function YourZones({
         <HandCarousel
           player={player}
           gameState={gameState}
+          cardGameId={cardGameId}
           isViewingHand={isViewingHand}
           onViewZone={onViewZone}
         />

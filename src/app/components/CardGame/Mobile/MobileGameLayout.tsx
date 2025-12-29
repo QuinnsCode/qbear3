@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 import type { CardGameState, MTGPlayer } from '@/app/services/cardGame/CardGameState'
-import { BattlefieldContainer } from '../Battlefield/BattlefieldContainer'
+import { BattlefieldContainer } from '../CardGameBoard/MiddleRow/Battlefield/BattlefieldContainer'
 import MobileZoneDrawer from './MobileZoneDrawer'
 import MobileOpponentBubble from './MobileOpponentBubble'
 import MobileFloatingButtons from './MobileFloatingButtons'

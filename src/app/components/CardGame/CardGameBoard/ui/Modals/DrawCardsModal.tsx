@@ -1,4 +1,4 @@
-// app/components/CardGame/Modals/DrawCardsModal.tsx
+// @/app/components/CardGame/CardGameBoard/ui/Modals/DrawCardsModal.tsx
 'use client'
 
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'

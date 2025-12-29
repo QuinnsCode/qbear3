@@ -1,4 +1,4 @@
-// app/components/CardGame/Mobile/MobileZoneDrawer.tsx
+// @/app/components/CardGame/Mobile/MobileZoneDrawer.tsx
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
@@ -319,35 +319,33 @@ export default function MobileZoneDrawer({
 
         {/* Deck Builder Modal */}
         {isDeckBuilderOpen && onCreateDeck && onDeleteDeck && onSelectDeck && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
-            <div className="relative w-full h-full max-w-7xl max-h-[95vh] m-2">
-              <button
-                onClick={() => setIsDeckBuilderOpen(false)}
-                className="absolute top-2 right-2 z-10 bg-red-600 hover:bg-red-700 text-white rounded-lg w-10 h-10 flex items-center justify-center font-bold shadow-lg transition-colors"
-              >
-                ✕
-              </button>
-              
-              <div className="w-full h-full overflow-auto rounded-xl shadow-2xl">
-                <DeckBuilder
-                  decks={decks}
-                  userId={userId || ''}
-                  onCreateDeck={onCreateDeck}
-                  onDeleteDeck={onDeleteDeck}
-                  onSelectDeck={(deckId) => {
-                    onSelectDeck(deckId)
-                    setIsDeckBuilderOpen(false)
-                    onClose()
-                  }}
-                  onEditDeck={onEditDeck || (async () => {})}
-                  isSandbox={isSandbox}
-                  cardGameId={cardGameId}
-                  onClose={() => {
-                    setIsDeckBuilderOpen(false)
-                    onClose() // Close the drawer too - this DOES exist as a prop
-                  }}
-                />
-              </div>
+          <div className="fixed inset-0 z-50 bg-slate-900">
+            <button
+              onClick={() => setIsDeckBuilderOpen(false)}
+              className="absolute top-4 right-4 z-[60] bg-red-600 hover:bg-red-700 text-white rounded-full w-12 h-12 flex items-center justify-center font-bold shadow-lg transition-colors"
+            >
+              ✕
+            </button>
+            
+            <div className="w-full h-full overflow-auto">
+              <DeckBuilder
+                decks={decks}
+                userId={userId || ''}
+                onCreateDeck={onCreateDeck}
+                onDeleteDeck={onDeleteDeck}
+                onSelectDeck={(deckId) => {
+                  onSelectDeck(deckId)
+                  setIsDeckBuilderOpen(false)
+                  onClose()
+                }}
+                onEditDeck={onEditDeck || (async () => {})}
+                isSandbox={isSandbox}
+                cardGameId={cardGameId}
+                onClose={() => {
+                  setIsDeckBuilderOpen(false)
+                  onClose()
+                }}
+              />
             </div>
           </div>
         )}
