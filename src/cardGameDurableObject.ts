@@ -37,10 +37,6 @@ const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;   // Run cleanup every 24 hours
 export class CardGameDO extends DurableObject {
   private gameState: CardGameState | null = null;
   private gameId: string | null = null;
-  
-  
-  // ✅ Track WebSocket metadata (replaces wsManager's tracking)
-  private wsToPlayer: Map<WebSocket, string> = new Map();
 
   //ws helper class for logic
   private wsHelper: WebSocketHelper;
@@ -318,38 +314,28 @@ export class CardGameDO extends DurableObject {
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
     
-    // ✅ THIS IS THE KEY - use Hibernation API
-    this.ctx.acceptWebSocket(server);
+    // ✅ EXTRACT IDENTITY FROM REQUEST HEADERS (set by Worker middleware)
+    const playerId = request.headers.get('X-Auth-User-Id') || `guest-${crypto.randomUUID()}`;
+    const playerName = request.headers.get('X-Auth-User-Name') || 'Guest';
+    const isSpectator = !request.headers.has('X-Auth-User-Id');
     
-    // Check if spectator
-    const hasAuth = request.headers.has('X-Auth-User-Id');
-    const isSpectator = !hasAuth;
+    // ✅ ADD TAGS - This is the key change
+    this.ctx.acceptWebSocket(server, [
+      'player',                    // Tag[0]: type
+      playerId,                    // Tag[1]: unique ID
+      playerName,                  // Tag[2]: display name
+      isSpectator ? '1' : '0'      // Tag[3]: spectator flag
+    ]);
     
+    // Rest stays the same
     if (isSpectator) {
       this.spectatorCount++;
-      console.log(`👁️ Spectator connected. Total: ${this.spectatorCount}`);
     }
     
-    console.log(`🃏 WebSocket connected (hibernation enabled)`);
-    
-    // ✅ LOAD STATE FIRST before trying to send it
     const state = await this.getState();
+    server.send(JSON.stringify({ type: 'state_update', state }));
     
-    // Send initial state
-    try {
-      server.send(JSON.stringify({
-        type: 'state_update',
-        state: state  // ✅ Use the loaded state
-      }));
-      console.log('📤 Sent initial state to new connection');
-    } catch (error) {
-      console.error('Failed to send initial state:', error);
-    }
-  
-    return new Response(null, {
-      status: 101,
-      webSocket: client,
-    });
+    return new Response(null, { status: 101, webSocket: client });
   }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
@@ -363,23 +349,29 @@ export class CardGameDO extends DurableObject {
       return;
     }
     
+    // ✅ GET IDENTITY FROM PLATFORM, NOT CLIENT
+    const tags = this.ctx.getTags(ws);
+    const playerId = tags[1];
+    const playerName = tags[2];
+    const isSpectator = tags[3] === '1';
+    
     try {
       const data = JSON.parse(messageString);
       
-      // ✅ But delegate the LOGIC to the helper
       if (data.type === 'ping') {
-        const response = this.wsHelper.handlePing(ws, data);
-        ws.send(response);
+        ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
         return;
       }
-
-      if (data.type === 'cursor_move' && data.playerId) {
-        // ✅ Update activity on cursor movement (throttled)
-        this.updatePlayerActivity(data.playerId);
+  
+      // ✅ USE PLATFORM'S PLAYERID, NOT data.playerId
+      if (data.type === 'cursor_move') {
+        if (isSpectator) return; // Spectators don't get cursors
         
-        const result = this.wsHelper.handleCursorUpdate(data.playerId, data.x, data.y);
+        this.updatePlayerActivity(playerId); // ✅ Platform's ID
+        
+        const result = this.wsHelper.handleCursorUpdate(playerId, data.x, data.y);
         if (result.shouldBroadcast) {
-          this.broadcastExcept(result.message, data.playerId);
+          this.broadcastExcept(result.message, playerId);
         }
         return;
       }
@@ -390,37 +382,22 @@ export class CardGameDO extends DurableObject {
   }
 
   async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean): Promise<void> {
-    // ✅ Delegate to helper
-    const result = this.wsHelper.handleClose(ws);
-    console.log(`🔌 WebSocket closed: code=${code}, wasSpectator=${result.wasSpectator}`);
+    // ✅ GET IDENTITY FROM TAGS
+    const tags = this.ctx.getTags(ws);
+    const playerId = tags[1];
+    const playerName = tags[2];
+    const isSpectator = tags[3] === '1';
+    
+    if (isSpectator) {
+      this.spectatorCount--;
+      console.log(`👁️ Spectator ${playerName} disconnected (${this.spectatorCount} remaining)`);
+    } else {
+      console.log(`🔌 Player ${playerName} (${playerId}) disconnected`);
+    }
   }
 
   async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
     console.error('❌ WebSocket error:', error);
-  }
-
-  private handleCursorUpdate(senderWs: WebSocket, playerId: string, x: number, y: number): void {
-    const now = Date.now();
-    const lastBroadcast = this.lastCursorBroadcast.get(playerId) || 0;
-    
-    // Throttle to ~60fps (16ms)
-    if (now - lastBroadcast < 16) {
-      return;
-    }
-    
-    this.lastCursorBroadcast.set(playerId, now);
-    
-    // Broadcast to all OTHER clients
-    this.broadcastExcept(
-      { 
-        type: 'cursor_update', 
-        playerId, 
-        x, 
-        y,
-        timestamp: now 
-      },
-      playerId
-    );
   }
 
   // ✅ Broadcast using ctx.getWebSockets() instead of manual tracking
@@ -462,19 +439,18 @@ export class CardGameDO extends DurableObject {
   private broadcastExcept(message: any, excludePlayerId: string): void {
     try {
       const jsonString = JSON.stringify(message, (key, value) => {
-        if (value instanceof Date) {
-          return value.toISOString();
-        }
-        if (value === undefined) {
-          return null;
-        }
+        if (value instanceof Date) return value.toISOString();
+        if (value === undefined) return null;
         return value;
       });
       
       const sockets = this.ctx.getWebSockets();
       
       for (const ws of sockets) {
-        const wsPlayerId = this.wsToPlayer.get(ws);
+        // ✅ GET PLAYER ID FROM TAGS INSTEAD OF MAP
+        const tags = this.ctx.getTags(ws);
+        const wsPlayerId = tags[1];
+        
         if (wsPlayerId === excludePlayerId) {
           continue;
         }
@@ -503,8 +479,7 @@ export class CardGameDO extends DurableObject {
         console.error('Failed to close connection:', error);
       }
     }
-    
-    this.wsToPlayer.clear();
+
     this.lastCursorBroadcast.clear();
     console.log('✅ All WebSocket connections closed');
   }
