@@ -1,5 +1,6 @@
 import { defineApp, ErrorResponse, requestInfo } from "rwsdk/worker";
-import { realtimeRoute, renderRealtimeClients } from "rwsdk/realtime/worker";
+import { realtimeRoute } from "rwsdk/realtime/worker";
+import { syncOrderNotes } from "./lib/syncedState";
 import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
@@ -31,12 +32,15 @@ import { isSandboxEnvironment, setupSandboxContext, createSandboxCookieHeader } 
 import LandingPage from "./app/pages/landing/LandingPage";
 import DeckBuilderPage from "./app/pages/deckBuilder/DeckBuilderPage";
 import { SANDBOX_CONFIG } from "./lib/sandbox/config";
+import { SyncedStateServer, syncedStateRoutes } from "rwsdk/use-synced-state/worker";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
 export { GameStateDO } from "./gameDurableObject";
 export { CardGameDO } from './cardGameDurableObject'
 export { CardCacheDO } from './cardCacheDO'
+export { SyncedStateServer };
+
 
 // ============================================
 // 🎮 HARDCODED SANDBOX GAME
@@ -178,6 +182,8 @@ export default defineApp([
       ctx.orgError = null;
     }
   },
+
+  ...syncedStateRoutes(() => env.SYNCED_STATE_SERVER),
 
   // REALTIME ROUTES - Handle WebSocket and presence
   prefix("/__realtime", realtimeRoutes),
@@ -321,10 +327,7 @@ export default defineApp([
       });
       
       if (order) {
-        await renderRealtimeClients({
-          durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-          key: `/search/${order.orderNumber}`,
-        });
+        await syncOrderNotes(order.orderNumber, note);
       }
       
       return new Response(JSON.stringify(note), {

@@ -36,6 +36,10 @@
       {
         "name": "CARD_CACHE_DO",
         "class_name": "CardCacheDO"
+      },
+      {
+        "name": "SYNCED_STATE_SERVER",
+        "class_name": "SyncedStateServer"
       }
     ]
   },
@@ -59,6 +63,10 @@
     {
       "tag": "v4",
       "new_sqlite_classes": ["CardCacheDO"]
+    },
+    {
+      "tag": "v5",
+      "new_sqlite_classes": ["SyncedStateServer"]
     }
   ],
   "d1_databases": [
