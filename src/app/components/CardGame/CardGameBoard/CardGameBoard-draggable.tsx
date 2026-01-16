@@ -34,7 +34,7 @@ export default function CardGameBoard({
   isSandbox = false
 }: Props) {
   // Layout state
-  const { layout, isDragging, startDrag, resetLayout } = useDraggableLayout()
+  const { layout, setLayout, isDragging, startDrag, resetLayout } = useDraggableLayout()
   
   // UI state
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null)
@@ -44,6 +44,13 @@ export default function CardGameBoard({
   // Deck state
   const [decks, setDecks] = useState<Deck[]>([])
   const [loadingDecks, setLoadingDecks] = useState(true)
+  const [deckImportStatus, setDeckImportStatus] = useState<{
+    loading: boolean
+    error: string | null
+    step: string
+  }>({ loading: false, error: null, step: '' })
+
+
 
   // ✅ Null safety: Check if gameState and players exist before proceeding
   if (!gameState || !gameState.players || gameState.players.length === 0) {
@@ -137,74 +144,163 @@ export default function CardGameBoard({
       throw error
     }
   }
-  
-  const handleSelectDeck = async (deckId: string) => {
+
+  const handleSelectMyDeck = async (deckId: string) => {
     if (spectatorMode) {
       alert('Spectators cannot import decks')
       return
     }
     
+    setDeckImportStatus({ loading: true, error: null, step: 'Starting import...' })
+    
     try {
-      const deck = decks.find(d => d.id === deckId)
-      if (!deck) throw new Error('Deck not found')
-      
-      if (currentPlayer?.deckList) {
-        const confirmed = confirm(
-          `⚠️ WARNING: Importing a new deck will RESET your entire game state!\n\n` +
-          `This will clear:\n• Your hand\n• Battlefield\n• Graveyard\n• All zones\n\n` +
-          `Replace "${currentPlayer.deckList.deckName || 'current deck'}" with "${deck.name}"?`
-        )
-        if (!confirmed) return
+      // ✅ SANDBOX DECK
+      if (isSandbox && deckId.startsWith('sandbox-')) {
+        const sandboxIndex = parseInt(deckId.replace('sandbox-', ''))
+        
+        if (currentPlayer?.deckList) {
+          const deck = decks.find(d => d.id === deckId)
+          const confirmed = confirm(
+            `⚠️ WARNING: Importing a new deck will RESET your entire game state!\n\n` +
+            `This will clear:\n• Your hand\n• Battlefield\n• Graveyard\n• All zones\n\n` +
+            `Replace "${currentPlayer.deckList.deckName || 'current deck'}" with "${deck?.name}"?`
+          )
+          if (!confirmed) {
+            setDeckImportStatus({ loading: false, error: null, step: '' })
+            return
+          }
+        }
+        
+        setDeckImportStatus({ loading: true, error: null, step: 'Importing deck...' })
+        
+        await applyCardGameAction(cardGameId, {
+          type: 'import_sandbox_deck',
+          playerId: currentPlayerId,
+          data: { deckIndex: sandboxIndex }
+        })
+      } 
+      // ✅ NORMAL DECK
+      else {
+        let deck = decks.find(d => d.id === deckId)
+        if (!deck) throw new Error('Deck not found')
+        
+        if (!deck.cards || deck.cards.length === 0) {
+          throw new Error('Deck has no cards. Please edit the deck first.')
+        }
+        
+        if (currentPlayer?.deckList) {
+          const confirmed = confirm(
+            `⚠️ WARNING: Importing a new deck will RESET your entire game state!\n\n` +
+            `This will clear:\n• Your hand\n• Battlefield\n• Graveyard\n• All zones\n\n` +
+            `Replace "${currentPlayer.deckList.deckName || 'current deck'}" with "${deck.name}"?`
+          )
+          if (!confirmed) {
+            setDeckImportStatus({ loading: false, error: null, step: '' })
+            return
+          }
+        }
+        
+        setDeckImportStatus({ loading: true, error: null, step: 'Importing deck...' })
+        
+        try {
+          // ✅ TRY NORMAL IMPORT FIRST
+          const deckListText = [
+            ...(deck.commanders?.map(c => `Commander: ${c}`) || []),
+            ...deck.cards
+              .filter(card => !card.isCommander)
+              .map(card => `${card.quantity || 1} ${card.name}`)
+          ].filter(Boolean).join('\n')
+          
+          await applyCardGameAction(cardGameId, {
+            type: 'import_deck',
+            playerId: currentPlayerId,
+            data: { 
+              deckListText,
+              deckName: deck.name,
+              cardData: deck.cards.map(deckCard => ({
+                id: deckCard.scryfallId || deckCard.id,
+                name: deckCard.name,
+                image_uris: {
+                  small: deckCard.imageUrl,
+                  normal: deckCard.imageUrl,
+                  large: deckCard.imageUrl
+                },
+                type_line: deckCard.type || '',
+                mana_cost: deckCard.manaCost || '',
+                colors: deckCard.colors || [],
+                color_identity: deckCard.colors || []
+              }))
+            }
+          })
+          
+        } catch (firstError) {
+          // ✅ IF FAILED, TRY MIGRATING
+          console.log('Import failed, attempting migration...')
+          
+          const { migrateDeck, needsMigration } = await import('@/app/types/Deck')
+          if (needsMigration(deck)) {
+            deck = migrateDeck(deck)
+            
+            const deckListText = [
+              ...(deck.commanders?.map(c => `Commander: ${c}`) || []),
+              ...deck.cards
+                .filter(card => !card.isCommander)
+                .map(card => `${card.quantity || 1} ${card.name}`)
+            ].filter(Boolean).join('\n')
+            
+            await applyCardGameAction(cardGameId, {
+              type: 'import_deck',
+              playerId: currentPlayerId,
+              data: { 
+                deckListText,
+                deckName: deck.name,
+                cardData: deck.cards.map(deckCard => ({
+                  id: deckCard.scryfallId || deckCard.id,
+                  name: deckCard.name,
+                  image_uris: {
+                    small: deckCard.imageUrl || '',
+                    normal: deckCard.imageUrl || '',
+                    large: deckCard.imageUrl || ''
+                  },
+                  type_line: deckCard.type || '',
+                  mana_cost: deckCard.manaCost || '',
+                  colors: deckCard.colors || [],
+                  color_identity: deckCard.colors || []
+                }))
+              }
+            })
+          } else {
+            // Deck doesn't need migration - real error
+            throw firstError
+          }
+        }
       }
       
-      const deckListText = [
-        deck.commander ? `Commander: ${deck.commander}` : '',
-        ...deck.cards
-          .filter(card => !card.isCommander)
-          .map(card => `${card.quantity} ${card.name}`)
-      ].filter(Boolean).join('\n')
-      
-      await applyCardGameAction(cardGameId, {
-        type: 'import_deck',
-        playerId: currentPlayerId,
-        data: { 
-          deckListText,
-          deckName: deck.name,
-          cardData: deck.cards.map(deckCard => ({
-            id: deckCard.scryfallId || deckCard.id,
-            name: deckCard.name,
-            image_uris: {
-              small: deckCard.imageUrl,
-              normal: deckCard.imageUrl,
-              large: deckCard.imageUrl
-            },
-            type_line: deckCard.type || '',
-            mana_cost: deckCard.manaCost || '',
-            colors: deckCard.colors || [],
-            color_identity: deckCard.colors || [],
-            set: '',
-            set_name: '',
-            collector_number: '',
-            rarity: 'common'
-          }))
-        }
-      })
+      // ✅ SHUFFLE AND DRAW (after successful import)
+      setDeckImportStatus({ loading: true, error: null, step: 'Shuffling library...' })
       
       await applyCardGameAction(cardGameId, {
         type: 'shuffle_library',
         playerId: currentPlayerId,
         data: {}
       })
-
+  
+      setDeckImportStatus({ loading: true, error: null, step: 'Drawing 7 cards...' })
+  
       await applyCardGameAction(cardGameId, {
         type: 'draw_cards',
         playerId: currentPlayerId,
         data: { count: 7 }
       })
+      
+      setDeckImportStatus({ loading: false, error: null, step: '' })
+      
     } catch (error) {
-      console.error('Failed to import deck:', error)
-      alert('Failed to import deck: ' + (error instanceof Error ? error.message : 'Unknown error'))
-      throw error
+      setDeckImportStatus({ 
+        loading: false, 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        step: ''
+      })
     }
   }
 
@@ -258,9 +354,11 @@ export default function CardGameBoard({
 
   return (
     <div className="h-screen w-screen bg-slate-900 flex flex-col relative overflow-hidden">
-      {/* Game Menu - Top Right */}
+      {/* Game Menu & Minimap - Top Right */}
       {!spectatorMode && (
-        <div className="absolute top-2 right-2 z-30">
+        <div className="absolute top-2 right-2 z-30 flex gap-2">
+          
+          {/* Existing Game Menu */}
           <CardGameMenu
             cardGameId={cardGameId}
             gameName={gameName}
@@ -282,7 +380,7 @@ export default function CardGameBoard({
           userId={currentPlayerId}
           onCreateDeck={handleCreateDeck}
           onDeleteDeck={handleDeleteDeck}
-          onSelectDeck={handleSelectDeck}
+          onSelectDeck={handleSelectMyDeck}
           onEditDeck={handleEditDeck}
           isSandbox={isSandbox}
         />
@@ -342,17 +440,19 @@ export default function CardGameBoard({
               spectatorMode={spectatorMode}
               isLargeBattlefieldView={false}
               toggleLargeBattlefieldView={() => {}}
+              isSandbox={isSandbox}
+              selectedPlayerId={selectedPlayerId}
+              onSelectPlayer={setSelectedPlayerId}
             />
           </div>
 
-          {/* Vertical drag handle */}
-          {!isRightPanelCollapsed && (
-            <DragHandle
-              orientation="vertical"
-              onDragStart={(e) => startDrag('right', e)}
-              isDragging={isDragging === 'right'}
-            />
-          )}
+          {/* Vertical drag handle - ALWAYS show */}
+          <DragHandle
+            orientation="vertical"
+            onDragStart={(e) => startDrag('right', e)}
+            isDragging={isDragging === 'right'}
+            containerHeight={layout.bottomBarHeight}
+          />
 
           {/* Card Search Panel */}
           {!isRightPanelCollapsed && (
@@ -370,15 +470,16 @@ export default function CardGameBoard({
             </div>
           )}
 
-          {/* Collapsed panel tab */}
+          {/* Collapsed panel tab - NOW CLICKABLE */}
           {isRightPanelCollapsed && (
             <button
-              onClick={() => {
-                // TODO: Implement reopen logic
-              }}
-              className="w-8 bg-slate-800 rounded-br-lg hover:bg-slate-700 transition-colors flex items-center justify-center"
+              onClick={() => setLayout(prev => ({ ...prev, rightPanelWidth: 400 }))}
+              className="w-8 bg-slate-800 hover:bg-slate-700 rounded-br-lg flex items-center justify-center transition-all group cursor-pointer"
+              title="Click to expand search panel"
             >
-              <span className="text-slate-400 text-xs [writing-mode:vertical-lr] rotate-180">Search</span>
+              <span className="text-slate-400 group-hover:text-blue-400 text-xs [writing-mode:vertical-lr] rotate-180 transition-colors">
+                Search
+              </span>
             </button>
           )}
         </div>
@@ -392,7 +493,7 @@ export default function CardGameBoard({
         {/* ===== BOTTOM ROW: Hand + Zones ===== */}
         {!spectatorMode && (
           <div 
-            className="bg-slate-800 rounded-b-lg overflow-hidden flex-shrink-0"
+            className="bg-slate-800 rounded-b-lg overflow-visible flex-shrink-0"
             style={{ height: `${layout.bottomBarHeight}px` }}
           >
             <BottomZonesBar
@@ -408,7 +509,7 @@ export default function CardGameBoard({
               decks={decks}
               onCreateDeck={handleCreateDeck}
               onDeleteDeck={handleDeleteDeck}
-              onSelectDeck={handleSelectDeck}
+              onSelectDeck={handleSelectMyDeck}
               onEditDeck={handleEditDeck}
               onPrefetchDecks={prefetchDecks}
               isSandbox={isSandbox}
@@ -430,6 +531,34 @@ export default function CardGameBoard({
         )}
       </div>
 
+    {/* Loading/Error Overlay - Add before closing </div> */}
+    {deckImportStatus.loading && (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center">
+        <div className="bg-slate-800 rounded-xl p-8 flex flex-col items-center gap-4 max-w-sm mx-4">
+        <div className="animate-spin text-6xl">⚙️</div>
+        <div className="text-white text-xl font-bold text-center">{deckImportStatus.step}</div>
+        </div>
+    </div>
+    )}
+
+    {deckImportStatus.error && (
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-red-900 border-2 border-red-500 rounded-xl p-6 max-w-md">
+          <div className="text-6xl mb-4 text-center">❌</div>
+          <div className="text-white text-xl font-bold mb-2 text-center">Import Failed</div>
+          <div className="text-red-200 text-sm mb-4 text-center">{deckImportStatus.error}</div>
+          <button
+              onClick={() => setDeckImportStatus({ loading: false, error: null, step: '' })}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-all"
+          >
+              Close
+          </button>
+          </div>
+
+          
+      </div>
+    
+    )}
       {/* Reset Layout Button (dev tool) */}
       <button
         onClick={resetLayout}

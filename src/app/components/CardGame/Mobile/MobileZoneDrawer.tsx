@@ -29,7 +29,7 @@ interface Props {
   userId?: string
   onCreateDeck?: (deckList: string, deckName: string) => Promise<void>
   onDeleteDeck?: (deckId: string) => Promise<void>
-  onSelectDeck?: (deckId: string) => void
+  onSelectDeck?: (deckId: string) => Promise<void>
   onEditDeck?: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
   isSandbox?: boolean
 }
@@ -333,10 +333,17 @@ export default function MobileZoneDrawer({
                 userId={userId || ''}
                 onCreateDeck={onCreateDeck}
                 onDeleteDeck={onDeleteDeck}
-                onSelectDeck={(deckId) => {
-                  onSelectDeck(deckId)
-                  setIsDeckBuilderOpen(false)
-                  onClose()
+                onSelectDeck={async (deckId: string) => {
+                  try {
+                    if (onSelectDeck) {
+                      await onSelectDeck(deckId)
+                    }
+                    setIsDeckBuilderOpen(false)
+                    onClose()
+                  } catch (error) {
+                    console.error('Failed to select deck:', error)
+                    alert('Failed to import deck: ' + (error instanceof Error ? error.message : 'Unknown error'))
+                  }
                 }}
                 onEditDeck={onEditDeck || (async () => {})}
                 isSandbox={isSandbox}

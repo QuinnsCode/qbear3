@@ -66,7 +66,15 @@ export class DeckImportManager {
       const cardDataSource = action.data.cardData || player.deckList?.cardData || []
       
       cardDataSource.forEach((cardData: any) => {
+        // Store by full name
         cardDataMap.set(cardData.name.toLowerCase(), cardData)
+        
+        // For MDFCs (Modal Double-Faced Cards), also store by front face name only
+        // e.g., "Emeria's Call // Emeria, Shattered Skyclave" → "emeria's call"
+        if (cardData.name.includes(' // ')) {
+          const frontFace = cardData.name.split(' // ')[0].trim()
+          cardDataMap.set(frontFace.toLowerCase(), cardData)
+        }
       })
       
       console.log(`📚 Loaded ${cardDataMap.size} card definitions`)
@@ -165,6 +173,39 @@ export class DeckImportManager {
         cards: updatedCards,
         players: updatedPlayers
       }
+  }
+
+  /**
+   * Import a sandbox starter deck using pre-loaded deck data
+   * This avoids passing large card data through the action
+   */
+  static importSandboxDeck(
+    gameState: CardGameState, 
+    action: CardGameAction,
+    starterDecks: any[]
+  ): CardGameState {
+    const deckIndex = action.data.deckIndex;
+    const assignedDeck = starterDecks[deckIndex % starterDecks.length];
+    
+    if (!assignedDeck) {
+      console.error(`❌ Sandbox deck ${deckIndex} not found`);
+      return gameState;
+    }
+    
+    console.log(`📦 Importing sandbox deck: ${assignedDeck.name}`);
+    
+    // Convert to regular import action with full card data
+    const importAction: CardGameAction = {
+      ...action,
+      type: 'import_deck',
+      data: {
+        deckListText: assignedDeck.deckList,
+        deckName: assignedDeck.name,
+        cardData: assignedDeck.cards
+      }
+    };
+    
+    return this.importDeck(gameState, importAction);
   }
   
   /**

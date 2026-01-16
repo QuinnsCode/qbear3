@@ -223,6 +223,8 @@ export async function createNewCardGame(
   } = options || {};
 
   try {
+    const existingGames = await getOrgCardGames(orgSlug, isSandbox);
+    
     // ✅ CHECK SUBSCRIPTION TIER LIMITS (skip for sandbox)
     if (!isSandbox && creatorUserId) {
       const user = await db.user.findUnique({
@@ -237,10 +239,7 @@ export async function createNewCardGame(
         pro: 10
       };
 
-      // Count games in DB (persistent games)
-      const currentGameCount = await db.cardGame.count({
-        where: { ownerId: creatorUserId }
-      });
+      const currentGameCount = existingGames.length;
 
       if (currentGameCount >= tierLimits[tier]) {
         const tierNames: Record<string, string> = {
@@ -263,8 +262,6 @@ export async function createNewCardGame(
         };
       }
     }
-
-    const existingGames = await getOrgCardGames(orgSlug, isSandbox);
     
     const maxGames = isSandbox ? MAX_SANDBOX_CARD_GAMES : MAX_CARD_GAMES_PER_ORG;
     

@@ -97,6 +97,11 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
                     Sign Up
                   </a>
                 </FantasyButton>
+                <FantasyButton variant="primary" className="text-sm sm:text-base whitespace-nowrap">
+                  <a href="/user/login" className="px-3 sm:px-4">
+                    Sign In
+                  </a>
+                </FantasyButton>
               </>
             ) : (
               <>

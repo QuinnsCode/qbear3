@@ -1,4 +1,4 @@
-// app/components/CardGame/MainViewer.tsx
+// app/components/CardGame/CardGameBoard/legacy/MainViewer.tsx
 'use client'
 
 import { useState } from 'react'
@@ -167,8 +167,8 @@ export default function MainViewer({
         )}
       </div>
       
-      {/* Battlefield */}
-      <div className="flex-1 overflow-hidden">
+      {/* Battlefield - make sure not to have as overflow-hidden*/}
+      <div className="flex-1">
         <BattlefieldContainer
           cards={battlefieldCards}
           gameState={gameState}

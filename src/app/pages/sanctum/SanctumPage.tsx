@@ -11,15 +11,47 @@ import { DeckSection } from "@/app/pages/sanctum/DeckSection";
 import { getUserDecks } from "@/app/serverActions/deckBuilder/deckActions";
 import { getEffectiveTier, getTierConfig } from "@/app/lib/subscriptions/tiers";
 import { db } from "@/db";
-import { SanctumStyles } from "@/app/styles/SanctumStyles";
 
 export default async function SanctumPage({ ctx, request }: RequestInfo) {
   const orgSlug = extractOrgFromSubdomain(request);
-  let usersFirstOrgSlugFound = null;
+  
+  if (ctx.orgError === 'NO_ACCESS') {
+    return (
+      <div className="min-h-screen bg-slate-700 flex items-center justify-center p-8">
+        <div className="bg-slate-800 rounded-lg border-2 border-red-500 p-8 text-center max-w-md shadow-xl">
+          <h1 className="text-3xl font-bold text-red-400 mb-4">🚫 No Access</h1>
+          <p className="text-gray-200 mb-6">You don't have permission to access this organization.</p>
+          <a href="/" className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors">
+            Return Home
+          </a>
+        </div>
+      </div>
+    );
+  }
+  
+  if (orgSlug && !ctx.user) {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: '/user/login' }
+    });
+  }
+  
+  if (orgSlug && !ctx.userRole) {
+    return (
+      <div className="min-h-screen bg-slate-700 flex items-center justify-center p-8">
+        <div className="bg-slate-800 rounded-lg border-2 border-yellow-500 p-8 text-center max-w-md shadow-xl">
+          <h1 className="text-3xl font-bold text-yellow-400 mb-4">🚫 Not a Member</h1>
+          <p className="text-gray-200 mb-6">You must be a member of {ctx.organization?.name} to access this page.</p>
+          <a href="/" className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors">
+            Return Home
+          </a>
+        </div>
+      </div>
+    );
+  }
 
-  // ✅ Check subscription tier
+  let usersFirstOrgSlugFound = null;
   let currentTier = 'free';
-  let subscriptionStatus = null;
   let tierLimits = {
     maxGames: 1,
     maxPlayers: 4,
@@ -31,7 +63,7 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
       where: { id: ctx.user.id },
       include: { 
         squeezeSubscription: true,
-        stripeSubscription: true // ✅ NEW - also check Stripe
+        stripeSubscription: true
       }
     });
     
@@ -47,7 +79,6 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
     }
   }
 
-  // Check Discord status
   let hasDiscord = false;
   if (ctx.user?.id) {
     const discordAccount = await db.account.findFirst({
@@ -59,7 +90,6 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
     hasDiscord = !!discordAccount;
   }
   
-  // Redirect to first org if no subdomain
   if (!orgSlug && ctx?.user?.id) {
     usersFirstOrgSlugFound = await getFirstOrgSlugOfUser(ctx.user.id);
     if (usersFirstOrgSlugFound) {
@@ -73,18 +103,15 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
     }
   }
 
-  // Fetch active games
   const activeGames = orgSlug ? await getOrgGames(orgSlug) : [];
   const activeCardGames = orgSlug ? await getOrgCardGames(orgSlug) : [];
   
-  // ✅ NEW: Fetch user's decks
   let userDecks: any[] = [];
   if (ctx.user?.id) {
     const { decks } = await getUserDecks(ctx.user.id);
     userDecks = decks;
   }
 
-  // Main actions for left sidebar
   const mainActions = [
     { id: 'friends', label: 'Friends', action: '#', icon: '👥' },
     { id: 'add-friend', label: 'Add a Friend', action: '#', icon: '➕' },
@@ -95,75 +122,56 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   ];
 
   return (
-    <>
-      <SanctumStyles />
-      <div className="sanctum-container">
-        <div className="ambient-glow" />
-
-        <div className="main-wrapper">
-          <div className="content-wrapper">
-            <div className="book-frame-placeholder">
-              <div className="corner-decoration top-left" />
-              <div className="corner-decoration top-right" />
-              <div className="corner-decoration bottom-left" />
-              <div className="corner-decoration bottom-right" />
+    <div className="min-h-screen bg-slate-700">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {!orgSlug ? (
+          <NoOrgSelected firstOrgSlug={usersFirstOrgSlugFound} />
+        ) : (
+          <>
+            <Header ctx={ctx} currentTier={currentTier} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              <DeckSection
+                decks={userDecks}
+                currentTier={currentTier}
+                maxDecks={tierLimits.maxDecks}
+                atLimit={userDecks.length >= tierLimits.maxDecks}
+              />
+              <GameSection 
+                games={activeCardGames} 
+                type="cardGame" 
+                orgSlug={orgSlug}
+                currentTier={currentTier}
+                tierLimits={tierLimits}
+                atLimit={activeCardGames.length >= tierLimits.maxGames}
+              />
             </div>
-
-            <div className="parchment-background">
-              <div className="book-binding">
-                {[20, 35, 65, 80].map((percent, i) => (
-                  <div key={i} className="binding-stud" style={{ top: `${percent}%` }} />
-                ))}
-              </div>
-
-              {!orgSlug ? (
-                <NoOrgSelected firstOrgSlug={usersFirstOrgSlugFound} />
-              ) : (
-                <div className="page-grid">
-                  <LeftPage 
-                    ctx={ctx}
-                    mainActions={mainActions}
-                    hasDiscord={hasDiscord}
-                    currentTier={currentTier}
-                    subscriptionStatus={subscriptionStatus}
-                  />
-                  <RightPage
-                    orgSlug={orgSlug}
-                    activeGames={activeGames}
-                    activeCardGames={activeCardGames}
-                    userDecks={userDecks} 
-                    currentTier={currentTier}
-                    tierLimits={tierLimits}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+            <StatusCard ctx={ctx} currentTier={currentTier} hasDiscord={hasDiscord} />
+          </>
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
-// Subcomponents
 function NoOrgSelected({ firstOrgSlug }: { firstOrgSlug: string | null }) {
   return (
-    <div style={{ padding: '24px', textAlign: 'center' }}>
-      <h2 className="section-title">No org selected!</h2>
-      <p className="sanctum-subtitle">
-        We need to list your orgs or you can add in your subdomain from creation!
+    <div className="bg-slate-800 rounded-lg border-2 border-slate-600 p-8 text-center shadow-lg">
+      <h2 className="text-2xl font-bold text-white mb-4">No Organization Selected</h2>
+      <p className="text-gray-300 mb-4">
+        Please select an organization or add your subdomain.
       </p>
       {firstOrgSlug && (
-        <div className="status-box" style={{ marginTop: '16px' }}>
-          Your first org slug: <strong>{firstOrgSlug}</strong>
+        <div className="mt-4 p-4 bg-slate-700/70 rounded-lg border border-slate-600">
+          <p className="text-gray-200">
+            Your first org: <strong className="text-blue-400">{firstOrgSlug}</strong>
+          </p>
         </div>
       )}
     </div>
   );
 }
 
-function LeftPage({ ctx, mainActions, hasDiscord, currentTier, subscriptionStatus }: any) {
-  // Tier display config
+function Header({ ctx, currentTier }: any) {
   const tierConfig: Record<string, { icon: string; name: string; color: string }> = {
     free: { icon: '🏕️', name: 'Free', color: '#78716c' },
     starter: { icon: '⚔️', name: 'Starter', color: '#f59e0b' },
@@ -173,140 +181,73 @@ function LeftPage({ ctx, mainActions, hasDiscord, currentTier, subscriptionStatu
   const tier = tierConfig[currentTier] || tierConfig.free;
   
   return (
-    <div className="left-page">
-      {/* Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 className="sanctum-title">Sanctum</h1>
-        <div className="sanctum-subtitle">
-          {ctx.organization?.name || 'Your Lair'} • {ctx.user?.name?.split(' ')[0] || 'Adventurer'}
-        </div>
-        <div className="sanctum-divider" />
+    <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 shadow-xl">
+      <h1 className="text-4xl font-bold text-white mb-2">Sanctum</h1>
+      <div className="text-blue-100 mb-4 text-lg">
+        {ctx.organization?.name || 'Your Dashboard'} • {ctx.user?.name || 'Player'}
       </div>
-
-      {/* ✅ Subscription Tier Badge */}
-      <div style={{ 
-        marginBottom: '20px',
-        padding: '12px',
-        background: 'rgba(251, 191, 36, 0.1)',
-        border: `2px solid ${tier.color}`,
-        borderRadius: '8px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '24px' }}>{tier.icon}</span>
-          <div>
-            <div style={{ fontWeight: 'bold', color: tier.color }}>{tier.name} Tier</div>
-            {currentTier === 'free' && (
-              <div style={{ fontSize: '11px', color: '#92400e' }}>
-                Limited features
-              </div>
-            )}
-          </div>
-        </div>
+      
+      <div 
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 bg-black/20"
+        style={{ borderColor: tier.color }}
+      >
+        <span className="text-2xl">{tier.icon}</span>
+        <span className="font-semibold text-white">{tier.name} Tier</span>
         {currentTier === 'free' && (
           <a 
             href="/pricing" 
-            style={{ 
-              padding: '6px 12px',
-              background: tier.color,
-              color: 'white',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              textDecoration: 'none'
-            }}
+            className="ml-2 px-3 py-1 rounded text-white text-sm font-bold transition-all hover:scale-105"
+            style={{ background: tier.color }}
           >
             Upgrade
           </a>
         )}
       </div>
-
-      {/* Social Actions */}
-      <SanctumClientActions userId={ctx.user?.id} mainActions={mainActions} />
-      
-      {/* Coming Soon Actions */}
-      <div style={{ marginBottom: '24px' }}>
-        <h2 className="section-title">Quick Actions</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }} className="coming-soon">
-          {mainActions.slice(3, 5).map((action: any) => (
-            <div key={action.id} className="action-button">
-              <span className="action-button-icon">{action.icon}</span>
-              {action.label}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Player Status */}
-      <div className="status-box">
-        <h3 className="status-title">Your Status</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div className="status-item">
-            <span>Role:</span>
-            <span style={{ fontWeight: '500' }}>
-              {ctx.userRole === 'admin' ? 'Lair Master' : ctx.userRole === 'owner' ? 'Grand Master' : 'Adventurer'}
-            </span>
-          </div>
-          <div className="status-item">
-            <span>Lair:</span>
-            <span style={{ fontWeight: '500' }}>{ctx.organization?.name || 'None'}</span>
-          </div>
-          <div className="status-item">
-            <span>Subscription:</span>
-            <span style={{ fontWeight: '500', color: tier.color }}>
-              {tier.icon} {tier.name}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <DiscordConnect isConnected={hasDiscord} />
-
-      {/* Footer */}
-      <div className="footer-nav">
-        <a href="/" className="footer-link">← Return Home</a>
-      </div>
     </div>
   );
 }
 
-function RightPage({ orgSlug, activeGames, activeCardGames, userDecks, currentTier, tierLimits }: any) {
-  const atGameLimit = activeCardGames.length >= tierLimits.maxGames;
-  const atDeckLimit = userDecks.length >= tierLimits.maxDecks; // ✅ NEW
+function StatusCard({ ctx, currentTier, hasDiscord }: any) {
+  const tierConfig: Record<string, { icon: string; name: string; color: string }> = {
+    free: { icon: '🏕️', name: 'Free', color: '#78716c' },
+    starter: { icon: '⚔️', name: 'Starter', color: '#f59e0b' },
+    pro: { icon: '👑', name: 'Pro', color: '#eab308' }
+  };
+  
+  const tier = tierConfig[currentTier] || tierConfig.free;
   
   return (
-    <div className="right-page">
-      {/* ✅ NEW: Deck Section FIRST (above games) */}
-      <DeckSection
-        decks={userDecks}
-        currentTier={currentTier}
-        maxDecks={tierLimits.maxDecks}
-        atLimit={atDeckLimit}
-      />
-      
-      {/* Games Section */}
-      <GameSection 
-        games={activeCardGames} 
-        type="cardGame" 
-        orgSlug={orgSlug}
-        currentTier={currentTier}
-        tierLimits={tierLimits}
-        atLimit={atGameLimit}
-      />
-      
-      {/* Placeholder activity */}
-      <div className="placeholder-blur">
-        <h3 className="status-title">Recent Activity</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px', marginBottom: '20px' }}>
-          {[1, 2, 3].map(i => (
-            <div key={i} style={{ padding: '8px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: '4px', border: '1px solid rgba(180, 83, 9, 0.2)' }}>
-              <div style={{ color: '#a16207', fontWeight: '500' }}>Activity placeholder</div>
-              <div style={{ color: '#92400e' }}>Details coming soon...</div>
-            </div>
-          ))}
+    <div className="mt-6 bg-slate-800 rounded-lg border-2 border-slate-600 p-6 shadow-lg">
+      <h3 className="text-xl font-bold text-white mb-4">Account Info</h3>
+      <div className="space-y-3">
+        <div className="flex justify-between items-center p-3 bg-slate-700/70 rounded border border-slate-600">
+          <span className="text-gray-300">Role:</span>
+          <span className="font-medium text-white">
+            {ctx.userRole === 'admin' ? 'Admin' : ctx.userRole === 'owner' ? 'Owner' : 'Member'}
+          </span>
         </div>
+        <div className="flex justify-between items-center p-3 bg-slate-700/70 rounded border border-slate-600">
+          <span className="text-gray-300">Organization:</span>
+          <span className="font-medium text-white">{ctx.organization?.name || 'None'}</span>
+        </div>
+        <div className="flex justify-between items-center p-3 bg-slate-700/70 rounded border border-slate-600">
+          <span className="text-gray-300">Tier:</span>
+          <span className="font-medium flex items-center gap-2" style={{ color: tier.color }}>
+            <span>{tier.icon}</span>
+            <span>{tier.name}</span>
+          </span>
+        </div>
+        <div className="flex justify-between items-center p-3 bg-slate-700/70 rounded border border-slate-600">
+          <span className="text-gray-300">Discord:</span>
+          <span className="font-medium text-white">
+            {hasDiscord ? '✅ Connected' : '❌ Not Connected'}
+          </span>
+        </div>
+      </div>
+      <div className="mt-6">
+        <a href="/" className="text-blue-400 hover:text-blue-300 transition-colors font-medium">
+          ← Return Home
+        </a>
       </div>
     </div>
   );
@@ -320,97 +261,81 @@ function GameSection({ games, type, orgSlug, currentTier, tierLimits, atLimit }:
   const idField = isCardGame ? 'cardGameId' : 'gameId';
 
   return (
-    <div style={{ marginBottom: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h2 className="section-title">
-          {title} ({games.length}/{tierLimits.maxGames})
-        </h2>
-      </div>
+    <div className="bg-slate-800 rounded-lg border-2 border-slate-600 p-6 shadow-lg">
+      <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+        <span>{icon}</span>
+        <span>{title}</span>
+        <span className="ml-auto text-sm bg-slate-700 text-gray-300 px-3 py-1 rounded-full border border-slate-600">
+          {games.length}/{tierLimits.maxGames}
+        </span>
+      </h2>
       
-      {/* ✅ Upgrade prompt if at limit */}
       {atLimit && currentTier !== 'pro' && (
-        <div style={{
-          marginBottom: '12px',
-          padding: '12px',
-          background: 'rgba(239, 68, 68, 0.1)',
-          border: '2px solid #dc2626',
-          borderRadius: '8px'
-        }}>
-          <div style={{ fontWeight: 'bold', color: '#dc2626', marginBottom: '4px' }}>
+        <div className="mb-4 p-4 bg-red-900/30 border-2 border-red-500 rounded-lg">
+          <div className="font-bold text-red-400 mb-2">
             🚨 Game Limit Reached
           </div>
-          <div style={{ fontSize: '12px', color: '#991b1b', marginBottom: '8px' }}>
-            You've reached your limit of {tierLimits.maxGames} {tierLimits.maxGames === 1 ? 'game' : 'games'}.
+          <div className="text-sm text-red-300 mb-3">
+            You've reached your limit. 
             {currentTier === 'free' && ' Upgrade to Starter for 5 games ($1/mo)'}
             {currentTier === 'starter' && ' Upgrade to Pro for 10 games ($5/mo)'}
           </div>
           <a 
             href="/pricing"
-            style={{
-              display: 'inline-block',
-              padding: '6px 12px',
-              background: '#dc2626',
-              color: 'white',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              textDecoration: 'none'
-            }}
+            className="inline-block px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-bold transition-colors"
           >
-            Upgrade Now →
+            Upgrade Now
           </a>
         </div>
       )}
       
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {games.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon">{icon}</div>
-            <div className="empty-state-title">No Active {title}</div>
-            <div className="empty-state-text">Start a new {isCardGame ? 'card game' : 'game'} to begin</div>
-            <a href={route} className="empty-state-button">
-              Create {isCardGame ? 'Card Game' : 'Game'}
-            </a>
-          </div>
-        ) : (
-          <>
-            {games.map((game: any) => (
-              <div key={game[idField]} className="game-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
-                  <span className="game-card-title">{game.name}</span>
-                  <span className="game-card-badge">{isCardGame ? 'Card Game' : 'Strategy'}</span>
-                </div>
-                <div className="game-card-date">
-                  Created {new Date(game.createdAt).toLocaleDateString()}
-                </div>
-                <div className="game-card-footer">
-                  <span style={{ color: '#d97706' }}>Players: {game.playerCount}/{tierLimits.maxPlayers}</span>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <a href={`${route}/${game[idField]}`} className="game-link">
-                      Enter →
-                    </a>
-                    {!isCardGame && (
-                      <SanctumDeleteGameButton
-                        gameId={game[idField]}
-                        gameName={game.name}
-                        orgSlug={orgSlug}
-                      />
-                    )}
-                  </div>
-                </div>
+      {games.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">{icon}</div>
+          <div className="text-xl font-semibold text-gray-200 mb-2">No Games Yet</div>
+          <a 
+            href={route} 
+            className="inline-block mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg"
+          >
+            Create Your First Game
+          </a>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {games.map((game: any) => (
+            <div 
+              key={game[idField]} 
+              className="bg-slate-700/70 rounded-lg border border-slate-600 p-4 hover:border-blue-500 hover:shadow-lg transition-all"
+            >
+              <div className="font-bold text-white text-lg mb-2">{game.name}</div>
+              <div className="text-sm text-gray-300 mb-3">
+                Created {new Date(game.createdAt).toLocaleDateString()}
               </div>
-            ))}
-            
-            {/* ✅ Only show create button if under limit */}
-            {!atLimit && (
-              <a href={route} className="create-game-button">
-                <span className="create-game-icon">➕</span>
-                Create New {isCardGame ? 'Card Game' : 'Game'}
-              </a>
-            )}
-          </>
-        )}
-      </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-300 text-sm">
+                  Players: {game.playerCount}/{tierLimits.maxPlayers}
+                </span>
+                <a 
+                  href={`${route}/${game[idField]}`} 
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium transition-colors"
+                >
+                  Enter Game →
+                </a>
+              </div>
+            </div>
+          ))}
+          
+          {!atLimit && (
+            <a 
+              href={route} 
+              className="flex items-center justify-center gap-2 mt-4 p-4 bg-slate-700/50 hover:bg-slate-700/70 text-white rounded-lg font-semibold border-2 border-dashed border-slate-600 hover:border-blue-500 transition-all"
+            >
+              <span className="text-2xl">➕</span>
+              <span>Create New Game</span>
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }

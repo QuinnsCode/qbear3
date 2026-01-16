@@ -27,7 +27,26 @@ export function ZoneViewer({
   const [searchQuery, setSearchQuery] = useState('')
   
   // Get card data helper
-  const getCardData = (scryfallId: string) => {
+  const getCardData = (scryfallId: string, card?: Card) => {
+    // ✅ Check if token first
+    if (card?.isToken && card?.tokenData) {
+      return {
+        id: scryfallId,
+        name: card.tokenData.name,
+        type_line: card.tokenData.typeLine,
+        oracle_text: card.tokenData.oracleText,
+        power: card.tokenData.power,
+        toughness: card.tokenData.toughness,
+        colors: card.tokenData.colors || [],
+        image_uris: card.tokenData.imageUrl ? {
+          normal: card.tokenData.imageUrl,
+          large: card.tokenData.imageUrl,
+          small: card.tokenData.imageUrl
+        } : undefined
+      }
+    }
+    
+    // Normal card lookup
     for (const p of gameState.players) {
       if (p.deckList?.cardData) {
         const found = p.deckList.cardData.find(c => c.id === scryfallId)
@@ -54,21 +73,22 @@ export function ZoneViewer({
   // Filter by search
   const filteredCards = displayCards.filter(card => {
     if (!searchQuery) return true
-    const cardData = getCardData(card.scryfallId)
+    const cardData = getCardData(card.scryfallId, card)
     return cardData?.name.toLowerCase().includes(searchQuery.toLowerCase())
   })
   
+  // ✅ FIXED: Proper full-screen overlay with high z-index
   return (
-    <div className="h-full flex flex-col bg-slate-900 p-4">
+    <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-white font-bold capitalize">
+      <div className="flex items-center justify-between p-4 border-b border-slate-700 bg-slate-800">
+        <h2 className="text-white text-xl font-bold capitalize">
           {player.name}'s {zone}
           {spectatorMode && <span className="text-purple-400 ml-2">👁️ View Only</span>}
         </h2>
         <button
           onClick={onClose}
-          className="text-white hover:text-red-400 transition-colors"
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors"
         >
           ✕ Close
         </button>
@@ -76,22 +96,22 @@ export function ZoneViewer({
       
       {/* Search Filter - Only for library */}
       {zone === 'library' && (
-        <div className="mb-4">
+        <div className="p-4 border-b border-slate-700 bg-slate-800">
           <input
             type="text"
             placeholder="🔍 Search cards..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-800 text-white px-4 py-2 rounded border border-slate-600 focus:border-blue-500 focus:outline-none"
+            className="w-full bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
           />
         </div>
       )}
       
       {/* Cards Grid */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto p-4">
         {filteredCards.length === 0 ? (
           <div className="h-full flex items-center justify-center text-gray-500">
-            <p>{searchQuery ? 'No cards found' : `No cards in ${zone}`}</p>
+            <p className="text-xl">{searchQuery ? 'No cards found' : `No cards in ${zone}`}</p>
           </div>
         ) : (
           <div className={
@@ -100,7 +120,7 @@ export function ZoneViewer({
               : "grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2"
           }>
             {filteredCards.map(card => {
-              const cardData = getCardData(card.scryfallId)
+              const cardData = getCardData(card.scryfallId, card)
               
               // Special rendering for command zone - MUCH BIGGER
               if (zone === 'command') {

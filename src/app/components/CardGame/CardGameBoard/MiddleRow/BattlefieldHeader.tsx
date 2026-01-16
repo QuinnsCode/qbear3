@@ -11,6 +11,7 @@ interface BattlefieldHeaderProps {
   isLargeBattlefieldView: boolean
   onToggleLargeView?: () => void
   onOpenLifeTracker?: () => void
+  onOpenMinimap?: () => void
 }
 
 export default function BattlefieldHeader({
@@ -19,7 +20,8 @@ export default function BattlefieldHeader({
   spectatorMode,
   isLargeBattlefieldView,
   onToggleLargeView,
-  onOpenLifeTracker
+  onOpenLifeTracker,
+  onOpenMinimap
 }: BattlefieldHeaderProps) {
   return (
     <div className={`flex items-center justify-between transition-all ${
@@ -42,20 +44,34 @@ export default function BattlefieldHeader({
         </h2>
       </div>
       
-      {/* Center: Large View Toggle */}
-      {onToggleLargeView && !spectatorMode && (
-        <button
-          onClick={onToggleLargeView}
-          className="px-3 py-1.5 rounded-lg border transition-all flex items-center gap-2 group bg-slate-800 hover:bg-slate-700 text-white border-slate-600"
-          title={isLargeBattlefieldView ? "Exit Large View" : "Large Battlefield View"}
-        >
-          {isLargeBattlefieldView ? (
-            <ChevronUp className="w-4 h-4 group-hover:scale-110 transition-transform" />
-          ) : (
-            <ChevronDown className="w-4 h-4 group-hover:scale-110 transition-transform" />
-          )}
-        </button>
-      )}
+      {/* Center: Controls */}
+      <div className="flex items-center gap-2">
+        {/* Minimap Button */}
+        {onOpenMinimap && !spectatorMode && (
+          <button
+            onClick={onOpenMinimap}
+            className="px-3 py-1.5 rounded-lg border transition-all flex items-center gap-2 group bg-blue-700 hover:bg-blue-600 text-white border-blue-600 shadow-lg"
+            title="Battlefield Overview (Knights of the Round Table)"
+          >
+            <span className="text-lg">🗺️</span>
+          </button>
+        )}
+        
+        {/* Large View Toggle */}
+        {onToggleLargeView && !spectatorMode && (
+          <button
+            onClick={onToggleLargeView}
+            className="px-3 py-1.5 rounded-lg border transition-all flex items-center gap-2 group bg-slate-800 hover:bg-slate-700 text-white border-slate-600"
+            title={isLargeBattlefieldView ? "Exit Large View" : "Large Battlefield View"}
+          >
+            {isLargeBattlefieldView ? (
+              <ChevronUp className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            ) : (
+              <ChevronDown className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            )}
+          </button>
+        )}
+      </div>
       
       {/* Right: Life Display/Button */}
       {isCurrentPlayer && !spectatorMode && onOpenLifeTracker ? (

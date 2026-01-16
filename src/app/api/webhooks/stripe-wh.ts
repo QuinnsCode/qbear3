@@ -1,4 +1,4 @@
-// app/api/webhooks/stripe-wh.ts
+// @/app/api/webhooks/stripe-wh.ts
 import { getStripe } from '@/app/lib/stripe/client'
 import { STRIPE_CONFIG } from '@/app/lib/stripe/config'
 import { db } from '@/db'

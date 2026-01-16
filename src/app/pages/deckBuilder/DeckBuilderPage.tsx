@@ -60,10 +60,6 @@ export default async function DeckBuilderPage({ ctx, request, params }: RequestI
       <DeckBuilder
         decks={decks}
         userId={userId}
-        onCreateDeck={createDeck.bind(null, userId)}
-        onDeleteDeck={deleteDeck.bind(null, userId)}
-        onSelectDeck={() => {}}
-        onEditDeck={updateDeckFromEditor.bind(null, userId)}
         isSandbox={false}
         maxDecks={maxDecks}
         currentTier={tier}

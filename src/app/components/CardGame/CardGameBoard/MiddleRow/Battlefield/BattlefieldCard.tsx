@@ -218,6 +218,42 @@ export function BattlefieldCard({
   const isFaceUp = card.isFaceUp !== false
   const isTapped = card.rotation === 90
   
+  // ✅ RENDER TOKEN PLACEHOLDER (when no image but is token)
+  const renderTokenPlaceholder = () => {
+    if (!card.isToken || !cardData) return null
+    
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-yellow-700 via-amber-800 to-yellow-900 border-4 border-yellow-500 flex flex-col justify-between p-2 text-white">
+        {/* Header */}
+        <div className="border-b-2 border-yellow-400 pb-1">
+          <div className="font-bold text-sm leading-tight">{cardData.name}</div>
+          <div className="text-[10px] text-yellow-200 leading-tight">{cardData.type_line}</div>
+        </div>
+        
+        {/* Oracle Text */}
+        {cardData.oracle_text && (
+          <div className="flex-1 text-[9px] leading-tight overflow-hidden mt-1">
+            {cardData.oracle_text}
+          </div>
+        )}
+        
+        {/* Power/Toughness */}
+        {cardData.power && cardData.toughness && (
+          <div className="text-right mt-1">
+            <div className="inline-block bg-yellow-950 border-2 border-yellow-400 rounded px-2 py-0.5 text-sm font-bold">
+              {cardData.power}/{cardData.toughness}
+            </div>
+          </div>
+        )}
+        
+        {/* Token Badge */}
+        <div className="text-center text-[10px] font-bold text-yellow-300 mt-1 bg-yellow-950/50 rounded px-1">
+          TOKEN
+        </div>
+      </div>
+    )
+  }
+  
   return (
     <div
       ref={cardRef}
@@ -228,7 +264,7 @@ export function BattlefieldCard({
         isSelected 
           ? 'ring-4 ring-amber-500 ring-offset-2 ring-offset-slate-900 border-orange-500' 
           : isFaceUp 
-            ? (isTapped ? 'border-orange-500' : 'border-amber-500') 
+            ? (isTapped ? 'border-orange-500' : card.isToken ? 'border-yellow-500' : 'border-amber-500') 
             : 'border-blue-700'
       }`}
       style={{
@@ -248,18 +284,24 @@ export function BattlefieldCard({
       onMouseEnter={onHover}
     >
       {imageUrl ? (
+        // ✅ HAS IMAGE (Scryfall or token with image)
         <img 
           src={imageUrl} 
           alt={cardData?.name || 'Card'}
           className="w-full h-full object-cover pointer-events-none"
         />
+      ) : isFaceUp && card.isToken ? (
+        // ✅ TOKEN WITHOUT IMAGE
+        renderTokenPlaceholder()
       ) : isFaceUp ? (
+        // ✅ NORMAL CARD WITHOUT IMAGE (fallback)
         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-900 to-amber-950 text-xs text-white p-1">
           <p className="text-center break-words">
             {cardData?.name || 'Card'}
           </p>
         </div>
       ) : (
+        // ✅ FACE DOWN
         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-900 to-blue-950 border-4 border-blue-700">
           <div className="text-center">
             <div className="text-2xl">🎴</div>

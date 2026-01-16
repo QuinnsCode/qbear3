@@ -140,7 +140,8 @@ export async function parseDeckAndFetchCards(deckListText: string) {
     return {
       success: true as const,
       cards: scryfallCards,
-      commander: parseResult.commander,
+      commander: parseResult.commander,      // Keep for backward compat
+      commanders: parseResult.commanders,    // ADD THIS LINE
       totalCards: scryfallCards.length,
     }
   } catch (error) {
@@ -216,16 +217,26 @@ export async function createDeck(
     console.log(`[DeckBuilder] Creating deck "${deckName}" with ${deckCards.length} unique cards`)
 
     // Get commander card for deck metadata
-    const commanderCard = deckCards.find(c => c.isCommander)
-    const colors = commanderCard?.colors || []
+    const commanderCards = parseAndFetchResult.commanders?.map(cmdName => 
+      deckCards.find(c => c.name.toLowerCase() === cmdName.toLowerCase())
+    ).filter(Boolean) || []
+    
+    const commanderImageUrls = commanderCards
+      .map(c => c.imageUrl)
+      .filter(Boolean) as string[]
+    
+    // Collect all colors from commanders
+    const colors = Array.from(
+      new Set(commanderCards.flatMap(c => c.colors || []))
+    ).sort()
 
-    // Create deck object
+    // Create V3 deck object
     const deck: Deck = {
-      version: CURRENT_DECK_VERSION,
+      version: CURRENT_DECK_VERSION, // = 3
       id: `deck-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: deckName,
-      commander: commander || 'Unknown Commander',
-      commanderImageUrl: commanderCard?.imageUrl,
+      commanders: parseAndFetchResult.commanders || [], // Array of 1-2 commanders
+      commanderImageUrls: commanderImageUrls.length > 0 ? commanderImageUrls : undefined,
       colors,
       cards: deckCards,
       totalCards,
@@ -246,7 +257,7 @@ export async function createDeck(
         metadata: {
           userId,
           deckName: deck.name,
-          commander: deck.commander,
+          commanders: deck.commanders.join(', '),  // ✅ Use commanders array
           totalCards: deck.totalCards,
           createdAt: deck.createdAt,
         }
@@ -342,7 +353,7 @@ export async function getUserDecks(userId: string) {
             metadata: {
               userId,
               deckName: deck.name,
-              commander: deck.commander,
+              commanders: deck.commanders.join(', '),  // ✅ Use commanders array
               totalCards: deck.totalCards,
               version: deck.version,
               migratedAt: Date.now(),
@@ -474,7 +485,7 @@ export async function updateDeck(
         metadata: {
           userId,
           deckName: updatedDeck.name,
-          commander: updatedDeck.commander,
+          commanders: updatedDeck.commanders.join(', '),  // ✅ Use commanders array
           totalCards: updatedDeck.totalCards,
           createdAt: updatedDeck.createdAt,
           updatedAt: updatedDeck.updatedAt,
@@ -582,7 +593,7 @@ export async function getDeck(userId: string, deckId: string) {
           metadata: {
             userId,
             deckName: deck.name,
-            commander: deck.commander,
+            commanders: deck.commanders.join(', '),  // ✅ Use commanders array
             totalCards: deck.totalCards,
             version: deck.version,
             migratedAt: Date.now(),

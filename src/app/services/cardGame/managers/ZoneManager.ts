@@ -1,5 +1,6 @@
 // src/app/services/cardGame/managers/ZoneManager.ts
 import type { CardGameState, CardGameAction } from '@/app/services/cardGame/CardGameState'
+import { TokenManager } from './TokenManager'
 
 /**
  * ZoneManager - ULTRA VERBOSE DEBUG VERSION
@@ -181,9 +182,29 @@ export class ZoneManager {
       return gameState
     }
     
-    console.log('✅ Card found:', card.name)
+    console.log('✅ Card found:', card.instanceId)
+    console.log('  Is token:', card.isToken)
+    console.log('  Token name:', card.tokenData?.name)
     console.log('  Current zone:', card.zone)
     console.log('  Has position:', !!card.position)
+    
+    // ✅ CHECK IF TOKEN SHOULD BE DESTROYED
+    console.log('\n🪙 Checking token lifecycle...')
+    const tokenResult = TokenManager.handleTokenZoneTransfer(
+      gameState,
+      cardId,
+      action.playerId,
+      fromZone,
+      toZone
+    )
+    
+    if (tokenResult !== null) {
+      console.log('🪙 Token destroyed - returning early')
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      return tokenResult
+    }
+    
+    console.log('  Not a token or token staying on battlefield - continuing...')
     
     // Check zones
     console.log('\n🔍 Checking zones...')

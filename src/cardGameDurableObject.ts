@@ -23,6 +23,7 @@ import { CardManager } from '@/app/services/cardGame/managers/CardManager';
 import { ZoneManager } from '@/app/services/cardGame/managers/ZoneManager';
 import { DeckImportManager } from '@/app/services/cardGame/managers/DeckImportManager';
 import { SandboxManager } from '@/app/services/cardGame/managers/SandboxManager';
+import { TokenManager } from '@/app/services/cardGame/managers/TokenManager';
 import { getStarterDeck } from './app/serverActions/cardGame/starterDecks';
 import { WebSocketHelper } from './app/services/cardGame/WebSocketHelper';
 import { env } from "cloudflare:workers";
@@ -47,11 +48,12 @@ export class CardGameDO extends DurableObject {
   // ✅ Track player activity for cleanup
   private playerActivity: Map<string, number> = new Map();
 
+  private starterDecks: any[] | null = null;
+
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     this.wsHelper = new WebSocketHelper();
   
-    // ⚠️ NEEDS blockConcurrencyWhile: Async storage initialization
     this.ctx.blockConcurrencyWhile(async () => {
       const initialized = await this.ctx.storage.get('initialized');
       if (!initialized) {
@@ -59,19 +61,19 @@ export class CardGameDO extends DurableObject {
         await this.ctx.storage.put('createdAt', Date.now());
       }
       
-      // ✅ Schedule cleanup alarm for sandbox games
       const isSandbox = await this.ctx.storage.get('isSandbox');
       if (isSandbox) {
+        // ✅ Load starter decks into memory
+        this.starterDecks = await this.ctx.storage.get('starterDecks') as any[];
+        
         const hasAlarm = await this.ctx.storage.get('cleanupScheduled');
         if (!hasAlarm) {
-          // Schedule first cleanup in 24 hours
           await this.ctx.storage.setAlarm(Date.now() + CLEANUP_INTERVAL);
           await this.ctx.storage.put('cleanupScheduled', true);
           console.log('⏰ Scheduled first cleanup alarm for sandbox game');
         }
       }
       
-      // ✅ Load player activity timestamps
       const storedActivity = await this.ctx.storage.get<Record<string, number>>('playerActivity');
       if (storedActivity) {
         this.playerActivity = new Map(Object.entries(storedActivity));
@@ -281,12 +283,20 @@ export class CardGameDO extends DurableObject {
         // GAME ACTION REQUEST
         if (requestData.type) {
           console.log(`🎬 Action request detected: ${requestData.type}`);
-          const result = await this.applyAction(requestData);
-          // ✅ Update activity on any action
-          if (requestData.playerId) {
-            this.updatePlayerActivity(requestData.playerId);
+          try {
+            const result = await this.applyAction(requestData);
+            // ✅ Update activity on any action
+            if (requestData.playerId) {
+              this.updatePlayerActivity(requestData.playerId);
+            }
+            return Response.json(result);
+          } catch (error) {
+            console.error('❌ Action failed:', error);
+            return Response.json(
+              { error: error instanceof Error ? error.message : 'Unknown error' },
+              { status: 500 }
+            );
           }
-          return Response.json(result);
         }
         
         // Unknown POST format
@@ -810,7 +820,17 @@ export class CardGameDO extends DurableObject {
       case 'import_deck':
         console.log('📦 Processing import_deck action');
         return DeckImportManager.importDeck(gameState, action);
-
+      
+      case 'import_sandbox_deck':
+        console.log('📦 Processing import_sandbox_deck action');
+        
+        if (!this.starterDecks) {
+          console.error('❌ Starter decks not loaded');
+          return gameState;
+        }
+        
+        return DeckImportManager.importSandboxDeck(gameState, action, this.starterDecks);
+  
       case 'shuffle_library':
         console.log('🔀 Processing shuffle_library action');
         return ZoneManager.shuffleLibrary(gameState, action);
@@ -914,6 +934,10 @@ export class CardGameDO extends DurableObject {
             }
           }))
         };
+
+      case 'create_token':
+        console.log('🪙 Processing create_token action');
+        return TokenManager.createToken(gameState, action);
 
       default:
         console.warn(`Unknown action type: ${(action as any).type}`);

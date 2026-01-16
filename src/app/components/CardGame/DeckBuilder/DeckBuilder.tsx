@@ -7,15 +7,20 @@ import CreateDeckModal from './CreateDeckModal'
 import type { Deck } from '@/app/types/Deck'
 import EditDeckModal from './EditDeckModal'
 import { EDH_SANDBOX_STARTER_DECK_DATA } from '@/app/components/CardGame/Sandbox/starterDeckData'
+import { createDeck, deleteDeck, updateDeckFromEditor } from '@/app/serverActions/deckBuilder/deckActions'
 
 interface Props {
-    decks: Deck[]
-    userId: string
-    isSandbox?: boolean
-    cardGameId?: string
-    onClose?: () => void
-    maxDecks?: number
-    currentTier?: string
+  decks: Deck[]
+  userId: string
+  isSandbox?: boolean
+  cardGameId?: string
+  onClose?: () => void
+  maxDecks?: number
+  currentTier?: string
+  onCreateDeck?: (deckList: string, deckName: string) => Promise<void>
+  onDeleteDeck?: (deckId: string) => Promise<void>
+  onSelectDeck?: (deckId: string) => Promise<void>
+  onEditDeck?: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
 }
 
 const SANDBOX_STARTER_DECKS: Deck[] = EDH_SANDBOX_STARTER_DECK_DATA.map((deck, index) => {
@@ -24,10 +29,13 @@ const SANDBOX_STARTER_DECKS: Deck[] = EDH_SANDBOX_STARTER_DECK_DATA.map((deck, i
   );
   
   return {
+    version: 3, // ADD THIS
     id: `sandbox-${index}`,
     name: deck.name,
-    commander: deck.commander,
-    commanderImageUrl: commanderCard?.image_uris?.art_crop || commanderCard?.image_uris?.large || commanderCard?.image_uris?.normal,
+    commanders: [deck.commander], // CHANGE: single commander to array
+    commanderImageUrls: commanderCard?.image_uris?.art_crop || commanderCard?.image_uris?.large || commanderCard?.image_uris?.normal 
+      ? [commanderCard.image_uris.art_crop || commanderCard.image_uris.large || commanderCard.image_uris.normal]
+      : undefined, // CHANGE: wrap in array
     colors: [deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '⚪' ? 'W' : 
              deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '⚫' ? 'B' :
              deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '🔴' ? 'R' :
@@ -46,7 +54,11 @@ export default function DeckBuilder({
   cardGameId,
   onClose,
   maxDecks = 2,
-  currentTier = 'free'
+  currentTier = 'free',
+  onCreateDeck,
+  onDeleteDeck,
+  onSelectDeck,
+  onEditDeck
 }: Props) {
   const [editingDeck, setEditingDeck] = useState<Deck | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -63,48 +75,47 @@ export default function DeckBuilder({
     if (!searchQuery.trim()) return validDecks
     
     const query = searchQuery.toLowerCase()
-    return validDecks.filter(deck => 
-      deck.name?.toLowerCase().includes(query) ||
-      deck.commander?.toLowerCase().includes(query) ||
-      deck.colors?.some(color => color.toLowerCase().includes(query))
-    )
+    return validDecks.filter(deck => {
+      // Search in commanders array instead of single commander
+      const commanderMatch = deck.commanders?.some(cmd => 
+        cmd.toLowerCase().includes(query)
+      )
+      
+      return (
+        deck.name?.toLowerCase().includes(query) ||
+        commanderMatch ||
+        deck.colors?.some(color => color.toLowerCase().includes(query))
+      )
+    })
   }, [displayDecks, searchQuery])
 
   const handleCreateDeck = async (deckList: string, deckName: string) => {
+    if (onCreateDeck) {
+      return onCreateDeck(deckList, deckName)
+    }
+    
     setIsCreating(true)
     try {
-      const response = await fetch('/api/decks/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deckList, deckName })
-      })
-      
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create deck')
+      const result = await createDeck(userId, deckName, deckList)
+      if (!result.success) {
+        throw new Error(result.errors?.join(', ') || 'Failed to create deck')
       }
-      
-      // Refresh the page to show new deck
       window.location.reload()
-    } catch (error) {
-      console.error('Failed to create deck:', error)
-      throw error
     } finally {
       setIsCreating(false)
     }
   }
 
   const handleDeleteDeck = async (deckId: string) => {
+    if (onDeleteDeck) {
+      return onDeleteDeck(deckId)
+    }
+    
     try {
-      const response = await fetch(`/api/decks/${deckId}`, {
-        method: 'DELETE'
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete deck')
+      const result = await deleteDeck(userId, deckId)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete deck')
       }
-      
-      // Refresh the page
       window.location.reload()
     } catch (error) {
       console.error('Failed to delete deck:', error)
@@ -117,36 +128,42 @@ export default function DeckBuilder({
     updatedCards: Array<{name: string, quantity: number}>,
     deckName: string
   ) => {
+    if (onEditDeck) {
+      return onEditDeck(deckId, updatedCards, deckName)
+    }
+    
     setIsSaving(true)
     try {
-      const response = await fetch(`/api/decks/${deckId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cards: updatedCards, deckName })
-      })
-      
-      if (!response.ok) {
-        throw new Error('Failed to update deck')
+      const result = await updateDeckFromEditor(userId, deckId, deckName, updatedCards)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update deck')
       }
-      
       setEditingDeck(null)
-      // Refresh to show updated deck
       window.location.reload()
-    } catch (error) {
-      console.error('Failed to save deck:', error)
-      throw error
     } finally {
       setIsSaving(false)
     }
   }
 
+  const handleSelectDeck = async (deckId: string) => {
+    if (onSelectDeck) {
+      return onSelectDeck(deckId)
+    }
+    
+    if (cardGameId) {
+      window.location.href = `/game/${cardGameId}?deckId=${deckId}`
+    } else {
+      window.location.href = `/deck/${deckId}`
+    }
+  }
+
   const validDecksCount = (displayDecks || []).filter(d => d != null).length
-  const canCreateMore = !isSandbox && validDecksCount < maxDecks // ✅ Use maxDecks prop
+  const canCreateMore = !isSandbox && validDecksCount < maxDecks
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        {/* ✅ Sandbox Banner */}
+        {/* Sandbox Banner */}
         {isSandbox && (
           <div className="mb-6 bg-purple-600/20 border-2 border-purple-500 rounded-xl p-4">
             <div className="flex items-center gap-3">
@@ -159,7 +176,7 @@ export default function DeckBuilder({
           </div>
         )}
 
-        {/* ✅ Deck Limit Warning */}
+        {/* Deck Limit Warning */}
         {!isSandbox && validDecksCount >= maxDecks && (
           <div className="mb-6 bg-amber-600/20 border-2 border-amber-500 rounded-xl p-4">
             <div className="flex items-center gap-3">
@@ -240,7 +257,7 @@ export default function DeckBuilder({
                 onEdit={isSandbox ? undefined : () => setEditingDeck(deck)}
                 onDelete={isSandbox ? undefined : () => {
                   if (confirm(`Delete "${deck.name}"? This cannot be undone.`)) {
-                    onDeleteDeck(deck.id)
+                    handleDeleteDeck(deck.id)
                   }
                 }}
                 isSandbox={isSandbox}
@@ -285,7 +302,10 @@ export default function DeckBuilder({
         {!isSandbox && editingDeck && (
           <EditDeckModal
             deck={editingDeck}
-            onClose={() => setEditingDeck(null)}
+            onClose={() => {
+              setEditingDeck(null)
+              window.location.href = '/sanctum'
+            }}
             onSave={handleEditDeck}
             isSaving={isSaving}
           />

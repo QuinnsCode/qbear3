@@ -1,9 +1,9 @@
 // @/app/components/CardGame/CardGameBoard/legacy/YourZones.tsx
 'use client'
 
-import type { MTGPlayer, CardGameState } from '@/app/services/cardGame/CardGameState'
+import type { MTGPlayer, CardGameState, TokenData } from '@/app/services/cardGame/CardGameState'
 import { useState, useRef } from 'react'
-import { Swords, BookOpen, Skull, Flame, Crown } from 'lucide-react'
+import { Swords, BookOpen, Skull, Flame, Crown, Coins } from 'lucide-react'
 import DeckBuilder from '@/app/components/CardGame/DeckBuilder/DeckBuilder'
 import type { Deck } from '@/app/types/Deck'
 
@@ -16,6 +16,7 @@ import LibraryMenu from '../Zones/LibraryMenu'
 import HandCarousel from '../Zones/HandCarousel'
 import ZoneButtons from '../Zones/ZoneButtons'
 import DrawCardsModal from '../ui/Modals/DrawCardsModal'
+import TokenCreationModal from '../../TokenCreationModal'
 
 interface Props {
   player: MTGPlayer
@@ -53,6 +54,7 @@ export default function YourZones({
   isSandbox
 }: Props) {
   const [libraryMenuOpen, setLibraryMenuOpen] = useState(false)
+  const [tokenModalOpen, setTokenModalOpen] = useState(false)
   const libraryButtonRef = useRef<HTMLButtonElement>(null)
 
   const hasNoDeck = player.zones.library.length === 0 && isSandbox
@@ -73,6 +75,50 @@ export default function YourZones({
       })
     } catch (error) {
       console.error('Failed to move card:', error)
+    }
+  }
+
+  const handleCreateToken = async (tokenData: TokenData) => {
+    try {
+      const { applyCardGameAction } = await import('@/app/serverActions/cardGame/cardGameActions')
+      
+      // Get battlefield container (the scrollable area)
+      const battlefield = document.querySelector('[data-battlefield]') as HTMLElement
+      
+      if (!battlefield) {
+        console.warn('Battlefield not found, using fallback position')
+        await applyCardGameAction(cardGameId, {
+          type: 'create_token',
+          playerId: player.id,
+          data: { 
+            tokenData, 
+            position: { x: 100, y: 100 } // Fallback
+          }
+        })
+        return
+      }
+      
+      const rect = battlefield.getBoundingClientRect()
+      
+      // Place token in top-left of visible viewport + some padding
+      // This accounts for current scroll position
+      const PADDING = 50 // pixels from edge
+      const position = {
+        x: battlefield.scrollLeft + PADDING,
+        y: battlefield.scrollTop + PADDING
+      }
+      
+      console.log('Creating token at position:', position)
+      
+      await applyCardGameAction(cardGameId, {
+        type: 'create_token',
+        playerId: player.id,
+        data: { tokenData, position }
+      })
+      
+      console.log('✅ Token created:', tokenData.name)
+    } catch (error) {
+      console.error('Failed to create token:', error)
     }
   }
 
@@ -182,6 +228,7 @@ export default function YourZones({
         onMill={libraryActions.handleMillCards}
         onReveal={libraryActions.handleRevealTopCard}
         onHandToBattlefieldTapped={libraryActions.handleHandToBattlefieldTapped}
+        onCreateToken={() => setTokenModalOpen(true)}
         onPrefetchDecks={onPrefetchDecks}
         spectatorMode={spectatorMode}
         buttonRef={libraryButtonRef}
@@ -208,6 +255,7 @@ export default function YourZones({
           onOpenLibraryMenu={() => setLibraryMenuOpen(!libraryMenuOpen)}
           hasNoDeck={hasNoDeck}
           onOpenDeckBuilder={deckManagement.handleOpenDeckBuilder}
+          onCreateToken={() => setTokenModalOpen(true)}
           spectatorMode={spectatorMode}
           isViewingHand={isViewingHand}
           libraryButtonRef={libraryButtonRef}
@@ -229,6 +277,7 @@ export default function YourZones({
         onMill={libraryActions.handleMillCards}
         onReveal={libraryActions.handleRevealTopCard}
         onHandToBattlefieldTapped={libraryActions.handleHandToBattlefieldTapped}
+        onCreateToken={() => setTokenModalOpen(true)}
         onPrefetchDecks={onPrefetchDecks}
         spectatorMode={spectatorMode}
         buttonRef={libraryButtonRef}
@@ -243,6 +292,14 @@ export default function YourZones({
         onDraw={libraryActions.handleDrawCards}
         onClose={() => libraryActions.setShowDrawModal(false)}
         player={player}
+      />
+
+      {/* Token Creation Modal */}
+      <TokenCreationModal
+        isOpen={tokenModalOpen}
+        onClose={() => setTokenModalOpen(false)}
+        onCreateToken={handleCreateToken}
+        playerId={player.id}
       />
       
       {/* Deck Builder Modal */}
@@ -262,8 +319,10 @@ export default function YourZones({
                 userId={userId || ''}
                 onCreateDeck={onCreateDeck}
                 onDeleteDeck={onDeleteDeck}
-                onSelectDeck={(deckId) => {
-                  onSelectDeck(deckId)
+                onSelectDeck={async (deckId) => {
+                  if (onSelectDeck) {
+                    await onSelectDeck(deckId)
+                  }
                   deckManagement.handleCloseDeckBuilder()
                 }}
                 onEditDeck={onEditDeck || (async () => {})}

@@ -7,6 +7,7 @@ import { ZoneViewer } from '@/app/components/CardGame/ZoneViewer/ZoneViewer'
 import { BattlefieldContainer } from './Battlefield/BattlefieldContainer'
 import BattlefieldHeader from './BattlefieldHeader'
 import LifeTracker from '@/app/components/CardGame/LifeTracker/LifeTracker'
+import { BattlefieldMinimapModal } from '../BattlefieldMinimap/BattlefieldMinimapModal'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
 
 interface BattlefieldSectionProps {
@@ -23,6 +24,10 @@ interface BattlefieldSectionProps {
   spectatorMode?: boolean
   isLargeBattlefieldView?: boolean
   toggleLargeBattlefieldView?: () => void
+  isSandbox?: boolean
+  // New props for minimap
+  selectedPlayerId?: string | null
+  onSelectPlayer?: (playerId: string | null) => void
 }
 
 /**
@@ -32,6 +37,7 @@ interface BattlefieldSectionProps {
  * - Display the battlefield with cards
  * - Show player header (name, life, controls)
  * - Manage life tracker modal
+ * - Manage minimap modal
  * - Handle zone overlay when viewing zones
  */
 export default function BattlefieldSection({ 
@@ -47,12 +53,41 @@ export default function BattlefieldSection({
   onBattlefieldScroll,
   spectatorMode = false,
   isLargeBattlefieldView = false,
-  toggleLargeBattlefieldView
+  isSandbox = false,
+  toggleLargeBattlefieldView,
+  selectedPlayerId,
+  onSelectPlayer
 }: BattlefieldSectionProps) {
   const [showLifeTracker, setShowLifeTracker] = useState(false)
+  const [showMinimap, setShowMinimap] = useState(false)
 
-  // Helper to get card data from deck list
-  const getCardData = (scryfallId: string) => {
+  // ✅ UPDATED: Helper to get card data from deck list OR return token data
+  const getCardData = (scryfallId: string, card?: any) => {
+    // ✅ CHECK IF TOKEN FIRST
+    if (card?.isToken && card?.tokenData) {
+      // Convert tokenData to ScryfallCard format
+      return {
+        id: scryfallId,
+        name: card.tokenData.name,
+        type_line: card.tokenData.typeLine,
+        oracle_text: card.tokenData.oracleText,
+        power: card.tokenData.power,
+        toughness: card.tokenData.toughness,
+        colors: card.tokenData.colors || [],
+        color_identity: card.tokenData.colors || [],
+        image_uris: card.tokenData.imageUrl ? {
+          normal: card.tokenData.imageUrl,
+          large: card.tokenData.imageUrl,
+          small: card.tokenData.imageUrl
+        } : undefined,
+        set: 'token',
+        set_name: 'Token',
+        collector_number: '0',
+        rarity: 'common'
+      }
+    }
+    
+    // Normal card lookup from deck lists
     for (const p of gameState.players) {
       if (p.deckList?.cardData) {
         const found = p.deckList.cardData.find(c => c.id === scryfallId)
@@ -94,6 +129,11 @@ export default function BattlefieldSection({
       console.error('Failed to sync game state:', error)
     }
   }
+
+  // Handle minimap player selection
+  const handleMinimapSelectPlayer = (playerId: string) => {
+    onSelectPlayer?.(playerId)
+  }
   
   // If viewing a zone (hand, graveyard, etc), show zone overlay instead
   if (viewingZone) {
@@ -128,6 +168,7 @@ export default function BattlefieldSection({
         isLargeBattlefieldView={isLargeBattlefieldView}
         onToggleLargeView={toggleLargeBattlefieldView}
         onOpenLifeTracker={isCurrentPlayer && !spectatorMode ? () => setShowLifeTracker(true) : undefined}
+        onOpenMinimap={!spectatorMode ? () => setShowMinimap(true) : undefined}
       />
       
       {/* Battlefield Canvas: The scrollable card area */}
@@ -143,6 +184,7 @@ export default function BattlefieldSection({
           getCardData={getCardData}
           onDropCard={onDropCard}
           onBattlefieldScroll={onBattlefieldScroll}
+          isSandbox={isSandbox}
         />
       </div>
 
@@ -155,6 +197,16 @@ export default function BattlefieldSection({
           onLifeChange={handleLifeChange}
           onCountersChange={handleCountersChange}
           onClose={() => setShowLifeTracker(false)}
+        />
+      )}
+
+      {/* Minimap Modal */}
+      {showMinimap && (
+        <BattlefieldMinimapModal
+          gameState={gameState}
+          currentPlayerId={player.id}
+          onSelectPlayer={handleMinimapSelectPlayer}
+          onClose={() => setShowMinimap(false)}
         />
       )}
     </div>

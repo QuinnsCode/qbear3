@@ -31,7 +31,6 @@ export default function HandCarousel({
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
   
-  // Calculate card width based on scale (min 80px, default 160px, max 240px)
   const cardWidth = Math.max(80, Math.min(240, 160 * handCardScale))
 
   const handleContextMenu = useCallback((e: React.MouseEvent, cardId: string, cardName: string) => {
@@ -62,7 +61,7 @@ export default function HandCarousel({
         cardName,
         position: { x: touch.clientX, y: touch.clientY }
       })
-    }, 500) // 500ms long press
+    }, 500)
   }, [])
 
   const handleTouchEnd = useCallback(() => {
@@ -94,22 +93,6 @@ export default function HandCarousel({
 
   return (
     <div className="flex-[3] flex flex-col gap-2 min-w-0">
-      {/* Scale Controls - Minimal and compact */}
-      <div className="flex items-center gap-2 px-2 py-1 bg-slate-800/50 rounded">
-        <ZoomOut className="w-3 h-3 text-slate-400" />
-        <input
-          type="range"
-          min="0.5"
-          max="1.5"
-          step="0.1"
-          value={handCardScale}
-          onChange={(e) => setHandCardScale(parseFloat(e.target.value))}
-          className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:border-0"
-        />
-        <ZoomIn className="w-3 h-3 text-slate-400" />
-        <span className="text-xs text-slate-400 w-8 text-right">{Math.round(handCardScale * 100)}%</span>
-      </div>
-
       {/* Hand Cards Carousel */}
       <div className="flex-1 flex gap-2 min-w-0">
         <div className="flex-1 bg-slate-900 rounded-lg p-3 border-2 border-slate-700 relative overflow-hidden">
@@ -160,7 +143,6 @@ export default function HandCarousel({
                     </div>
                   )}
 
-                  {/* Three-dot menu button - appears on hover */}
                   {(hoveredCard === cardId || contextMenu?.cardId === cardId) && (
                     <button
                       onClick={(e) => handleMenuButtonClick(e, cardId, cardName)}
@@ -176,8 +158,30 @@ export default function HandCarousel({
           </div>
         </div>
 
+        {/* Vertical Slider */}
+        <div className="w-8 bg-slate-900 border-2 border-slate-700 rounded-lg flex flex-col items-center justify-center py-4 gap-2">
+          <ZoomIn className="w-3 h-3 text-slate-400" />
+          <input
+            type="range"
+            min="0.5"
+            max="1.5"
+            step="0.1"
+            value={handCardScale}
+            onChange={(e) => setHandCardScale(parseFloat(e.target.value))}
+            className="h-32 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:border-0"
+            style={{ 
+              writingMode: 'vertical-lr',
+              width: '4px'
+            }}
+          />
+          <ZoomOut className="w-3 h-3 text-slate-400" />
+          <span className="text-[9px] text-slate-400" style={{ writingMode: 'vertical-lr', transform: 'rotate(180deg)' }}>
+            {Math.round(handCardScale * 100)}%
+          </span>
+        </div>
+
         {/* View All Button */}
-        <button
+        {/* <button
           onClick={() => onViewZone('hand')}
           className="w-16 bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 rounded-lg flex flex-col items-center justify-center gap-3 transition-colors group py-4"
         >
@@ -188,7 +192,7 @@ export default function HandCarousel({
             </span>
             <span className="text-white text-2xl font-bold">{player.zones.hand.length}</span>
           </div>
-        </button>
+        </button> */}
       </div>
 
       {/* Context Menu */}
@@ -206,7 +210,6 @@ export default function HandCarousel({
           onMoveToLibraryTop={() => handleMoveCard(contextMenu.cardId, 'library', { position: { x: 0, y: 0 } })}
           onMoveToLibraryBottom={() => handleMoveCard(contextMenu.cardId, 'library', { position: { x: 0, y: player.zones.library.length } })}
           onViewDetails={() => {
-            // TODO: Implement card detail view
             console.log('View details for:', contextMenu.cardId)
           }}
         />

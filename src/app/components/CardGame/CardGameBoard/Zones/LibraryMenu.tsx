@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { Coins } from 'lucide-react'
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'
 
 interface LibraryMenuProps {
@@ -18,6 +19,7 @@ interface LibraryMenuProps {
   onMill: (count: number) => void
   onReveal: () => void
   onHandToBattlefieldTapped: () => void
+  onCreateToken: () => void // ✅ ADD THIS
   onPrefetchDecks?: () => void
   spectatorMode?: boolean
   buttonRef: React.RefObject<HTMLButtonElement | null>
@@ -38,6 +40,7 @@ export default function LibraryMenu({
   onMill,
   onReveal,
   onHandToBattlefieldTapped,
+  onCreateToken,
   onPrefetchDecks,
   spectatorMode,
   buttonRef,
@@ -103,16 +106,6 @@ export default function LibraryMenu({
         <div className="p-2">
           <button
             onClick={() => {
-              onImportDeck()
-              onClose()
-            }}
-            disabled={spectatorMode}
-            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm disabled:opacity-50"
-          >
-            📦 Import Deck
-          </button>
-          <button
-            onClick={() => {
               onOpenDeckBuilder()
               onClose()
             }}
@@ -122,6 +115,19 @@ export default function LibraryMenu({
             className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
           >
             🎴 My Decks
+          </button>
+
+          {/* ✅ ADD CREATE TOKEN BUTTON */}
+          <button
+            onClick={() => {
+              onCreateToken()
+              onClose()
+            }}
+            disabled={spectatorMode}
+            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
+          >
+            <Coins className="w-4 h-4 text-yellow-400" />
+            <span>Create Token</span>
           </button>
           
           {player.deckList && (

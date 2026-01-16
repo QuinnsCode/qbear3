@@ -52,6 +52,42 @@ export default function MobileGameLayout({
     .map(id => gameState.cards[id])
     .filter(card => card !== undefined)
 
+  // ✅ UPDATED: Token-aware getCardData
+  const getCardData = (scryfallId: string, card?: any) => {
+    // ✅ CHECK IF TOKEN FIRST
+    if (card?.isToken && card?.tokenData) {
+      // Convert tokenData to ScryfallCard format
+      return {
+        id: scryfallId,
+        name: card.tokenData.name,
+        type_line: card.tokenData.typeLine,
+        oracle_text: card.tokenData.oracleText,
+        power: card.tokenData.power,
+        toughness: card.tokenData.toughness,
+        colors: card.tokenData.colors || [],
+        color_identity: card.tokenData.colors || [],
+        image_uris: card.tokenData.imageUrl ? {
+          normal: card.tokenData.imageUrl,
+          large: card.tokenData.imageUrl,
+          small: card.tokenData.imageUrl
+        } : undefined,
+        set: 'token',
+        set_name: 'Token',
+        collector_number: '0',
+        rarity: 'common'
+      }
+    }
+    
+    // Normal card lookup from deck lists
+    for (const p of gameState.players) {
+      if (p.deckList?.cardData) {
+        const found = p.deckList.cardData.find(c => c.id === scryfallId)
+        if (found) return found
+      }
+    }
+    return undefined
+  }
+
   return (
     <div className="h-screen w-screen bg-slate-900 relative overflow-hidden">
 
@@ -109,15 +145,7 @@ export default function MobileGameLayout({
             isCurrentPlayer={isViewingSelf}
             spectatorMode={spectatorMode || !isViewingSelf}
             onHover={() => {}}
-            getCardData={(scryfallId) => {
-              for (const p of gameState.players) {
-                if (p.deckList?.cardData) {
-                  const found = p.deckList.cardData.find(c => c.id === scryfallId)
-                  if (found) return found
-                }
-              }
-              return undefined
-            }}
+            getCardData={getCardData}
           />
         </div>
       )}

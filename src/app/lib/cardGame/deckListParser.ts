@@ -6,19 +6,20 @@ import type { DeckListParseResult } from '@/app/types/Deck'
  * Parse a deck list from various text formats:
  * - "1x Card Name" or "1 Card Name"
  * - "Card Name" (assumes quantity 1)
- * - Commander indicated by "Commander:" line
+ * - Single commander: "Commander: Card Name"
+ * - Partner commanders: "Commander: Card Name" and "Partner: Card Name"
  * 
  * COMMANDER FORMAT RULES:
- * - 100 cards total (including commander)
- * - Commander can be specified via "Commander:" line
- * - If commander is in "Commander:" line but not in deck list, it will be added automatically
- * - Parser will ensure exactly 100 cards total
+ * - 100 cards total (including commander(s))
+ * - Commander specified via "Commander:" line
+ * - Partner commander specified via "Partner:" or second "Commander:" line
+ * - Cards in list should total 100 including commander(s)
  */
 export function parseDeckList(deckListText: string): DeckListParseResult {
   const lines = deckListText.split('\n').map(line => line.trim()).filter(Boolean)
   const cards: Array<{ quantity: number; name: string }> = []
   const errors: string[] = []
-  let commander: string | undefined
+  const commanders: string[] = []
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
@@ -26,13 +27,24 @@ export function parseDeckList(deckListText: string): DeckListParseResult {
     // Skip comments
     if (line.startsWith('//') || line.startsWith('#')) continue
 
-    // Check for commander marker
+    // Check for commander markers
     if (line.toLowerCase().startsWith('commander:')) {
       const commanderName = line.substring(10).trim()
       if (commanderName) {
-        commander = commanderName
+        commanders.push(commanderName)
+        console.log(`[Parser] Found commander: ${commanderName}`)
       }
-      continue // Skip to next line
+      continue
+    }
+
+    // Check for partner marker (alternative to second "Commander:" line)
+    if (line.toLowerCase().startsWith('partner:')) {
+      const partnerName = line.substring(8).trim()
+      if (partnerName) {
+        commanders.push(partnerName)
+        console.log(`[Parser] Found partner commander: ${partnerName}`)
+      }
+      continue
     }
 
     // Parse quantity and card name
@@ -57,61 +69,51 @@ export function parseDeckList(deckListText: string): DeckListParseResult {
     }
   }
 
-  // Validate commander was specified
-  if (!commander) {
-    errors.push(`No commander specified. Deck list must include a "Commander: [Card Name]" line.`)
+  // Validate commanders
+  if (commanders.length === 0) {
+    errors.push(
+      `No commander specified. Add "Commander: [Card Name]" to your deck list.`
+    )
+  } else if (commanders.length > 2) {
+    errors.push(
+      `Too many commanders specified (${commanders.length}). ` +
+      `Commander format allows 1 commander or 2 with Partner ability.`
+    )
   }
 
-  // If commander was specified, add it to the card list (it should NOT be in the 99)
-  if (commander) {
-    const commanderInList = cards.some(card => 
-      card.name.toLowerCase() === commander.toLowerCase()
+  // Add commander(s) to the card list
+  // This ensures they're counted in the total
+  commanders.forEach(commanderName => {
+    // Check if commander is already in the list
+    const existingCard = cards.find(
+      card => card.name.toLowerCase() === commanderName.toLowerCase()
     )
     
-    if (commanderInList) {
-      errors.push(`Commander "${commander}" should not be in the main deck list. The "Commander:" line is separate from the 99 cards.`)
+    if (existingCard) {
+      // Commander is already in the list, that's fine
+      console.log(`[Parser] Commander "${commanderName}" already in deck list`)
     } else {
       // Add commander to the beginning of the list
-      cards.unshift({ quantity: 1, name: commander })
-      console.log(`[Parser] Added commander "${commander}" to card list`)
+      cards.unshift({ quantity: 1, name: commanderName })
+      console.log(`[Parser] Added commander "${commanderName}" to card list`)
     }
-  }
+  })
 
-  // Validate total count - should be exactly 99 cards in the list (commander is added separately)
-  const listCardCount = cards.reduce((sum, card) => sum + card.quantity, 0) - (commander ? 1 : 0)
+  // Calculate total cards
+  const totalCards = cards.reduce((sum, card) => sum + card.quantity, 0)
   
-  if (listCardCount !== 99) {
-    errors.push(`Deck list should contain exactly 99 cards (found ${listCardCount}). Commander is specified separately with "Commander: [Card Name]".`)
+  // Validate total is exactly 100 for Commander format
+  if (totalCards !== 100) {
+    errors.push(
+      `Commander deck must have exactly 100 cards (including commander${commanders.length > 1 ? 's' : ''}). ` +
+      `Found: ${totalCards} cards.`
+    )
   }
 
-  return { cards, commander, errors }
+  return { 
+    cards, 
+    commander: commanders[0], // Primary commander (backward compat)
+    commanders: commanders, // ALWAYS return array (even if length 1)
+    errors 
+  }
 }
-
-/**
- * Example deck list formats supported:
- * 
- * Format 1 - Commander separate (Moxfield style):
- * ```
- * Commander: Atraxa, Praetors' Voice
- * 1 Sol Ring
- * 1 Command Tower
- * 4x Forest
- * ... (99 cards total)
- * ```
- * Parser will add the commander to make 100 cards.
- * 
- * Format 2 - Commander in list:
- * ```
- * 1 Atraxa, Praetors' Voice
- * 1 Sol Ring
- * 1 Command Tower
- * ... (100 cards total)
- * ```
- * 
- * Format 3 - Simple list (assumes 1 of each):
- * ```
- * Atraxa, Praetors' Voice
- * Sol Ring
- * Command Tower
- * ```
- */

@@ -13,7 +13,7 @@ interface Props {
   position: { x: number, y: number }
   onClose: () => void
   spectatorMode?: boolean
-  isSandbox?: boolean  // ✅ ADD THIS
+  isSandbox?: boolean
 }
 
 export default function CardContextMenu({
@@ -23,7 +23,7 @@ export default function CardContextMenu({
   position,
   onClose,
   spectatorMode = false,
-  isSandbox = false  // ✅ ADD THIS
+  isSandbox = false
 }: Props) {
   const menuRef = useRef<HTMLDivElement>(null)
   
@@ -39,29 +39,17 @@ export default function CardContextMenu({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [onClose])
 
-  const handleAction = async (action: string) => {
-    // ✅ Block spectators completely (read-only observers)
-    if (spectatorMode) {
-      alert('Spectators cannot modify cards')
-      onClose()
-      return
-    }
+  const isBattlefieldCard = card.zone === 'battlefield'
+  const isOwnCard = card.ownerId === playerId
+  
+  // ✅ DETERMINE WHAT'S DISABLED
+  const isBlocked = spectatorMode || (!isOwnCard && !(isSandbox && isBattlefieldCard))
+  const isToHandDisabled = isSandbox && !isOwnCard
+  const isToLibraryDisabled = isSandbox && !isOwnCard
 
-    // ✅ Sandbox chaos mode: Allow battlefield card manipulation by ANYONE
-    const isBattlefieldCard = card.zone === 'battlefield'
-    const isOwnCard = card.ownerId === playerId
-    
-    // ✅ Check ownership for non-battlefield zones
-    if (!isSandbox && !isBattlefieldCard && !isOwnCard) {
-      alert('You can only interact with your own cards in hand/library/graveyard')
-      onClose()
-      return
-    }
-    
-    // ✅ In normal mode (not sandbox), check ownership for ALL zones
-    if (!isSandbox && !isOwnCard) {
-      alert('This is not your card')
-      onClose()
+  const handleAction = async (action: string, isDisabled?: boolean, reason?: string) => {
+    if (isDisabled) {
+      alert(reason || 'This action is not available')
       return
     }
 
@@ -97,12 +85,6 @@ export default function CardContextMenu({
           })
           break
         case 'toHand':
-          // ✅ In sandbox, can only return cards to YOUR hand
-          if (isSandbox && !isOwnCard) {
-            alert('In sandbox mode, you can only return cards to your own hand')
-            onClose()
-            return
-          }
           await applyCardGameAction(cardGameId, {
             type: 'move_card',
             playerId,
@@ -124,34 +106,23 @@ export default function CardContextMenu({
           })
           break
         case 'toLibraryTop':
-          // ✅ In sandbox, can only return cards to YOUR library
-          if (isSandbox && !isOwnCard) {
-            alert('In sandbox mode, you can only return cards to your own library')
-            onClose()
-            return
-          }
           await applyCardGameAction(cardGameId, {
             type: 'move_card',
             playerId,
-            data: { cardId: card.instanceId, fromZone: 'battlefield', toZone: 'library', position: 'top' }
+            data: { cardId: card.instanceId, fromZone: 'battlefield', toZone: 'library', toPosition: 'top' }
           })
           break
         case 'toLibraryBottom':
-          // ✅ In sandbox, can only return cards to YOUR library
-          if (isSandbox && !isOwnCard) {
-            alert('In sandbox mode, you can only return cards to your own library')
-            onClose()
-            return
-          }
           await applyCardGameAction(cardGameId, {
             type: 'move_card',
             playerId,
-            data: { cardId: card.instanceId, fromZone: 'battlefield', toZone: 'library', position: 'bottom' }
+            data: { cardId: card.instanceId, fromZone: 'battlefield', toZone: 'library', toPosition: 'bottom' }
           })
           break
       }
     } catch (error) {
       console.error('Failed to perform card action:', error)
+      alert('Failed to perform action. Check console for details.')
     }
     
     onClose()
@@ -160,7 +131,7 @@ export default function CardContextMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed bg-slate-800 rounded-lg shadow-xl border border-slate-600 p-1 min-w-[180px] z-[100]"
+      className="fixed bg-slate-800 rounded-lg shadow-xl border border-slate-600 p-1 min-w-[200px] z-[100]"
       style={{ 
         top: `${position.y}px`, 
         left: `${position.x}px`,
@@ -168,47 +139,128 @@ export default function CardContextMenu({
         overflowY: 'auto'
       }}
     >
+      {/* Debug Info */}
+      {!isOwnCard && (
+        <div className="px-3 py-2 text-xs text-yellow-400 border-b border-slate-600">
+          ⚠️ Not your card
+          {isSandbox && isBattlefieldCard && <span className="text-purple-400"> (Sandbox: Limited actions)</span>}
+        </div>
+      )}
+
       {/* Card State Actions */}
-      <MenuItem onClick={() => handleAction(card.isTapped ? 'untap' : 'tap')}>
-        {card.isTapped ? '↪️ Untap' : '↩️ Tap'}
-      </MenuItem>
-      <MenuItem onClick={() => handleAction('flip')}>
+      <MenuItemButton
+        onClick={() => handleAction(card.rotation === 90 ? 'untap' : 'tap', isBlocked, 
+          spectatorMode ? 'Spectators cannot modify cards' : 'This is not your card')}
+        disabled={isBlocked}
+      >
+        {card.rotation === 90 ? '↪️ Untap' : '↩️ Tap'}
+        {isBlocked && <span className="text-xs text-slate-500 ml-2">(Blocked)</span>}
+      </MenuItemButton>
+      
+      <MenuItemButton
+        onClick={() => handleAction('flip', isBlocked,
+          spectatorMode ? 'Spectators cannot modify cards' : 'This is not your card')}
+        disabled={isBlocked}
+      >
         🔄 {card.isFaceUp ? 'Flip Face Down' : 'Flip Face Up'}
-      </MenuItem>
-      <MenuItem onClick={() => handleAction('rotate')}>
+        {isBlocked && <span className="text-xs text-slate-500 ml-2">(Blocked)</span>}
+      </MenuItemButton>
+      
+      <MenuItemButton
+        onClick={() => handleAction('rotate', isBlocked,
+          spectatorMode ? 'Spectators cannot modify cards' : 'This is not your card')}
+        disabled={isBlocked}
+      >
         🔃 Rotate 90°
-      </MenuItem>
+        {isBlocked && <span className="text-xs text-slate-500 ml-2">(Blocked)</span>}
+      </MenuItemButton>
 
       <div className="border-t border-slate-600 my-1" />
 
       {/* Move Actions */}
-      <MenuItem onClick={() => handleAction('toHand')}>
-        🃏 To Hand {isSandbox && card.ownerId !== playerId ? '(Owner Only)' : ''}
-      </MenuItem>
-      <MenuItem onClick={() => handleAction('toGraveyard')}>
+      <MenuItemButton
+        onClick={() => handleAction('toHand', isToHandDisabled, 
+          'In sandbox mode, you can only return cards to your own hand')}
+        disabled={isToHandDisabled || isBlocked}
+      >
+        🃏 To Hand
+        {isToHandDisabled && <span className="text-xs text-purple-400 ml-2">(Owner Only)</span>}
+        {isBlocked && !isToHandDisabled && <span className="text-xs text-slate-500 ml-2">(Blocked)</span>}
+      </MenuItemButton>
+      
+      <MenuItemButton
+        onClick={() => handleAction('toGraveyard', isBlocked,
+          spectatorMode ? 'Spectators cannot modify cards' : 'This is not your card')}
+        disabled={isBlocked}
+      >
         🪦 To Graveyard
-      </MenuItem>
-      <MenuItem onClick={() => handleAction('toExile')}>
+        {isBlocked && <span className="text-xs text-slate-500 ml-2">(Blocked)</span>}
+      </MenuItemButton>
+      
+      <MenuItemButton
+        onClick={() => handleAction('toExile', isBlocked,
+          spectatorMode ? 'Spectators cannot modify cards' : 'This is not your card')}
+        disabled={isBlocked}
+      >
         💫 To Exile
-      </MenuItem>
+        {isBlocked && <span className="text-xs text-slate-500 ml-2">(Blocked)</span>}
+      </MenuItemButton>
       
       <div className="border-t border-slate-600 my-1" />
       
-      <MenuItem onClick={() => handleAction('toLibraryTop')}>
-        📜⬆️ To Library Top {isSandbox && card.ownerId !== playerId ? '(Owner Only)' : ''}
-      </MenuItem>
-      <MenuItem onClick={() => handleAction('toLibraryBottom')}>
-        📜⬇️ To Library Bottom {isSandbox && card.ownerId !== playerId ? '(Owner Only)' : ''}
-      </MenuItem>
+      <MenuItemButton
+        onClick={() => handleAction('toLibraryTop', isToLibraryDisabled,
+          'In sandbox mode, you can only return cards to your own library')}
+        disabled={isToLibraryDisabled || isBlocked}
+      >
+        📜⬆️ To Library Top
+        {isToLibraryDisabled && <span className="text-xs text-purple-400 ml-2">(Owner Only)</span>}
+        {isBlocked && !isToLibraryDisabled && <span className="text-xs text-slate-500 ml-2">(Blocked)</span>}
+      </MenuItemButton>
       
-      {isSandbox && (
+      <MenuItemButton
+        onClick={() => handleAction('toLibraryBottom', isToLibraryDisabled,
+          'In sandbox mode, you can only return cards to your own library')}
+        disabled={isToLibraryDisabled || isBlocked}
+      >
+        📜⬇️ To Library Bottom
+        {isToLibraryDisabled && <span className="text-xs text-purple-400 ml-2">(Owner Only)</span>}
+        {isBlocked && !isToLibraryDisabled && <span className="text-xs text-slate-500 ml-2">(Blocked)</span>}
+      </MenuItemButton>
+      
+      {isSandbox && isBattlefieldCard && !isOwnCard && (
         <>
           <div className="border-t border-slate-600 my-1" />
-          <div className="px-2 py-1 text-xs text-purple-400">
-            🎮 Chaos Mode: Battlefield cards are shared!
+          <div className="px-3 py-2 text-xs text-purple-400">
+            🎮 Sandbox: Shared battlefield
           </div>
         </>
       )}
     </div>
+  )
+}
+
+// ✅ NEW: MenuItemButton with disabled state
+function MenuItemButton({ 
+  onClick, 
+  disabled, 
+  children 
+}: { 
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between transition-colors ${
+        disabled 
+          ? 'text-slate-500 cursor-not-allowed bg-slate-900' 
+          : 'text-white hover:bg-slate-700 cursor-pointer'
+      }`}
+    >
+      {children}
+    </button>
   )
 }

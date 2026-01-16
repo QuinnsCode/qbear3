@@ -23,8 +23,9 @@ interface Props {
     playerId: string
     isCurrentPlayer: boolean
     spectatorMode: boolean
+    isSandbox?: boolean
     onHover: (cardId: string | null) => void
-    getCardData: (scryfallId: string) => any
+    getCardData: (scryfallId: string, card?: Card) => any
     onDropCard?: (cardId: string, fromZone: string, position: { x: number, y: number }) => void
 }
 
@@ -34,6 +35,7 @@ export function BattlefieldContainer({
   cardGameId,
   playerId,
   isCurrentPlayer,
+  isSandbox = false,
   spectatorMode,
   onHover,
   getCardData,
@@ -229,15 +231,14 @@ export function BattlefieldContainer({
     <>
       <div
         ref={containerRef}
-        className="relative w-full h-full bg-slate-900 rounded-lg overflow-auto select-none"
+        className="relative w-full h-full bg-slate-900 rounded-lg overflow-scroll select-none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         style={{
-          // Custom scrollbar styling
-          scrollbarWidth: 'thin',
-          scrollbarColor: '#475569 #1e293b'
+          scrollbarWidth: 'auto',
+          scrollbarColor: '#94a3b8 #1e293b'
         }}
       >
         {/* Fixed-size battlefield surface */}
@@ -307,7 +308,7 @@ export function BattlefieldContainer({
             <BattlefieldCard
               key={card.instanceId}
               card={card}
-              cardData={getCardData(card.scryfallId)}
+              cardData={getCardData(card.scryfallId, card)}
               isCurrentPlayer={isCurrentPlayer}
               playerId={playerId}
               cardGameId={cardGameId}
@@ -365,6 +366,7 @@ export function BattlefieldContainer({
           position={{ x: contextMenu.x, y: contextMenu.y }}
           onClose={() => setContextMenu(null)}
           spectatorMode={spectatorMode || !isCurrentPlayer}
+          isSandbox={isSandbox}
         />
       )}
     </>

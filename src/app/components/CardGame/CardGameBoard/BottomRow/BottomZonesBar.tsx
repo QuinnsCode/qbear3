@@ -1,4 +1,4 @@
-// app/components/CardGame/CardGameBoard/BottomZonesBar.tsx
+// app/components/CardGame/CardGameBoard/BottomRow/BottomZonesBar.tsx
 'use client'
 
 import YourZones from '@/app/components/CardGame/CardGameBoard/legacy/YourZones'

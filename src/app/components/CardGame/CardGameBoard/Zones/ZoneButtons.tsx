@@ -1,8 +1,10 @@
 // app/components/CardGame/CardGameBoard/Zones/ZoneButtons.tsx
 'use client'
-import { BookOpen, Skull, Flame, Crown, Swords } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { BookOpen, Skull, Flame, Crown, Swords, Coins } from 'lucide-react' // ✅ Add Coins
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
+import { MenuButton, type MenuItemConfig } from '../ui/MenuButton'
 
 interface ZoneButtonsProps {
   player: MTGPlayer
@@ -10,6 +12,7 @@ interface ZoneButtonsProps {
   onViewZone: (zone: string) => void
   onSelectBattlefield: () => void
   onOpenLibraryMenu: () => void
+  onCreateToken: () => void // ✅ ADD THIS
   hasNoDeck: boolean | undefined
   onOpenDeckBuilder: () => void
   spectatorMode?: boolean
@@ -23,12 +26,33 @@ export default function ZoneButtons({
   onViewZone,
   onSelectBattlefield,
   onOpenLibraryMenu,
+  onCreateToken, // ✅ ADD THIS
   hasNoDeck,
   onOpenDeckBuilder,
   spectatorMode,
   isViewingHand,
   libraryButtonRef
 }: ZoneButtonsProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  
+  // Detect size and collapse if too narrow OR too short
+  useEffect(() => {
+    const checkSize = () => {
+      if (containerRef.current) {
+        const { offsetWidth, offsetHeight } = containerRef.current
+        setIsCollapsed(offsetWidth < 200 || offsetHeight < 400)
+      }
+    }
+    
+    checkSize()
+    const resizeObserver = new ResizeObserver(checkSize)
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+    
+    return () => resizeObserver.disconnect()
+  }, [])
   
   const handleMoveCard = async (cardId: string, fromZone: string, toZone: string) => {
     try {
@@ -44,8 +68,69 @@ export default function ZoneButtons({
     }
   }
 
+  // COLLAPSED VIEW - Menu button using MenuButton component
+  if (isCollapsed) {
+    const menuItems: MenuItemConfig[] = [
+      {
+        label: `Hand (${player.zones.hand.length})`,
+        icon: '🃏',
+        onClick: () => onViewZone('hand'),
+        separator: true,
+      },
+      {
+        label: `Library (${player.zones.library.length})`,
+        icon: '📚',
+        onClick: () => hasNoDeck ? onOpenDeckBuilder() : onViewZone('library'),
+      },
+      ...(!hasNoDeck && !spectatorMode ? [{
+        label: 'Library Actions',
+        icon: '⋯',
+        onClick: onOpenLibraryMenu,
+      }] : []),
+      // ✅ ADD CREATE TOKEN HERE
+      ...(!spectatorMode ? [{
+        label: 'Create Token',
+        icon: <Coins className="w-4 h-4 text-yellow-400" />,
+        onClick: onCreateToken,
+        separator: true,
+      }] : [{ separator: true } as MenuItemConfig]),
+      {
+        label: `Graveyard (${player.zones.graveyard.length})`,
+        icon: '💀',
+        onClick: () => onViewZone('graveyard'),
+      },
+      {
+        label: `Exile (${player.zones.exile.length})`,
+        icon: '🔥',
+        onClick: () => onViewZone('exile'),
+      },
+      {
+        label: `Command (${player.zones.command.length})`,
+        icon: '👑',
+        onClick: () => onViewZone('command'),
+        separator: true,
+      },
+      {
+        label: `Your Board (${player.zones.battlefield.length})`,
+        icon: '⚔️',
+        onClick: onSelectBattlefield,
+      },
+    ]
+
+    return (
+      <div ref={containerRef} className="h-full flex items-center justify-center relative z-50">
+        <MenuButton 
+          items={menuItems}
+          variant="hamburger"
+          position="bottom-right"
+        />
+      </div>
+    )
+  }
+
+  // FULL VIEW - Regular buttons (unchanged)
   return (
-    <div className="w-64 flex flex-col gap-3">
+    <div ref={containerRef} className="w-64 flex flex-col gap-3">
       {/* Library with menu */}
       <div className="relative">
         <button

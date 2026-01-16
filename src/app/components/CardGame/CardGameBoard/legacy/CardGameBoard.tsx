@@ -457,7 +457,7 @@ export default function CardGameBoard({
         
         {/* Row 3: Bottom bar (hidden in large view, hidden for spectators) */}
         {!isLargeBattlefieldView && !spectatorMode && (
-          <div className="col-span-2 bg-slate-800 rounded-lg overflow-hidden">
+          <div className="col-span-2 bg-slate-800 rounded-lg">
             <YourZones
               player={currentPlayer}
               gameState={gameState}

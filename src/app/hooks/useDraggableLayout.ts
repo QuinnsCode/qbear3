@@ -101,6 +101,7 @@ export function useDraggableLayout() {
 
   return {
     layout,
+    setLayout,    // ⬅️ ADDED: Expose setState for manual updates
     isDragging,
     startDrag,
     resetLayout

@@ -1,7 +1,7 @@
 // app/components/DeckBuilder/DeckCard.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Deck } from '@/app/types/Deck'
 
 interface Props {
@@ -15,11 +15,26 @@ interface Props {
 export default function DeckCard({ deck, onSelect, onDelete, onEdit, isSandbox = false }: Props) {
   const [isHovered, setIsHovered] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const [activeCommanderIndex, setActiveCommanderIndex] = useState(0)
 
   if (!deck) {
     console.error('DeckCard: deck is undefined')
     return null
   }
+
+  const hasPartners = deck.commanders && deck.commanders.length > 1
+  const commanderImages = deck.commanderImageUrls || []
+
+  // Auto-rotate between partner commanders every 4 seconds when hovered
+  useEffect(() => {
+    if (!hasPartners || !isHovered) return
+
+    const interval = setInterval(() => {
+      setActiveCommanderIndex(prev => (prev + 1) % 2)
+    }, 4000)
+
+    return () => clearInterval(interval)
+  }, [hasPartners, isHovered])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -49,7 +64,10 @@ export default function DeckCard({ deck, onSelect, onDelete, onEdit, isSandbox =
     <div
       onClick={onSelect}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseLeave={() => {
+        setIsHovered(false)
+        setActiveCommanderIndex(0) // Reset to first commander
+      }}
       onMouseMove={handleMouseMove}
       className="group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] border-2 border-slate-700/50 hover:border-blue-500/50 shadow-xl hover:shadow-2xl"
       style={{
@@ -60,23 +78,29 @@ export default function DeckCard({ deck, onSelect, onDelete, onEdit, isSandbox =
     >
       {/* Commander Art Background with Parallax */}
       <div className="absolute inset-0 overflow-hidden">
-        {deck.commanderImageUrl ? (
+        {commanderImages.length > 0 ? (
           <>
-            {/* Parallax Image Layer */}
-            <div
-              className="absolute inset-0 transition-transform duration-300 ease-out"
-              style={{
-                transform: `translate(${parallaxX}px, ${parallaxY}px) scale(${isHovered ? 1.08 : 1.05})`,
-                willChange: 'transform',
-              }}
-            >
-              <img
-                src={deck.commanderImageUrl}
-                alt={deck.commander || 'Commander'}
-                className="w-full h-full object-cover"
-                style={{ objectPosition: 'center 20%' }}
-              />
-            </div>
+            {/* Image Layers - Slide animation for partners */}
+            {commanderImages.map((imageUrl, idx) => (
+              <div
+                key={idx}
+                className="absolute inset-0 transition-all duration-1000 ease-in-out"
+                style={{
+                  transform: hasPartners
+                    ? `translateX(${(idx - activeCommanderIndex) * 100}%) translate(${parallaxX}px, ${parallaxY}px) scale(${isHovered ? 1.08 : 1.05})`
+                    : `translate(${parallaxX}px, ${parallaxY}px) scale(${isHovered ? 1.08 : 1.05})`,
+                  willChange: 'transform',
+                  opacity: hasPartners ? (idx === activeCommanderIndex ? 1 : 0) : 1,
+                }}
+              >
+                <img
+                  src={imageUrl}
+                  alt={deck.commanders?.[idx] || 'Commander'}
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: 'center 20%' }}
+                />
+              </div>
+            ))}
             
             {/* Edge Fade Vignette */}
             <div className="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-transparent to-slate-900/90" />
@@ -123,22 +147,40 @@ export default function DeckCard({ deck, onSelect, onDelete, onEdit, isSandbox =
 
       {/* Content Card - Frosted Glass Effect */}
       <div className="relative h-full flex flex-col justify-between p-5">
-        {/* Top Section: Color Pips */}
-        <div className="flex gap-2 drop-shadow-lg">
-          {deck.colors && deck.colors.length > 0 ? (
-            deck.colors.map((color, idx) => (
-              <div
-                key={`${color}-${idx}`}
-                className={`w-7 h-7 rounded-full ${colorMap[color]?.bg || 'bg-gray-500'} border-2 border-white/80 shadow-lg backdrop-blur-sm transition-all duration-300 group-hover:scale-110 group-hover:rotate-12`}
-                style={{
-                  boxShadow: isHovered ? `0 0 20px ${colorMap[color]?.glow || 'rgba(100,100,100,0.5)'}` : undefined,
-                  transitionDelay: `${idx * 50}ms`
-                }}
-                title={color}
-              />
-            ))
-          ) : (
-            <div className="w-7 h-7 rounded-full bg-gray-400 border-2 border-white/80 shadow-lg" title="Colorless" />
+        {/* Top Section: Color Pips + Partner Indicator */}
+        <div className="flex justify-between items-start">
+          <div className="flex gap-2 drop-shadow-lg">
+            {deck.colors && deck.colors.length > 0 ? (
+              deck.colors.map((color, idx) => (
+                <div
+                  key={`${color}-${idx}`}
+                  className={`w-7 h-7 rounded-full ${colorMap[color]?.bg || 'bg-gray-500'} border-2 border-white/80 shadow-lg backdrop-blur-sm transition-all duration-300 group-hover:scale-110 group-hover:rotate-12`}
+                  style={{
+                    boxShadow: isHovered ? `0 0 20px ${colorMap[color]?.glow || 'rgba(100,100,100,0.5)'}` : undefined,
+                    transitionDelay: `${idx * 50}ms`
+                  }}
+                  title={color}
+                />
+              ))
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-gray-400 border-2 border-white/80 shadow-lg" title="Colorless" />
+            )}
+          </div>
+
+          {/* Partner Indicator Dots */}
+          {hasPartners && (
+            <div className="flex gap-1.5">
+              {[0, 1].map(idx => (
+                <div
+                  key={idx}
+                  className={`w-2 h-2 rounded-full transition-all duration-500 ${
+                    idx === activeCommanderIndex
+                      ? 'bg-purple-400 shadow-lg shadow-purple-500/50 scale-125'
+                      : 'bg-slate-600 scale-100'
+                  }`}
+                />
+              ))}
+            </div>
           )}
         </div>
 
@@ -153,10 +195,29 @@ export default function DeckCard({ deck, onSelect, onDelete, onEdit, isSandbox =
             {deck.name || 'Unnamed Deck'}
           </h3>
           
-          {deck.commander && (
-            <p className="text-blue-300/90 text-sm font-medium mb-3 drop-shadow-md line-clamp-1">
-              ⚔️ {deck.commander}
-            </p>
+          {deck.commanders && deck.commanders.length > 0 && (
+            <div className="text-blue-300/90 text-sm font-medium mb-3 drop-shadow-md">
+              {deck.commanders.length === 1 ? (
+                <p className="line-clamp-1">⚔️ {deck.commanders[0]}</p>
+              ) : (
+                <div className="relative h-5 overflow-hidden">
+                  {deck.commanders.map((commander, idx) => (
+                    <p
+                      key={idx}
+                      className={`absolute inset-x-0 line-clamp-1 transition-all duration-700 ${
+                        idx === 0 ? 'text-blue-300/90' : 'text-purple-300/90'
+                      }`}
+                      style={{
+                        transform: `translateY(${(idx - activeCommanderIndex) * 100}%)`,
+                        opacity: idx === activeCommanderIndex ? 1 : 0,
+                      }}
+                    >
+                      {idx === 0 ? '⚔️' : '🤝'} {commander}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           <div className="flex items-center justify-between text-xs text-slate-400/80 font-medium">
