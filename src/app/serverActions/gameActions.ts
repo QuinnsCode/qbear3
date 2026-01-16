@@ -4,7 +4,7 @@
 'use server'
 
 import { env } from "cloudflare:workers";
-import { renderRealtimeClients } from "rwsdk/realtime/worker";
+import { syncGameState } from "@/lib/syncedState";
 import type { GameState, AttackResult, InvasionResult, MoveResult } from '@/app/lib/GameState'
 
 
@@ -88,10 +88,8 @@ export async function advancePhase(gameId: string, playerId: string): Promise<Ga
     console.log('advancePhase result:', result)
     
     // Trigger realtime update for all clients watching this game
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
+
     
     return result as GameState
   } catch (error) {
@@ -111,10 +109,7 @@ export async function advanceTurn(gameId: string, playerId: string): Promise<Gam
     console.log('advanceTurn result:', result)
     
     // Trigger realtime update for all clients watching this game
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -138,10 +133,7 @@ export async function makePlayerDecision(
     console.log('makePlayerDecision result:', result)
     
     // Trigger realtime update for all clients watching this game
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -166,10 +158,7 @@ export async function deployMachines(
     console.log('deployMachines result:', result)
     
     // Trigger realtime update for all clients watching this game
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -194,10 +183,7 @@ export async function playCard(
     console.log('playCard result:', result)
     
     // Trigger realtime update for all clients watching this game
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -214,10 +200,7 @@ export async function rewindToAction(gameId: string, actionIndex: number): Promi
     console.log('rewindToAction result:', result)
     
     // Trigger realtime update for all clients watching this game
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -255,10 +238,7 @@ export async function createGame(
     console.log('createGame result:', result)
     
     // Trigger realtime update for all clients watching this game
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -277,10 +257,7 @@ export async function joinGame(gameId: string, playerId: string, playerName: str
     console.log('joinGame result:', result)
     
     // Trigger realtime update for all clients watching this game
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -303,10 +280,7 @@ export async function restartGameWithNuking(
     })
     
     // ✅ Enable this to broadcast to all players
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -420,10 +394,7 @@ export async function placeUnit(
     console.log('placeUnit result:', result)
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -445,10 +416,7 @@ export async function collectEnergy(
       data: { amount }
     })
     
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -470,10 +438,7 @@ export async function spendEnergy(
       data: { amount }
     })
     
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -520,10 +485,7 @@ export async function invadeTerritory(
       territoryConquered: !!result.pendingConquest
     });
 
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState;
   } catch (error) {
@@ -556,10 +518,7 @@ export async function confirmConquest(
     
     console.log('✅ Conquest confirmed:', result);
 
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState;
   } catch (error) {
@@ -591,10 +550,7 @@ export async function moveIntoEmptyTerritory(
       data: { fromTerritoryId, toTerritoryId, movingUnits }
     });
     
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState;
   } catch (error) {
@@ -618,10 +574,7 @@ export async function startInvasionPhase(
     
     console.log('⚔️ Invasion phase started:', result);
     
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState;
   } catch (error) {
@@ -654,10 +607,7 @@ export async function fortifyTerritory(
     console.log('fortifyTerritory result:', result)
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -710,10 +660,7 @@ export async function placeCommander(
     console.log('placeCommander result:', result)
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -739,10 +686,7 @@ export async function placeSpaceBase(
     console.log('placeSpaceBase result:', result)
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -770,10 +714,7 @@ export async function submitBid(
     console.log('submitBid result:', result)
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -796,10 +737,7 @@ export async function startYearTurns(gameId: string): Promise<GameState> {
     console.log('startYearTurns result:', result)
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -820,10 +758,7 @@ export async function advancePlayerPhase(gameId: string, playerId: string): Prom
     console.log('advancePlayerPhase result:', result)
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -891,10 +826,7 @@ export async function collectAndStartDeploy(
       }
     }
     
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -921,10 +853,7 @@ export async function confirmDeploymentComplete(
     console.log('confirmDeploymentComplete result:', result)
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState
   } catch (error) {
@@ -952,10 +881,7 @@ export async function advanceFromBuildHire(
     console.log('✅ Phase advance successful:', result);
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
 
     return result as GameState;
   } catch (error) {
@@ -986,10 +912,7 @@ export async function purchaseAndPlaceCommander(
     console.log('✅ Commander purchase and placement successful:', result);
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
 
     return result as GameState;
   } catch (error) {
@@ -1019,10 +942,7 @@ export async function purchaseAndPlaceSpaceBase(
     console.log('✅ Space base purchase and placement successful:', result);
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
 
     return result as GameState;
   } catch (error) {
@@ -1052,10 +972,7 @@ export async function purchaseCards(
     console.log('✅ Cards purchased successfully:', result);
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
 
     return result as GameState;
   } catch (error) {
@@ -1083,10 +1000,7 @@ export async function advanceFromBuyCards(
     console.log('✅ Phase advance successful:', result);
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
 
     return result as GameState;
   } catch (error) {
@@ -1108,10 +1022,7 @@ export async function advanceFromPlayCards(gameId: string, playerId: string): Pr
     console.log('✅ Phase advance successful:', result);
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
 
     return result as GameState;
   } catch (error) {
@@ -1191,10 +1102,7 @@ export async function advanceFromInvasion(
     console.log('✅ Phase advance successful:', result);
     
     // Trigger realtime update
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
 
     return result as GameState;
   } catch (error) {
@@ -1215,10 +1123,7 @@ export async function advanceFromFortify(gameId: string, playerId: string): Prom
     
     console.log('Turn ended - advancing to next player');
     
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: `/game/${gameId}`,
-    });
+    await syncGameState(gameId, result);
     
     return result as GameState;
   } catch (error) {

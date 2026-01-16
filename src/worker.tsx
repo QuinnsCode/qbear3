@@ -1,5 +1,5 @@
 import { defineApp, ErrorResponse, requestInfo } from "rwsdk/worker";
-import { realtimeRoute } from "rwsdk/realtime/worker";
+// import { realtimeRoute } from "rwsdk/realtime/worker";
 import { syncOrderNotes } from "./lib/syncedState";
 import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
@@ -209,7 +209,7 @@ export default defineApp([
     ...cardGameRoutes
   ]),
 
-  realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
+  // realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
 
   // API ROUTES - All API endpoints
   prefix("/api", [
@@ -375,7 +375,7 @@ export default defineApp([
       }
 
       try {
-        const handler = await import(`@/app/api/${apiPath}`);
+        const handler = await import(/* @vite-ignore */ `@/app/api/${apiPath}`);
         
         return await handler.default({ 
           request, 

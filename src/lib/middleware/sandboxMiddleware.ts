@@ -8,13 +8,16 @@ import { createSandboxUser, createSandboxOrganization } from '@/lib/sandbox';
  * Check if the current request is for a sandbox environment
  */
 export function isSandboxEnvironment(request: Request): boolean {
-  const orgSlug = extractOrgFromSubdomain(request);
+  const url = new URL(request.url);
   
-  if (!orgSlug) {
-    return false;
+  // Check if accessing the hardcoded sandbox game (your SANDBOX_GAME_ID)
+  if (url.pathname.includes('/cardGame/regal-gray-wolf')) {
+    return true;
   }
   
-  return isSandboxSubdomain(orgSlug);
+  // Also check subdomain for production
+  const orgSlug = extractOrgFromSubdomain(request);
+  return orgSlug ? isSandboxSubdomain(orgSlug) : false;
 }
 
 /**

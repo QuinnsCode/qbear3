@@ -2,8 +2,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { initRealtimeClient } from "rwsdk/realtime/client"
+// import { initRealtimeClient } from "rwsdk/realtime/client"
 import MobileGameUI from '@/app/components/Game/MobileGameUI'
+import { useGameState } from '@/app/hooks/useSyncedState'
 
 interface ClientGameWrapperProps {
   gameId: string
@@ -17,6 +18,7 @@ export default function ClientGameWrapper({
   initialState 
 }: ClientGameWrapperProps) {
   const [isClient, setIsClient] = useState(false)
+  const gameState = useGameState(gameId)
 
   useEffect(() => {
     setIsClient(true)
@@ -39,7 +41,7 @@ export default function ClientGameWrapper({
     <MobileGameUI 
       gameId={gameId}
       currentUserId={currentUserId} 
-      initialState={initialState}
+      initialState={gameState || initialState}
     />
   )
 }

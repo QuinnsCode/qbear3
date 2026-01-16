@@ -128,10 +128,15 @@ export async function createOrGetSandboxGame(): Promise<{
     // Import starter decks from the same place DeckBuilder uses
     const { EDH_SANDBOX_STARTER_DECK_DATA } = await import('@/app/components/CardGame/Sandbox/starterDeckData');
     
-    // ✅ Call the RPC method to initialize
-    const initResult = await doStub.initializeSandbox({
-      starterDecks: EDH_SANDBOX_STARTER_DECK_DATA
-    });
+    const response = await doStub.fetch(new Request('https://fake-host/init-sandbox', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        starterDecks: EDH_SANDBOX_STARTER_DECK_DATA
+      })
+    }));
+    
+    const initResult = await response.json() as any;
     
     if (initResult.alreadyInitialized) {
       console.log('✅ Sandbox DO was already initialized');

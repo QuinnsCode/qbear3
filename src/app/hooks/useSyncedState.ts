@@ -1,17 +1,16 @@
-// hooks/useSyncedState.ts
+// src/app/hooks/useSyncedState.ts
 'use client';
 
 import { useSyncedState as useRWSyncedState } from "rwsdk/use-synced-state/client";
 import type { GameState } from '@/app/lib/GameState';
 
 /**
- * Game state sync
- * Key includes gameId for scoping
+ * Game state sync - room encoded in key
  */
 export function useGameState(gameId: string) {
   const [gameState] = useRWSyncedState<GameState | null>(
     null,
-    `game:${gameId}:state`  // ✅ Include room in the key
+    `game:${gameId}:state`  // ✅ Room in key (2-param API)
   );
   return gameState;
 }
@@ -22,7 +21,7 @@ export function useGameState(gameId: string) {
 export function useDeckBuilder(userId: string) {
   const [decksData] = useRWSyncedState<{ timestamp: number } | null>(
     null,
-    `deck-builder:${userId}:decks`  // ✅ Include user in the key
+    `deck-builder:${userId}:decks`
   );
   return decksData;
 }
@@ -33,7 +32,7 @@ export function useDeckBuilder(userId: string) {
 export function useActivityFeed(orgId: string) {
   const [activity] = useRWSyncedState<{ timestamp: number } | null>(
     null,
-    `sanctum:${orgId}:activity`  // ✅ Include org in the key
+    `sanctum:${orgId}:activity`
   );
   return activity;
 }
@@ -44,7 +43,7 @@ export function useActivityFeed(orgId: string) {
 export function useUserEvents(userId: string) {
   const [eventsData] = useRWSyncedState<{ timestamp: number } | null>(
     null,
-    `user-events:${userId}:events`  // ✅ Include user in the key
+    `user-events:${userId}:events`
   );
   return eventsData;
 }
@@ -55,7 +54,7 @@ export function useUserEvents(userId: string) {
 export function useOrderNotes(orderNumber: string) {
   const [notesData] = useRWSyncedState<{ timestamp: number } | null>(
     null,
-    `order:${orderNumber}:notes`  // ✅ Include order in the key
+    `order:${orderNumber}:notes`
   );
   return notesData;
 }
