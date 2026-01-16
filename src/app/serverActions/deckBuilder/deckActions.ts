@@ -282,7 +282,7 @@ export async function createDeck(
     console.log(`[DeckBuilder] ✅ Created deck "${deckName}" in ${totalTime}ms`)
 
     // Trigger realtime update
-    await syncDeckBuilder(userId);
+    // await syncDeckBuilder(userId);
 
     return {
       success: true,
@@ -421,7 +421,7 @@ export async function deleteDeck(userId: string, deckId: string) {
     
     console.log(`[DeckBuilder] Deleted deck ${deckId} for user ${userId}`)
 
-    await syncDeckBuilder(userId);
+    // await syncDeckBuilder(userId);
     
     return {
       success: true,
@@ -485,7 +485,7 @@ export async function updateDeck(
     
     console.log(`[DeckBuilder] Updated deck ${deckId} for user ${userId}`)
     
-    await syncDeckBuilder(userId);
+    // await syncDeckBuilder(userId);
     
     return {
       success: true,
