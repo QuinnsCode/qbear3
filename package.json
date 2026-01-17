@@ -42,7 +42,7 @@
     "react-dom": "^19.2.3",
     "react-server-dom-webpack": "^19.2.3",
     "resend": "^6.5.2",
-    "rwsdk": "1.0.0-beta.38",
+    "rwsdk": "1.0.0-beta.48",
     "stripe": "^20.1.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.11",

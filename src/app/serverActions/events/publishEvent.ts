@@ -1,7 +1,7 @@
 'use server'
 
 import { env } from "cloudflare:workers";
-import { renderRealtimeClients } from "rwsdk/realtime/worker";
+import { syncUserEvents } from "@/lib/syncedState";
 import { db } from "@/db";
 import type { EventType, UserEvent } from "./types";
 import { getUserEventPreferences } from "./preferences";
@@ -91,10 +91,7 @@ export async function publishEvent(params: {
     
     // 6. Trigger realtime update if user has realtime enabled
     if (preferences.channels.realtime) {
-      await renderRealtimeClients({
-        durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-        key: `/user/${userId}/events`,
-      });
+      await syncUserEvents(userId, event);
     }
     
     console.log(`✅ Published event ${type} to user ${userId}`);
