@@ -2,7 +2,6 @@
 'use server'
 
 import { env } from "cloudflare:workers"
-import { syncDeckBuilder } from "@/lib/syncedState"
 import { parseDeckList } from '@/app/lib/cardGame/deckListParser'
 import { getCardsByIdentifiers } from '@/app/serverActions/cardData/cardDataActions'
 import type { Deck, DeckCard } from '@/app/types/Deck'

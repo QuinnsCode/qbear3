@@ -4,7 +4,6 @@
 'use server'
 
 import { env } from "cloudflare:workers";
-import { syncGameState } from "@/lib/syncedState";
 import type { GameState, AttackResult, InvasionResult, MoveResult } from '@/app/lib/GameState'
 
 
