@@ -2,7 +2,6 @@
 'use server'
 
 import { env } from "cloudflare:workers"
-import { renderRealtimeClients } from "rwsdk/realtime/worker"
 import { parseDeckList } from '@/app/lib/cardGame/deckListParser'
 import { getCardsByIdentifiers } from '@/app/serverActions/cardData/cardDataActions'
 import type { Deck, DeckCard } from '@/app/types/Deck'
@@ -282,12 +281,7 @@ export async function createDeck(
     console.log(`[DeckBuilder] ✅ Created deck "${deckName}" in ${totalTime}ms`)
 
     // Trigger realtime update
-    if (env?.REALTIME_DURABLE_OBJECT) {
-      await renderRealtimeClients({
-        durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-        key: `/deck-builder/${userId}`,
-      })
-    }
+    // await syncDeckBuilder(userId);
 
     return {
       success: true,
@@ -426,12 +420,7 @@ export async function deleteDeck(userId: string, deckId: string) {
     
     console.log(`[DeckBuilder] Deleted deck ${deckId} for user ${userId}`)
 
-    if (env?.REALTIME_DURABLE_OBJECT) {
-      await renderRealtimeClients({
-        durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-        key: `/deck-builder/${userId}`,
-      })
-    }
+    // await syncDeckBuilder(userId);
     
     return {
       success: true,
@@ -495,12 +484,7 @@ export async function updateDeck(
     
     console.log(`[DeckBuilder] Updated deck ${deckId} for user ${userId}`)
     
-    if (env?.REALTIME_DURABLE_OBJECT) {
-      await renderRealtimeClients({
-        durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-        key: `/deck-builder/${userId}`,
-      })
-    }
+    // await syncDeckBuilder(userId);
     
     return {
       success: true,

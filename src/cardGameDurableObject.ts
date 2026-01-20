@@ -258,6 +258,12 @@ export class CardGameDO extends DurableObject {
         const state = await this.getState();
         return Response.json(state);
       }
+
+      if (method === 'POST' && url.pathname === '/init-sandbox') {
+        const data = await request.json() as any;
+        const result = await this.initializeSandbox(data);
+        return Response.json(result);
+      }
       
       // POST - handle actions OR join
       if (method === 'POST') {

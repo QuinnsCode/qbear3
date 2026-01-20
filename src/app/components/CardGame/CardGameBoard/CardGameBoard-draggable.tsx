@@ -10,6 +10,7 @@ import BottomZonesBar from './BottomRow/BottomZonesBar'
 import CardGameMenu from './ui/CardGameMenu'
 import CardSearch from './MiddleRow/CardSearch'
 import MobileGameLayout from '../Mobile/MobileGameLayout'
+import TokenCreationModal from '../TokenCreationModal'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
 import type { CardGameState } from '@/app/services/cardGame/CardGameState'
 import type { Deck } from '@/app/types/Deck'
@@ -50,7 +51,8 @@ export default function CardGameBoard({
     step: string
   }>({ loading: false, error: null, step: '' })
 
-
+  // ✅ ADD: Token creation state
+  const [showTokenCreator, setShowTokenCreator] = useState(false)
 
   // ✅ Null safety: Check if gameState and players exist before proceeding
   if (!gameState || !gameState.players || gameState.players.length === 0) {
@@ -105,6 +107,12 @@ export default function CardGameBoard({
     
     loadDecks()
   }, [currentPlayerId, spectatorMode])
+
+  // ✅ ADD: Token creation handler
+  const handleCreateToken = () => {
+    if (spectatorMode) return
+    setShowTokenCreator(true)
+  }
 
   // Deck handlers
   const handleCreateDeck = async (deckListText: string, deckName: string) => {
@@ -391,7 +399,7 @@ export default function CardGameBoard({
         
         {/* ===== TOP ROW: Opponent Bar + Ad Space ===== */}
         <div 
-          className="bg-slate-800 rounded-t-lg overflow-hidden flex-shrink-0"
+          className="bg-slate-800 rounded-t-lg overflow-visible flex-shrink-0"
           style={{ height: `${layout.topBarHeight}px` }}
         >
           <TopBar
@@ -566,6 +574,27 @@ export default function CardGameBoard({
       >
         Reset Layout
       </button>
+
+      {/* Token Creator Modal */}
+      {showTokenCreator && (
+        <TokenCreationModal
+          isOpen={showTokenCreator}
+          onClose={() => setShowTokenCreator(false)}
+          onCreateToken={async (tokenData) => {
+            try {
+              await applyCardGameAction(cardGameId, {
+                type: 'create_token',
+                playerId: currentPlayerId,
+                data: { tokenData }
+              })
+              setShowTokenCreator(false)
+            } catch (error) {
+              console.error('Failed to create token:', error)
+              alert('Failed to create token. Please try again.')
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -1,20 +1,11 @@
 // @/lib/activityRealtime.ts
-import { renderRealtimeClients } from "rwsdk/realtime/worker";
-import { env } from "cloudflare:workers";
+import { syncActivity } from "@/app/lib/syncedState";
 
 // Helper function to trigger activity feed updates
 export async function notifyActivityUpdate(organizationId: string) {
   try {
-    const realtimeKey = `/sanctum`;  // Match the client's key
-    
     console.log('📡 Triggering activity feed update for org:', organizationId);
-    console.log('🔑 Using realtime key:', realtimeKey);
-    
-    await renderRealtimeClients({
-      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-      key: realtimeKey,
-    });
-    
+    await syncActivity(organizationId);
     console.log('✅ Activity feed update triggered successfully');
   } catch (error) {
     console.error('❌ Failed to trigger activity feed update:', error);

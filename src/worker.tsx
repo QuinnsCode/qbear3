@@ -1,11 +1,13 @@
 import { defineApp, ErrorResponse, requestInfo } from "rwsdk/worker";
-import { realtimeRoute, renderRealtimeClients } from "rwsdk/realtime/worker";
+// import { realtimeRoute } from "rwsdk/realtime/worker";
+// import { syncOrderNotes } from "./lib/syncedState";
 import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
 import { changelogRoute, aboutRoute,termsRoute  } from "@/app/pages/staticRoutes";
 import { gameRoutes } from "./app/pages/game/gameRoutes";
+import { draftRoutes } from "@/app/pages/draft/draftRoutes"
 import { cardGameRoutes } from "@/app/pages/cardGame/cardGameRoutes";
 import { realtimeRoutes } from "@/app/pages/realtime/realtimeRoutes";
 import { auth, initAuth } from "@/lib/auth";
@@ -21,6 +23,8 @@ import { env } from "cloudflare:workers";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import GamePage from "@/app/pages/game/GamePage";
 import CardGamePage from "@/app/pages/cardGame/CardGamePage";
+import DraftPage from '@/app/pages/draft/DraftPage'
+import NewDraftPage from '@/app/pages/draft/NewDraftPage'
 import SanctumPage from "@/app/pages/sanctum/SanctumPage";
 import OrgNotFoundPage from "@/app/pages/errors/OrgNotFoundPage";
 import NoAccessPage from "@/app/pages/errors/NoAccessPage";
@@ -31,12 +35,17 @@ import { isSandboxEnvironment, setupSandboxContext, createSandboxCookieHeader } 
 import LandingPage from "./app/pages/landing/LandingPage";
 import DeckBuilderPage from "./app/pages/deckBuilder/DeckBuilderPage";
 import { SANDBOX_CONFIG } from "./lib/sandbox/config";
+import { SyncedStateServer, syncedStateRoutes } from "rwsdk/use-synced-state/worker";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
 export { GameStateDO } from "./gameDurableObject";
 export { CardGameDO } from './cardGameDurableObject'
+export { DraftDO } from './draftDurableObject'
+
 export { CardCacheDO } from './cardCacheDO'
+export { SyncedStateServer };
+
 
 // ============================================
 // 🎮 HARDCODED SANDBOX GAME
@@ -179,8 +188,12 @@ export default defineApp([
     }
   },
 
+  ...syncedStateRoutes(() => env.SYNCED_STATE_SERVER),
+
   // REALTIME ROUTES - Handle WebSocket and presence
   prefix("/__realtime", realtimeRoutes),
+
+  //sync for risk like game
   prefix("/__gsync", [
     async ({ request }) => {
       if (request.headers.get('Upgrade') === 'websocket') {
@@ -192,6 +205,7 @@ export default defineApp([
     ...gameRoutes
   ]),
 
+  //sync for card games
   prefix("/__cgsync", [
     async ({ request }) => {
       if (request.headers.get('Upgrade') === 'websocket') {
@@ -203,7 +217,31 @@ export default defineApp([
     ...cardGameRoutes
   ]),
 
-  realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
+  //sync for draft system
+  prefix("/__draftsync", [
+    async ({ request, ctx }) => {
+      if (request.headers.get('Upgrade') === 'websocket') {
+        const { rateLimitMiddleware } = await import('@/lib/middlewareFunctions');
+        const rateLimitResult = await rateLimitMiddleware(request, 'draftsync');
+        if (rateLimitResult) return rateLimitResult;
+        
+        // ✅ Add auth headers from ctx.user
+        const newHeaders = new Headers(request.headers);
+        if (ctx.user?.id) {
+          newHeaders.set('X-Auth-User-Id', ctx.user.id);
+          newHeaders.set('X-Auth-User-Name', ctx.user.name || ctx.user.email || 'Player');
+        }
+        
+        // ✅ Create new request with auth headers
+        request = new Request(request.url, {
+          method: request.method,
+          headers: newHeaders,
+        });
+      }
+    },
+    ...draftRoutes
+  ]),
+  // realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
 
   // API ROUTES - All API endpoints
   prefix("/api", [
@@ -321,10 +359,7 @@ export default defineApp([
       });
       
       if (order) {
-        await renderRealtimeClients({
-          durableObjectNamespace: env.REALTIME_DURABLE_OBJECT as any,
-          key: `/search/${order.orderNumber}`,
-        });
+        // await syncOrderNotes(order.orderNumber, note);
       }
       
       return new Response(JSON.stringify(note), {
@@ -372,7 +407,7 @@ export default defineApp([
       }
 
       try {
-        const handler = await import(`@/app/api/${apiPath}`);
+        const handler = await import(/* @vite-ignore */ `@/app/api/${apiPath}`);
         
         return await handler.default({ 
           request, 
@@ -541,6 +576,10 @@ export default defineApp([
       },
       CardGamePage
     ]),
+
+    route("/draft/new", NewDraftPage),
+    route("/draft/:draftId", DraftPage),
+
 
     // ROOT ROUTE - AFTER all specific routes
     route("/", [

@@ -6,7 +6,7 @@ import { MenuItem } from "./MenuItem";
 
 export interface MenuItemConfig {
   label: string;
-  icon?: string;
+  icon?: string | React.ReactNode;  // ✅ Allow both string emojis and React components
   onClick: (e?: React.MouseEvent) => void | false;  // ✅ Can accept event and return false to keep menu open
   disabled?: boolean;
   separator?: boolean;
@@ -127,7 +127,11 @@ export function MenuButton({
             <div key={index}>
               {item.disabled ? (
                 <div className="px-4 py-3 md:px-3 md:py-2 text-sm text-gray-500 opacity-50 cursor-not-allowed flex items-center gap-2">
-                  {item.icon && <span className="text-base">{item.icon}</span>}
+                  {item.icon && (
+                    <span className={typeof item.icon === 'string' ? 'text-base' : ''}>
+                      {item.icon}
+                    </span>
+                  )}
                   <span>{item.label}</span>
                 </div>
               ) : (
@@ -141,7 +145,11 @@ export function MenuButton({
                   }}
                 >
                   <div className="flex items-center gap-2 py-1 md:py-0">
-                    {item.icon && <span className="text-base">{item.icon}</span>}
+                    {item.icon && (
+                      <span className={typeof item.icon === 'string' ? 'text-base' : ''}>
+                        {item.icon}
+                      </span>
+                    )}
                     <span>{item.label}</span>
                   </div>
                 </MenuItem>
