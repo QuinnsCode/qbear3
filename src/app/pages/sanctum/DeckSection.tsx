@@ -44,13 +44,13 @@ export function DeckSection({ decks, currentTier, maxDecks, atLimit }: Props) {
                 <div className="flex justify-between items-start mb-3 flex-wrap gap-2">
                   <span className="text-lg font-bold text-slate-900">{deck.name}</span>
                   <span className="px-3 py-1 bg-amber-600/20 border border-amber-500/50 text-amber-700 rounded-full text-xs font-semibold">
-                    Commander
+                    {deck?.format || ''}
                   </span>
                 </div>
                 
                 {deck.commanders?.length > 0 && (
                   <div className="text-sm text-amber-700 mb-3 font-medium">
-                    ⚔️ {deck.commanders.join(' + ')}
+                    ⚔️ {deck.commanders?.join(' + ')}
                   </div>
                 )}
                 
