@@ -46,17 +46,21 @@ export function shouldSkipMiddleware(request: Request): boolean {
   const url = new URL(request.url);
   const pathname = url.pathname;
   
-  // Skip middleware for auth routes completely
-  if (pathname.startsWith('/api/auth/')) {
-    console.log('🔍 Skipping middleware for auth route:', pathname);
+  // Skip middleware for ALL API routes (they don't need org context)
+  if (pathname.startsWith('/api/')) {
+    console.log('🔍 Skipping middleware for API route:', pathname);
     return true;
   }
   
   // Skip for webhooks and realtime
-  if (pathname.includes('/__realtime')) {
-    console.log('🔍 Skipping middleware for webhook/realtime:', pathname);
+  if (pathname.includes('/__realtime') || 
+      pathname.includes('/__gsync') || 
+      pathname.includes('/__cgsync')) {
+    console.log('🔍 Skipping middleware for realtime:', pathname);
     return true;
   }
+  
+  // ✅ /__draftsync is NOT skipped - middleware will run
   
   return false;
 }

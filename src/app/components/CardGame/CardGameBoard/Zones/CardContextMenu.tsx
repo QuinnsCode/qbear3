@@ -1,7 +1,7 @@
 // app/components/CardGame/CardGameBoard/Zones/CardContextMenu.tsx
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { Eye, Trash2, Flame, BookOpen, ArrowUp, ArrowDown } from 'lucide-react'
 
 interface CardContextMenuProps {
@@ -34,6 +34,42 @@ export default function CardContextMenu({
   onViewDetails
 }: CardContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
+  const [adjustedPosition, setAdjustedPosition] = useState(position)
+
+  // Adjust position to keep menu in viewport
+  useEffect(() => {
+    if (!isOpen || !menuRef.current) return
+
+    const menu = menuRef.current
+    const menuRect = menu.getBoundingClientRect()
+    const viewportHeight = window.innerHeight
+    const viewportWidth = window.innerWidth
+
+    let newX = position.x
+    let newY = position.y
+
+    // Adjust horizontal position if menu goes off right edge
+    if (position.x + menuRect.width > viewportWidth) {
+      newX = viewportWidth - menuRect.width - 10
+    }
+
+    // Adjust vertical position if menu goes off bottom edge
+    if (position.y + menuRect.height > viewportHeight) {
+      // Try to position above the click point
+      newY = position.y - menuRect.height
+      
+      // If that's still off-screen, clamp to bottom with padding
+      if (newY < 0) {
+        newY = viewportHeight - menuRect.height - 10
+      }
+    }
+
+    // Ensure minimum padding from edges
+    newX = Math.max(10, Math.min(newX, viewportWidth - menuRect.width - 10))
+    newY = Math.max(10, Math.min(newY, viewportHeight - menuRect.height - 10))
+
+    setAdjustedPosition({ x: newX, y: newY })
+  }, [isOpen, position])
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -68,8 +104,8 @@ export default function CardContextMenu({
         ref={menuRef}
         className="fixed z-50 bg-slate-800 rounded-lg shadow-xl border border-slate-600 py-1 min-w-[200px] max-h-[calc(100vh-20px)] overflow-y-auto"
         style={{
-          left: `${position.x}px`,
-          top: `${position.y}px`,
+          left: `${adjustedPosition.x}px`,
+          top: `${adjustedPosition.y}px`,
           scrollbarWidth: 'thin',
           scrollbarColor: '#475569 #1e293b'
         }}

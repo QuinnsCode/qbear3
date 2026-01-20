@@ -1,12 +1,13 @@
-// app/components/CardGame/Mobile/MobileGameLayout.tsx
+// app/components/CardGame/Mobile/MobileGameLayout.tsx - UPDATED STYLING
 'use client'
 
 import { useState } from 'react'
-import type { CardGameState, MTGPlayer } from '@/app/services/cardGame/CardGameState'
+import type { CardGameState, MTGPlayer, TokenData } from '@/app/services/cardGame/CardGameState'
 import { BattlefieldContainer } from '../CardGameBoard/MiddleRow/Battlefield/BattlefieldContainer'
 import MobileZoneDrawer from './MobileZoneDrawer'
 import MobileOpponentBubble from './MobileOpponentBubble'
 import MobileFloatingButtons from './MobileFloatingButtons'
+import TokenCreationModal from '../TokenCreationModal'
 import { Deck } from '@/app/types/Deck'
 
 interface Props {
@@ -40,8 +41,57 @@ export default function MobileGameLayout({
 }: Props) {
   const [drawerOpen, setDrawerOpen] = useState<'zones' | 'hand' | null>(null)
   const [viewingPlayer, setViewingPlayer] = useState<string | null>(spectatorMode ? null : currentPlayer.id)
+  const [tokenModalOpen, setTokenModalOpen] = useState(false)
 
   const opponents = gameState.players.filter(p => p.id !== currentPlayer.id)
+
+  const handleCreateToken = async (tokenData: TokenData) => {
+    try {
+      const { applyCardGameAction } = await import('@/app/serverActions/cardGame/cardGameActions')
+      
+      console.log('🎯 Mobile: Creating token:', tokenData.name)
+      
+      // Get battlefield container (the scrollable area)
+      const battlefield = document.querySelector('[data-battlefield]') as HTMLElement
+      
+      if (!battlefield) {
+        console.warn('⚠️ Battlefield not found, using fallback position')
+        await applyCardGameAction(cardGameId, {
+          type: 'create_token',
+          playerId: currentPlayer.id,
+          data: { 
+            tokenData, 
+            position: { x: 100, y: 100 } // Fallback
+          }
+        })
+        console.log('✅ Token created (fallback position):', tokenData.name)
+        return
+      }
+      
+      // Place token in top-left of visible viewport + some padding
+      // This accounts for current scroll position
+      const PADDING = 50 // pixels from edge
+      const position = {
+        x: battlefield.scrollLeft + PADDING,
+        y: battlefield.scrollTop + PADDING
+      }
+      
+      console.log('📍 Creating token at position:', position)
+      
+      await applyCardGameAction(cardGameId, {
+        type: 'create_token',
+        playerId: currentPlayer.id,
+        data: { tokenData, position }
+      })
+      
+      console.log('✅ Token created successfully:', tokenData.name)
+    } catch (error) {
+      console.error('❌ Failed to create token:', error)
+      // Re-throw so TokenCreationModal can show the error
+      throw error
+    }
+  }
+
   const displayedPlayer = viewingPlayer 
     ? gameState.players.find(p => p.id === viewingPlayer) || currentPlayer
     : currentPlayer
@@ -109,7 +159,7 @@ export default function MobileGameLayout({
 
       {/* Player Name Header - Below opponents */}
       {viewingPlayer && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 bg-slate-800/95 backdrop-blur-sm px-4 py-2 rounded-lg border border-slate-600">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 bg-slate-800/90 backdrop-blur-sm px-4 py-2 rounded-lg border border-slate-700/50 shadow-lg">
           <div className="flex items-center gap-2">
             <div 
               className="w-3 h-3 rounded-full border border-white"
@@ -127,7 +177,7 @@ export default function MobileGameLayout({
       {!isViewingSelf && viewingPlayer && (
         <button
           onClick={() => setViewingPlayer(currentPlayer.id)}
-          className="absolute top-14 left-1/2 -translate-x-1/2 z-30 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold shadow-lg border border-blue-500 flex items-center gap-2 transition-colors"
+          className="absolute top-14 left-1/2 -translate-x-1/2 z-30 bg-blue-600/90 hover:bg-blue-700/90 backdrop-blur-sm text-white px-4 py-2 rounded-lg font-semibold shadow-lg border border-blue-500/50 flex items-center gap-2 transition-all"
         >
           <span>⚔️</span>
           <span>Your Board</span>
@@ -178,14 +228,22 @@ export default function MobileGameLayout({
           onSelectDeck={onSelectDeck}
           onEditDeck={onEditDeck}
           isSandbox={isSandbox}
+          onCreateToken={() => setTokenModalOpen(true)}
         />
       )}
+
+      {/* Token Creation Modal */}
+      <TokenCreationModal
+        isOpen={tokenModalOpen}
+        onClose={() => setTokenModalOpen(false)}
+        onCreateToken={handleCreateToken}
+      />
 
       {/* Spectator Mode - Initial Player Selection Modal */}
       {spectatorMode && !viewingPlayer && (
         <div className="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-sm">
           <div className="h-full w-full flex items-center justify-center p-4">
-            <div className="text-center bg-slate-800 p-6 rounded-xl border border-purple-500 shadow-2xl max-w-md w-full">
+            <div className="text-center bg-slate-800/90 backdrop-blur-sm p-6 rounded-xl border border-purple-500/50 shadow-2xl max-w-md w-full">
               <div className="text-5xl mb-4">👁️</div>
               <p className="text-2xl mb-2 font-bold text-white">Spectator Mode</p>
               <p className="text-slate-300 mb-6">Choose a player to watch</p>
@@ -195,7 +253,7 @@ export default function MobileGameLayout({
                   <button
                     key={p.id}
                     onClick={() => setViewingPlayer(p.id)}
-                    className="w-full bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500 text-white px-4 py-3 rounded-lg transition-colors flex items-center gap-3"
+                    className="w-full bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/50 text-white px-4 py-3 rounded-lg transition-colors flex items-center gap-3"
                   >
                     <div 
                       className="w-4 h-4 rounded-full border border-white"
@@ -222,7 +280,7 @@ export default function MobileGameLayout({
                 </a>
                 <a 
                   href="/user/login"
-                  className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-colors border border-purple-500"
+                  className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-colors border border-purple-500/50"
                 >
                   Log In
                 </a>

@@ -40,6 +40,10 @@
       {
         "name": "SYNCED_STATE_SERVER",
         "class_name": "SyncedStateServer"
+      },
+      {
+        "name": "DRAFT_DO",
+        "class_name": "DraftDO"
       }
     ]
   },
@@ -67,6 +71,10 @@
     {
       "tag": "v5",
       "new_sqlite_classes": ["SyncedStateServer"]
+    },
+    {
+      "tag": "v6",
+      "new_sqlite_classes": ["DraftDO"]
     }
   ],
   "d1_databases": [

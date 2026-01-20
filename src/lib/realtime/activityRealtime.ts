@@ -1,5 +1,5 @@
 // @/lib/activityRealtime.ts
-import { syncActivity } from "../syncedState";
+import { syncActivity } from "@/app/lib/syncedState";
 
 // Helper function to trigger activity feed updates
 export async function notifyActivityUpdate(organizationId: string) {

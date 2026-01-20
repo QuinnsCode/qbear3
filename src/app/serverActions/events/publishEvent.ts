@@ -1,7 +1,7 @@
 'use server'
 
 import { env } from "cloudflare:workers";
-import { syncUserEvents } from "@/lib/syncedState";
+// import { syncUserEvents } from "@/lib/syncedState";
 import { db } from "@/db";
 import type { EventType, UserEvent } from "./types";
 import { getUserEventPreferences } from "./preferences";
@@ -91,7 +91,7 @@ export async function publishEvent(params: {
     
     // 6. Trigger realtime update if user has realtime enabled
     if (preferences.channels.realtime) {
-      await syncUserEvents(userId, event);
+      // await syncUserEvents(userId, event);
     }
     
     console.log(`✅ Published event ${type} to user ${userId}`);

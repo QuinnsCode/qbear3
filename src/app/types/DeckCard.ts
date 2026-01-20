@@ -1,5 +1,7 @@
 // @/app/types/Deck.ts
 
+export type DeckFormat = 'commander' | 'draft'
+
 export interface DeckCard {
     id: string
     name: string
@@ -29,7 +31,7 @@ export interface DeckCard {
   * HOW: Version all deck data and provide migration functions
   */
   
-  export const CURRENT_DECK_VERSION = 3
+  export const CURRENT_DECK_VERSION = 4
   
   export interface DeckV1 {
   version?: 1 // Optional because old decks won't have it
@@ -103,30 +105,61 @@ export interface DeckCard {
   createdAt: number
   updatedAt: number
   }
+
+  export interface DeckV4 {
+    version: 4
+    id: string
+    name: string
+    format: DeckFormat  // ✅ NEW: Distinguish deck types
+    
+    // Commander-specific (optional for draft)
+    commanders?: string[]  // ✅ Changed: Optional (only for commander format)
+    commanderImageUrls?: string[]
+    
+    colors: string[]
+    cards: Array<{
+      id: string
+      scryfallId: string
+      name: string
+      quantity: number
+      imageUrl: string
+      type: string
+      manaCost: string
+      colors: string[]
+      isCommander: boolean  // ✅ Always false for draft
+      zone?: DeckCardZone
+    }>
+    totalCards: number
+    createdAt: number
+    updatedAt: number
+    
+    // ✅ NEW: Draft-specific metadata
+    draftMetadata?: {
+      draftId: string           // Link back to original draft
+      draftDate: number         // Timestamp
+      cubeId?: string          // Which cube was drafted
+      pickHistory?: string[]   // Cards picked in order (scryfallIds)
+    }
+  }
   
   // Current deck type (points to latest version)
-  export type Deck = DeckV3
+  export type Deck = DeckV4
   
   /**
   * Migrate a deck from any version to the current version
   */
-  export function migrateDeck(deck: any): DeckV3 {
-  const version = deck.version || 1
-  
-  console.log(`[DeckMigration] Migrating deck "${deck.name}" from v${version} to v${CURRENT_DECK_VERSION}`)
-  
-  let migrated = deck
-  
-  // Apply migrations in sequence
-  if (version < 2) {
-    migrated = migrateDeckV1toV2(migrated)
-  }
-  
-  if (version < 3) {
-    migrated = migrateDeckV2toV3(migrated)
-  }
-  
-  return migrated
+  export function migrateDeck(deck: any): DeckV4 {
+    const version = deck.version || 1
+    
+    console.log(`[DeckMigration] Migrating deck "${deck.name}" from v${version} to v${CURRENT_DECK_VERSION}`)
+    
+    let migrated = deck
+    
+    if (version < 2) migrated = migrateDeckV1toV2(migrated)
+    if (version < 3) migrated = migrateDeckV2toV3(migrated)
+    if (version < 4) migrated = migrateDeckV3toV4(migrated)  // ✅ NEW
+    
+    return migrated
   }
   
   /**
@@ -216,12 +249,35 @@ export interface DeckCard {
     updatedAt: Date.now()
   }
   }
+
+  /**
+   * Migrate V3 deck to V4
+   * 
+   * Changes:
+   * - Add format: 'commander' (all existing decks are commander)
+   * - Keep commanders field (already required for V3)
+   */
+  function migrateDeckV3toV4(deckV3: DeckV3): DeckV4 {
+    return {
+      version: 4,
+      id: deckV3.id,
+      name: deckV3.name,
+      format: 'commander',  // ✅ All existing decks are commander format
+      commanders: deckV3.commanders,  // Keep as-is
+      commanderImageUrls: deckV3.commanderImageUrls,
+      colors: deckV3.colors,
+      cards: deckV3.cards,
+      totalCards: deckV3.totalCards,
+      createdAt: deckV3.createdAt,
+      updatedAt: Date.now()
+    }
+  }
   
   /**
   * Check if a deck needs migration
   */
   export function needsMigration(deck: any): boolean {
-  const version = deck.version || 1
+  const version = deck.version || 4
   return version < CURRENT_DECK_VERSION
   }
   
@@ -230,13 +286,99 @@ export interface DeckCard {
   * Useful for decks that might be missing zone data
   */
   export function ensureCardZones(deck: DeckV3): DeckV3 {
-  const cardsWithZones = deck.cards.map(card => ({
-    ...card,
-    zone: card.zone || (card.isCommander ? 'commander' : 'main') as DeckCardZone
-  }))
+    const cardsWithZones = deck.cards.map(card => ({
+      ...card,
+      zone: card.zone || (card.isCommander ? 'commander' : 'main') as DeckCardZone
+    }))
+    
+    return {
+      ...deck,
+      cards: cardsWithZones
+    }
+  }
+
+  /**
+ * Validate a deck based on its format
+ */
+export function validateDeck(deck: DeckV4): { valid: boolean; errors: string[] } {
+  const errors: string[] = []
+  
+  if (deck.format === 'commander') {
+    // Commander format rules
+    if (!deck.commanders || deck.commanders.length === 0) {
+      errors.push('Commander deck must have at least one commander')
+    }
+    if (deck.commanders && deck.commanders.length > 2) {
+      errors.push('Commander deck can have at most 2 commanders (partner)')
+    }
+    if (deck.totalCards !== 100) {
+      errors.push('Commander deck must have exactly 100 cards')
+    }
+  } else if (deck.format === 'draft') {
+    // Draft format rules
+    if (deck.totalCards < 40) {
+      errors.push('Draft deck must have at least 40 cards')
+    }
+    if (deck.commanders && deck.commanders.length > 0) {
+      errors.push('Draft deck cannot have commanders')
+    }
+    if (!deck.draftMetadata) {
+      errors.push('Draft deck must have draftMetadata')
+    }
+  }
   
   return {
-    ...deck,
-    cards: cardsWithZones
+    valid: errors.length === 0,
+    errors
   }
+}
+
+/**
+ * Check if deck can be used in a specific format
+ */
+export function isDeckValidForFormat(deck: DeckV4, format: DeckFormat): boolean {
+  if (deck.format !== format) return false
+  const validation = validateDeck(deck)
+  return validation.valid
+}
+  
+
+export const BASIC_LANDS = {
+  W: {
+    scryfallId: '8365ab45-6d78-47ad-a6ed-282069b0fabc',  // Plains (most recent)
+    name: 'Plains',
+    type: 'Basic Land — Plains',
+    colors: ['W'],
+    imageUrl: 'https://cards.scryfall.io/normal/front/8/3/8365ab45-6d78-47ad-a6ed-282069b0fabc.jpg'
+  },
+  U: {
+    scryfallId: 'b2c6aa39-2d2a-459c-a555-fb48ba993373',  // Island
+    name: 'Island',
+    type: 'Basic Land — Island',
+    colors: ['U'],
+    imageUrl: 'https://cards.scryfall.io/normal/front/b/2/b2c6aa39-2d2a-459c-a555-fb48ba993373.jpg'
+  },
+  B: {
+    scryfallId: '96a33518-8b67-4fa2-8b48-6d7c6c1e8b42',  // Swamp
+    name: 'Swamp',
+    type: 'Basic Land — Swamp',
+    colors: ['B'],
+    imageUrl: 'https://cards.scryfall.io/normal/front/9/6/96a33518-8b67-4fa2-8b48-6d7c6c1e8b42.jpg'
+  },
+  R: {
+    scryfallId: '8cf5e8a9-c6c7-4562-8e1b-f8e650cd42e8',  // Mountain
+    name: 'Mountain',
+    type: 'Basic Land — Mountain',
+    colors: ['R'],
+    imageUrl: 'https://cards.scryfall.io/normal/front/8/c/8cf5e8a9-c6c7-4562-8e1b-f8e650cd42e8.jpg'
+  },
+  G: {
+    scryfallId: '8efa1a9e-6f74-44a3-8556-f2d3e6b3b3e1',  // Forest
+    name: 'Forest',
+    type: 'Basic Land — Forest',
+    colors: ['G'],
+    imageUrl: 'https://cards.scryfall.io/normal/front/8/e/8efa1a9e-6f74-44a3-8556-f2d3e6b3b3e1.jpg'
   }
+} as const
+
+export type BasicLandColor = keyof typeof BASIC_LANDS
