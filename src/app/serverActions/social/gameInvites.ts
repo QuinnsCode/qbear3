@@ -1,6 +1,5 @@
 'use server'
 
-import { env } from "cloudflare:workers";
 import { db } from "@/db";
 import { publishEvent } from "@/app/serverActions/events/publishEvent";
 
@@ -10,9 +9,9 @@ export type GameType = 'main' | 'card';
 export type GameInvite = {
   id: string;
   gameType: GameType;
-  gameId: string; // e.g., "alive-purple-goat"
-  gameName: string; // e.g., "Alive Purple Goat"
-  gameUrl: string; // e.g., "https://alice.yourdomain.com/game/alive-purple-goat"
+  gameId: string;
+  gameName: string;
+  gameUrl: string;
   fromUserId: string;
   fromUserName: string;
   fromUserImage?: string;
@@ -20,12 +19,6 @@ export type GameInvite = {
   status: 'pending' | 'accepted' | 'declined' | 'expired';
   createdAt: number;
   expiresAt: number;
-};
-
-const CACHE_PREFIX = {
-  gameInvite: (inviteId: string) => `game:invite:${inviteId}`,
-  receivedInvites: (userId: string) => `game:invites:received:${userId}`,
-  sentInvites: (userId: string) => `game:invites:sent:${userId}`,
 };
 
 const INVITE_EXPIRY_DAYS = 7;
@@ -38,39 +31,79 @@ export async function getGameInvites(userId: string): Promise<{
   sent: GameInvite[];
 }> {
   try {
-    const receivedKey = CACHE_PREFIX.receivedInvites(userId);
-    const sentKey = CACHE_PREFIX.sentInvites(userId);
+    const now = new Date();
     
-    const receivedIdsJson = await env.GAME_REGISTRY_KV.get(receivedKey);
-    const sentIdsJson = await env.GAME_REGISTRY_KV.get(sentKey);
-    
-    const receivedIds: string[] = receivedIdsJson ? JSON.parse(receivedIdsJson) : [];
-    const sentIds: string[] = sentIdsJson ? JSON.parse(sentIdsJson) : [];
-    
-    const received: GameInvite[] = [];
-    const sent: GameInvite[] = [];
-    
-    for (const inviteId of receivedIds) {
-      const inviteJson = await env.GAME_REGISTRY_KV.get(CACHE_PREFIX.gameInvite(inviteId));
-      if (inviteJson) {
-        const invite = JSON.parse(inviteJson);
-        if (invite.status === 'pending' && invite.expiresAt > Date.now()) {
-          received.push(invite);
+    const [received, sent] = await Promise.all([
+      db.gameInvite.findMany({
+        where: {
+          toUserId: userId,
+          status: 'pending',
+          expiresAt: {
+            gte: now
+          }
+        },
+        include: {
+          fromUser: {
+            select: {
+              name: true,
+              image: true,
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
         }
-      }
-    }
-    
-    for (const inviteId of sentIds) {
-      const inviteJson = await env.GAME_REGISTRY_KV.get(CACHE_PREFIX.gameInvite(inviteId));
-      if (inviteJson) {
-        const invite = JSON.parse(inviteJson);
-        if (invite.status === 'pending' && invite.expiresAt > Date.now()) {
-          sent.push(invite);
+      }),
+      db.gameInvite.findMany({
+        where: {
+          fromUserId: userId,
+          status: 'pending',
+          expiresAt: {
+            gte: now
+          }
+        },
+        include: {
+          toUser: {
+            select: {
+              name: true,
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
         }
-      }
-    }
+      })
+    ]);
     
-    return { received, sent };
+    return {
+      received: received.map(inv => ({
+        id: inv.id,
+        gameType: inv.gameType as GameType,
+        gameId: inv.gameId,
+        gameName: inv.gameName,
+        gameUrl: inv.gameUrl,
+        fromUserId: inv.fromUserId,
+        fromUserName: inv.fromUser.name || 'Unknown',
+        fromUserImage: inv.fromUser.image || undefined,
+        toUserId: inv.toUserId,
+        status: inv.status as 'pending',
+        createdAt: inv.createdAt.getTime(),
+        expiresAt: inv.expiresAt.getTime(),
+      })),
+      sent: sent.map(inv => ({
+        id: inv.id,
+        gameType: inv.gameType as GameType,
+        gameId: inv.gameId,
+        gameName: inv.gameName,
+        gameUrl: inv.gameUrl,
+        fromUserId: inv.fromUserId,
+        fromUserName: 'You',
+        toUserId: inv.toUserId,
+        status: inv.status as 'pending',
+        createdAt: inv.createdAt.getTime(),
+        expiresAt: inv.expiresAt.getTime(),
+      }))
+    };
   } catch (error) {
     console.error('Error getting game invites:', error);
     return { received: [], sent: [] };
@@ -97,95 +130,69 @@ export async function sendGameInvite(
     }
     
     // Check if they're friends
-    const friendsKey = `friends:${fromUserId}`;
-    const friendsJson = await env.GAME_REGISTRY_KV.get(friendsKey);
-    const friends: string[] = friendsJson ? JSON.parse(friendsJson) : [];
+    const friendship = await db.friendship.findFirst({
+      where: {
+        userId: fromUserId,
+        friendId: toUserId
+      }
+    });
     
-    if (!friends.includes(toUserId)) {
+    if (!friendship) {
       return { success: false, message: 'You can only invite friends to games' };
     }
     
     // Check for duplicate invite
-    const sentKey = CACHE_PREFIX.sentInvites(fromUserId);
-    const sentJson = await env.GAME_REGISTRY_KV.get(sentKey);
-    const sentInvites: string[] = sentJson ? JSON.parse(sentJson) : [];
-    
-    for (const inviteId of sentInvites) {
-      const existingInviteJson = await env.GAME_REGISTRY_KV.get(CACHE_PREFIX.gameInvite(inviteId));
-      if (existingInviteJson) {
-        const existingInvite = JSON.parse(existingInviteJson);
-        if (
-          existingInvite.toUserId === toUserId && 
-          existingInvite.gameId === gameId &&
-          existingInvite.gameType === gameType &&
-          existingInvite.status === 'pending'
-        ) {
-          return { success: false, message: 'Invite already sent to this user' };
+    const existingInvite = await db.gameInvite.findFirst({
+      where: {
+        fromUserId,
+        toUserId,
+        gameId,
+        gameType,
+        status: 'pending',
+        expiresAt: {
+          gte: new Date()
         }
       }
-    }
-    
-    // Get sender info
-    const senderData = await db.user.findFirst({
-      where: { id: fromUserId },
-      select: { name: true, email: true, image: true },
     });
+    
+    if (existingInvite) {
+      return { success: false, message: 'Invite already sent to this user' };
+    }
     
     // Generate pretty name from gameId
     const gameName = gameId.split('-').map(w => 
       w.charAt(0).toUpperCase() + w.slice(1)
     ).join(' ');
     
-    // Create invite
-    const inviteId = `ginv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = Date.now();
-    const expiresAt = now + (INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + (INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000));
     
-    const gameInvite: GameInvite = {
-      id: inviteId,
-      gameType,
-      gameId,
-      gameName,
-      gameUrl,
-      fromUserId,
-      fromUserName: senderData?.name || 'Unknown',
-      fromUserImage: senderData?.image || undefined,
-      toUserId,
-      status: 'pending',
-      createdAt: now,
-      expiresAt,
-    };
+    const gameInvite = await db.gameInvite.create({
+      data: {
+        gameType,
+        gameId,
+        gameName,
+        gameUrl,
+        fromUserId,
+        toUserId,
+        status: 'pending',
+        expiresAt,
+      }
+    });
     
-    // Store invite
-    await env.GAME_REGISTRY_KV.put(
-      CACHE_PREFIX.gameInvite(inviteId),
-      JSON.stringify(gameInvite)
-    );
-    
-    // Update sent list
-    sentInvites.push(inviteId);
-    await env.GAME_REGISTRY_KV.put(sentKey, JSON.stringify(sentInvites));
-    
-    // Update received list
-    const receivedKey = CACHE_PREFIX.receivedInvites(toUserId);
-    const receivedJson = await env.GAME_REGISTRY_KV.get(receivedKey);
-    const receivedInvites: string[] = receivedJson ? JSON.parse(receivedJson) : [];
-    receivedInvites.push(inviteId);
-    await env.GAME_REGISTRY_KV.put(receivedKey, JSON.stringify(receivedInvites));
-    
-    // After successfully creating invite:
     await publishEvent({
-        type: 'game_invite_received',
-        userId: toUserId,
-        fromUserId: fromUserId,
-        data: {
+      type: 'game_invite_received',
+      userId: toUserId,
+      fromUserId: fromUserId,
+      data: {
         gameId,
         gameName,
         gameUrl,
         gameType,
-        inviteId,
-        },
+        inviteId: gameInvite.id,
+      },
     });
+    
     return { success: true, message: 'Game invite sent!' };
   } catch (error) {
     console.error('Error sending game invite:', error);
@@ -209,37 +216,40 @@ export async function acceptGameInvite(
       return { success: false, message: 'Not authenticated' };
     }
     
-    const inviteJson = await env.GAME_REGISTRY_KV.get(CACHE_PREFIX.gameInvite(inviteId));
-    if (!inviteJson) {
+    const invite = await db.gameInvite.findUnique({
+      where: { id: inviteId }
+    });
+    
+    if (!invite) {
       return { success: false, message: 'Invite not found' };
     }
-    
-    const invite: GameInvite = JSON.parse(inviteJson);
     
     if (invite.toUserId !== userId) {
       return { success: false, message: 'Not authorized to accept this invite' };
     }
     
-    if (invite.expiresAt < Date.now()) {
+    if (invite.expiresAt < new Date()) {
+      await db.gameInvite.update({
+        where: { id: inviteId },
+        data: { status: 'expired' }
+      });
       return { success: false, message: 'Invite has expired' };
     }
     
-    // Update invite status
-    invite.status = 'accepted';
-    await env.GAME_REGISTRY_KV.put(
-      CACHE_PREFIX.gameInvite(inviteId),
-      JSON.stringify(invite)
-    );
+    await db.gameInvite.update({
+      where: { id: inviteId },
+      data: { status: 'accepted' }
+    });
 
     await publishEvent({
-        type: 'game_invite_accepted',
-        userId: invite.fromUserId, // Notify the sender
-        fromUserId: userId,
-        data: {
-          gameId: invite.gameId,
-          gameName: invite.gameName,
-          gameUrl: invite.gameUrl,
-        },
+      type: 'game_invite_accepted',
+      userId: invite.fromUserId,
+      fromUserId: userId,
+      data: {
+        gameId: invite.gameId,
+        gameName: invite.gameName,
+        gameUrl: invite.gameUrl,
+      },
     });
     
     return { 
@@ -265,33 +275,47 @@ export async function declineGameInvite(
       return { success: false, message: 'Not authenticated' };
     }
     
-    const inviteJson = await env.GAME_REGISTRY_KV.get(CACHE_PREFIX.gameInvite(inviteId));
-    if (!inviteJson) {
+    const invite = await db.gameInvite.findUnique({
+      where: { id: inviteId }
+    });
+    
+    if (!invite) {
       return { success: false, message: 'Invite not found' };
     }
-    
-    const invite: GameInvite = JSON.parse(inviteJson);
     
     if (invite.toUserId !== userId) {
       return { success: false, message: 'Not authorized' };
     }
     
-    invite.status = 'declined';
-    await env.GAME_REGISTRY_KV.put(
-      CACHE_PREFIX.gameInvite(inviteId),
-      JSON.stringify(invite)
-    );
-    
-    // Remove from received list
-    const receivedKey = CACHE_PREFIX.receivedInvites(userId);
-    const receivedJson = await env.GAME_REGISTRY_KV.get(receivedKey);
-    const receivedInvites: string[] = receivedJson ? JSON.parse(receivedJson) : [];
-    const updated = receivedInvites.filter(id => id !== inviteId);
-    await env.GAME_REGISTRY_KV.put(receivedKey, JSON.stringify(updated));
+    await db.gameInvite.update({
+      where: { id: inviteId },
+      data: { status: 'declined' }
+    });
     
     return { success: true, message: 'Invite declined' };
   } catch (error) {
     console.error('Error declining invite:', error);
     return { success: false, message: 'Failed to decline invite' };
+  }
+}
+
+/**
+ * Cleanup expired invites (run periodically)
+ */
+export async function cleanupExpiredInvites(): Promise<void> {
+  try {
+    await db.gameInvite.updateMany({
+      where: {
+        status: 'pending',
+        expiresAt: {
+          lt: new Date()
+        }
+      },
+      data: {
+        status: 'expired'
+      }
+    });
+  } catch (error) {
+    console.error('Error cleaning up expired invites:', error);
   }
 }

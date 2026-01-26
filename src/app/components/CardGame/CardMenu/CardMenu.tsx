@@ -189,7 +189,7 @@ export function CardMenu({
   
   return (
     <>
-      <div className="relative aspect-[2.5/3.5] bg-gradient-to-br from-slate-700 to-slate-800 rounded border-2 border-slate-600 overflow-visible">
+      <div className="relative aspect-[2.5/3.5] bg-linear-to-br from-slate-700 to-slate-800 rounded border-2 border-slate-600 overflow-visible">
         {/* Card Image */}
         {imageUrl ? (
           <img 
@@ -202,11 +202,11 @@ export function CardMenu({
             }}
           />
         ) : showFaceUp ? (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-900 to-amber-950 text-xs text-white p-1 rounded">
-            <p className="text-center break-words">{cardData?.name || 'Card'}</p>
+          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-amber-900 to-amber-950 text-xs text-white p-1 rounded">
+            <p className="text-center wrap-break-words">{cardData?.name || 'Card'}</p>
           </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-900 to-blue-950 border-4 border-blue-700 rounded">
+          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-blue-900 to-blue-950 border-4 border-blue-700 rounded">
             <div className="text-center">
               <div className="text-4xl mb-1">🎴</div>
               <div className="text-xs text-blue-300">MTG</div>

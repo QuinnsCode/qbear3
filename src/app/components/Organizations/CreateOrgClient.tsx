@@ -48,7 +48,7 @@ export function CreateOrgClient({ initialUser }: CreateOrgClientProps) {
   // If user is not logged in, show the login form with fantasy theme
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-linear-to-b from-slate-700 via-slate-800 to-slate-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
             <div className="text-6xl mb-4">🏰</div>
@@ -75,7 +75,7 @@ export function CreateOrgClient({ initialUser }: CreateOrgClientProps) {
 
   // User is logged in, show the lair creation form
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-linear-to-b from-slate-700 via-slate-800 to-slate-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       
       {/* Ambient magical lighting effects */}
       <div className="absolute top-20 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl"></div>
@@ -99,7 +99,7 @@ export function CreateOrgClient({ initialUser }: CreateOrgClientProps) {
         <div className="bg-black/70 backdrop-blur-md border-2 border-amber-700/60 rounded-xl shadow-2xl overflow-hidden">
           
           {/* Header with decorative elements */}
-          <div className="bg-gradient-to-r from-amber-900/50 to-orange-900/50 border-b-2 border-amber-700/60 p-8 relative">
+          <div className="bg-linear-to-r from-amber-900/50 to-orange-900/50 border-b-2 border-amber-700/60 p-8 relative">
             <div className="absolute top-4 left-4 text-4xl opacity-30">🏰</div>
             <div className="absolute top-4 right-4 text-4xl opacity-30">⚔️</div>
             
@@ -187,7 +187,7 @@ export function CreateOrgClient({ initialUser }: CreateOrgClientProps) {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full flex justify-center items-center py-4 px-6 border-2 border-amber-600 rounded-lg shadow-lg text-base font-bold text-amber-100 bg-gradient-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 focus:outline-none focus:ring-4 focus:ring-amber-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full flex justify-center items-center py-4 px-6 border-2 border-amber-600 rounded-lg shadow-lg text-base font-bold text-amber-100 bg-linear-to-r from-amber-700 to-orange-700 hover:from-amber-600 hover:to-orange-600 focus:outline-none focus:ring-4 focus:ring-amber-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
                 style={{ fontFamily: 'serif' }}
               >
                 {isSubmitting ? (
@@ -209,7 +209,7 @@ export function CreateOrgClient({ initialUser }: CreateOrgClientProps) {
             </form>
 
             {/* Info box */}
-            <div className="mt-8 p-6 bg-gradient-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-sm border border-blue-700/40 rounded-lg">
+            <div className="mt-8 p-6 bg-linear-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-sm border border-blue-700/40 rounded-lg">
               <h3 className="text-base font-bold text-blue-200 mb-3 flex items-center" style={{ fontFamily: 'serif' }}>
                 <span className="mr-2">📜</span>
                 What Powers Await?

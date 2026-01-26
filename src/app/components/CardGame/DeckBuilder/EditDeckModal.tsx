@@ -115,7 +115,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
       type: card.type || '',
       manaCost: card.manaCost || '',
       colors: card.colors || [],
-      zone: (card.isCommander ? 'commander' : 'main') as CardZone,
+      zone: (card.zone || (card.isCommander ? 'commander' : 'main')) as CardZone,
       cmc: parseManaValue(card.manaCost || ''),
       rarity: (card as any).rarity || 'common'
     }))
@@ -657,8 +657,8 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-amber-900 to-amber-950 flex items-center justify-center p-2">
-                <p className="text-white text-center break-words" style={{ fontSize: `${fontSize}px` }}>{card.name}</p>
+              <div className="w-full h-full bg-linear-to-br from-amber-900 to-amber-950 flex items-center justify-center p-2">
+                <p className="text-white text-center wrap-break-words" style={{ fontSize: `${fontSize}px` }}>{card.name}</p>
               </div>
             )}
           </div>
@@ -674,7 +674,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
             {card.quantity}
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-2">
+          <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/90 to-transparent p-2">
             <p className="text-white font-bold truncate" style={{ fontSize: `${fontSize}px` }}>{card.name}</p>
           </div>
 
@@ -752,8 +752,8 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-amber-900 to-amber-950 flex items-center justify-center p-2">
-              <p className="text-white text-center break-words" style={{ fontSize: `${fontSize}px` }}>{card.name}</p>
+            <div className="w-full h-full bg-linear-to-br from-amber-900 to-amber-950 flex items-center justify-center p-2">
+              <p className="text-white text-center wrap-break-words" style={{ fontSize: `${fontSize}px` }}>{card.name}</p>
             </div>
           )}
         </div>
@@ -763,7 +763,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
           style={{ height: `${stackedNameHeight}px` }}
         >
           <div 
-            className="flex-shrink-0 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shadow-lg"
+            className="shrink-0 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shadow-lg"
             style={{ 
               width: `${Math.max(18, badgeSize * 0.9)}px`, 
               height: `${Math.max(18, badgeSize * 0.9)}px`,
@@ -780,7 +780,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
           </div>
 
           <div 
-            className="flex-shrink-0 bg-purple-600/90 text-white rounded px-1.5 py-0.5 font-bold leading-none"
+            className="shrink-0 bg-purple-600/90 text-white rounded px-1.5 py-0.5 font-bold leading-none"
             style={{ 
               fontSize: `${Math.max(8, fontSize * 0.85)}px`
             }}
@@ -789,7 +789,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
           </div>
 
           {isHovered && (
-            <div className="flex-shrink-0 flex gap-1">
+            <div className="shrink-0 flex gap-1">
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -1145,7 +1145,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
                 isMobileView ? (
               <div className="flex-1 overflow-y-auto p-3">
                 {commanderCards.length > 0 && (
-                  <div className="bg-gradient-to-r from-yellow-600 to-amber-600 rounded-lg mb-3 overflow-hidden">
+                  <div className="bg-linear-to-r from-yellow-600 to-amber-600 rounded-lg mb-3 overflow-hidden">
                     <button
                       onClick={() => setCommanderCollapsed(!commanderCollapsed)}
                       className="w-full p-3 flex items-center justify-between text-white font-bold"
@@ -1159,7 +1159,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
                     {!commanderCollapsed && (
                       <div className="bg-slate-800/30 p-2 flex gap-2 overflow-x-auto">
                         {commanderCards.map((card, idx) => (
-                          <div key={card.id} className="flex-shrink-0" style={{ width: `${columnWidth}px` }}>
+                          <div key={card.id} className="shrink-0" style={{ width: `${columnWidth}px` }}>
                             {renderKanbanCard(card, 'commander', idx, commanderCards)}
                           </div>
                         ))}
@@ -1191,10 +1191,10 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
                 <div className="h-full flex gap-2 p-4 min-w-max">
                   {commanderCards.length > 0 && (
                     <div 
-                      className="flex-shrink-0 bg-slate-800/50 rounded-lg border-2 border-yellow-600/30"
+                      className="shrink-0 bg-slate-800/50 rounded-lg border-2 border-yellow-600/30"
                       style={{ width: `${columnWidth}px` }}
                     >
-                      <div className="p-3 bg-gradient-to-r from-yellow-600 to-amber-600 rounded-t-lg">
+                      <div className="p-3 bg-linear-to-r from-yellow-600 to-amber-600 rounded-t-lg">
                         <h3 className="text-white font-bold flex items-center gap-2" style={{ fontSize: `${zoomLevel * 0.14}px` }}>
                           👑 Commander
                           <span className="ml-auto bg-white/20 px-2 py-0.5 rounded" style={{ fontSize: `${zoomLevel * 0.12}px` }}>
@@ -1215,7 +1215,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
                       onDragStart={() => handleColumnDragStart(column.id)}
                       onDragEnd={handleColumnDragEnd}
                       onDragOver={(e) => handleColumnDragOver(e, column.id)}
-                      className={`flex-shrink-0 bg-slate-800/50 rounded-lg border-2 transition-all ${
+                      className={`shrink-0 bg-slate-800/50 rounded-lg border-2 transition-all ${
                         draggedColumnId === column.id ? 'opacity-50 border-blue-500' : 'border-slate-700'
                       } ${dragOverColumnId === column.id ? 'border-blue-400' : ''}`}
                       style={{ 
@@ -1225,19 +1225,19 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
                     >
                       <div className="p-3 bg-slate-700 rounded-t-lg flex items-center justify-between gap-2 cursor-move">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <GripVertical className="flex-shrink-0" style={{ width: `${zoomLevel * 0.16}px`, height: `${zoomLevel * 0.16}px` }} />
+                          <GripVertical className="shrink-0" style={{ width: `${zoomLevel * 0.16}px`, height: `${zoomLevel * 0.16}px` }} />
                           {!column.collapsed && (
                             <>
                               <h3 className="text-white font-bold truncate flex-1" style={{ fontSize: `${zoomLevel * 0.14}px` }}>
                                 {column.title}
                               </h3>
-                              <span className="bg-slate-600 px-2 py-0.5 rounded text-white flex-shrink-0" style={{ fontSize: `${zoomLevel * 0.12}px` }}>
+                              <span className="bg-slate-600 px-2 py-0.5 rounded text-white shrink-0" style={{ fontSize: `${zoomLevel * 0.12}px` }}>
                                 {column.cards.reduce((sum, c) => sum + c.quantity, 0)}
                               </span>
                             </>
                           )}
                         </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
@@ -1282,10 +1282,10 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
 
                   {sideboardCards.length > 0 && (
                     <div 
-                      className="flex-shrink-0 bg-slate-800/50 rounded-lg border-2 border-purple-600/30"
+                      className="shrink-0 bg-slate-800/50 rounded-lg border-2 border-purple-600/30"
                       style={{ width: `${columnWidth}px` }}
                     >
-                      <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-t-lg">
+                      <div className="p-3 bg-linear-to-r from-purple-600 to-pink-600 rounded-t-lg">
                         <h3 className="text-white font-bold flex items-center gap-2" style={{ fontSize: `${zoomLevel * 0.14}px` }}>
                           📦 Sideboard
                           <span className="ml-auto bg-white/20 px-2 py-0.5 rounded" style={{ fontSize: `${zoomLevel * 0.12}px` }}>
@@ -1301,7 +1301,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
 
                   {contemplatingCards.length > 0 && (
                     <div 
-                      className="flex-shrink-0 bg-slate-800/50 rounded-lg border-2 border-cyan-600/30 relative overflow-hidden"
+                      className="shrink-0 bg-slate-800/50 rounded-lg border-2 border-cyan-600/30 relative overflow-hidden"
                       style={{ width: `${columnWidth}px` }}
                     >
                       {/* Cloudy background effect */}
@@ -1310,7 +1310,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
                         <div className="absolute bottom-0 right-0 w-40 h-40 bg-cyan-300 rounded-full blur-3xl" />
                       </div>
                       
-                      <div className="p-3 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-t-lg relative z-10">
+                      <div className="p-3 bg-linear-to-r from-cyan-600 to-blue-600 rounded-t-lg relative z-10">
                         <h3 className="text-white font-bold flex items-center gap-2" style={{ fontSize: `${zoomLevel * 0.14}px` }}>
                           ☁️ Contemplating
                           <span className="ml-auto bg-white/20 px-2 py-0.5 rounded" style={{ fontSize: `${zoomLevel * 0.12}px` }}>
@@ -1437,7 +1437,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
-                  <div className="w-full aspect-[2.5/3.5] bg-gradient-to-br from-amber-900 to-amber-950 flex items-center justify-center p-8">
+                  <div className="w-full aspect-[2.5/3.5] bg-linear-to-br from-amber-900 to-amber-950 flex items-center justify-center p-8">
                     <p className="text-white text-2xl text-center">{card.name}</p>
                   </div>
                 )

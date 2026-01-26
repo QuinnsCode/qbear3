@@ -506,22 +506,12 @@ export async function updateDeckFromEditor(
   userId: string,
   deckId: string,
   deckName: string,
-  cards: Array<{
-    name: string,
-    quantity: number,
-    id?: string,
-    scryfallId?: string,
-    imageUrl?: string,
-    type?: string,
-    manaCost?: string,
-    colors?: string[]
-  }>
+  cards: DeckCard[]
 ) {
-  const deckCards: DeckCard[] = cards.map(card => ({
-    id: card.id || card.scryfallId || card.name,
-    scryfallId: card.scryfallId || '',
-    name: card.name,
-    quantity: card.quantity,
+  const deckCards = cards.map(card => ({
+    ...card,
+    scryfallId: card.scryfallId || card.id || '',
+    id: card.id || card.scryfallId || '',
     imageUrl: card.imageUrl || '',
     type: card.type || '',
     manaCost: card.manaCost || '',

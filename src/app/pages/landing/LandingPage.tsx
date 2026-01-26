@@ -121,7 +121,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
         </header>
 
         {/* Hero */}
-        <section className="min-h-[calc(100vh-80px)] flex items-center justify-center text-center p-4 sm:p-8 bg-gradient-to-b from-stone-900 via-stone-800 to-stone-900">
+        <section className="min-h-[calc(100vh-80px)] flex items-center justify-center text-center p-4 sm:p-8 bg-linear-to-b from-stone-900 via-stone-800 to-stone-900">
           <FantasyCard className="p-6 sm:p-12 max-w-4xl w-full bg-stone-900/90 border-2 sm:border-4 border-amber-800 shadow-2xl">
             <FantasyTitle size="xl" className="mb-3 sm:mb-4 text-white drop-shadow-lg text-2xl sm:text-4xl lg:text-5xl">
               Play MTG Commander Online
@@ -135,12 +135,12 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
                 <>
                   <FantasyButton variant="magic" size="lg" className="text-sm sm:text-base">
                     <a href={orgUrl} className="block w-full h-full px-4 sm:px-8">
-                      🎴 My Games
+                      My Games
                     </a>
                   </FantasyButton>
                   <FantasyButton variant="secondary" size="lg" className="text-sm sm:text-base">
                     <a href={sandboxUrl} className="block w-full h-full px-4 sm:px-8">
-                      🎮 Try Demo
+                      Try Demo
                     </a>
                   </FantasyButton>
                 </>
@@ -148,12 +148,12 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
                 <>
                   <FantasyButton variant="magic" size="lg" className="text-sm sm:text-base">
                     <a href="/user/signup" className="block w-full h-full px-4 sm:px-8">
-                      🎴 Sign Up
+                      Sign Up
                     </a>
                   </FantasyButton>
                   <FantasyButton variant="secondary" size="lg" className="text-sm sm:text-base">
                     <a href={sandboxUrl} className="block w-full h-full px-4 sm:px-8">
-                      🎮 Try Demo
+                      Try Demo
                     </a>
                   </FantasyButton>
                 </>
@@ -166,7 +166,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
                   </FantasyButton>
                   <FantasyButton variant="secondary" size="lg" className="text-sm sm:text-base">
                     <a href={sandboxUrl} className="block w-full h-full px-4 sm:px-8">
-                      🎮 Try Demo
+                      Try Demo
                     </a>
                   </FantasyButton>
                 </>
@@ -225,7 +225,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
                  <div className="mt-6 sm:mt-8">
                     <FantasyButton variant="magic" className="w-full sm:w-auto">
                        <a href={sandboxUrl} className="block w-full h-full px-6">
-                         🎴 Try Live Demo Now
+                        Try Live Demo Now
                        </a>
                     </FantasyButton>
                  </div>
@@ -303,7 +303,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
               <div className="flex gap-3 sm:gap-4 justify-center flex-wrap">
                 <FantasyButton variant="magic" size="lg" className="text-sm sm:text-base">
                   <a href="/user/register" className="block w-full h-full px-4 sm:px-8">
-                    🎴 Start Playing Free
+                    Start Playing Free
                   </a>
                 </FantasyButton>
                 <FantasyButton variant="secondary" size="lg" className="text-sm sm:text-base">

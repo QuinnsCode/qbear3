@@ -82,6 +82,18 @@ export function FantasyLogin({
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      setResult("");
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: redirectPath,
+      });
+    } catch (err) {
+      setResult(`Google sign-in failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(() => {
@@ -249,6 +261,31 @@ export function FantasyLogin({
                   {isPending ? "..." : "🗝️ Enter Lair"}
                 </FantasyButton>
               </form>
+
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-amber-700/30"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-linear-to-b from-slate-900/90 to-slate-800/90 text-amber-400/70">
+                    or continue with
+                  </span>
+                </div>
+              </div>
+
+              {/* Google SSO Button */}
+              <FantasyButton
+                onClick={handleGoogleSignIn}
+                variant="secondary"
+                size="lg"
+                disabled={isPending}
+                className="w-full"
+                type="button"
+              >
+                🏰 Sign in with Google
+              </FantasyButton>
+
 
               {/* Link to signup */}
               <div className="mt-6 text-center">

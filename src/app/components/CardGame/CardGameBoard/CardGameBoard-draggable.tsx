@@ -399,7 +399,7 @@ export default function CardGameBoard({
         
         {/* ===== TOP ROW: Opponent Bar + Ad Space ===== */}
         <div 
-          className="bg-slate-800 rounded-t-lg overflow-visible flex-shrink-0"
+          className="bg-slate-800 rounded-t-lg overflow-visible shrink-0"
           style={{ height: `${layout.topBarHeight}px` }}
         >
           <TopBar
@@ -465,7 +465,7 @@ export default function CardGameBoard({
           {/* Card Search Panel */}
           {!isRightPanelCollapsed && (
             <div 
-              className="bg-slate-800 rounded-br-lg overflow-hidden flex-shrink-0"
+              className="bg-slate-800 rounded-br-lg overflow-hidden shrink-0"
               style={{ width: `${layout.rightPanelWidth}px` }}
             >
               <CardSearch 
@@ -501,7 +501,7 @@ export default function CardGameBoard({
         {/* ===== BOTTOM ROW: Hand + Zones ===== */}
         {!spectatorMode && (
           <div 
-            className="bg-slate-800 rounded-b-lg overflow-visible flex-shrink-0"
+            className="bg-slate-800 rounded-b-lg overflow-visible shrink-0"
             style={{ height: `${layout.bottomBarHeight}px` }}
           >
             <BottomZonesBar

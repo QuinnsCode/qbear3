@@ -91,6 +91,11 @@ export const createAuth = () => {
         // Optional: add scopes if you want guild/server access
         // scopes: ["identify", "email", "guilds", "guilds.join"],
       },
+      google: {
+        clientId: env.GOOGLE_CLIENT_ID,
+        clientSecret: env.GOOGLE_CLIENT_SECRET,
+        prompt: "select_account", // Forces Google account picker every time
+      }
     },
     plugins: [
       admin({
@@ -111,10 +116,9 @@ export const createAuth = () => {
       updateAge: 60 * 60 * 24,
     },
     advanced: {
-      crossSubDomainCookies: {
-        enabled: true,
-        domain: ".qntbr.com"
-      }
+      crossSubDomainCookies: env.BETTER_AUTH_URL.includes('localhost') 
+      ? { enabled: false }
+      : { enabled: true, domain: ".qntbr.com" }
     },
     trustedOrigins: [
       "https://qntbr.com",

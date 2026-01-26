@@ -88,7 +88,7 @@ export default function OpponentCarousel({
           return (
             <div 
               key={opponent.id} 
-              className={`flex-shrink-0 relative transition-all duration-500 ${
+              className={`shrink-0 relative transition-all duration-500 ${
                 isPending ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
               }`}
               style={{ width: isCollapsed ? 'auto' : '280px' }}

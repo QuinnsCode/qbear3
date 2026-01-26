@@ -19,6 +19,7 @@ import {
   extractOrgFromSubdomain,
   shouldSkipMiddleware 
 } from "@/lib/middlewareFunctions";
+import { draftWebSocketMiddleware } from '@/lib/userIdentity'
 import { env } from "cloudflare:workers";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import GamePage from "@/app/pages/game/GamePage";
@@ -112,6 +113,7 @@ export default defineApp([
   },
   
   // CONDITIONAL MIDDLEWARE - Only runs for non-auth routes
+  // CONDITIONAL MIDDLEWARE - Only runs for non-auth routes
   async ({ ctx, request, response }) => {
     try {
       // Always initialize services
@@ -140,6 +142,27 @@ export default defineApp([
       // Setup context for other routes
       await setupSessionContext(ctx, request);
       await setupOrganizationContext(ctx, request);
+      
+      // ✅ NEW: Check if user needs org
+      const url = new URL(request.url);
+      if (ctx.user && 
+          !url.pathname.startsWith('/api/') &&
+          !url.pathname.startsWith('/user/create-lair') &&
+          url.pathname !== '/') {
+        
+        const memberships = await db.member.findMany({
+          where: { userId: ctx.user.id },
+          take: 1
+        });
+        
+        if (memberships.length === 0) {
+          console.log('⚠️ User has no organization, redirecting to create lair');
+          return new Response(null, {
+            status: 302,
+            headers: { Location: '/user/create-lair' }
+          });
+        }
+      }
       
       // Handle organization errors for frontend routes
       if (ctx.orgError && 
@@ -221,26 +244,17 @@ export default defineApp([
   prefix("/__draftsync", [
     async ({ request, ctx }) => {
       if (request.headers.get('Upgrade') === 'websocket') {
-        const { rateLimitMiddleware } = await import('@/lib/middlewareFunctions');
-        const rateLimitResult = await rateLimitMiddleware(request, 'draftsync');
-        if (rateLimitResult) return rateLimitResult;
+        // Rate limiting
+        const { rateLimitMiddleware } = await import('@/lib/middlewareFunctions')
+        const rateLimitResult = await rateLimitMiddleware(request, 'draftsync')
+        if (rateLimitResult) return rateLimitResult
         
-        // ✅ Add auth headers from ctx.user
-        const newHeaders = new Headers(request.headers);
-        if (ctx.user?.id) {
-          newHeaders.set('X-Auth-User-Id', ctx.user.id);
-          newHeaders.set('X-Auth-User-Name', ctx.user.name || ctx.user.email || 'Player');
-        }
-        
-        // ✅ Create new request with auth headers
-        request = new Request(request.url, {
-          method: request.method,
-          headers: newHeaders,
-        });
+        // Add auth headers for guests/users
+        request = await draftWebSocketMiddleware(request, ctx)
       }
     },
     ...draftRoutes
-  ]),
+  ]),  
   // realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
 
   // API ROUTES - All API endpoints

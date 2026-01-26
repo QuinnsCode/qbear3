@@ -161,7 +161,7 @@ export default function DeckBuilder({
   const canCreateMore = !isSandbox && validDecksCount < maxDecks
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
+    <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Sandbox Banner */}
         {isSandbox && (
@@ -194,7 +194,7 @@ export default function DeckBuilder({
         {/* Header with Search and Create */}
         <div className="mb-8 flex flex-col md:flex-row gap-4">
           {/* Search */}
-          <div className="flex-[2]">
+          <div className="flex-2">
             <div className="relative">
               <input
                 type="text"
@@ -223,7 +223,7 @@ export default function DeckBuilder({
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 disabled={!canCreateMore}
-                className="w-full h-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-slate-700 disabled:to-slate-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-3"
+                className="w-full h-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-slate-700 disabled:to-slate-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-3"
               >
                 <span className="text-2xl">+</span>
                 <span>Create Deck</span>
@@ -280,7 +280,7 @@ export default function DeckBuilder({
             {!searchQuery && !isSandbox && canCreateMore && (
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl"
+                className="bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl"
               >
                 ✨ Create Your First Deck
               </button>

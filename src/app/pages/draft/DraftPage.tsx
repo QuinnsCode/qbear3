@@ -1,8 +1,8 @@
 // app/pages/draft/DraftPage.tsx
-import { Suspense } from 'react'
 import { type RequestInfo } from "rwsdk/worker"
 import { env } from "cloudflare:workers"
 import DraftContent from '@/app/components/Draft/DraftContent'
+import { getOrCreateDraftGuestId } from '@/lib/userIdentity'
 
 export default async function DraftPage({ params, ctx, request }: RequestInfo) {
   const draftId = params.draftId
@@ -18,24 +18,12 @@ export default async function DraftPage({ params, ctx, request }: RequestInfo) {
     userName = ctx.user.name || ctx.user.email || 'Player'
     isLoggedIn = true
   } else {
-    // Generate guest ID
-    const cookieName = `draft_user_${draftId}`
-    const existingId = request.headers.get('cookie')
-      ?.split(';')
-      .find(c => c.trim().startsWith(`${cookieName}=`))
-      ?.split('=')[1]
-    
-    if (existingId) {
-      userId = existingId
-      userName = 'Guest'
-      console.log('🍪 Using existing cookie ID:', userId)
-    } else {
-      userId = `guest-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-      userName = 'Guest'
-      console.log('🆕 Generated new guest ID:', userId)
-    }
-    
+    // Get or create guest ID from cookie
+    const cookies = request.headers.get('cookie')
+    userId = getOrCreateDraftGuestId(draftId, cookies)
+    userName = 'Guest'
     isLoggedIn = false
+    console.log('🍪 Guest user ID:', userId)
   }
 
   if (!env?.DRAFT_DO) {

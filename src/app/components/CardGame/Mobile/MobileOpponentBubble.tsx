@@ -167,7 +167,7 @@ export default function MobileOpponentBubble({ player, onClick, isActive = false
       >
         <div className="flex items-center gap-2">
           <div 
-            className="w-3 h-3 rounded-full border border-white flex-shrink-0"
+            className="w-3 h-3 rounded-full border border-white shrink-0"
             style={{ backgroundColor: player.cursorColor }}
           />
           
@@ -175,7 +175,7 @@ export default function MobileOpponentBubble({ player, onClick, isActive = false
             {player.name}
           </div>
           
-          <div className="text-green-400 text-xs font-bold flex-shrink-0">
+          <div className="text-green-400 text-xs font-bold shrink-0">
             💚{player.life}
           </div>
         </div>

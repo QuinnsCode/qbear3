@@ -4,13 +4,13 @@ import { getOrgGames } from "@/app/serverActions/gameRegistry";
 import { getFirstOrgSlugOfUser } from "@/app/serverActions/admin/getFirstOrgSlugOfUser";
 import { getOrgCardGames } from "@/app/serverActions/cardGame/cardGameRegistry";
 import { extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
-import { SanctumDeleteGameButton } from "@/app/components/Sanctum/SanctumDeleteGameButton";
-import { SanctumClientActions } from "@/app/pages/sanctum/SanctumClientActions";
-import { DiscordConnect } from "@/app/components/Sanctum/DiscordConnect";
 import { DeckSection } from "@/app/pages/sanctum/DeckSection";
 import { getUserDecks } from "@/app/serverActions/deckBuilder/deckActions";
 import { getEffectiveTier, getTierConfig } from "@/app/lib/subscriptions/tiers";
 import { db } from "@/db";
+import { getFriends, getFriendRequests } from "@/app/serverActions/social/friends";
+import { getGameInvites } from "@/app/serverActions/social/gameInvites";
+import { SocialSection } from "@/app/pages/sanctum/SocialSection";
 
 export default async function SanctumPage({ ctx, request }: RequestInfo) {
   const orgSlug = extractOrgFromSubdomain(request);
@@ -107,19 +107,19 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   const activeCardGames = orgSlug ? await getOrgCardGames(orgSlug) : [];
   
   let userDecks: any[] = [];
+  let friends: any[] = [];
+  let friendRequests: { incoming: any[]; outgoing: any[] } = { incoming: [], outgoing: [] };
+  let gameInvites: { received: any[]; sent: any[] } = { received: [], sent: [] };
+  
   if (ctx.user?.id) {
     const { decks } = await getUserDecks(ctx.user.id);
     userDecks = decks;
+    
+    // Load social data
+    friends = await getFriends(ctx.user.id);
+    friendRequests = await getFriendRequests(ctx.user.id);
+    gameInvites = await getGameInvites(ctx.user.id);
   }
-
-  const mainActions = [
-    { id: 'friends', label: 'Friends', action: '#', icon: '👥' },
-    { id: 'add-friend', label: 'Add a Friend', action: '#', icon: '➕' },
-    { id: 'game-invites', label: 'Game Invites', action: '#', icon: '🎮' },
-    { id: 'invite-pvp', label: 'Invite Friend to PVP', action: '#', icon: '⚔️' },
-    { id: 'watch-games', label: 'Watch Games', action: '#', icon: '👁️' },
-    { id: 'play-game', label: 'Play Game', action: '/game', icon: '🎮' }
-  ];
 
   return (
     <div className="min-h-screen bg-slate-700">
@@ -129,6 +129,20 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
         ) : (
           <>
             <Header ctx={ctx} currentTier={currentTier} />
+            
+            {/* Social Section - Full Width at Top */}
+            {ctx.user?.id && (
+              <div className="mt-6">
+                <SocialSection
+                  userId={ctx.user.id}
+                  friends={friends}
+                  friendRequests={friendRequests}
+                  gameInvites={gameInvites}
+                />
+              </div>
+            )}
+            
+            {/* Two Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               <DeckSection
                 decks={userDecks}
@@ -145,6 +159,7 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
                 atLimit={activeCardGames.length >= tierLimits.maxGames}
               />
             </div>
+            
             <StatusCard ctx={ctx} currentTier={currentTier} hasDiscord={hasDiscord} />
           </>
         )}
@@ -181,27 +196,33 @@ function Header({ ctx, currentTier }: any) {
   const tier = tierConfig[currentTier] || tierConfig.free;
   
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 shadow-xl">
-      <h1 className="text-4xl font-bold text-white mb-2">Sanctum</h1>
-      <div className="text-blue-100 mb-4 text-lg">
-        {ctx.organization?.name || 'Your Dashboard'} • {ctx.user?.name || 'Player'}
-      </div>
-      
-      <div 
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 bg-black/20"
-        style={{ borderColor: tier.color }}
-      >
-        <span className="text-2xl">{tier.icon}</span>
-        <span className="font-semibold text-white">{tier.name} Tier</span>
-        {currentTier === 'free' && (
-          <a 
-            href="/pricing" 
-            className="ml-2 px-3 py-1 rounded text-white text-sm font-bold transition-all hover:scale-105"
-            style={{ background: tier.color }}
-          >
-            Upgrade
-          </a>
-        )}
+    <div className="bg-linear-to-r from-blue-600 to-purple-600 rounded-lg p-4 shadow-xl">
+      <div className="flex items-center justify-between gap-4">
+        {/* Left: Title and User Info */}
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-bold text-white">Sanctum</h1>
+          <div className="text-blue-100 text-sm">
+            {ctx.organization?.name || 'Your Dashboard'} • {ctx.user?.name || 'Player'}
+          </div>
+        </div>
+        
+        {/* Right: Tier Badge */}
+        <div 
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 bg-black/20 shrink-0"
+          style={{ borderColor: tier.color }}
+        >
+          <span className="text-xl">{tier.icon}</span>
+          <span className="font-semibold text-white text-sm">{tier.name} Tier</span>
+          {currentTier === 'free' && (
+            <a 
+              href="/pricing" 
+              className="ml-2 px-3 py-1 rounded text-white text-sm font-bold transition-all hover:scale-105"
+              style={{ background: tier.color }}
+            >
+              Upgrade
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -295,7 +316,7 @@ function GameSection({ games, type, orgSlug, currentTier, tierLimits, atLimit }:
           <div className="text-xl font-semibold text-gray-200 mb-2">No Games Yet</div>
           <a 
             href={route} 
-            className="inline-block mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg"
+            className="inline-block mt-4 px-6 py-3 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg"
           >
             Create Your First Game
           </a>

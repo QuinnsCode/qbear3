@@ -1257,10 +1257,10 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-zinc-900 via-stone-900 to-amber-950 flex flex-col relative overflow-hidden">
+    <div className="h-screen w-full bg-linear-to-br from-zinc-900 via-stone-900 to-amber-950 flex flex-col relative overflow-hidden">
       {/* ✅ FIXED: Connection Status Indicator - Higher z-index, better positioning */}
       {!isConnected && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-red-900 to-orange-900 text-amber-100 px-4 py-2 rounded border-2 border-red-700/50 z-40 shadow-[0_4px_20px_rgba(153,27,27,0.6)]">
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-linear-to-r from-red-900 to-orange-900 text-amber-100 px-4 py-2 rounded border-2 border-red-700/50 z-40 shadow-[0_4px_20px_rgba(153,27,27,0.6)]">
           <div className="flex items-center space-x-2">
             <div className="animate-pulse rounded-full h-4 w-4 bg-amber-300"></div>
             <span className="text-sm font-bold">Reconnecting to game server...</span>
@@ -1270,7 +1270,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
       {/* ✅ FIXED: Loading Indicator - Better positioning to avoid UI conflicts */}
       {isUpdating && (
-        <div className="absolute top-4 right-4 bg-gradient-to-r from-amber-800 to-orange-900 text-amber-100 px-4 py-2 rounded border-2 border-amber-600/50 z-40 shadow-[0_4px_20px_rgba(180,83,9,0.6)]">
+        <div className="absolute top-4 right-4 bg-linear-to-r from-amber-800 to-orange-900 text-amber-100 px-4 py-2 rounded border-2 border-amber-600/50 z-40 shadow-[0_4px_20px_rgba(180,83,9,0.6)]">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-200"></div>
             <span className="text-sm font-bold">Updating...</span>
@@ -1279,7 +1279,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       )}
       {/* 🎯 Card Play Mode Indicator */}
       {cardPlayMode?.active && (
-        <div className="absolute top-16 left-4 right-4 bg-gradient-to-r from-lime-800/95 to-green-900/95 backdrop-blur-md text-amber-100 px-4 py-3 rounded border-2 border-lime-600/60 z-45 shadow-[0_4px_20px_rgba(77,124,15,0.6)]">
+        <div className="absolute top-16 left-4 right-4 bg-linear-to-r from-lime-800/95 to-green-900/95 backdrop-blur-md text-amber-100 px-4 py-3 rounded border-2 border-lime-600/60 z-45 shadow-[0_4px_20px_rgba(77,124,15,0.6)]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Play size={18} />
@@ -1310,7 +1310,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       )}
       {/* 🚨 EMERGENCY FIX: AI Turn Indicator - SMALL, NON-BLOCKING, WITH EMERGENCY ACCESS */}
       {isAITurn && (
-        <div className="absolute top-16 right-4 bg-gradient-to-r from-yellow-700 to-orange-700 text-amber-100 px-3 py-2 rounded border-2 border-yellow-600/60 z-30 shadow-[0_4px_15px_rgba(161,98,7,0.6)] max-w-xs">
+        <div className="absolute top-16 right-4 bg-linear-to-r from-yellow-700 to-orange-700 text-amber-100 px-3 py-2 rounded border-2 border-yellow-600/60 z-30 shadow-[0_4px_15px_rgba(161,98,7,0.6)] max-w-xs">
           <div className="flex items-center space-x-2">
             <div className="animate-pulse rounded-full h-2 w-2 bg-amber-200"></div>
             <span className="text-xs font-bold">
@@ -1329,10 +1329,10 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
 
       {/* Top Bar - Responsive for both portrait and landscape */}  
-      <div className="bg-gradient-to-b flex-none from-amber-900/85 via-orange-900/80 to-red-900/75 backdrop-blur-sm text-amber-100 p-4 flex items-center justify-between z-20 border-b-2 border-amber-600/60 shadow-[0_4px_20px_rgba(120,53,15,0.4)]">
+      <div className="bg-linear-to-b flex-none from-amber-900/85 via-orange-900/80 to-red-900/75 backdrop-blur-sm text-amber-100 p-4 flex items-center justify-between z-20 border-b-2 border-amber-600/60 shadow-[0_4px_20px_rgba(120,53,15,0.4)]">
         <button
           onClick={() => setShowStats(!showStats)}
-          className="p-2 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-800 to-orange-900 hover:from-amber-700 hover:to-orange-800 transition-all shadow-md flex-shrink-0"
+          className="p-2 rounded border-2 border-amber-600/50 bg-linear-to-br from-amber-800 to-orange-900 hover:from-amber-700 hover:to-orange-800 transition-all shadow-md shrink-0"
         >
           <Menu size={20} />
         </button>
@@ -1367,7 +1367,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className="p-2 rounded border-2 border-amber-600/50 bg-gradient-to-br from-amber-800 to-orange-900 hover:from-amber-700 hover:to-orange-800 transition-all shadow-md flex-shrink-0"
+          className="p-2 rounded border-2 border-amber-600/50 bg-linear-to-br from-amber-800 to-orange-900 hover:from-amber-700 hover:to-orange-800 transition-all shadow-md shrink-0"
         >
           <Settings size={20} />
         </button>
@@ -1411,7 +1411,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       )}
 
       {/* ✅ FIXED: Bottom Action Bar - Z-index 20, CLEAR SPACE ABOVE */}
-      <div className="bg-gradient-to-b flex-none from-zinc-800/95 via-amber-900/92 to-orange-900/88 backdrop-blur-sm border-t-2 border-amber-600/60 p-4 z-20 shadow-[0_-4px_20px_rgba(120,53,15,0.3)]">
+      <div className="bg-linear-to-b flex-none from-zinc-800/95 via-amber-900/92 to-orange-900/88 backdrop-blur-sm border-t-2 border-amber-600/60 p-4 z-20 shadow-[0_-4px_20px_rgba(120,53,15,0.3)]">
 
         {gameState?.status === 'setup' ? (
           // 🎨 Setup phase buttons with themed icons
@@ -1620,7 +1620,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
         {/* 🎨 ENHANCED: Action Instructions with themed descriptions
         <div className="mt-3 text-center">
-          <div className="text-xs text-amber-200 bg-gradient-to-r from-amber-950/80 to-orange-950/80 border border-amber-700/40 rounded-full px-3 py-2 inline-block shadow-inner font-semibold">
+          <div className="text-xs text-amber-200 bg-linear-to-r from-amber-950/80 to-orange-950/80 border border-amber-700/40 rounded-full px-3 py-2 inline-block shadow-inner font-semibold">
             {gameState?.status === 'setup' ? (
               // Setup instructions with emojis
               <>

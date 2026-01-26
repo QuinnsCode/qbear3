@@ -42,31 +42,30 @@ export function GameInvitesModal({ isOpen, onClose, userId }: GameInvitesModalPr
   const handleAccept = async (inviteId: string) => {
     try {
       const result = await acceptGameInvite(userId, inviteId);
-      if (result.success && result.redirectUrl) {
-        // ✅ Web standard navigation
-        window.location.href = result.redirectUrl;
+      if (result.success && result.gameUrl) {
+        window.location.href = result.gameUrl;
       } else {
         alert(result.message);
       }
     } catch (error) {
       console.error('Error accepting invite:', error);
       alert('Failed to accept invite');
-    }
+    } 
   };
 
-  const handleDecline = async (inviteId: string) => {
-    try {
-      const result = await declineGameInvite(userId, inviteId);
-      if (result.success) {
-        await loadInvites(); // Reload
-      } else {
-        alert(result.message);
+    const handleDecline = async (inviteId: string) => {
+      try {
+        const result = await declineGameInvite(userId, inviteId);
+        if (result.success) {
+          await loadInvites(); // Reload
+        } else {
+          alert(result.message);
+        }
+      } catch (error) {
+        console.error('Error declining invite:', error);
+        alert('Failed to decline invite');
       }
-    } catch (error) {
-      console.error('Error declining invite:', error);
-      alert('Failed to decline invite');
-    }
-  };
+    };
 
   if (!isOpen) return null;
 

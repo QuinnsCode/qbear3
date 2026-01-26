@@ -53,6 +53,15 @@ model User {
   squeezeSubscription SqueezeSubscription?
   stripeSubscription StripeSubscription?
 
+  // Friend relations
+  friendships       Friendship[]    @relation("UserFriendships")
+  friendOf          Friendship[]    @relation("FriendOf")
+  sentRequests      FriendRequest[] @relation("SentRequests")
+  receivedRequests  FriendRequest[] @relation("ReceivedRequests")
+  
+  // Game invite relations
+  sentGameInvites     GameInvite[] @relation("SentGameInvites")
+  receivedGameInvites GameInvite[] @relation("ReceivedGameInvites")
 
   @@map("user")
 }
@@ -404,4 +413,54 @@ model StripeSubscription {
   @@index([stripeSubscriptionId])
   @@index([stripeCustomerId])
   @@map("stripe_subscriptions")
+}
+
+model Friendship {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation("UserFriendships", fields: [userId], references: [id], onDelete: Cascade)
+  friendId  String   @map("friend_id")
+  friend    User     @relation("FriendOf", fields: [friendId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+  @@map("friendships")
+}
+
+model FriendRequest {
+  id         String   @id @default(uuid())
+  senderId   String   @map("sender_id")
+  sender     User     @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String   @map("receiver_id")
+  receiver   User     @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+  status     String   @default("pending") // pending, accepted, rejected
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+  @@index([senderId, status])
+  @@map("friend_requests")
+}
+
+model GameInvite {
+  id           String   @id @default(uuid())
+  gameType     String   @map("game_type") // 'main' or 'card'
+  gameId       String   @map("game_id")
+  gameName     String   @map("game_name")
+  gameUrl      String   @map("game_url")
+  fromUserId   String   @map("from_user_id")
+  fromUser     User     @relation("SentGameInvites", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId     String   @map("to_user_id")
+  toUser       User     @relation("ReceivedGameInvites", fields: [toUserId], references: [id], onDelete: Cascade)
+  status       String   @default("pending") // pending, accepted, declined, expired
+  createdAt    DateTime @default(now()) @map("created_at")
+  expiresAt    DateTime @map("expires_at")
+  
+  @@index([toUserId, status])
+  @@index([fromUserId])
+  @@index([expiresAt])
+  @@map("game_invites")
 }

@@ -1,8 +1,12 @@
 // app/pages/draft/NewDraftPage.tsx
 import { type RequestInfo } from "rwsdk/worker"
 import NewDraftForm from '@/app/components/Draft/NewDraftForm'
+import { getUserIdentity } from '@/lib/userIdentity'
+
 
 export default async function NewDraftPage({ ctx }: RequestInfo) {
+  const { userId, userName, isGuest } = getUserIdentity(ctx)
+
   return (
     <div className="min-h-screen bg-slate-900 py-12 px-4">
       <div className="max-w-4xl mx-auto">
@@ -14,8 +18,9 @@ export default async function NewDraftPage({ ctx }: RequestInfo) {
         </div>
         
         <NewDraftForm 
-          userId={ctx.user?.id}
-          userName={ctx.user?.name || ctx.user?.email}
+          userId={userId}
+          userName={userName}
+          isGuest={isGuest}
         />
         
         {!ctx.user && (
