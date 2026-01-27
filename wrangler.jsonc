@@ -44,6 +44,10 @@
       {
         "name": "DRAFT_DO",
         "class_name": "DraftDO"
+      },
+      {
+        "name": "LOBBY_DO",
+        "class_name": "LobbyDO"
       }
     ]
   },
@@ -75,6 +79,10 @@
     {
       "tag": "v6",
       "new_sqlite_classes": ["DraftDO"]
+    },
+    {
+      "tag": "v7",
+      "new_sqlite_classes": ["LobbyDO"]
     }
   ],
   "d1_databases": [

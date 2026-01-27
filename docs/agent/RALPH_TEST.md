@@ -61,15 +61,13 @@ model SimpleLobby {
 }
 ```
 
-3. Verify schema: npx prisma format
-4. Create migration: pnpm migrate:new
-5. Apply migration: pnpm migrate:dev
-6. Generate client: pnpm generate
-7. Verify TypeScript: pnpm types
+3. Create migration: pnpm migrate:new
+4. Apply migration: pnpm migrate:dev
+5. Generate client: pnpm generate
+6. Verify TypeScript: pnpm types
 
 VERIFICATION CHECKLIST:
 - [ ] Schema has SimpleLobby model
-- [ ] npx prisma format runs without errors
 - [ ] Migration created in prisma/migrations/
 - [ ] pnpm migrate:dev succeeds
 - [ ] pnpm generate succeeds
@@ -93,11 +91,10 @@ Starting task...
 
 Step 1: Opening prisma/schema.prisma
 Step 2: Adding SimpleLobby model... [shows code]
-Step 3: Running npx prisma format... ✓
-Step 4: Running pnpm migrate:new... ✓
-Step 5: Running pnpm migrate:dev... ✓
-Step 6: Running pnpm generate... ✓
-Step 7: Running pnpm types... ✓
+Step 3: Running pnpm migrate:new... ✓
+Step 4: Running pnpm migrate:dev... ✓
+Step 5: Running pnpm generate... ✓
+Step 6: Running pnpm types... ✓
 
 All verification steps passed.
 

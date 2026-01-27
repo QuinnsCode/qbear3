@@ -10,6 +10,7 @@ import { gameRoutes } from "./app/pages/game/gameRoutes";
 import { draftRoutes } from "@/app/pages/draft/draftRoutes"
 import { cardGameRoutes } from "@/app/pages/cardGame/cardGameRoutes";
 import { realtimeRoutes } from "@/app/pages/realtime/realtimeRoutes";
+import { lobbyRoutes } from "@/app/pages/lobby/lobbyRoutes";
 import { auth, initAuth } from "@/lib/auth";
 import { type User, type Organization, db, setupDb } from "@/db";
 import { 
@@ -26,12 +27,14 @@ import GamePage from "@/app/pages/game/GamePage";
 import CardGamePage from "@/app/pages/cardGame/CardGamePage";
 import DraftPage from '@/app/pages/draft/DraftPage'
 import NewDraftPage from '@/app/pages/draft/NewDraftPage'
+import LobbyPage from '@/app/pages/lobby/LobbyPage'
 import SanctumPage from "@/app/pages/sanctum/SanctumPage";
 import OrgNotFoundPage from "@/app/pages/errors/OrgNotFoundPage";
 import NoAccessPage from "@/app/pages/errors/NoAccessPage";
 import PricingPage from "@/app/pages/pricing/PricingPage";
 import { createNewGame } from "./app/serverActions/gameRegistry";
 import { createNewCardGame } from "./app/serverActions/cardGame/cardGameRegistry";
+import { createLobby } from "./app/serverActions/lobby/createLobby";
 import { isSandboxEnvironment, setupSandboxContext, createSandboxCookieHeader } from "./lib/middleware/sandboxMiddleware";
 import LandingPage from "./app/pages/landing/LandingPage";
 import DeckBuilderPage from "./app/pages/deckBuilder/DeckBuilderPage";
@@ -43,6 +46,7 @@ export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects
 export { GameStateDO } from "./gameDurableObject";
 export { CardGameDO } from './cardGameDurableObject'
 export { DraftDO } from './draftDurableObject'
+export { LobbyDO } from './lobbyDurableObject'
 
 export { CardCacheDO } from './cardCacheDO'
 export { SyncedStateServer };
@@ -254,6 +258,22 @@ export default defineApp([
       }
     },
     ...draftRoutes
+  ]),
+
+  //sync for lobby system
+  prefix("/__lobbysync", [
+    async ({ request, ctx }) => {
+      if (request.headers.get('Upgrade') === 'websocket') {
+        // Rate limiting
+        const { rateLimitMiddleware } = await import('@/lib/middlewareFunctions')
+        const rateLimitResult = await rateLimitMiddleware(request, 'lobbysync')
+        if (rateLimitResult) return rateLimitResult
+        
+        // Add auth headers for guests/users (reuse draft middleware)
+        request = await draftWebSocketMiddleware(request, ctx)
+      }
+    },
+    ...lobbyRoutes
   ]),  
   // realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
 
@@ -593,6 +613,30 @@ export default defineApp([
 
     route("/draft/new", NewDraftPage),
     route("/draft/:draftId", DraftPage),
+
+    // Lobby routes
+    route("/lobby", async ({ request, ctx }) => {
+      const userId = ctx.user?.id || `guest-${crypto.randomUUID()}`;
+      const userName = ctx.user?.name || ctx.user?.email || 'Guest';
+      
+      const result = await createLobby(userId, userName);
+      
+      if (!result.success) {
+        return new Response(null, {
+          status: 302,
+          headers: { 
+            Location: `/sanctum?error=${encodeURIComponent(result.error || 'Failed to create lobby')}`
+          }
+        });
+      }
+      
+      return new Response(null, {
+        status: 302,
+        headers: { Location: `/lobby/${result.lobbyId}` }
+      });
+    }),
+    
+    route("/lobby/:lobbyId", LobbyPage),
 
 
     // ROOT ROUTE - AFTER all specific routes

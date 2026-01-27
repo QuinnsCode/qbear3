@@ -643,8 +643,8 @@ bindings = [
 
 **Package Manager**: This project uses **pnpm** exclusively
 - Use `pnpm` for all package management commands
-- Use `npx` only for Prisma commands (e.g., `npx prisma migrate dev`)
-- Use `npx` for Wrangler if `pnpm wrangler` has issues
+- Use `pnpm` for migration commands (pnpm migrate:new, pnpm migrate:dev)
+- Database migrations are handled through pnpm scripts, NOT npx prisma commands
 
 ## DO NOT Install
 - No new npm packages needed
