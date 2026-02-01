@@ -105,7 +105,7 @@ export default function TokenCreationModal({ isOpen, onClose, onCreateToken }: P
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-200 flex items-center justify-center p-4">
       <div className="bg-slate-800 rounded-xl border-2 border-slate-600 max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-600">

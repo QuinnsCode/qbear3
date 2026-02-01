@@ -28,6 +28,8 @@ import { getStarterDeck } from './app/serverActions/cardGame/starterDecks';
 import { WebSocketHelper } from './app/services/cardGame/WebSocketHelper';
 import { env } from "cloudflare:workers";
 
+// ✅ Storage-only state (actions stored separately)
+type StoredGameState = Omit<CardGameState, 'actions' | 'currentActionIndex'>;
 
 const CURSOR_COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B'];
 
@@ -310,7 +312,7 @@ export class CardGameDO extends DurableObject {
         return new Response('Invalid POST data - must have either (playerId + playerName) or (type + playerId + data)', { status: 400 });
       }
       
-      // PUT - rewind to action
+      // PUT - rewind to action (only for non-sandbox)
       if (method === 'PUT') {
         const { actionIndex } = await request.json() as any;
         const rewindResult = await this.rewindToAction(actionIndex);
@@ -512,16 +514,52 @@ export class CardGameDO extends DurableObject {
     return this.gameState;
   }
 
+  /**
+   * ✅ UPDATED: Load state and handle migration from old format
+   */
   async loadState(): Promise<void> {
     const stored = await this.ctx.storage.get<CardGameState>('cardGameState');
+    
     if (stored) {
-      this.gameState = stored;
+      // ✅ MIGRATION: If old format has actions, move them to separate storage
+      if ('actions' in stored && Array.isArray(stored.actions)) {
+        console.log('🔄 Migrating old format: moving actions to separate storage');
+        
+        const isSandbox = await this.ctx.storage.get('isSandbox');
+        
+        // Only store actions for non-sandbox games
+        if (!isSandbox && stored.actions.length > 0) {
+          await this.ctx.storage.put('gameActions', stored.actions);
+          console.log(`✅ Migrated ${stored.actions.length} actions to separate storage`);
+        } else {
+          console.log(`✅ Sandbox game - discarded ${stored.actions.length} actions`);
+        }
+        
+        // Remove actions from state object
+        const { actions, currentActionIndex, ...cleanState } = stored as any;
+        
+        // Store cleaned state
+        await this.ctx.storage.put('cardGameState', cleanState);
+        
+        this.gameState = {
+          ...cleanState,
+          actions: [], // Empty for in-memory compatibility
+          currentActionIndex: -1
+        };
+      } else {
+        // ✅ Already clean format
+        this.gameState = {
+          ...stored,
+          actions: [], // Always empty in memory
+          currentActionIndex: -1
+        };
+      }
+
+      if (!this.gameState) throw Error('bad game state in cardgamedurableobject')
+      
+      // Ensure Dates are proper Date objects
       this.gameState.createdAt = new Date(this.gameState.createdAt);
       this.gameState.updatedAt = new Date(this.gameState.updatedAt);
-      this.gameState.actions = this.gameState.actions.map(action => ({
-        ...action,
-        timestamp: new Date(action.timestamp)
-      }));
     }
   }
 
@@ -533,7 +571,7 @@ export class CardGameDO extends DurableObject {
       status: 'active',
       players: [],
       cards: {},
-      actions: [],
+      actions: [], // Empty in memory
       currentActionIndex: -1,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -551,7 +589,7 @@ export class CardGameDO extends DurableObject {
       status: 'active',
       players: [],
       cards: {},
-      actions: [],
+      actions: [], // Empty in memory
       currentActionIndex: -1,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -560,6 +598,12 @@ export class CardGameDO extends DurableObject {
     // ✅ Clear activity tracking on restart
     this.playerActivity.clear();
     await this.ctx.storage.put('playerActivity', {});
+    
+    // ✅ Clear actions on restart
+    const isSandbox = await this.ctx.storage.get('isSandbox');
+    if (!isSandbox) {
+      await this.ctx.storage.delete('gameActions');
+    }
   
     this.persist();
     
@@ -747,6 +791,9 @@ export class CardGameDO extends DurableObject {
     }
   }
 
+  /**
+   * ✅ UPDATED: Store actions separately, only for non-sandbox games
+   */
   async applyAction(action: Omit<CardGameAction, 'id' | 'timestamp'>): Promise<CardGameState> {
     if (!this.gameState) {
       await this.getState();
@@ -760,17 +807,16 @@ export class CardGameDO extends DurableObject {
     const actionsRequiringPermission = [
       'move_card',
       'move_card_position',
-      'tap_card',          // ✅ ADD THIS
-      'untap_card',        // ✅ ADD THIS
-      'flip_card',         // ✅ ADD THIS
-      'rotate_card',       // ✅ ADD THIS
+      'tap_card',
+      'untap_card',
+      'flip_card',
+      'rotate_card',
     ];
     
     if (actionsRequiringPermission.includes(action.type)) {
       const isSandbox = await this.ctx.storage.get('isSandbox') as boolean;
       const sandboxConfig = await this.ctx.storage.get('sandboxConfig');
       
-      // ✅ Use the new canPlayerInteractWithCard method
       const canInteract = SandboxManager.canPlayerInteractWithCard(
         action.playerId, 
         action.data.cardId, 
@@ -804,9 +850,17 @@ export class CardGameDO extends DurableObject {
     
     if (newState !== this.gameState) {
       this.gameState = newState;
-      this.gameState.actions.push(gameAction);
-      this.gameState.currentActionIndex = this.gameState.actions.length - 1;
       this.gameState.updatedAt = new Date();
+  
+      // ✅ ONLY STORE ACTIONS FOR NON-SANDBOX GAMES
+      const isSandbox = await this.ctx.storage.get('isSandbox');
+      if (!isSandbox) {
+        // Append action to separate storage
+        const existingActions = await this.ctx.storage.get<CardGameAction[]>('gameActions') || [];
+        existingActions.push(gameAction);
+        this.ctx.storage.put('gameActions', existingActions);
+        console.log(`📝 Action stored (total: ${existingActions.length})`);
+      }
   
       this.persist();
       
@@ -925,8 +979,6 @@ export class CardGameDO extends DurableObject {
         return {
           ...gameState,
           cards: {},
-          actions: [],
-          currentActionIndex: -1,
           players: gameState.players.map(p => ({
             ...p,
             life: 40,
@@ -951,10 +1003,9 @@ export class CardGameDO extends DurableObject {
     }
   }
 
-  
-
-  // REMOVE the old canPlayerMoveCard method - it's now in SandboxManager
-  
+  /**
+   * ✅ UPDATED: Rewind only works for non-sandbox games with stored actions
+   */
   async rewindToAction(actionIndex: number): Promise<CardGameState> {
     if (!this.gameState) {
       await this.getState();
@@ -963,24 +1014,37 @@ export class CardGameDO extends DurableObject {
     if (!this.gameState) {
       throw new Error('No game state found');
     }
-  
-    if (actionIndex < 0 || actionIndex >= this.gameState.actions.length) {
+    
+    // ✅ Check if sandbox
+    const isSandbox = await this.ctx.storage.get('isSandbox');
+    if (isSandbox) {
+      throw new Error('Rewind not available for sandbox games');
+    }
+    
+    // ✅ Load actions from storage
+    const actions = await this.ctx.storage.get<CardGameAction[]>('gameActions') || [];
+    
+    if (actionIndex < 0 || actionIndex >= actions.length) {
       throw new Error('Invalid action index');
     }
   
     console.warn('⚠️ Rewind not yet fully implemented - StateManager needed');
+    // TODO: Implement full rewind logic by replaying actions 0..actionIndex
   
     this.persist();
-    // ✅ Use new broadcast method
     this.broadcast({ type: 'state_update', state: this.gameState });
     
     return this.gameState;
   }
 
-  //you don't need the explicit await: This gives you better throughput because the output gate handles consistency automatically
+  /**
+   * ✅ UPDATED: Never store actions field, only store StoredGameState
+   */
   private persist() {
     if (this.gameState) {
-      this.ctx.storage.put('cardGameState', this.gameState);
+      // ✅ Remove actions and currentActionIndex before persisting
+      const { actions, currentActionIndex, ...storedState } = this.gameState;
+      this.ctx.storage.put('cardGameState', storedState as StoredGameState);
     }
   }
 }

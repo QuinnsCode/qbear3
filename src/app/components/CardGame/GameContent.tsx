@@ -1,11 +1,11 @@
 // app/components/CardGame/GameContent.tsx
 
-import { getCardGameState, joinCardGame } from '@/app/lib/cardGame/cardGameFunctions'
+import { getCardGameState, joinCardGame } from '@/app/serverActions/cardGame/cardGameActions'
 import { env } from "cloudflare:workers"
 import ClientCardGameWrapper from './ClientCardGameWrapper'
-import { MTGPlayer } from '@/app/services/cardGame/CardGameState'
-import { GameSocialPanel } from "@/app/components/Social/GameSocialPanel";
-
+import { determineUserRole, shouldAutoJoinGame } from '@/app/lib/cardGame/userRoleLogic'
+import { getDiscordThreadUrl } from '@/app/lib/social/discordIntegration'
+import { formatGameName } from '@/app/lib/utils/gameFormatting'
 
 interface GameContentProps {
   cardGameId: string
@@ -22,86 +22,54 @@ export default async function GameContent({
   isLoggedIn,
   isSandbox
 }: GameContentProps) {
-  let initialGameState = await getCardGameState(cardGameId)
+  // Get initial game state
+  let gameState = await getCardGameState(cardGameId)
   
-  let currentPlayer: MTGPlayer | null = initialGameState.players.find(p => p.id === userId) || null
+  // Determine user role and auto-join logic
+  const userRole = determineUserRole(userId, gameState, isSandbox)
+  const shouldJoin = shouldAutoJoinGame(userRole, isLoggedIn, gameState, isSandbox)
   
-  // ✅ Determine max players based on mode
-  const maxPlayers = isSandbox ? 256 : 4
-  
-  // ✅ Detect user type FIRST (before any logic)
-  const isSpectatorId = userId?.startsWith('spectator-') || userId?.startsWith('spectator_')
-  const isSandboxPlayerId = userId?.startsWith('sandbox-') || userId?.startsWith('sandbox_')
-  
-  // ✅ Spectator mode is ONLY based on user ID prefix
-  const spectatorMode = isSpectatorId
-  
-  // ✅ Auto-join logic: logged-in users OR sandbox players (but NOT spectators)
-  const shouldAutoJoin = 
-    !isSpectatorId && 
-    !currentPlayer && 
-    initialGameState.players.length < maxPlayers && 
-    (isLoggedIn || isSandboxPlayerId)
-  
-  if (shouldAutoJoin) {
-    console.log(`🎮 Auto-joining ${isSandboxPlayerId ? 'sandbox player' : 'user'}:`, { userId, userName });
+  // Auto-join if needed
+  if (shouldJoin) {
+    console.log(`Auto-joining ${userRole.isSandboxPlayer ? 'sandbox player' : 'user'}:`, { userId, userName })
     
-    initialGameState = await joinCardGame(cardGameId, userId, userName);
+    gameState = await joinCardGame(cardGameId, userId, userName)
     
-    currentPlayer = initialGameState.players.find(p => p.id === userId) ?? null
-    
-    if (currentPlayer) {
-      console.log('✅ Successfully joined game as player:', currentPlayer.name);
+    const joinedPlayer = gameState.players.find(p => p.id === userId)
+    if (joinedPlayer) {
+      console.log('Successfully joined game as player:', joinedPlayer.name)
     } else {
-      console.error('❌ Join succeeded but player not found in state!');
+      console.error('Join succeeded but player not found in state!')
     }
   }
   
-  console.log('🔍 User mode:', {
+  // Log user mode for debugging
+  console.log('User mode:', {
     userId,
     userName,
-    isSandbox,
-    isSandboxPlayerId,
-    isSpectatorId,
+    ...userRole,
     isLoggedIn,
-    spectatorMode,
-    hasPlayer: !!currentPlayer,
-    playerCount: initialGameState.players.length,
-    maxPlayers,
-    shouldAutoJoin
-  });
+    playerCount: gameState.players.length,
+    shouldJoin
+  })
   
-  // Check for Discord thread on server
-  let discordThreadUrl: string | null = null
-  if (env.CARD_GAME_REGISTRY_KV) {
-    try {
-      const discordData = await env.CARD_GAME_REGISTRY_KV.get(`discord:${cardGameId}`, "json") as any
-      if (discordData?.threadUrl) {
-        discordThreadUrl = discordData.threadUrl
-      }
-    } catch (err) {
-      console.error('Failed to check for Discord thread:', err)
-    }
-  }
+  // Get Discord thread URL if available
+  const discordThreadUrl = await getDiscordThreadUrl(cardGameId, env)
   
-  console.log(`👤 User ${userName} ${spectatorMode ? 'spectating' : 'playing in'} game ${cardGameId}`)
+  // Format game name
+  const gameName = formatGameName(cardGameId)
+  
+  console.log(`User ${userName} ${userRole.isSpectator ? 'spectating' : 'playing in'} game ${cardGameId}`)
 
-  // Build game URL and name (server-side safe)
-  const gameName = cardGameId.split('-').map((w: string) => 
-    w.charAt(0).toUpperCase() + w.slice(1)
-  ).join(' ');
-  
   return (
-    <div>
-      <ClientCardGameWrapper
-        gameName={gameName}
-        cardGameId={cardGameId}
-        currentUserId={userId}
-        initialState={initialGameState}
-        spectatorMode={spectatorMode}
-        discordThreadUrl={discordThreadUrl}
-        isSandbox={isSandbox}
-      />
-    </div>
-  );
+    <ClientCardGameWrapper
+      gameName={gameName}
+      cardGameId={cardGameId}
+      currentUserId={userId}
+      initialState={gameState}
+      spectatorMode={userRole.isSpectator}
+      discordThreadUrl={discordThreadUrl}
+      isSandbox={isSandbox}
+    />
+  )
 }

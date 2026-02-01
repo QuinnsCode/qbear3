@@ -41,8 +41,8 @@ export async function handler({ request, ctx }: RequestInfo) {
 
   // POST requests
   if (method === 'POST') {
-    const body = await request.json();
-    
+    const body = await request.json() as any;
+
     if (body.action === 'send') {
       const result = await sendFriendRequest(ctx.user.id, body.toUserId);
       return Response.json(result);

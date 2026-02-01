@@ -340,7 +340,7 @@ export default function CardGameBoard({
               {gameState.players
                 .filter(p => p.id !== currentPlayerId)
                 .map((opponent, index) => (
-                  <div key={opponent.id} className="flex-shrink-0 w-80 bg-slate-800 rounded-lg overflow-hidden">
+                  <div key={opponent.id} className="shrink-0 w-80 bg-slate-800 rounded-lg overflow-hidden">
                     <OpponentPanel
                       player={opponent}
                       position={index === 0 ? 'north' : index === 1 ? 'west' : 'east'}
@@ -353,7 +353,7 @@ export default function CardGameBoard({
               
               {/* Show empty slots if less than 3 opponents */}
               {gameState.players.length < 4 && Array.from({ length: 4 - gameState.players.length }).map((_, i) => (
-                <div key={`empty-${i}`} className="flex-shrink-0 w-80 bg-slate-800 rounded-lg overflow-hidden">
+                <div key={`empty-${i}`} className="shrink-0 w-80 bg-slate-800 rounded-lg overflow-hidden">
                   <EmptySlot position={`opponent-${i + gameState.players.length}`} />
                 </div>
               ))}
@@ -379,7 +379,7 @@ export default function CardGameBoard({
                   <button
                     key={opp.id}
                     onClick={() => setSelectedPlayerId(opp.id)}
-                    className={`flex-shrink-0 px-3 py-2 rounded-lg font-medium transition-all text-sm ${
+                    className={`shrink-0 px-3 py-2 rounded-lg font-medium transition-all text-sm ${
                       selectedPlayerId === opp.id
                         ? 'bg-blue-600 text-white'
                         : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
@@ -393,7 +393,7 @@ export default function CardGameBoard({
             
             {/* Life total */}
             {currentPlayer && (
-              <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+              <div className="flex items-center gap-2 shrink-0 ml-4">
                 <span className="text-slate-400 text-sm">{currentPlayer.name}</span>
                 <span className="text-xl">💚</span>
                 <span className="text-xl font-bold text-green-400">{currentPlayer.life}</span>

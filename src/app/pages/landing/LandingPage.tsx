@@ -67,7 +67,6 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
         {/* Header */}
         <header className="p-3 sm:p-4 flex flex-wrap justify-between items-center gap-3 sticky top-0 z-10 backdrop-blur-sm bg-stone-900/80 border-b border-amber-800/50">
           <a href="/" className="flex items-center space-x-2">
-             <div className="text-2xl sm:text-3xl text-amber-400">🎴</div>
              <FantasyTitle size="sm" className="!text-white tracking-widest text-lg sm:text-xl">
                QNTBR
              </FantasyTitle>
