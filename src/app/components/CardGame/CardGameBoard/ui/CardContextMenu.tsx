@@ -5,6 +5,7 @@ import { useRef, useEffect } from 'react'
 import type { Card } from '@/app/services/cardGame/CardGameState'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
 import { MenuItem } from './MenuItem'
+import { Gamepad2 } from 'lucide-react'
 
 interface Props {
   card: Card
@@ -232,7 +233,7 @@ export default function CardContextMenu({
         <>
           <div className="border-t border-slate-600 my-1" />
           <div className="px-3 py-2 text-xs text-purple-400">
-            🎮 Sandbox: Shared battlefield
+            <Gamepad2/> Sandbox: Shared battlefield
           </div>
         </>
       )}

@@ -1,6 +1,7 @@
 // app/components/CardGame/Sandbox/SandboxIndicator.tsx
 'use client'
 
+import { Gamepad2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 interface SandboxIndicatorProps {
@@ -31,7 +32,7 @@ export function SandboxIndicator({
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-white font-semibold text-sm">
-                🎮 Sandbox Mode: Shared Battlefield
+                <Gamepad2/> Sandbox Mode: Shared Battlefield
               </div>
               <div className="text-purple-200 text-xs mt-1">
                 👥 {playerCount} players connected
@@ -69,7 +70,7 @@ export function SandboxIndicator({
           aria-label="Expand sandbox info"
         >
           <div className="flex items-center gap-2">
-            <span className="text-white text-sm">🎮</span>
+            <span className="text-white text-sm"><Gamepad2/></span>
             <span className="text-white font-semibold text-xs">{playerCount}</span>
             <svg 
               className="w-3 h-3 text-white" 

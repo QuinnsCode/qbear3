@@ -20,6 +20,7 @@ import { SpectatorBottomBar } from './ui/SpectatorBottomBar'
 import { getOpponents, getViewedPlayer } from '@/app/lib/cardGame/playerUtils'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
 import type { CardGameState } from '@/app/services/cardGame/CardGameState'
+import { GameSocialPanel } from '@/app/components/Social/GameSocialPanel'
 
 interface Props {
   gameState: CardGameState
@@ -121,6 +122,16 @@ export default function ClientCardGameBoard({
 
       {/* Desktop Layout */}
       <div className="hidden lg:flex flex-col h-full p-2 gap-1">
+        {/* Game Social Panel */}
+        {!spectatorMode && !isSandbox && (
+          <GameSocialPanel
+            userId={currentPlayerId}
+            cardGameId={cardGameId}
+            gameName={gameName}
+            gameType="card"
+          />
+        )}
+
         {/* Top Row: Opponents */}
         <div 
           className="bg-slate-800 rounded-t-lg overflow-visible shrink-0"

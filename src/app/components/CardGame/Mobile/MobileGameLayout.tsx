@@ -9,6 +9,7 @@ import MobileOpponentBubble from './MobileOpponentBubble'
 import MobileFloatingButtons from './MobileFloatingButtons'
 import TokenCreationModal from '../TokenCreationModal'
 import { Deck } from '@/app/types/Deck'
+import { GameSocialPanel } from '@/app/components/Social/GameSocialPanel'
 
 interface Props {
   gameState: CardGameState
@@ -140,6 +141,15 @@ export default function MobileGameLayout({
 
   return (
     <div className="h-screen w-screen bg-slate-900 relative overflow-hidden">
+      {/* Game Social Panel */}
+      {!spectatorMode && !isSandbox && (
+        <GameSocialPanel
+          userId={userId || currentPlayer.id}
+          cardGameId={cardGameId}
+          gameName={gameName}
+          gameType="card"
+        />
+      )}
 
       {/* Opponent Bubbles - Top (Horizontal Scrolling) */}
       <div className="absolute top-2 left-2 right-2 z-20">

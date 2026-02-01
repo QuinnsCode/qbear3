@@ -10,6 +10,7 @@ import {
   FantasyButton 
 } from "@/app/components/theme/FantasyTheme";
 import { SubscribeButton } from '@/app/components/Pricing/SubscribeButton'
+import { Gamepad2 } from "lucide-react";
 
 export default async function PricingPage({ ctx, request }: RequestInfo) {
   // ✅ Use ctx.user directly (no getSession needed!)
@@ -59,7 +60,7 @@ export default async function PricingPage({ ctx, request }: RequestInfo) {
             Every adventurer starts somewhere
           </FantasyText>
           <FantasyText variant="secondary" className="text-sm sm:text-base text-amber-400/80">
-            🎮 Founding Member Pricing • Lock in these rates forever
+            <Gamepad2/> Founding Member Pricing • Lock in these rates forever
           </FantasyText>
         </section>
         
@@ -426,7 +427,7 @@ export default async function PricingPage({ ctx, request }: RequestInfo) {
               </FantasyButton>
               <FantasyButton variant="secondary" size="lg">
                 <a href="https://sandbox.qntbr.com/cardGame" className="px-8">
-                  🎮 Try Demo
+                  <Gamepad2/> Try Demo
                 </a>
               </FantasyButton>
             </div>

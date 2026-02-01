@@ -3,6 +3,7 @@ import { SanctumDeleteGameButton } from "@/app/components/Sanctum/SanctumDeleteG
 import { SanctumClientActions } from "@/app/pages/sanctum/SanctumClientActions";
 import { DiscordConnect } from "@/app/components/Sanctum/DiscordConnect";
 import { DeckSection } from "@/app/pages/sanctum/DeckSection";
+import { Gamepad2 } from "lucide-react";
 
 // ========================================
 // LAYOUT COMPONENTS
@@ -11,7 +12,7 @@ import { DeckSection } from "@/app/pages/sanctum/DeckSection";
 export function SanctumLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-700 relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/5 to-purple-900/5 pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-br from-blue-900/5 to-purple-900/5 pointer-events-none" />
       <div className="relative max-w-7xl mx-auto px-4 py-8">
         <div className="relative">
           <CornerDecorations />
@@ -38,7 +39,7 @@ function CornerDecorations() {
 
 function BookBinding() {
   return (
-    <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-amber-900/10 to-transparent border-r border-amber-700/20">
+    <div className="absolute left-0 top-0 bottom-0 w-8 bg-linear-to-r from-amber-900/10 to-transparent border-r border-amber-700/20">
       {[20, 35, 65, 80].map((percent, i) => (
         <div 
           key={i} 
@@ -120,7 +121,7 @@ function PageHeader({ ctx }: { ctx: any }) {
       <div className="text-gray-300 text-lg mb-4">
         {ctx.organization?.name || 'Your Lair'} • {ctx.user?.name?.split(' ')[0] || 'Adventurer'}
       </div>
-      <div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-transparent rounded-full" />
+      <div className="h-1 bg-linear-to-r from-blue-500 via-purple-500 to-transparent rounded-full" />
     </div>
   );
 }
@@ -282,7 +283,7 @@ function GameSection({ games, orgSlug, currentTier, tierLimits, atLimit }: GameS
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-          <span>🎮</span>
+          <span><Gamepad2/></span>
           <span>Card Games</span>
         </h2>
         <span className="text-sm bg-slate-700 text-gray-200 px-3 py-1 rounded-full font-medium border border-slate-600">
@@ -342,7 +343,7 @@ function EmptyGameState() {
       <div className="text-gray-400 mb-6">Start a new card game to begin</div>
       <a 
         href="/cardGame" 
-        className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg"
+        className="inline-block px-6 py-3 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg"
       >
         Create Card Game
       </a>
@@ -398,7 +399,7 @@ function CreateGameButton() {
 function RecentActivity() {
   return (
     <div className="bg-slate-800/30 rounded-lg border border-slate-600 p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-600/5 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-br from-slate-600/5 to-transparent pointer-events-none" />
       <h3 className="text-lg font-bold text-white mb-4 relative z-10">Recent Activity</h3>
       <div className="space-y-2 relative z-10">
         {[1, 2, 3].map(i => (
