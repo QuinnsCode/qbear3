@@ -52,12 +52,36 @@ export class DeckImportManager {
     // Create card instances directly from deck cards
     const newCards: Card[] = []
     const scryfallIds: string[] = []
+    const scryfallCardData: ScryfallCard[] = []
 
     for (const deckCard of deckCards) {
       const scryfallId = deckCard.scryfallId || deckCard.id
       if (!scryfallId) {
         console.warn(`⚠️ Card missing scryfallId:`, deckCard.name)
         continue
+      }
+
+      // Convert to ScryfallCard format (what the game expects)
+      const scryfallCard: ScryfallCard = {
+        id: scryfallId,
+        name: deckCard.name,
+        mana_cost: deckCard.manaCost || '',
+        type_line: deckCard.type || (deckCard.types ? deckCard.types.join(' ') : ''),
+        oracle_text: deckCard.oracle_text || '',
+        power: deckCard.power,
+        toughness: deckCard.toughness,
+        colors: deckCard.colors || [],
+        color_identity: deckCard.color_identity || deckCard.colors || [],
+        image_uris: deckCard.imageUrl ? {
+          normal: deckCard.imageUrl,
+          small: deckCard.imageUrl,
+          large: deckCard.imageUrl
+        } : (deckCard.image_uris || undefined)
+      }
+
+      // Only add unique cards to cardData (not duplicates)
+      if (!scryfallCardData.find(c => c.id === scryfallId)) {
+        scryfallCardData.push(scryfallCard)
       }
 
       // Create the specified number of copies
@@ -80,6 +104,7 @@ export class DeckImportManager {
     }
 
     console.log(`✅ Created ${newCards.length} card instances`)
+    console.log(`✅ Converted ${scryfallCardData.length} unique cards to Scryfall format`)
 
     // Shuffle the cards
     const shuffled = this.shuffleArray([...newCards])
@@ -98,7 +123,7 @@ export class DeckImportManager {
             raw: '', // No text format for direct import
             deckName: action.data.deckName || 'Draft Deck',
             scryfallIds,
-            cardData: deckCards
+            cardData: scryfallCardData // Use converted Scryfall format
           },
           zones: {
             hand: [],
