@@ -7,6 +7,7 @@ import {
   declineGameInvite,
   type GameInvite 
 } from "@/app/serverActions/social/gameInvites";
+import { Gamepad2 } from "lucide-react";
 
 type GameInvitesModalProps = {
   isOpen: boolean;
@@ -107,7 +108,7 @@ export function GameInvitesModal({ isOpen, onClose, userId }: GameInvitesModalPr
           }}
         >
           <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#92400e', margin: 0 }}>
-            🎮 Game Invites
+            <Gamepad2/> Game Invites
           </h2>
           <button
             onClick={onClose}

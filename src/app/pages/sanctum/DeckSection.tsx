@@ -19,7 +19,7 @@ export function DeckSection({ decks, currentTier, maxDecks, atLimit }: Props) {
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <span>🃏</span>
+            <span></span>
             <span>My Decks</span>
           </h2>
           <span className="text-sm bg-slate-700 text-gray-300 px-3 py-1 rounded-full font-medium border border-slate-600">
