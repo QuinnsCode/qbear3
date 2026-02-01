@@ -105,7 +105,20 @@ export class ScryfallProvider implements ICardProvider {
     const card = await this.client.getRandomCard(query ? { q: query } : undefined)
     return this.mapScryfallCard(card)
   }
-  
+
+  async getAllPrintings(oracleId: string): Promise<CardData[]> {
+    // Search for all printings of this oracle ID
+    // Use unique=prints to get all versions, order by release date (newest first)
+    const results = await this.client.searchCards({
+      q: `oracleid:${oracleId}`,
+      unique: 'prints',
+      order: 'released',
+      dir: 'desc'
+    })
+
+    return results.data.map(card => this.mapScryfallCard(card))
+  }
+
   /**
    * Map Scryfall-specific card to generic CardData
    */
@@ -113,8 +126,9 @@ export class ScryfallProvider implements ICardProvider {
     return {
       // Identifiers
       id: scryfallCard.id,
+      oracleId: scryfallCard.oracle_id,
       name: scryfallCard.name,
-      
+
       // Game data
       manaCost: scryfallCard.mana_cost,
       cmc: scryfallCard.cmc,

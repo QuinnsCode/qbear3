@@ -40,4 +40,11 @@ export interface ICardProvider {
    * Get a random card (optional query filter)
    */
   getRandomCard(query?: string): Promise<CardData>
+
+  /**
+   * Get all printings of a card by oracle ID
+   * Returns all versions/sets of the same card
+   * Sorted by release date (newest first)
+   */
+  getAllPrintings?(oracleId: string): Promise<CardData[]>
 }
