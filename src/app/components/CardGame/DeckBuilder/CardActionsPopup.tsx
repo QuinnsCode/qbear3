@@ -1,10 +1,13 @@
 // app/components/CardGame/DeckBuilder/CardActionsPopup.tsx
 'use client'
 
-import { X, ChevronLeft, ChevronRight, Plus, Minus, Crown, Archive, Trash2, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { X, ChevronLeft, ChevronRight, Plus, Minus, Crown, Archive, Trash2, RefreshCw, Palette } from 'lucide-react'
 import ManaSymbols from '../ManaSymbols/ManaSymbols'
 import type { DeckCard } from '@/app/types/Deck'
 import { useCardRefresh } from '@/app/hooks/useCardRefresh'
+import PrintingSelector from '../ui/PrintingSelector'
+import type { CardData } from '@/app/services/cardData/types'
 
 interface Props {
   card: DeckCard
@@ -36,6 +39,9 @@ export default function CardActionsPopup({
   const { refreshing, refreshCard, needsRefresh } = useCardRefresh()
   const cardNeedsRefresh = needsRefresh(card)
 
+  // Art swapping
+  const [showPrintingSelector, setShowPrintingSelector] = useState(false)
+
   const handleRefreshCard = async () => {
     try {
       const updatedCard = await refreshCard(card)
@@ -46,6 +52,21 @@ export default function CardActionsPopup({
       console.error('Failed to refresh card:', error)
       alert('Failed to refresh card data')
     }
+  }
+
+  const handlePrintingSelected = (printing: CardData) => {
+    // Update card with new printing data
+    const updatedCard: DeckCard = {
+      ...card,
+      scryfallId: printing.id,
+      imageUrl: printing.imageUris?.normal || printing.imageUris?.large || printing.imageUris?.small || card.imageUrl
+    }
+
+    if (onCardRefreshed) {
+      onCardRefreshed(updatedCard)
+    }
+
+    setShowPrintingSelector(false)
   }
 
   return (
@@ -238,6 +259,16 @@ export default function CardActionsPopup({
                     </>
                   )}
                 </button>
+
+                {/* Change Art Button */}
+                <button
+                  onClick={() => setShowPrintingSelector(true)}
+                  className="w-full py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-1"
+                  title="Choose alternate card art from different sets"
+                >
+                  <Palette className="w-4 h-4" />
+                  Change Art
+                </button>
               </div>
             </div>
 
@@ -383,6 +414,16 @@ export default function CardActionsPopup({
           </div>
         </div>
       </div>
+
+      {/* Printing Selector Modal */}
+      {showPrintingSelector && (
+        <PrintingSelector
+          cardName={card.name}
+          currentPrintId={card.scryfallId}
+          onSelect={handlePrintingSelected}
+          onClose={() => setShowPrintingSelector(false)}
+        />
+      )}
     </div>
   )
 }
