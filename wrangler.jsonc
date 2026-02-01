@@ -38,6 +38,10 @@
         "class_name": "CardCacheDO"
       },
       {
+        "name": "CACHE_WARMING_DO",
+        "class_name": "CacheWarmingDO"
+      },
+      {
         "name": "SYNCED_STATE_SERVER",
         "class_name": "SyncedStateServer"
       },
@@ -91,6 +95,10 @@
     {
       "tag": "v8",
       "new_sqlite_classes": ["MatchmakingDO"]
+    },
+    {
+      "tag": "v9",
+      "new_sqlite_classes": ["CacheWarmingDO"]
     }
   ],
   "d1_databases": [

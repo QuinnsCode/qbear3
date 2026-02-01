@@ -48,6 +48,7 @@ export { CardGameDO } from './cardGameDurableObject'
 export { DraftDO } from './draftDurableObject'
 export { UserSessionDO } from './durableObjects/userSessionDO'
 export { MatchmakingDO } from './durableObjects/MatchmakingDO'
+export { CacheWarmingDO } from './durableObjects/CacheWarmingDO'
 
 export { CardCacheDO } from './cardCacheDO'
 export { SyncedStateServer };
@@ -312,6 +313,12 @@ export default defineApp([
 
     route("/pvp/initialize", async ({ request }) => {
       const { default: handler } = await import('@/app/api/pvp/initialize');
+      return handler({ request });
+    }),
+
+    // Cache warming admin endpoints
+    route("/admin/cache-warming*", async ({ request }) => {
+      const { default: handler } = await import('@/app/api/admin/cache-warming');
       return handler({ request });
     }),
 
