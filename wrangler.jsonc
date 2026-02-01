@@ -120,6 +120,10 @@
     {
       "binding": "AUTH_CACHE_KV",
       "id": "83656302bd814de585f655d5a7412979"
+    },
+    {
+      "binding": "CARDS_KV",
+      "id": "d8d7f7a702754933a469612c6f1ef515"
     }
   ]
 }
