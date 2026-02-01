@@ -11,7 +11,7 @@ import { db } from "@/db";
 import { getFriends, getFriendRequests } from "@/app/serverActions/social/friends";
 import { getGameInvites } from "@/app/serverActions/social/gameInvites";
 import { SocialSection } from "@/app/pages/sanctum/SocialSection";
-import { Gamepad2, Dice6 } from "lucide-react";
+import { Gamepad2, Dice6, Swords } from "lucide-react";
 
 export default async function SanctumPage({ ctx, request }: RequestInfo) {
   const orgSlug = extractOrgFromSubdomain(request);
@@ -142,7 +142,26 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
                 />
               </div>
             )}
-            
+
+            {/* PVP Matchmaking Section */}
+            <div className="mt-6">
+              <a
+                href="/pvp"
+                className="block bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 rounded-lg p-6 shadow-xl transition-all hover:scale-[1.02] group"
+              >
+                <div className="flex items-center gap-4">
+                  <Swords className="w-12 h-12 text-white" />
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-white mb-1">PVP Draft Arena</h2>
+                    <p className="text-red-100">Draft vs AI, then battle other players in competitive 1v1 matches</p>
+                  </div>
+                  <div className="text-white font-bold text-lg group-hover:translate-x-2 transition-transform">
+                    →
+                  </div>
+                </div>
+              </a>
+            </div>
+
             {/* Two Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
               <DeckSection

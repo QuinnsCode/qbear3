@@ -27,6 +27,7 @@ import CardGamePage from "@/app/pages/cardGame/CardGamePage";
 import DraftPage from '@/app/pages/draft/DraftPage'
 import NewDraftPage from '@/app/pages/draft/NewDraftPage'
 import SanctumPage from "@/app/pages/sanctum/SanctumPage";
+import PvpDraftEntryPage from "@/app/pages/pvp/PvpDraftEntryPage";
 import OrgNotFoundPage from "@/app/pages/errors/OrgNotFoundPage";
 import NoAccessPage from "@/app/pages/errors/NoAccessPage";
 import PricingPage from "@/app/pages/pricing/PricingPage";
@@ -44,6 +45,7 @@ export { GameStateDO } from "./gameDurableObject";
 export { CardGameDO } from './cardGameDurableObject'
 export { DraftDO } from './draftDurableObject'
 export { UserSessionDO } from './durableObjects/userSessionDO'
+export { MatchmakingDO } from './durableObjects/MatchmakingDO'
 
 export { CardCacheDO } from './cardCacheDO'
 export { SyncedStateServer };
@@ -272,6 +274,31 @@ export default defineApp([
     return stub.fetch(request);
   }),
 
+  // Matchmaking DO - Regional PVP matchmaking
+  route("/__matchmaking/:region", async ({ request, params }) => {
+    const region = params.region;
+
+    if (request.headers.get('Upgrade') !== 'websocket') {
+      return new Response('Expected websocket', { status: 426 });
+    }
+
+    // Rate limiting
+    const { rateLimitMiddleware } = await import('@/lib/middlewareFunctions');
+    const rateLimitResult = await rateLimitMiddleware(request, 'matchmaking');
+    if (rateLimitResult) return rateLimitResult;
+
+    // Get regional MatchmakingDO instance
+    const id = env.MATCHMAKING_DO.idFromName(region);
+    const stub = env.MATCHMAKING_DO.get(id);
+
+    // Add region to query params for DO initialization
+    const url = new URL(request.url);
+    url.searchParams.set('region', region);
+
+    // Forward WebSocket request to DO
+    return stub.fetch(new Request(url.toString(), request));
+  }),
+
   // realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
 
   // API ROUTES - All API endpoints
@@ -498,6 +525,8 @@ export default defineApp([
     route("/no-access", NoAccessPage),
 
     route("/sanctum", SanctumPage),
+
+    route("/pvp", PvpDraftEntryPage),
 
     route("/deckbuilder", DeckBuilderPage),
     route("/deckBuilder", DeckBuilderPage),

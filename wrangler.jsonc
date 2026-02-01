@@ -48,6 +48,10 @@
       {
         "name": "USER_SESSION_DO",
         "class_name": "UserSessionDO"
+      },
+      {
+        "name": "MATCHMAKING_DO",
+        "class_name": "MatchmakingDO"
       }
     ]
   },
@@ -83,6 +87,10 @@
     {
       "tag": "v7",
       "new_sqlite_classes": ["UserSessionDO"]
+    },
+    {
+      "tag": "v8",
+      "new_sqlite_classes": ["MatchmakingDO"]
     }
   ],
   "d1_databases": [
