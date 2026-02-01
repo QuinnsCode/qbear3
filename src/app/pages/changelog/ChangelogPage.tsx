@@ -1,6 +1,7 @@
 // @/app/pages/static/ChangelogPage.tsx
 import { ChangelogLayout } from '@/app/components/theme/ContentPageLayout';
 import { FantasyText, FantasyCard } from '@/app/components/theme/FantasyTheme';
+import { Gamepad2 } from 'lucide-react';
 
 export default function ChangelogPage() {
   return (
@@ -42,7 +43,7 @@ export default function ChangelogPage() {
       {/* Large Battlefield View - December 1, 2024 */}
       <FantasyCard className="mb-8 p-6 border-blue-500/50">
         <div className="flex items-start gap-4 mb-4">
-          <div className="text-4xl">🎮</div>
+          <Gamepad2 className="w-10 h-10 text-blue-400" strokeWidth={1.5} />
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-amber-200 mb-2">Large Battlefield View</h2>
             <FantasyText variant="secondary" className="text-sm mb-3">
@@ -131,7 +132,10 @@ export default function ChangelogPage() {
                 The initial release of our virtual tabletop.
               </p>
               <ul className="space-y-1 text-sm">
-                <li>🎮 Core multiplayer gameplay with WebSockets</li>
+                <li className="flex items-center gap-2">
+                  <Gamepad2 className="w-4 h-4" strokeWidth={1.5} />
+                  Core multiplayer gameplay with WebSockets
+                </li>
                 <li>📦 Deck building and import system</li>
                 <li>🃏 Full card management (tap, flip, move)</li>
                 <li>👥 4-player support with zones</li>

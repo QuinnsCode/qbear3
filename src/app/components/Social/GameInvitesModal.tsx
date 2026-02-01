@@ -186,7 +186,9 @@ export function GameInvitesModal({ isOpen, onClose, userId }: GameInvitesModalPr
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {receivedInvites.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '40px', color: '#a16207' }}>
-                      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎮</div>
+                      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+                        <Gamepad2 size={48} strokeWidth={1.5} />
+                      </div>
                       <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px', color: '#92400e' }}>
                         No game invites
                       </div>
@@ -230,10 +232,9 @@ export function GameInvitesModal({ isOpen, onClose, userId }: GameInvitesModalPr
                               alignItems: 'center',
                               justifyContent: 'center',
                               marginRight: '16px',
-                              fontSize: '24px',
                             }}
                           >
-                            🎮
+                            <Gamepad2 size={24} />
                           </div>
                         )}
                         <div style={{ flex: 1 }}>

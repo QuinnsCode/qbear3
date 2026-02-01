@@ -5,6 +5,7 @@ import { FriendsModal } from "@/app/components/Social/FriendsModal";
 import { GameInvitesModal } from "@/app/components/Social/GameInvitesModal";
 import type { Friend, FriendRequest } from "@/app/serverActions/social/friends";
 import type { GameInvite } from "@/app/serverActions/social/gameInvites";
+import { Gamepad2 } from "lucide-react";
 
 type SocialSectionProps = {
   userId: string;
@@ -85,7 +86,7 @@ export function SocialSection({
             }}
           >
             <div className="flex items-start justify-between mb-3">
-              <div className="text-4xl">🎮</div>
+              <Gamepad2 className="w-10 h-10" strokeWidth={1.5} />
               {totalGameInvites > 0 && (
                 <span className="px-2 py-1 bg-red-600 text-white text-xs font-bold rounded-full animate-pulse">
                   {totalGameInvites}

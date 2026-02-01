@@ -3,7 +3,7 @@ import { SanctumDeleteGameButton } from "@/app/components/Sanctum/SanctumDeleteG
 import { SanctumClientActions } from "@/app/pages/sanctum/SanctumClientActions";
 import { DiscordConnect } from "@/app/components/Sanctum/DiscordConnect";
 import { DeckSection } from "@/app/pages/sanctum/DeckSection";
-import { Gamepad2 } from "lucide-react";
+import { Gamepad2, Users, Plus, Swords, Eye } from "lucide-react";
 
 // ========================================
 // LAYOUT COMPONENTS
@@ -84,12 +84,12 @@ const TIER_CONFIG = {
 } as const;
 
 const MAIN_ACTIONS = [
-  { id: 'friends', label: 'Friends', action: '#', icon: '👥' },
-  { id: 'add-friend', label: 'Add a Friend', action: '#', icon: '➕' },
-  { id: 'game-invites', label: 'Game Invites', action: '#', icon: '🎮' },
-  { id: 'invite-pvp', label: 'Invite Friend to PVP', action: '#', icon: '⚔️' },
-  { id: 'watch-games', label: 'Watch Games', action: '#', icon: '👁️' },
-  { id: 'play-game', label: 'Play Game', action: '/game', icon: '🎮' }
+  { id: 'friends', label: 'Friends', action: '#', icon: Users },
+  { id: 'add-friend', label: 'Add a Friend', action: '#', icon: Plus },
+  { id: 'game-invites', label: 'Game Invites', action: '#', icon: Gamepad2 },
+  { id: 'invite-pvp', label: 'Invite Friend to PVP', action: '#', icon: Swords },
+  { id: 'watch-games', label: 'Watch Games', action: '#', icon: Eye },
+  { id: 'play-game', label: 'Play Game', action: '/game', icon: Gamepad2 }
 ];
 
 interface LeftPageProps {
@@ -168,16 +168,19 @@ function QuickActions({ actions }: { actions: typeof MAIN_ACTIONS }) {
     <div>
       <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
       <div className="flex flex-col gap-2 opacity-50 pointer-events-none">
-        {actions.map((action) => (
-          <div 
-            key={action.id} 
-            className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg border border-slate-600 text-gray-300"
-          >
-            <span className="text-xl">{action.icon}</span>
-            <span className="font-medium">{action.label}</span>
-            <span className="ml-auto text-xs bg-slate-600 px-2 py-1 rounded">Soon</span>
-          </div>
-        ))}
+        {actions.map((action) => {
+          const Icon = action.icon;
+          return (
+            <div
+              key={action.id}
+              className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg border border-slate-600 text-gray-300"
+            >
+              <Icon size={20} />
+              <span className="font-medium">{action.label}</span>
+              <span className="ml-auto text-xs bg-slate-600 px-2 py-1 rounded">Soon</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -338,7 +341,9 @@ function GameLimitWarning({ currentTier, tierLimits }: { currentTier: string; ti
 function EmptyGameState() {
   return (
     <div className="text-center py-12 bg-slate-800/30 rounded-lg border-2 border-dashed border-slate-600">
-      <div className="text-6xl mb-4">🎮</div>
+      <div className="mb-4 flex justify-center">
+        <Gamepad2 className="w-16 h-16" strokeWidth={1.5} />
+      </div>
       <div className="text-xl font-semibold text-gray-200 mb-2">No Active Card Games</div>
       <div className="text-gray-400 mb-6">Start a new card game to begin</div>
       <a 

@@ -183,7 +183,9 @@ export function GameInvitesModal({ isOpen, onClose, userId }: GameInvitesModalPr
             </div>
           ) : currentInvites.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#a16207' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎮</div>
+              <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+                <Gamepad2 size={48} strokeWidth={1.5} />
+              </div>
               <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px', color: '#92400e' }}>
                 No {activeTab === 'received' ? 'invites received' : 'invites sent'}
               </div>
