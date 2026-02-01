@@ -83,38 +83,30 @@ export async function initializePvpGame(config: PvpGameConfig) {
       console.error('⚠️ Unexpected player count after joins:', gameStateAfterJoin.players?.length);
     }
 
-    // Step 4: Import decks for both players using existing import_deck action
-    console.log('🟢 Importing decks...');
+    // Step 4: Import decks for both players using direct import (skip text parsing)
+    console.log('🟢 Importing decks directly...');
     const deckData = [deck1, deck2];
 
     for (let i = 0; i < players.length; i++) {
       const player = players[i];
       const deck = deckData[i];
 
-      // Convert deck to deckListText format
-      const deckListText = deck.cards
-        .filter((c: any) => c.quantity > 0)
-        .map((c: any) => `${c.quantity} ${c.name}`)
-        .join('\n');
-
       console.log(`🟢 Importing deck for ${player.userName} (${player.userId}):`, {
         deckName: deck.name,
         cardCount: deck.cards?.length,
-        deckListPreview: deckListText.split('\n').slice(0, 3).join('\n')
+        totalCards: deck.totalCards
       });
 
-      // Import deck action
+      // Import deck directly with full card data (no text parsing)
       const importResponse = await stub.fetch(new Request('https://fake-host/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'import_deck',
+          type: 'import_deck_direct',
           playerId: player.userId,
           data: {
-            deckListText,
-            deckName: deck.name,
-            cardData: deck.cards,
-            format: 'draft' // PVP games use draft format (no commander, flexible deck size)
+            deckCards: deck.cards, // Full card objects with scryfallId, name, imageUrl, etc.
+            deckName: deck.name
           }
         })
       }));

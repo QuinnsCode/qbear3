@@ -880,7 +880,11 @@ export class CardGameDO extends DurableObject {
       case 'import_deck':
         console.log('📦 Processing import_deck action');
         return DeckImportManager.importDeck(gameState, action);
-      
+
+      case 'import_deck_direct':
+        console.log('📦 Processing import_deck_direct action (no text parsing)');
+        return DeckImportManager.importDeckDirect(gameState, action);
+
       case 'import_sandbox_deck':
         console.log('📦 Processing import_sandbox_deck action');
         

@@ -16,9 +16,116 @@ import { parseDeckList, type DeckFormat } from '@/app/lib/cardGame/deckListParse
 export class DeckImportManager {
   
   /**
+   * Import a deck directly from card array (for draft/constructed with full card data)
+   * Skips text parsing - just creates card instances directly
+   */
+  static importDeckDirect(gameState: CardGameState, action: CardGameAction): CardGameState {
+    const player = gameState.players.find(p => p.id === action.playerId)
+    if (!player) {
+      console.error('Player not found:', action.playerId)
+      return gameState
+    }
+
+    console.log(`📦 Importing deck directly for ${player.name}...`)
+
+    const deckCards = action.data.deckCards || []
+    if (deckCards.length === 0) {
+      console.error('No deck cards provided')
+      return gameState
+    }
+
+    console.log(`📋 Importing ${deckCards.length} unique cards`)
+
+    // CRITICAL: Remove all existing cards for this player
+    console.log(`🧹 Clearing existing cards for ${player.name}...`)
+    const updatedCards: Record<string, Card> = {}
+
+    Object.keys(gameState.cards).forEach(cardId => {
+      const card = gameState.cards[cardId]
+      if (card.ownerId !== action.playerId) {
+        updatedCards[cardId] = card
+      }
+    })
+
+    console.log(`✅ Removed ${Object.keys(gameState.cards).length - Object.keys(updatedCards).length} old cards`)
+
+    // Create card instances directly from deck cards
+    const newCards: Card[] = []
+    const scryfallIds: string[] = []
+
+    for (const deckCard of deckCards) {
+      const scryfallId = deckCard.scryfallId || deckCard.id
+      if (!scryfallId) {
+        console.warn(`⚠️ Card missing scryfallId:`, deckCard.name)
+        continue
+      }
+
+      // Create the specified number of copies
+      for (let i = 0; i < (deckCard.quantity || 1); i++) {
+        const instanceId = `${action.playerId}-${scryfallId}-${i}-${crypto.randomUUID()}`
+
+        const card: Card = {
+          instanceId,
+          scryfallId,
+          ownerId: action.playerId,
+          zone: 'library',
+          position: { x: 0, y: 0 },
+          rotation: 0,
+          isFaceUp: false
+        }
+
+        newCards.push(card)
+        scryfallIds.push(scryfallId)
+      }
+    }
+
+    console.log(`✅ Created ${newCards.length} card instances`)
+
+    // Shuffle the cards
+    const shuffled = this.shuffleArray([...newCards])
+
+    // Add new cards to game state
+    shuffled.forEach(card => {
+      updatedCards[card.instanceId] = card
+    })
+
+    // Update player with cleared zones and new library
+    const updatedPlayers = gameState.players.map(p => {
+      if (p.id === action.playerId) {
+        return {
+          ...p,
+          deckList: {
+            raw: '', // No text format for direct import
+            deckName: action.data.deckName || 'Draft Deck',
+            scryfallIds,
+            cardData: deckCards
+          },
+          zones: {
+            hand: [],
+            library: shuffled.map(c => c.instanceId),
+            graveyard: [],
+            exile: [],
+            battlefield: [],
+            command: []
+          }
+        }
+      }
+      return p
+    })
+
+    console.log(`✅ Deck imported: ${newCards.length} cards added to ${player.name}'s library`)
+
+    return {
+      ...gameState,
+      cards: updatedCards,
+      players: updatedPlayers
+    }
+  }
+
+  /**
    * Import a deck for a player
    * Creates card instances and adds them to the player's library
-   * 
+   *
    * IMPORTANT: This will CLEAR all existing zones for the player
    */
   static importDeck(gameState: CardGameState, action: CardGameAction): CardGameState {
