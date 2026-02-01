@@ -4,6 +4,7 @@
 import { useState, useRef } from 'react'
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'
 import { useCounterSync } from './useCounterSync'
+import { CloudRain, Zap, Sparkles, Skull, Coins, Apple, Search } from 'lucide-react'
 
 interface Counter {
   id: string
@@ -24,13 +25,13 @@ interface Props {
 }
 
 const PRESET_COUNTERS = [
-  { id: 'storm', label: '⛈️ Storm', icon: '⛈️' },
-  { id: 'energy', label: '⚡ Energy', icon: '⚡' },
-  { id: 'experience', label: '✨ Experience', icon: '✨' },
-  { id: 'poison', label: '☠️ Poison', icon: '☠️' },
-  { id: 'treasure', label: '💰 Treasure', icon: '💰' },
-  { id: 'food', label: '🍎 Food', icon: '🍎' },
-  { id: 'clue', label: '🔍 Clue', icon: '🔍' },
+  { id: 'storm', label: 'Storm', icon: CloudRain },
+  { id: 'energy', label: 'Energy', icon: Zap },
+  { id: 'experience', label: 'Experience', icon: Sparkles },
+  { id: 'poison', label: 'Poison', icon: Skull },
+  { id: 'treasure', label: 'Treasure', icon: Coins },
+  { id: 'food', label: 'Food', icon: Apple },
+  { id: 'clue', label: 'Clue', icon: Search },
 ]
 
 export default function LifeTracker({ player, opponents, onLifeChange, onCountersChange, onClose }: Props) {
@@ -294,15 +295,19 @@ export default function LifeTracker({ player, opponents, onLifeChange, onCounter
             
             {/* Preset counters */}
             <div className="grid grid-cols-2 gap-2 mb-3">
-              {PRESET_COUNTERS.map(preset => (
-                <button
-                  key={preset.id}
-                  onClick={() => addCustomCounter(preset)}
-                  className="bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white rounded-lg py-2 text-sm font-semibold transition-colors"
-                >
-                  {preset.label}
-                </button>
-              ))}
+              {PRESET_COUNTERS.map(preset => {
+                const IconComponent = preset.icon;
+                return (
+                  <button
+                    key={preset.id}
+                    onClick={() => addCustomCounter(preset)}
+                    className="bg-slate-700 hover:bg-slate-600 border border-slate-600 text-white rounded-lg py-2 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                  >
+                    <IconComponent className="w-4 h-4" />
+                    {preset.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Custom name input */}
