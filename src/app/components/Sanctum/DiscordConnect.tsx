@@ -2,6 +2,7 @@
 'use client'
 
 import { authClient } from "@/lib/auth-client";
+import { Gamepad2 } from "lucide-react";
 
 export function DiscordConnect({ isConnected }: { isConnected: boolean }) {
   const handleConnect = async () => {
@@ -42,9 +43,13 @@ export function DiscordConnect({ isConnected }: { isConnected: boolean }) {
               border: 'none',
               borderRadius: '6px',
               cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
             }}
           >
-            🎮 Connect Discord
+            <Gamepad2 size={16} />
+            Connect Discord
           </button>
         </div>
       ) : (

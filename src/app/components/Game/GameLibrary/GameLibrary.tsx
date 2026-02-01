@@ -2,12 +2,14 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { 
-  FantasyCard, 
-  FantasyTitle, 
-  FantasyText, 
-  FantasyButton 
+import {
+  FantasyCard,
+  FantasyTitle,
+  FantasyText,
+  FantasyButton
 } from "@/app/components/theme/FantasyTheme";
+import { Gamepad2, Dice6, Puzzle, Swords } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 interface Game {
   id: string;
@@ -136,15 +138,15 @@ export function GameLibrary({
     loadGames();
   }, [organizationId, userId]);
 
-  const getGameIcon = (type: Game['type']) => {
-    const icons = {
-      dice: '🎲',
-      card: '🃏',
-      strategy: '♟️',
-      puzzle: '🧩',
-      rpg: '⚔️'
+  const getGameIcon = (type: Game['type']): LucideIcon => {
+    const icons: Record<Game['type'], LucideIcon> = {
+      dice: Dice6,
+      card: Gamepad2,
+      strategy: Swords,
+      puzzle: Puzzle,
+      rpg: Swords
     };
-    return icons[type] || '🎮';
+    return icons[type] || Gamepad2;
   };
 
   const getStatusColor = (status: Game['status']) => {
@@ -216,16 +218,18 @@ export function GameLibrary({
     );
   }
 
-  const renderGameCard = (game: Game) => (
-    <FantasyCard key={game.id} className="p-4 hover:shadow-lg transition-shadow">
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex items-center space-x-2">
-          <span className="text-2xl">{getGameIcon(game.type)}</span>
-          <div>
-            <h3 className="font-semibold text-amber-900">{game.name}</h3>
-            <p className="text-xs text-amber-700 capitalize">{game.type} Game</p>
+  const renderGameCard = (game: Game) => {
+    const GameIcon = getGameIcon(game.type);
+    return (
+      <FantasyCard key={game.id} className="p-4 hover:shadow-lg transition-shadow">
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex items-center space-x-2">
+            <GameIcon size={24} className="text-amber-800" />
+            <div>
+              <h3 className="font-semibold text-amber-900">{game.name}</h3>
+              <p className="text-xs text-amber-700 capitalize">{game.type} Game</p>
+            </div>
           </div>
-        </div>
         <span className={`px-2 py-1 rounded text-xs border ${getStatusColor(game.status)}`}>
           {game.status}
         </span>
@@ -270,7 +274,8 @@ export function GameLibrary({
         )}
       </div>
     </FantasyCard>
-  );
+    );
+  };
 
   return (
     <div className={className}>

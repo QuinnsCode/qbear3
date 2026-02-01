@@ -2,6 +2,7 @@
 
 import React from 'react'
 import type { GameState, Territory } from '@/app/lib/GameState'
+import { Gamepad2 } from 'lucide-react'
 
 interface SetupPhaseUIProps {
   gameState: GameState
@@ -224,7 +225,10 @@ function SetupPhaseUI({
       {/* Territory Instructions */}
       {phaseInfo.canInteract && (
         <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
-          <h2 className="font-bold mb-2">🎮 Instructions</h2>
+          <h2 className="font-bold mb-2 flex items-center gap-2">
+            <Gamepad2 className="w-5 h-5" />
+            Instructions
+          </h2>
           <div className="text-sm">
             {phaseInfo.actionType === 'place_unit' && (
               <p>Click on your blue territories to place units. You can place up to 3 units per turn.</p>

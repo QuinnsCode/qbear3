@@ -11,6 +11,7 @@ import { db } from "@/db";
 import { getFriends, getFriendRequests } from "@/app/serverActions/social/friends";
 import { getGameInvites } from "@/app/serverActions/social/gameInvites";
 import { SocialSection } from "@/app/pages/sanctum/SocialSection";
+import { Gamepad2, Dice6 } from "lucide-react";
 
 export default async function SanctumPage({ ctx, request }: RequestInfo) {
   const orgSlug = extractOrgFromSubdomain(request);
@@ -277,14 +278,14 @@ function StatusCard({ ctx, currentTier, hasDiscord }: any) {
 function GameSection({ games, type, orgSlug, currentTier, tierLimits, atLimit }: any) {
   const isCardGame = type === 'cardGame';
   const title = isCardGame ? 'Card Games' : 'Active Games';
-  const icon = isCardGame ? '🎮' : '🎲';
+  const Icon = isCardGame ? Gamepad2 : Dice6;
   const route = isCardGame ? '/cardGame' : '/game';
   const idField = isCardGame ? 'cardGameId' : 'gameId';
 
   return (
     <div className="bg-slate-800 rounded-lg border-2 border-slate-600 p-6 shadow-lg">
       <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-        <span>{icon}</span>
+        <Icon className="w-6 h-6" />
         <span>{title}</span>
         <span className="ml-auto text-sm bg-slate-700 text-gray-300 px-3 py-1 rounded-full border border-slate-600">
           {games.length}/{tierLimits.maxGames}

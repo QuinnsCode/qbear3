@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { InviteFriendsModal } from "../Social/InviteFriendsModal";
+import { Gamepad2 } from "lucide-react";
 
 type GameSocialPanelProps = {
   userId: string;
@@ -82,7 +83,7 @@ export function GameSocialPanel({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '18px' }}>🎮</span>
+            <Gamepad2 size={18} />
             <span>{gameName}</span>
           </div>
           <span style={{ 

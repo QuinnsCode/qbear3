@@ -3,6 +3,7 @@
 import React from 'react'
 import { setupNewGame, getSetupInfo, getPlayerStats, GAME_CONFIG } from '@/app/services/game/gameSetup'
 import { restartGameWithNuking } from '@/app/serverActions/gameActions';
+import { Gamepad2 } from 'lucide-react';
 
 
 import type { GameState } from '@/app/lib/GameState'
@@ -60,7 +61,10 @@ function GameSetup({ gameState, gameId, currentUserId, onGameStateUpdate }: Game
     <div className="max-w-4xl mx-auto p-4 space-y-6">
       {/* Header */}
       <div className="bg-blue-100 border border-blue-300 rounded p-4">
-        <h1 className="text-2xl font-bold text-blue-800">🎮 Game Setup</h1>
+        <h1 className="text-2xl font-bold text-blue-800 flex items-center gap-2">
+          <Gamepad2 className="w-6 h-6" />
+          Game Setup
+        </h1>
         <p className="text-blue-700 mt-1">Setting up 1v1 + NPC game</p>
       </div>
       
@@ -192,7 +196,10 @@ function GameSetup({ gameState, gameId, currentUserId, onGameStateUpdate }: Game
 
       {/* Controls */}
       <div className="bg-white border rounded-lg p-4">
-        <h2 className="text-lg font-bold mb-3">🎮 Game Controls</h2>
+        <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+          <Gamepad2 className="w-5 h-5" />
+          Game Controls
+        </h2>
         <div className="flex flex-wrap gap-3">
           <button 
             onClick={handleRestartGame}
