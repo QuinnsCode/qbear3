@@ -44,6 +44,10 @@
       {
         "name": "DRAFT_DO",
         "class_name": "DraftDO"
+      },
+      {
+        "name": "USER_SESSION_DO",
+        "class_name": "UserSessionDO"
       }
     ]
   },
@@ -75,6 +79,10 @@
     {
       "tag": "v6",
       "new_sqlite_classes": ["DraftDO"]
+    },
+    {
+      "tag": "v7",
+      "new_sqlite_classes": ["UserSessionDO"]
     }
   ],
   "d1_databases": [
