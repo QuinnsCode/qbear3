@@ -1,10 +1,11 @@
 // src/lib/rateLimit.ts
 import { env } from "cloudflare:workers"
 
-export type RateLimitScope = 
+export type RateLimitScope =
   | 'cgsync'        // Card game WebSocket connections
-  | 'gsync'         // Board game WebSocket connections  
+  | 'gsync'         // Board game WebSocket connections
   | 'draftsync'     // draft websocket connections
+  | 'matchmaking'   // PVP matchmaking WebSocket connections
   | 'api'           // General API calls
   | 'deck-import'   // Deck import operations
   | 'deck-create'   // Deck creation
@@ -20,6 +21,7 @@ export const RATE_LIMITS: Record<RateLimitScope, RateLimitConfig> = {
   'cgsync': { maxRequests: 10, windowMs: 60_000 },      // 10 connections per minute
   'draftsync': { maxRequests:10, windowMs: 60_000 },    // 10 connections per minute
   'gsync': { maxRequests: 10, windowMs: 60_000 },       // 10 connections per minute
+  'matchmaking': { maxRequests: 10, windowMs: 60_000 }, // 10 connections per minute
   'api': { maxRequests: 100, windowMs: 60_000 },        // 100 calls per minute
   'deck-import': { maxRequests: 5, windowMs: 60_000 },  // 5 imports per minute
   'deck-create': { maxRequests: 10, windowMs: 60_000 }, // 10 decks per minute

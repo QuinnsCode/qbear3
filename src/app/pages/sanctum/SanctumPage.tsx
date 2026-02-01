@@ -332,7 +332,7 @@ function GameSection({ games, type, orgSlug, currentTier, tierLimits, atLimit }:
       
       {games.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-6xl mb-4">{icon}</div>
+          <Icon className="w-16 h-16 mx-auto mb-4 text-gray-400" />
           <div className="text-xl font-semibold text-gray-200 mb-2">No Games Yet</div>
           <a 
             href={route} 

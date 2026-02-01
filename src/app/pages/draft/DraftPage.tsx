@@ -3,9 +3,15 @@ import { type RequestInfo } from "rwsdk/worker"
 import { env } from "cloudflare:workers"
 import DraftContent from '@/app/components/Draft/DraftContent'
 import { getOrCreateDraftGuestId } from '@/lib/userIdentity'
+import type { Region } from '@/app/lib/constants/regions'
 
 export default async function DraftPage({ params, ctx, request }: RequestInfo) {
   const draftId = params.draftId
+
+  // Extract PVP params from URL
+  const url = new URL(request.url)
+  const pvpRegion = url.searchParams.get('pvpRegion') as Region | undefined
+  const returnTo = url.searchParams.get('returnTo') || undefined
   
   console.log('🎴 Draft Page - ctx.user:', ctx.user)
   
@@ -73,12 +79,14 @@ export default async function DraftPage({ params, ctx, request }: RequestInfo) {
   }
 
   return (
-    <DraftContent 
+    <DraftContent
       draftId={draftId}
       initialState={initialState}
       userId={userId}
       userName={userName}
       isLoggedIn={isLoggedIn}
+      pvpRegion={pvpRegion}
+      returnTo={returnTo}
     />
   )
 }

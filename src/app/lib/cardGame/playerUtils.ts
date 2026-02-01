@@ -3,7 +3,19 @@
 import type { CardGameState, MTGPlayer } from '@/app/services/cardGame/CardGameState'
 
 export function getOpponents(players: MTGPlayer[], currentPlayerId: string): MTGPlayer[] {
-  return players.filter(p => p.id !== currentPlayerId)
+  // Filter out current player
+  const opponents = players.filter(p => p.id !== currentPlayerId)
+
+  // Deduplicate by player ID (safety measure for any state corruption)
+  const seen = new Set<string>()
+  return opponents.filter(p => {
+    if (seen.has(p.id)) {
+      console.warn(`⚠️ Duplicate player detected in opponents: ${p.name} (${p.id})`)
+      return false
+    }
+    seen.add(p.id)
+    return true
+  })
 }
 
 export function getViewedPlayer(

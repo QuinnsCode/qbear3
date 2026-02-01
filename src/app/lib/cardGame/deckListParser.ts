@@ -2,20 +2,26 @@
 
 import type { DeckListParseResult } from '@/app/types/Deck'
 
+export type DeckFormat = 'commander' | 'draft' | 'constructed'
+
 /**
  * Parse a deck list from various text formats:
  * - "1x Card Name" or "1 Card Name"
  * - "Card Name" (assumes quantity 1)
  * - Single commander: "Commander: Card Name"
  * - Partner commanders: "Commander: Card Name" and "Partner: Card Name"
- * 
+ *
  * COMMANDER FORMAT RULES:
  * - 100 cards total (including commander(s))
  * - Commander specified via "Commander:" line
  * - Partner commander specified via "Partner:" or second "Commander:" line
  * - Cards in list should total 100 including commander(s)
+ *
+ * DRAFT/CONSTRUCTED FORMAT RULES:
+ * - No commander required
+ * - Any deck size allowed (typically 40 for draft, 60 for constructed)
  */
-export function parseDeckList(deckListText: string): DeckListParseResult {
+export function parseDeckList(deckListText: string, format: DeckFormat = 'commander'): DeckListParseResult {
   const lines = deckListText.split('\n').map(line => line.trim()).filter(Boolean)
   const cards: Array<{ quantity: number; name: string }> = []
   const errors: string[] = []
@@ -69,16 +75,18 @@ export function parseDeckList(deckListText: string): DeckListParseResult {
     }
   }
 
-  // Validate commanders
-  if (commanders.length === 0) {
-    errors.push(
-      `No commander specified. Add "Commander: [Card Name]" to your deck list.`
-    )
-  } else if (commanders.length > 2) {
-    errors.push(
-      `Too many commanders specified (${commanders.length}). ` +
-      `Commander format allows 1 commander or 2 with Partner ability.`
-    )
+  // Validate commanders (only for Commander format)
+  if (format === 'commander') {
+    if (commanders.length === 0) {
+      errors.push(
+        `No commander specified. Add "Commander: [Card Name]" to your deck list.`
+      )
+    } else if (commanders.length > 2) {
+      errors.push(
+        `Too many commanders specified (${commanders.length}). ` +
+        `Commander format allows 1 commander or 2 with Partner ability.`
+      )
+    }
   }
 
   // Add commander(s) to the card list
@@ -101,13 +109,21 @@ export function parseDeckList(deckListText: string): DeckListParseResult {
 
   // Calculate total cards
   const totalCards = cards.reduce((sum, card) => sum + card.quantity, 0)
-  
-  // Validate total is exactly 100 for Commander format
-  if (totalCards !== 100) {
-    errors.push(
-      `Commander deck must have exactly 100 cards (including commander${commanders.length > 1 ? 's' : ''}). ` +
-      `Found: ${totalCards} cards.`
-    )
+
+  // Validate deck size based on format
+  if (format === 'commander') {
+    // Commander: exactly 100 cards
+    if (totalCards !== 100) {
+      errors.push(
+        `Commander deck must have exactly 100 cards (including commander${commanders.length > 1 ? 's' : ''}). ` +
+        `Found: ${totalCards} cards.`
+      )
+    }
+  } else if (format === 'draft' || format === 'constructed') {
+    // Draft/Constructed: just validate we have some cards
+    if (totalCards === 0) {
+      errors.push(`Deck must contain at least 1 card.`)
+    }
   }
 
   return { 

@@ -307,38 +307,47 @@ export class MatchmakingDO extends DurableObject {
       // Generate unique game ID
       const gameId = `pvp-${this.region}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-      // We'll need to call the CardGameDO to initialize it
-      // For now, just store the match metadata in KV
-      const matchMetadata = {
-        gameId,
-        region: this.region,
-        players: [
-          {
-            userId: player1.userId,
-            userName: player1.userName,
-            deckId: player1.deckId,
-            deckName: player1.deckName,
-          },
-          {
-            userId: player2.userId,
-            userName: player2.userName,
-            deckId: player2.deckId,
-            deckName: player2.deckName,
-          }
-        ],
-        createdAt: Date.now(),
-        status: 'active'
-      };
+      // Call initialization API endpoint (runs server action with clean CardGameDO interface)
+      const initUrl = `https://${env.WORKER_HOST || 'qntbr.com'}/api/pvp/initialize`;
 
-      // Store in KV (we'll need to add PVP_MATCHES_KV binding)
-      await env.DECKS_KV.put(
-        `pvp:match:${gameId}`,
-        JSON.stringify(matchMetadata),
-        { expirationTtl: 24 * 60 * 60 } // 24 hours
-      );
+      const initResponse = await fetch(initUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          gameId,
+          region: this.region,
+          players: [
+            {
+              userId: player1.userId,
+              userName: player1.userName,
+              deckId: player1.deckId,
+              position: 0
+            },
+            {
+              userId: player2.userId,
+              userName: player2.userName,
+              deckId: player2.deckId,
+              position: 1
+            }
+          ]
+        })
+      });
 
-      console.log(`Created PVP match: ${gameId}`);
+      if (!initResponse.ok) {
+        console.error('Failed to initialize PVP game via API');
+        return null;
+      }
+
+      const result = await initResponse.json();
+
+      if (!result.success) {
+        console.error('PVP initialization failed:', result.error);
+        return null;
+      }
+
+      console.log(`✅ Created PVP match: ${gameId}`);
       return gameId;
+
     } catch (error) {
       console.error('Error creating PVP game:', error);
       return null;

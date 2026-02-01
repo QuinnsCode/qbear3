@@ -1,12 +1,12 @@
 // src/app/services/cardGame/managers/DeckImportManager.ts
-import type { 
-  CardGameState, 
-  MTGPlayer, 
-  Card, 
+import type {
+  CardGameState,
+  MTGPlayer,
+  Card,
   ScryfallCard,
-  CardGameAction 
+  CardGameAction
 } from '@/app/services/cardGame/CardGameState'
-import { parseDeckList } from '@/app/lib/cardGame/deckListParser'
+import { parseDeckList, type DeckFormat } from '@/app/lib/cardGame/deckListParser'
 
 /**
  * DeckImportManager - Handles deck importing and card creation
@@ -29,11 +29,14 @@ export class DeckImportManager {
       }
       
       console.log(`📦 Importing deck for ${player.name}...`)
-      
+
       const deckListText = action.data.deckListText || ''
-      
+      const format: DeckFormat = action.data.format || 'commander'
+
+      console.log(`📋 Deck format: ${format}`)
+
       // Parse the deck list
-      const parseResult = parseDeckList(deckListText)
+      const parseResult = parseDeckList(deckListText, format)
       
       if (parseResult.errors.length > 0) {
         console.error('Deck list parse errors:', parseResult.errors)

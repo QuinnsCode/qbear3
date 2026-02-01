@@ -13,6 +13,8 @@ import DragHandle from '../CardGame/CardGameBoard/ui/DragHandle'
 import type { DraftState } from '@/app/types/Draft'
 import { makePick as makePickAction } from '@/app/serverActions/draft/makePick'
 import { exportDraftDeck } from '@/app/serverActions/draft/exportDraftDeck'
+import { exportPvpDeck } from '@/app/serverActions/draft/exportPvpDeck'
+import type { Region } from '@/app/lib/constants/regions'
 
 interface Props {
   draftId: string
@@ -20,14 +22,18 @@ interface Props {
   userId: string
   userName: string
   isLoggedIn: boolean
+  pvpRegion?: Region
+  returnTo?: string
 }
 
-export default function DraftContent({ 
-  draftId, 
-  initialState, 
+export default function DraftContent({
+  draftId,
+  initialState,
   userId,
   userName,
-  isLoggedIn 
+  isLoggedIn,
+  pvpRegion,
+  returnTo
 }: Props) {
   const { draftState, isConnected, error, utils } = useDraftSync({
     draftId,
@@ -347,10 +353,14 @@ export default function DraftContent({
       console.log('🎴 Finalizing deck with config:', {
         mainDeckCount: deckConfig.mainDeck.length,
         sideboardCount: deckConfig.sideboard.length,
-        basicsCount: Object.values(deckConfig.basics).reduce((a, b) => a + b, 0)
+        basicsCount: Object.values(deckConfig.basics).reduce((a, b) => a + b, 0),
+        pvpMode: !!pvpRegion
       })
-      
-      const result = await exportDraftDeck(draftId, userId, deckConfig)
+
+      // Use PVP export if in PVP mode, otherwise regular export
+      const result = pvpRegion
+        ? await exportPvpDeck(draftId, userId, deckConfig, pvpRegion)
+        : await exportDraftDeck(draftId, userId, deckConfig)
       
       console.log('📤 Export result:', result)
       
@@ -387,9 +397,11 @@ export default function DraftContent({
                   
                   if (deleteResult.success) {
                     alert(`✅ Deleted oldest draft deck: "${oldestDeck.name}"\n\nNow saving your new deck...`)
-                    
+
                     // Try exporting again
-                    const retryResult = await exportDraftDeck(draftId, userId, deckConfig)
+                    const retryResult = pvpRegion
+                      ? await exportPvpDeck(draftId, userId, deckConfig, pvpRegion)
+                      : await exportDraftDeck(draftId, userId, deckConfig)
                     
                     if (!retryResult.success) {
                       throw new Error(retryResult.error || 'Failed to export deck after deletion')
@@ -429,7 +441,7 @@ export default function DraftContent({
       }
       
       console.log('✅ Deck exported successfully')
-      
+
       // Clean up draft-specific state
       try {
         localStorage.removeItem(`draft:${draftId}:sideboard`)
@@ -437,8 +449,16 @@ export default function DraftContent({
       } catch (error) {
         console.error('Failed to clean up draft state:', error)
       }
-      
+
       setShowDeckBuilder(false)
+
+      // Redirect to PVP lobby if in PVP mode
+      if (pvpRegion && returnTo && result.deckId) {
+        console.log('🎯 Redirecting to PVP lobby:', returnTo)
+        setTimeout(() => {
+          window.location.href = `${returnTo}?deckId=${result.deckId}`
+        }, 500)
+      }
       
     } catch (error) {
       console.error('❌ Failed to export deck:', error)

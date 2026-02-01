@@ -28,6 +28,8 @@ import DraftPage from '@/app/pages/draft/DraftPage'
 import NewDraftPage from '@/app/pages/draft/NewDraftPage'
 import SanctumPage from "@/app/pages/sanctum/SanctumPage";
 import PvpDraftEntryPage from "@/app/pages/pvp/PvpDraftEntryPage";
+import PvpDraftPage from "@/app/pages/pvp/PvpDraftPage";
+import PvpLobbyPage from "@/app/pages/pvp/PvpLobbyPage";
 import OrgNotFoundPage from "@/app/pages/errors/OrgNotFoundPage";
 import NoAccessPage from "@/app/pages/errors/NoAccessPage";
 import PricingPage from "@/app/pages/pricing/PricingPage";
@@ -308,6 +310,11 @@ export default defineApp([
       return handler({ request });
     }),
 
+    route("/pvp/initialize", async ({ request }) => {
+      const { default: handler } = await import('@/app/api/pvp/initialize');
+      return handler({ request });
+    }),
+
     route("/debug/cardgame/:gameId", async ({ params, ctx }) => {
       if (!env.CARD_GAME_STATE_DO) {
         return Response.json({ error: "Card Game DO not found" });
@@ -527,6 +534,8 @@ export default defineApp([
     route("/sanctum", SanctumPage),
 
     route("/pvp", PvpDraftEntryPage),
+    route("/pvp/draft/:region/new", PvpDraftPage),
+    route("/pvp/lobby/:region", PvpLobbyPage),
 
     route("/deckbuilder", DeckBuilderPage),
     route("/deckBuilder", DeckBuilderPage),

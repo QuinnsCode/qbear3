@@ -31,38 +31,48 @@ export default function OpponentCarousel({
   useEffect(() => {
     const currentIds = new Set(displayedOpponents.map(o => o.id))
     const newOpponents = opponents.filter(o => !currentIds.has(o.id))
-    
+
     if (newOpponents.length > 0) {
-      // Add to pending queue
-      setPendingOpponents(prev => [...newOpponents, ...prev])
-      
-      // Start batch timer if not already running
-      if (!batchTimerRef.current) {
-        batchTimerRef.current = setTimeout(() => {
-          // Flush pending to displayed
-          setPendingOpponents(current => {
-            if (current.length > 0) {
-              setDisplayedOpponents(prev => [...current, ...prev]) // Newest on LEFT
-            }
-            return []
-          })
-          batchTimerRef.current = null
-        }, BATCH_DELAY)
+      // Add to pending queue (only if truly new - check prev ref to prevent loops)
+      const prevIds = new Set(prevOpponentsRef.current.map(o => o.id))
+      const actuallyNew = newOpponents.filter(o => !prevIds.has(o.id))
+
+      if (actuallyNew.length > 0) {
+        setPendingOpponents(prev => {
+          // Deduplicate before adding
+          const pendingIds = new Set(prev.map(p => p.id))
+          const uniqueNew = actuallyNew.filter(o => !pendingIds.has(o.id))
+          return [...uniqueNew, ...prev]
+        })
+
+        // Start batch timer if not already running
+        if (!batchTimerRef.current) {
+          batchTimerRef.current = setTimeout(() => {
+            // Flush pending to displayed
+            setPendingOpponents(current => {
+              if (current.length > 0) {
+                setDisplayedOpponents(prev => [...current, ...prev]) // Newest on LEFT
+              }
+              return []
+            })
+            batchTimerRef.current = null
+          }, BATCH_DELAY)
+        }
       }
     }
-    
+
     // Handle removed opponents (immediate removal)
     const opponentIds = new Set(opponents.map(o => o.id))
     setDisplayedOpponents(prev => prev.filter(o => opponentIds.has(o.id)))
     setPendingOpponents(prev => prev.filter(o => opponentIds.has(o.id)))
-    
+
     // Update existing opponents (for life changes, etc)
-    setDisplayedOpponents(prev => 
-      prev.map(displayed => 
+    setDisplayedOpponents(prev =>
+      prev.map(displayed =>
         opponents.find(o => o.id === displayed.id) || displayed
       )
     )
-    
+
     prevOpponentsRef.current = opponents
   }, [opponents, displayedOpponents])
 
