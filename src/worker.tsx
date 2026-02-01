@@ -43,6 +43,7 @@ export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects
 export { GameStateDO } from "./gameDurableObject";
 export { CardGameDO } from './cardGameDurableObject'
 export { DraftDO } from './draftDurableObject'
+export { UserSessionDO } from './durableObjects/userSessionDO'
 
 export { CardCacheDO } from './cardCacheDO'
 export { SyncedStateServer };
@@ -246,13 +247,31 @@ export default defineApp([
         const { rateLimitMiddleware } = await import('@/lib/middlewareFunctions')
         const rateLimitResult = await rateLimitMiddleware(request, 'draftsync')
         if (rateLimitResult) return rateLimitResult
-        
+
         // Add auth headers for guests/users
         request = await draftWebSocketMiddleware(request, ctx)
       }
     },
     ...draftRoutes
-  ]),  
+  ]),
+
+  // User Session DO - Cross-device sync with Hibernation API
+  route("/__user-session", async ({ request }) => {
+    const url = new URL(request.url);
+    const userId = url.searchParams.get('userId');
+
+    if (!userId) {
+      return new Response('Missing userId', { status: 400 });
+    }
+
+    // Get or create User Session DO for this user
+    const id = env.USER_SESSION_DO.idFromName(userId);
+    const stub = env.USER_SESSION_DO.get(id);
+
+    // Forward request to DO (will handle WebSocket upgrade)
+    return stub.fetch(request);
+  }),
+
   // realtimeRoute(() => env.REALTIME_DURABLE_OBJECT as any),
 
   // API ROUTES - All API endpoints
