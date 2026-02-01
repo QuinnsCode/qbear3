@@ -145,16 +145,14 @@ export default defineApp([
       
       // ✅ NEW: Check if user needs org
       const url = new URL(request.url);
-      if (ctx.user && 
+      if (ctx.user &&
           !url.pathname.startsWith('/api/') &&
           !url.pathname.startsWith('/user/create-lair') &&
           url.pathname !== '/') {
-        
-        const memberships = await db.member.findMany({
-          where: { userId: ctx.user.id },
-          take: 1
-        });
-        
+
+        const { getCachedUserMemberships } = await import('@/lib/cache/authCache');
+        const memberships = await getCachedUserMemberships(ctx.user.id);
+
         if (memberships.length === 0) {
           console.log('⚠️ User has no organization, redirecting to create lair');
           return new Response(null, {

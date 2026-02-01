@@ -100,6 +100,10 @@
     {
       "binding":"RATELIMIT_KV",
       "id":"20704f4f986f4c09ad4b2b6dd7cb7e04"
+    },
+    {
+      "binding": "AUTH_CACHE_KV",
+      "id": "83656302bd814de585f655d5a7412979"
     }
   ]
 }

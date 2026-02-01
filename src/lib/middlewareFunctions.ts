@@ -4,6 +4,10 @@ import type { AppContext } from "@/worker";
 import { env } from "cloudflare:workers";
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimit'
 import { RateLimitScope } from "@/lib/rateLimit";
+import {
+  getCachedOrganization,
+  getCachedMember
+} from "@/lib/cache/authCache";
 let dbInitialized = false;
 
 export async function initializeServices() {
@@ -125,15 +129,13 @@ export async function setupOrganizationContext(ctx: AppContext, request: Request
 
     // Sandbox orgs don't require membership
     if (isSandboxOrg(request)) {
-      const organization = await db.organization.findUnique({
-        where: { slug: orgSlug }
-      });
-      
+      const organization = await getCachedOrganization(orgSlug!);
+
       if (organization) {
         ctx.organization = organization;
         ctx.userRole = 'viewer'; // Everyone is a viewer
         ctx.orgError = null;
-        console.log('✅ Sandbox org - public access granted');
+        console.log('✅ Sandbox org - public access granted (cached)');
         return;
       }
     }
@@ -147,17 +149,9 @@ export async function setupOrganizationContext(ctx: AppContext, request: Request
     }
     
     try {
-      // Find the organization
-      const organization = await db.organization.findUnique({
-        where: { slug: orgSlug },
-        include: {
-          members: {
-            where: ctx.user ? { userId: ctx.user.id } : undefined,
-            select: { role: true }
-          }
-        }
-      });
-      
+      // Find the organization (cached)
+      const organization = await getCachedOrganization(orgSlug);
+
       if (!organization) {
         console.log('❌ Organization not found:', orgSlug);
         ctx.organization = null;
@@ -165,10 +159,12 @@ export async function setupOrganizationContext(ctx: AppContext, request: Request
         ctx.orgError = 'ORG_NOT_FOUND';
         return;
       }
-      
+
       // Check if user has access (if user is logged in)
       if (ctx.user) {
-        const userMembership = organization.members?.[0];
+        // Get user's membership (cached)
+        const userMembership = await getCachedMember(ctx.user.id, organization.id);
+
         if (!userMembership) {
           console.log('❌ User has no access to org:', orgSlug);
           ctx.organization = organization;
@@ -176,14 +172,14 @@ export async function setupOrganizationContext(ctx: AppContext, request: Request
           ctx.orgError = 'NO_ACCESS';
           return;
         }
-        
+
         ctx.userRole = userMembership.role;
-        console.log('✅ User has access to org:', orgSlug, 'with role:', ctx.userRole);
+        console.log('✅ User has access to org:', orgSlug, 'with role:', ctx.userRole, '(cached)');
       } else {
         // No user logged in, but org exists
         ctx.userRole = null;
       }
-      
+
       ctx.organization = organization;
       ctx.orgError = null;
       
