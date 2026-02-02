@@ -88,6 +88,7 @@ export type MTGPlayer = {
     graveyard: string[]    // Card instanceIds (ordered)
     exile: string[]        // Card instanceIds
     command: string[]      // Commander(s)
+    sideboard?: string[]   // Sideboard cards (for Limited formats, optional for backwards compat)
   }
 
   gameStateInfo?: string
@@ -97,7 +98,7 @@ export type MTGPlayer = {
 // CARD & TOKEN
 // ============================================================================
 
-export type ZoneType = 'library' | 'hand' | 'battlefield' | 'graveyard' | 'exile' | 'command'
+export type ZoneType = 'library' | 'hand' | 'battlefield' | 'graveyard' | 'exile' | 'command' | 'sideboard'
 
 export type TokenData = {
   name: string

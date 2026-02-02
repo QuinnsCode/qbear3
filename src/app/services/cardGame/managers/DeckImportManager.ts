@@ -88,11 +88,14 @@ export class DeckImportManager {
       for (let i = 0; i < (deckCard.quantity || 1); i++) {
         const instanceId = `${action.playerId}-${scryfallId}-${i}-${crypto.randomUUID()}`
 
+        // Use deckCard zone, defaulting to library for main deck
+        const zone = deckCard.zone === 'sideboard' ? 'sideboard' : 'library'
+
         const card: Card = {
           instanceId,
           scryfallId,
           ownerId: action.playerId,
-          zone: 'library',
+          zone: zone as ZoneType,
           position: { x: 0, y: 0 },
           rotation: 0,
           isFaceUp: false
@@ -106,15 +109,21 @@ export class DeckImportManager {
     console.log(`✅ Created ${newCards.length} card instances`)
     console.log(`✅ Converted ${scryfallCardData.length} unique cards to Scryfall format`)
 
-    // Shuffle the cards
-    const shuffled = this.shuffleArray([...newCards])
+    // Separate main deck from sideboard
+    const mainDeckCards = newCards.filter(c => c.zone === 'library')
+    const sideboardCards = newCards.filter(c => c.zone === 'sideboard')
 
-    // Add new cards to game state
-    shuffled.forEach(card => {
+    console.log(`📊 Main deck: ${mainDeckCards.length} cards, Sideboard: ${sideboardCards.length} cards`)
+
+    // Shuffle main deck (keep sideboard unshuffled)
+    const shuffledMainDeck = this.shuffleArray([...mainDeckCards])
+
+    // Add all cards to game state
+    newCards.forEach(card => {
       updatedCards[card.instanceId] = card
     })
 
-    // Update player with cleared zones and new library
+    // Update player with separated zones
     const updatedPlayers = gameState.players.map(p => {
       if (p.id === action.playerId) {
         return {
@@ -127,11 +136,12 @@ export class DeckImportManager {
           },
           zones: {
             hand: [],
-            library: shuffled.map(c => c.instanceId),
+            library: shuffledMainDeck.map(c => c.instanceId),
             graveyard: [],
             exile: [],
             battlefield: [],
-            command: []
+            command: [],
+            sideboard: sideboardCards.map(c => c.instanceId)
           }
         }
       }
