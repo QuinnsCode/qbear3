@@ -8,6 +8,7 @@ import { BASIC_LANDS } from '@/app/types/Deck'
 import { X, Plus, Minus, ZoomIn, ZoomOut } from 'lucide-react'
 
 interface Props {
+  draftId: string
   draftPool: string[]
   cubeCards: CubeCard[]
   playerId: string
@@ -34,6 +35,7 @@ interface DeckCardEntry {
 type ViewTab = 'deck' | 'sideboard'
 
 export default function DraftDeckBuilderModal({
+  draftId,
   draftPool,
   cubeCards,
   playerId,
@@ -46,25 +48,74 @@ export default function DraftDeckBuilderModal({
   const [viewTab, setViewTab] = useState<ViewTab>('deck')
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
   const [cardScale, setCardScale] = useState(1.0)
-  
+
+  // localStorage key for this draft
+  const storageKey = `draft_deck_${draftId}_${playerId}`
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
-  
+
   const [mainDeck, setMainDeck] = useState<Map<string, number>>(() => {
+    // Try to load from localStorage first
+    try {
+      const saved = localStorage.getItem(storageKey)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const map = new Map<string, number>()
+        if (parsed.mainDeck && Array.isArray(parsed.mainDeck)) {
+          parsed.mainDeck.forEach(([id, qty]: [string, number]) => {
+            map.set(id, qty)
+          })
+          return map
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load saved deck from localStorage:', err)
+    }
+
+    // Fall back to initialConfig
     const map = new Map<string, number>()
     initialConfig?.mainDeck.forEach(({ scryfallId, quantity }) => {
       map.set(scryfallId, quantity)
     })
     return map
   })
-  
-  const [basics, setBasics] = useState<Record<BasicLandColor, number>>(
-    initialConfig?.basics || { W: 0, U: 0, B: 0, R: 0, G: 0 }
-  )
+
+  const [basics, setBasics] = useState<Record<BasicLandColor, number>>(() => {
+    // Try to load from localStorage first
+    try {
+      const saved = localStorage.getItem(storageKey)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.basics) {
+          return parsed.basics
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load saved basics from localStorage:', err)
+    }
+
+    // Fall back to initialConfig or defaults
+    return initialConfig?.basics || { W: 0, U: 0, B: 0, R: 0, G: 0 }
+  })
+
+  // Save to localStorage whenever deck changes
+  useEffect(() => {
+    try {
+      const deckData = {
+        mainDeck: Array.from(mainDeck.entries()),
+        basics,
+        timestamp: Date.now()
+      }
+      localStorage.setItem(storageKey, JSON.stringify(deckData))
+    } catch (err) {
+      console.warn('Failed to save deck to localStorage:', err)
+    }
+  }, [mainDeck, basics, storageKey])
   
   const [isFinalizing, setIsFinalizing] = useState(false)
 
@@ -185,7 +236,7 @@ export default function DraftDeckBuilderModal({
       const sideboardCards = draftPool
         .filter(scryfallId => !mainDeckIds.has(scryfallId))
         .map(scryfallId => ({ scryfallId, quantity: 1 }))
-      
+
       await onFinalize({
         mainDeck: Array.from(mainDeck.entries()).map(([scryfallId, quantity]) => ({
           scryfallId,
@@ -194,6 +245,13 @@ export default function DraftDeckBuilderModal({
         sideboard: sideboardCards,
         basics
       })
+
+      // Clear localStorage after successful finalization
+      try {
+        localStorage.removeItem(storageKey)
+      } catch (err) {
+        console.warn('Failed to clear saved deck from localStorage:', err)
+      }
     } catch (error) {
       console.error('Failed to finalize deck:', error)
       alert('Failed to save deck. Please try again.')

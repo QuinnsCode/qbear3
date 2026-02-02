@@ -566,6 +566,7 @@ export default function DraftContent({
           
           {showDeckBuilder && isLoggedIn && (
             <DraftDeckBuilderModal
+              draftId={draftId}
               draftPool={currentPlayer.draftPool}
               cubeCards={draftState.cubeCards || []}
               playerId={userId}
@@ -620,6 +621,7 @@ export default function DraftContent({
           
           {showDeckBuilder && (
             <DraftDeckBuilderModal
+              draftId={draftId}
               draftPool={currentPlayer.draftPool}
               cubeCards={draftState.cubeCards || []}
               playerId={userId}
