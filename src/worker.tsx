@@ -31,6 +31,7 @@ import PvpDraftEntryPage from "@/app/pages/pvp/PvpDraftEntryPage";
 import PvpDraftPage from "@/app/pages/pvp/PvpDraftPage";
 import PvpLobbyPage from "@/app/pages/pvp/PvpLobbyPage";
 import AdminDashboard from "@/app/pages/admin/AdminDashboard";
+import CacheBrowserPage from "@/app/pages/admin/CacheBrowserPage";
 import OrgNotFoundPage from "@/app/pages/errors/OrgNotFoundPage";
 import NoAccessPage from "@/app/pages/errors/NoAccessPage";
 import PricingPage from "@/app/pages/pricing/PricingPage";
@@ -329,6 +330,24 @@ export default defineApp([
       return handler({ request });
     }),
 
+    // Test cache endpoint
+    route("/admin/test-cache", async ({ request }) => {
+      const { default: handler } = await import('@/app/api/admin/test-cache');
+      return handler({ request });
+    }),
+
+    // Inspect deck endpoint
+    route("/admin/inspect-deck", async ({ request }) => {
+      const { default: handler } = await import('@/app/api/admin/inspect-deck');
+      return handler({ request });
+    }),
+
+    // Fetch fresh basic lands endpoint
+    route("/admin/fetch-basic-lands", async ({ request }) => {
+      const { default: handler } = await import('@/app/api/admin/fetch-basic-lands');
+      return handler({ request });
+    }),
+
     route("/debug/cardgame/:gameId", async ({ params, ctx }) => {
       if (!env.CARD_GAME_STATE_DO) {
         return Response.json({ error: "Card Game DO not found" });
@@ -546,6 +565,7 @@ export default defineApp([
     route("/no-access", NoAccessPage),
 
     route("/admin", AdminDashboard),
+    route("/admin/cache", CacheBrowserPage),
 
     route("/sanctum", SanctumPage),
 

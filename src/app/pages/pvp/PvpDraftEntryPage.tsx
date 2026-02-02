@@ -1,7 +1,8 @@
 // app/pages/pvp/PvpDraftEntryPage.tsx
 import { type RequestInfo } from "rwsdk/worker";
-import { REGION_LIST, PVP_DECK_EXPIRY_HOURS } from "@/app/lib/constants/regions";
-import { Swords, Users, Clock, Trophy, AlertCircle } from "lucide-react";
+import { REGION_LIST, PVP_DECK_EXPIRY_HOURS, type Region } from "@/app/lib/constants/regions";
+import { Swords, Users, Clock, Trophy, AlertCircle, Play, Sparkles } from "lucide-react";
+import { getValidPvpDecks } from "@/app/serverActions/draft/getValidPvpDecks";
 
 export default async function PvpDraftEntryPage({ ctx, request }: RequestInfo) {
   // Require authentication
@@ -11,6 +12,9 @@ export default async function PvpDraftEntryPage({ ctx, request }: RequestInfo) {
       headers: { Location: '/user/login' }
     });
   }
+
+  // Fetch user's valid PVP decks
+  const { decksByRegion } = await getValidPvpDecks(ctx.user.id);
 
   return (
     <div className="min-h-screen bg-slate-700">
@@ -90,25 +94,51 @@ export default async function PvpDraftEntryPage({ ctx, request }: RequestInfo) {
           <p className="text-gray-300 mb-6">Choose the region closest to you for the best connection quality</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {REGION_LIST.map((region) => (
-              <a
-                key={region.id}
-                href={`/pvp/draft/${region.id}/new`}
-                className="group bg-slate-700/70 hover:bg-slate-700 rounded-lg border-2 border-slate-600 hover:border-blue-500 p-6 transition-all shadow-md hover:shadow-lg"
-              >
-                <div className="flex items-center gap-4 mb-3">
-                  <div className="text-4xl">{region.flag}</div>
-                  <div>
-                    <div className="text-xl font-bold text-white">{region.name}</div>
-                    <div className="text-sm text-gray-400">{region.description}</div>
+            {REGION_LIST.map((region) => {
+              const hasValidDeck = decksByRegion[region.id as Region]?.length > 0;
+
+              return (
+                <div
+                  key={region.id}
+                  className="bg-slate-700/70 rounded-lg border-2 border-slate-600 p-6 shadow-md"
+                >
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="text-4xl">{region.flag}</div>
+                    <div>
+                      <div className="text-xl font-bold text-white">{region.name}</div>
+                      <div className="text-sm text-gray-400">{region.description}</div>
+                    </div>
                   </div>
+
+                  {hasValidDeck ? (
+                    <div className="space-y-2">
+                      <a
+                        href={`/pvp/lobby/${region.id}`}
+                        className="group w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg px-4 py-3 transition-all shadow-md hover:shadow-lg font-medium flex items-center justify-center gap-2"
+                      >
+                        <Play className="w-4 h-4" />
+                        <span>Enter Lobby</span>
+                      </a>
+                      <a
+                        href={`/pvp/draft/${region.id}/new`}
+                        className="group w-full bg-slate-600 hover:bg-slate-500 text-gray-200 rounded-lg px-4 py-2 transition-all font-medium flex items-center justify-center gap-2 text-sm"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        <span>Draft New Deck</span>
+                      </a>
+                    </div>
+                  ) : (
+                    <a
+                      href={`/pvp/draft/${region.id}/new`}
+                      className="group w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg px-4 py-3 transition-all shadow-md hover:shadow-lg font-medium flex items-center justify-center gap-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Start Draft</span>
+                    </a>
+                  )}
                 </div>
-                <div className="text-blue-400 group-hover:text-blue-300 font-medium flex items-center gap-2">
-                  <span>Start Draft</span>
-                  <span>→</span>
-                </div>
-              </a>
-            ))}
+              );
+            })}
           </div>
         </div>
 

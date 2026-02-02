@@ -54,20 +54,38 @@ export class KVCardCache implements ICardCache {
     const cardKey = `${this.CARD_ID_PREFIX}${card.id}`
     const nameKey = `${this.CARD_NAME_PREFIX}${this.normalizeName(card.name)}`
 
-    // Store card data by ID
-    await this.kv.put(cardKey, JSON.stringify(card), {
-      expirationTtl: this.CACHE_TTL
-    })
+    try {
+      // Store card data by ID
+      await this.kv.put(cardKey, JSON.stringify(card), {
+        expirationTtl: this.CACHE_TTL,
+        metadata: {
+          name: card.name,
+          lastUpdated: Date.now()
+        }
+      })
 
-    // Store name → ID mapping for name lookups
-    await this.kv.put(nameKey, card.id, {
-      expirationTtl: this.CACHE_TTL
-    })
+      // Store name → ID mapping for name lookups
+      await this.kv.put(nameKey, card.id, {
+        expirationTtl: this.CACHE_TTL
+      })
+
+      console.log(`[KVCardCache] ✅ Cached card: ${card.name} (${card.id})`)
+    } catch (error) {
+      console.error(`[KVCardCache] ❌ Failed to cache card ${card.name}:`, error)
+      throw error
+    }
   }
 
   async setCards(cards: CardData[]): Promise<void> {
+    console.log(`[KVCardCache] Caching ${cards.length} cards...`)
     // Batch write to KV (execute in parallel for performance)
-    await Promise.all(cards.map(card => this.setCard(card)))
+    try {
+      await Promise.all(cards.map(card => this.setCard(card)))
+      console.log(`[KVCardCache] ✅ Successfully cached ${cards.length} cards`)
+    } catch (error) {
+      console.error(`[KVCardCache] ❌ Error caching cards:`, error)
+      throw error
+    }
   }
 
   async getSearchResults(query: string, page: number): Promise<CardSearchResult | null> {

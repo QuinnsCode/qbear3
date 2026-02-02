@@ -62,6 +62,24 @@ export class DeckImportManager {
       }
 
       // Convert to ScryfallCard format (what the game expects)
+      // Handle empty strings by treating them as falsy
+      const hasValidImageUrl = deckCard.imageUrl && deckCard.imageUrl.trim() !== ''
+
+      const imageUris = hasValidImageUrl ? {
+        normal: deckCard.imageUrl,
+        small: deckCard.imageUrl,
+        large: deckCard.imageUrl
+      } : (deckCard.image_uris || undefined)
+
+      // Warn if no images found
+      if (!imageUris) {
+        console.warn(`⚠️ No image URIs for ${deckCard.name} (${scryfallId})`, {
+          hasImageUrl: !!deckCard.imageUrl,
+          imageUrlValue: deckCard.imageUrl,
+          hasImageUris: !!deckCard.image_uris
+        })
+      }
+
       const scryfallCard: ScryfallCard = {
         id: scryfallId,
         name: deckCard.name,
@@ -72,11 +90,7 @@ export class DeckImportManager {
         toughness: deckCard.toughness,
         colors: deckCard.colors || [],
         color_identity: deckCard.color_identity || deckCard.colors || [],
-        image_uris: deckCard.imageUrl ? {
-          normal: deckCard.imageUrl,
-          small: deckCard.imageUrl,
-          large: deckCard.imageUrl
-        } : (deckCard.image_uris || undefined)
+        image_uris: imageUris
       }
 
       // Only add unique cards to cardData (not duplicates)

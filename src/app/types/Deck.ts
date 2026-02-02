@@ -8,46 +8,46 @@ export const DECK_LIMITS = {
   draft: 10
 } as const
 
-// ✅ NEW: Basic Lands
+// ✅ Basic Lands from Foundations set (fresh URLs verified working)
 export const BASIC_LANDS = {
   W: {
-    scryfallId: '8365ab45-6d78-47ad-a6ed-282069b0fabc',
+    scryfallId: '4ef17ed4-a9b5-4b8e-b4cb-2ecb7e5898c3',
     name: 'Plains',
     type: 'Basic Land — Plains',
     colors: ['W'],
-    imageUrl: 'https://cards.scryfall.io/normal/front/8/3/8365ab45-6d78-47ad-a6ed-282069b0fabc.jpg',
+    imageUrl: 'https://cards.scryfall.io/normal/front/4/e/4ef17ed4-a9b5-4b8e-b4cb-2ecb7e5898c3.jpg?1730489617',
     manaCost: ''
   },
   U: {
-    scryfallId: 'b2c6aa39-2d2a-459c-a555-fb48ba993373',
+    scryfallId: '17e2b637-72b1-4457-aaba-66d51107be4c',
     name: 'Island',
     type: 'Basic Land — Island',
     colors: ['U'],
-    imageUrl: 'https://cards.scryfall.io/normal/front/b/2/b2c6aa39-2d2a-459c-a555-fb48ba993373.jpg',
+    imageUrl: 'https://cards.scryfall.io/normal/front/1/7/17e2b637-72b1-4457-aaba-66d51107be4c.jpg?1730489625',
     manaCost: ''
   },
   B: {
-    scryfallId: '96a33518-8b67-4fa2-8b48-6d7c6c1e8b42',
+    scryfallId: '319bc1f0-ee42-44e5-b08b-735613ded2ba',
     name: 'Swamp',
     type: 'Basic Land — Swamp',
     colors: ['B'],
-    imageUrl: 'https://cards.scryfall.io/normal/front/9/6/96a33518-8b67-4fa2-8b48-6d7c6c1e8b42.jpg',
+    imageUrl: 'https://cards.scryfall.io/normal/front/3/1/319bc1f0-ee42-44e5-b08b-735613ded2ba.jpg?1730489632',
     manaCost: ''
   },
   R: {
-    scryfallId: '8cf5e8a9-c6c7-4562-8e1b-f8e650cd42e8',
+    scryfallId: '279df7e2-2a3b-464a-a7df-e91da28e3a8c',
     name: 'Mountain',
     type: 'Basic Land — Mountain',
     colors: ['R'],
-    imageUrl: 'https://cards.scryfall.io/normal/front/8/c/8cf5e8a9-c6c7-4562-8e1b-f8e650cd42e8.jpg',
+    imageUrl: 'https://cards.scryfall.io/normal/front/2/7/279df7e2-2a3b-464a-a7df-e91da28e3a8c.jpg?1730489639',
     manaCost: ''
   },
   G: {
-    scryfallId: '8efa1a9e-6f74-44a3-8556-f2d3e6b3b3e1',
+    scryfallId: 'd232fcc2-12f6-401a-b1aa-ddff11cb9378',
     name: 'Forest',
     type: 'Basic Land — Forest',
     colors: ['G'],
-    imageUrl: 'https://cards.scryfall.io/normal/front/8/e/8efa1a9e-6f74-44a3-8556-f2d3e6b3b3e1.jpg',
+    imageUrl: 'https://cards.scryfall.io/normal/front/d/2/d232fcc2-12f6-401a-b1aa-ddff11cb9378.jpg?1730489646',
     manaCost: ''
   }
 } as const
