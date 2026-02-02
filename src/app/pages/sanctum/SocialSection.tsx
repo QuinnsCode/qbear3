@@ -5,7 +5,7 @@ import { FriendsModal } from "@/app/components/Social/FriendsModal";
 import { GameInvitesModal } from "@/app/components/Social/GameInvitesModal";
 import type { Friend, FriendRequest } from "@/app/serverActions/social/friends";
 import type { GameInvite } from "@/app/serverActions/social/gameInvites";
-import { Gamepad2 } from "lucide-react";
+import { Gamepad2, Sparkles } from "lucide-react";
 
 type SocialSectionProps = {
   userId: string;
@@ -105,6 +105,27 @@ export function SocialSection({
               View Invites →
             </div>
           </button>
+
+          {/* Community Decks Card */}
+          <a
+            href="/community"
+            className="group relative bg-slate-700/70 hover:bg-slate-700 rounded-lg border border-slate-600 hover:border-indigo-500 p-6 transition-all shadow-md hover:shadow-lg text-left block"
+            style={{
+              WebkitTapHighlightColor: 'transparent',
+              touchAction: 'manipulation',
+            }}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <Sparkles className="w-10 h-10" strokeWidth={1.5} />
+            </div>
+            <div className="text-xl font-bold text-white mb-2">Community Decks</div>
+            <div className="text-sm text-gray-300 mb-3">
+              Browse the latest decks from the community
+            </div>
+            <div className="mt-3 text-indigo-400 group-hover:text-indigo-300 font-medium text-sm">
+              Explore Decks →
+            </div>
+          </a>
         </div>
       </div>
 

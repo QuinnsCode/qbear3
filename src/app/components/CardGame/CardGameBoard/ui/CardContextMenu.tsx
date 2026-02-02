@@ -233,7 +233,7 @@ export default function CardContextMenu({
         <>
           <div className="border-t border-slate-600 my-1" />
           <div className="px-3 py-2 text-xs text-purple-400">
-            <Gamepad2/> Sandbox: Shared battlefield
+            <Gamepad2 className='text-white'/> Sandbox: Shared battlefield
           </div>
         </>
       )}

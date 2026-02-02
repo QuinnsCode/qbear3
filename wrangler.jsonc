@@ -56,6 +56,10 @@
       {
         "name": "MATCHMAKING_DO",
         "class_name": "MatchmakingDO"
+      },
+      {
+        "name": "VTT_DO",
+        "class_name": "VTTDO"
       }
     ]
   },
@@ -99,6 +103,10 @@
     {
       "tag": "v9",
       "new_sqlite_classes": ["CacheWarmingDO"]
+    },
+    {
+      "tag": "v10",
+      "new_sqlite_classes": ["VTTDO"]
     }
   ],
   "d1_databases": [
@@ -132,6 +140,12 @@
     {
       "binding": "CARDS_KV",
       "id": "d8d7f7a702754933a469612c6f1ef515"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "VTT_ASSETS",
+      "bucket_name": "qbear3-vtt-models"
     }
   ]
 }

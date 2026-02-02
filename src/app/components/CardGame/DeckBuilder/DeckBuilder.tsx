@@ -168,7 +168,7 @@ export default function DeckBuilder({
         {isSandbox && (
           <div className="mb-6 bg-purple-600/20 border-2 border-purple-500 rounded-xl p-4">
             <div className="flex items-center gap-3">
-              <span className="text-3xl"><Gamepad2/></span>
+              <span className="text-3xl text-white"><Gamepad2/></span>
               <div>
                 <h2 className="text-white font-bold text-lg">Sandbox Mode - Starter Decks</h2>
                 <p className="text-purple-200 text-sm">Choose a pre-made deck to get started!</p>
