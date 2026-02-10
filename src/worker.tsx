@@ -32,9 +32,11 @@ import PvpDraftPage from "@/app/pages/pvp/PvpDraftPage";
 import PvpLobbyPage from "@/app/pages/pvp/PvpLobbyPage";
 import AdminDashboard from "@/app/pages/admin/AdminDashboard";
 import CacheBrowserPage from "@/app/pages/admin/CacheBrowserPage";
+import VTTPage from "@/app/pages/vtt/VTTPage";
 import OrgNotFoundPage from "@/app/pages/errors/OrgNotFoundPage";
 import NoAccessPage from "@/app/pages/errors/NoAccessPage";
 import PricingPage from "@/app/pages/pricing/PricingPage";
+import CommunityPage from "@/app/pages/community/CommunityPage";
 import { createNewGame } from "./app/serverActions/gameRegistry";
 import { createNewCardGame } from "./app/serverActions/cardGame/cardGameRegistry";
 import { isSandboxEnvironment, setupSandboxContext, createSandboxCookieHeader } from "./lib/middleware/sandboxMiddleware";
@@ -42,6 +44,7 @@ import LandingPage from "./app/pages/landing/LandingPage";
 import DeckBuilderPage from "./app/pages/deckBuilder/DeckBuilderPage";
 import { SANDBOX_CONFIG } from "./lib/sandbox/config";
 import { SyncedStateServer, syncedStateRoutes } from "rwsdk/use-synced-state/worker";
+import AdminPage from "./app/pages/admin/Admin";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -53,6 +56,7 @@ export { MatchmakingDO } from './durableObjects/MatchmakingDO'
 export { CacheWarmingDO } from './durableObjects/CacheWarmingDO'
 
 export { CardCacheDO } from './cardCacheDO'
+export { VTTDO } from './vttDurableObject'
 export { SyncedStateServer };
 
 
@@ -261,6 +265,33 @@ export default defineApp([
     },
     ...draftRoutes
   ]),
+
+  // VTT sync - 3D Virtual Tabletop WebSocket
+  route("/__vttsync", async ({ request, ctx }) => {
+    const url = new URL(request.url);
+    const gameId = url.searchParams.get('key');
+
+    if (!gameId) {
+      return new Response('Missing game ID', { status: 400 });
+    }
+
+    // Get or create VTT DO for this game
+    const id = env.VTT_DO.idFromName(gameId);
+    const stub = env.VTT_DO.get(id);
+
+    // Add auth headers from middleware
+    const headers = new Headers(request.headers);
+    if (ctx.user) {
+      headers.set('X-Auth-User-Id', ctx.user.id);
+      headers.set('X-Auth-User-Name', ctx.user.name || ctx.user.email || 'Player');
+    }
+
+    // Forward request to DO (handles WebSocket upgrade)
+    return stub.fetch(new Request(request.url, {
+      ...request,
+      headers
+    }));
+  }),
 
   // User Session DO - Cross-device sync with Hibernation API
   route("/__user-session", async ({ request }) => {
@@ -564,7 +595,7 @@ export default defineApp([
 
     route("/no-access", NoAccessPage),
 
-    route("/admin", AdminDashboard),
+    route("/admin", AdminPage),
     route("/admin/cache", CacheBrowserPage),
 
     route("/sanctum", SanctumPage),
@@ -572,6 +603,8 @@ export default defineApp([
     route("/pvp", PvpDraftEntryPage),
     route("/pvp/draft/:region/new", PvpDraftPage),
     route("/pvp/lobby/:region", PvpLobbyPage),
+
+    route("/vtt/:gameId", VTTPage),
 
     route("/deckbuilder", DeckBuilderPage),
     route("/deckBuilder", DeckBuilderPage),
@@ -582,7 +615,9 @@ export default defineApp([
 
     route("/pricing", PricingPage),
 
-    
+    route("/community", CommunityPage),
+
+
     prefix("/user", userRoutes),
     
     // Static content routes

@@ -46,38 +46,108 @@ export async function rateLimitMiddleware(
   return null // Allow request
 }
 
+/**
+ * Routes that don't need session or organization context
+ * These routes handle their own auth or are public
+ */
+const SKIP_ALL_MIDDLEWARE_ROUTES = [
+  '/user/login',
+  '/user/signup',
+  '/user/forgot-password',
+  '/user/reset-password',
+  '/user/logout',
+] as const;
+
+/**
+ * Route prefixes that should skip middleware
+ */
+const SKIP_MIDDLEWARE_PREFIXES = [
+  '/api/',           // API routes handle their own auth
+  '/__realtime',     // WebSocket realtime connections
+  '/__gsync',        // Game state sync
+  '/__cgsync',       // Card game sync
+] as const;
+
+/**
+ * Routes that MUST run middleware (even if they match skip patterns)
+ * Document exceptions here to avoid confusion
+ */
+const FORCE_MIDDLEWARE_ROUTES = [
+  '/__draftsync',    // Draft sync needs user/org context
+] as const;
+
+/**
+ * Check if a route should skip ALL middleware (session + org context)
+ *
+ * WHY SKIP:
+ * - Auth pages: Handle their own authentication
+ * - API routes: Use different auth patterns
+ * - WebSocket: Already authenticated via connection
+ */
+export function shouldSkipAllMiddleware(pathname: string): boolean {
+  // Check forced routes first (highest priority)
+  if (FORCE_MIDDLEWARE_ROUTES.some(route => pathname.startsWith(route))) {
+    return false;
+  }
+
+  // Check exact matches
+  if (SKIP_ALL_MIDDLEWARE_ROUTES.some(route => pathname.startsWith(route))) {
+    console.log('🔍 Skipping middleware for auth/public page:', pathname);
+    return true;
+  }
+
+  // Check prefixes
+  if (SKIP_MIDDLEWARE_PREFIXES.some(prefix => pathname.startsWith(prefix))) {
+    console.log('🔍 Skipping middleware for special route:', pathname);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Check if a route needs organization context
+ *
+ * WHY SKIP ORG CONTEXT:
+ * - Main domain pages: No subdomain = no org
+ * - User settings: Personal, not org-specific
+ * - Sandbox: Handled separately
+ */
+export function needsOrganizationContext(pathname: string, hasOrgSlug: boolean): boolean {
+  // No org slug = no org context needed
+  if (!hasOrgSlug) {
+    return false;
+  }
+
+  // User settings pages don't need org context even on subdomains
+  if (pathname.startsWith('/user/settings') || pathname.startsWith('/user/profile')) {
+    return false;
+  }
+
+  // Everything else on a subdomain needs org context
+  return true;
+}
+
+/**
+ * Legacy function - use shouldSkipAllMiddleware instead
+ * @deprecated Use shouldSkipAllMiddleware for clarity
+ */
 export function shouldSkipMiddleware(request: Request): boolean {
   const url = new URL(request.url);
-  const pathname = url.pathname;
-  
-  // Skip middleware for ALL API routes (they don't need org context)
-  if (pathname.startsWith('/api/')) {
-    console.log('🔍 Skipping middleware for API route:', pathname);
-    return true;
-  }
-  
-  // Skip for webhooks and realtime
-  if (pathname.includes('/__realtime') || 
-      pathname.includes('/__gsync') || 
-      pathname.includes('/__cgsync')) {
-    console.log('🔍 Skipping middleware for realtime:', pathname);
-    return true;
-  }
-  
-  // ✅ /__draftsync is NOT skipped - middleware will run
-  
-  return false;
+  return shouldSkipAllMiddleware(url.pathname);
 }
 
 export async function setupSessionContext(ctx: AppContext, request: Request) {
   try {
-    if (shouldSkipMiddleware(request)) {
+    const url = new URL(request.url);
+
+    if (shouldSkipAllMiddleware(url.pathname)) {
       ctx.session = null;
       ctx.user = null;
       return;
     }
-    
-    console.log('🔍 Setting up session context for:', new URL(request.url).pathname);
+
+    console.log('🔍 Setting up session context for:', url.pathname);
     
     // Import auth using the new pattern
     const { initAuth } = await import("@/lib/auth");
@@ -107,24 +177,34 @@ export async function setupSessionContext(ctx: AppContext, request: Request) {
 
 export async function setupOrganizationContext(ctx: AppContext, request: Request) {
   try {
-    if (shouldSkipMiddleware(request)) {
+    const url = new URL(request.url);
+
+    if (shouldSkipAllMiddleware(url.pathname)) {
       ctx.organization = null;
       ctx.userRole = null;
       ctx.orgError = null;
       return;
     }
-    
+
     // Skip if sandbox (already handled by sandboxMiddleware)
     const { isSandboxEnvironment } = await import('@/lib/middleware/sandboxMiddleware');
     if (isSandboxEnvironment(request)) {
       console.log('🔍 Skipping org context - sandbox already handled');
       return;
     }
-    
-    const url = new URL(request.url);
-    console.log('🔍 Setting up organization context for:', url.pathname);
-    
+
     const orgSlug = extractOrgFromSubdomain(request);
+
+    // Check if this route actually needs org context
+    if (!needsOrganizationContext(url.pathname, !!orgSlug)) {
+      console.log('🔍 Route does not need org context:', url.pathname);
+      ctx.organization = null;
+      ctx.userRole = null;
+      ctx.orgError = null;
+      return;
+    }
+
+    console.log('🔍 Setting up organization context for:', url.pathname);
     console.log('🔍 Extracted org slug:', orgSlug, 'from URL:', request.url);
 
     // Sandbox orgs don't require membership

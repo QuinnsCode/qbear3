@@ -226,7 +226,7 @@ function SetupPhaseUI({
       {phaseInfo.canInteract && (
         <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
           <h2 className="font-bold mb-2 flex items-center gap-2">
-            <Gamepad2 className="w-5 h-5" />
+            <Gamepad2 className="w-5 h-5 text-white" />
             Instructions
           </h2>
           <div className="text-sm">

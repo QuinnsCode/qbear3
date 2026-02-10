@@ -2,6 +2,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import { ZoomIn, ZoomOut } from 'lucide-react'
 
 interface Props {
   cards: string[]
@@ -16,9 +17,9 @@ interface Props {
 
 type SortMode = 'cmc' | 'color'
 
-export default function DraftPool({ 
-  cards, 
-  draftId, 
+export default function DraftPool({
+  cards,
+  draftId,
   compact = false,
   sideboardCards = [],
   onMoveToSideboard,
@@ -31,11 +32,26 @@ export default function DraftPool({
   const [selectedView, setSelectedView] = useState<'maindeck' | 'sideboard'>('maindeck')
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('cmc')
+  const [cardScale, setCardScale] = useState(() => {
+    // Load from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('draftPool:cardScale')
+      return saved ? parseFloat(saved) : 1.0
+    }
+    return 1.0
+  })
   
   // Drag state
   const [draggedCard, setDraggedCard] = useState<string | null>(null)
   const [isDraggingOverSideboard, setIsDraggingOverSideboard] = useState(false)
   const sideboardDropRef = useRef<HTMLDivElement>(null)
+
+  // Save scale to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('draftPool:cardScale', cardScale.toString())
+    }
+  }, [cardScale])
   
   // Fetch all cards (both maindeck and sideboard)
   useEffect(() => {
@@ -141,7 +157,7 @@ export default function DraftPool({
     <div className="flex flex-col h-full">
       {/* Header: Counter, View Toggle, Sort Toggle */}
       {(showDeckCounter || hasSideboard) && (
-        <div className="flex flex-col gap-2 mb-3 px-2">
+        <div className="flex flex-col gap-2 mb-2 px-2">
           {/* Top row: Counter + Sort */}
           <div className="flex items-center justify-between">
             {showDeckCounter && (
@@ -156,7 +172,7 @@ export default function DraftPool({
                 )}
               </div>
             )}
-            
+
             {/* Sort toggle */}
             <div className="flex gap-1 bg-slate-700/50 rounded p-1">
               <button
@@ -182,6 +198,24 @@ export default function DraftPool({
                 Color
               </button>
             </div>
+          </div>
+
+          {/* Card Scale Slider */}
+          <div className="flex items-center gap-2">
+            <ZoomOut className="w-3 h-3 text-slate-400 shrink-0" />
+            <input
+              type="range"
+              min="0.5"
+              max="2.0"
+              step="0.1"
+              value={cardScale}
+              onChange={(e) => setCardScale(parseFloat(e.target.value))}
+              className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:border-0"
+            />
+            <ZoomIn className="w-3 h-3 text-slate-400 shrink-0" />
+            <span className="text-[9px] text-slate-400 w-8 text-center shrink-0">
+              {Math.round(cardScale * 100)}%
+            </span>
           </div>
           
           {/* Bottom row: View Toggle + Sideboard Drop Zone */}
@@ -240,7 +274,7 @@ export default function DraftPool({
       )}
       
       {/* Card Groups - Pile Stacking */}
-      <div className="flex-1 overflow-y-auto space-y-4 px-2">
+      <div className="flex-1 overflow-y-auto space-y-2 px-2">
         {!hasCards ? (
           <div className="text-center py-8 text-slate-500">
             {selectedView === 'sideboard' ? 'No cards in sideboard' : 'No cards picked yet'}
@@ -248,11 +282,11 @@ export default function DraftPool({
         ) : (
           Object.entries(grouped).map(([groupName, cardIds]) => (
             <div key={groupName}>
-              <h4 className="text-sm font-semibold text-slate-300 mb-2 flex items-center gap-2">
+              <h4 className="text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
                 {sortMode === 'color' ? getColorIcon(groupName) : `💎 ${groupName}`}
                 {sortMode === 'color' ? groupName : `CMC ${groupName}`} ({cardIds.length})
               </h4>
-              
+
               {/* Card Pile Container - Show LAST card on top */}
               <div className="relative">
                 <div className="flex flex-wrap gap-x-1">
@@ -261,11 +295,17 @@ export default function DraftPool({
                     const imageUrl = card?.image_uris?.small || card?.card_faces?.[0]?.image_uris?.small
                     const isHovered = hoveredCard === cardId
                     const isDragging = draggedCard === cardId
-                    
+
                     // Reverse index so last card appears on top
                     const displayIndex = cardIds.length - 1 - index
                     const zIndex = displayIndex
-                    
+
+                    // Calculate scaled dimensions
+                    const baseWidth = compact ? 60 : 80
+                    const baseHeight = compact ? 84 : 112
+                    const scaledWidth = Math.round(baseWidth * cardScale)
+                    const scaledHeight = Math.round(baseHeight * cardScale)
+
                     return (
                       <div
                         key={`${cardId}-${index}`}
@@ -276,19 +316,19 @@ export default function DraftPool({
                           isDragging ? 'opacity-50' : ''
                         }`}
                         style={{
-                          width: compact ? '60px' : '80px',
+                          width: `${scaledWidth}px`,
                           zIndex: isHovered ? 999 : zIndex,
                         }}
                         onMouseEnter={() => setHoveredCard(cardId)}
                         onMouseLeave={() => setHoveredCard(null)}
                       >
                         {/* Card Image - Show last in pile */}
-                        <div 
+                        <div
                           className={`relative transition-all duration-200 ${
                             isHovered ? 'scale-150 shadow-2xl' : ''
                           }`}
                           style={{
-                            height: compact ? '84px' : '112px',
+                            height: `${scaledHeight}px`,
                           }}
                         >
                           {imageUrl ? (

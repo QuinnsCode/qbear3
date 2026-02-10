@@ -83,7 +83,7 @@ export function GameSocialPanel({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Gamepad2 size={18} />
+            <Gamepad2 size={18} className="text-white"/>
             <span>{gameName}</span>
           </div>
           <span style={{ 

@@ -46,7 +46,7 @@ export class CardGameDO extends DurableObject {
 
   private lastCursorBroadcast: Map<string, number> = new Map();
   private spectatorCount = 0;
-  
+
   // ✅ Track player activity for cleanup
   private playerActivity: Map<string, number> = new Map();
 
@@ -145,7 +145,7 @@ export class CardGameDO extends DurableObject {
         }
       }
       await this.ctx.storage.put('playerActivity', Object.fromEntries(this.playerActivity));
-      
+
       // Broadcast update
       this.broadcast({
         type: 'players_cleaned_up',
@@ -349,10 +349,10 @@ export class CardGameDO extends DurableObject {
     if (isSpectator) {
       this.spectatorCount++;
     }
-    
+
     const state = await this.getState();
     server.send(JSON.stringify({ type: 'state_update', state }));
-    
+
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -606,12 +606,12 @@ export class CardGameDO extends DurableObject {
     }
   
     this.persist();
-    
+
     this.broadcast({
-      type: 'game_restarted', 
-      state: this.gameState 
+      type: 'game_restarted',
+      state: this.gameState
     });
-  
+
     return this.gameState;
   }
 
@@ -648,12 +648,12 @@ export class CardGameDO extends DurableObject {
       if (!this.gameState) {
         throw new Error('Game state is null');
       }
-      
-      this.broadcast({ 
-        type: 'player_rejoined', 
-        state: this.gameState 
+
+      this.broadcast({
+        type: 'player_rejoined',
+        state: this.gameState
       });
-      
+
       return this.gameState;
     }
   
@@ -700,9 +700,9 @@ export class CardGameDO extends DurableObject {
       await this.assignSandboxDeck(data.playerId, this.gameState.players.length - 1);
     }
 
-    this.broadcast({ 
-      type: 'player_joined', 
-      player: newPlayer 
+    this.broadcast({
+      type: 'player_joined',
+      player: newPlayer
     });
 
     return this.gameState;
@@ -851,7 +851,7 @@ export class CardGameDO extends DurableObject {
     if (newState !== this.gameState) {
       this.gameState = newState;
       this.gameState.updatedAt = new Date();
-  
+
       // ✅ ONLY STORE ACTIONS FOR NON-SANDBOX GAMES
       const isSandbox = await this.ctx.storage.get('isSandbox');
       if (!isSandbox) {
@@ -861,12 +861,12 @@ export class CardGameDO extends DurableObject {
         this.ctx.storage.put('gameActions', existingActions);
         console.log(`📝 Action stored (total: ${existingActions.length})`);
       }
-  
+
       this.persist();
-      
-      this.broadcast({ 
-        type: 'state_update', 
-        state: this.gameState 
+
+      this.broadcast({
+        type: 'state_update',
+        state: this.gameState
       });
     }
   
@@ -1034,10 +1034,10 @@ export class CardGameDO extends DurableObject {
   
     console.warn('⚠️ Rewind not yet fully implemented - StateManager needed');
     // TODO: Implement full rewind logic by replaying actions 0..actionIndex
-  
+
     this.persist();
     this.broadcast({ type: 'state_update', state: this.gameState });
-    
+
     return this.gameState;
   }
 

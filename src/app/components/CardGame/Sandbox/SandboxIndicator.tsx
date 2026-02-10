@@ -32,7 +32,7 @@ export function SandboxIndicator({
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-white font-semibold text-sm">
-                <Gamepad2/> Sandbox Mode: Shared Battlefield
+                <Gamepad2 className='text-white'/> Sandbox Mode: Shared Battlefield
               </div>
               <div className="text-purple-200 text-xs mt-1">
                 👥 {playerCount} players connected

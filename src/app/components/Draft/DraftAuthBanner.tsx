@@ -23,6 +23,7 @@ export default function DraftAuthBanner({
           <span className="text-sm text-slate-300">
             Playing as <span className="font-semibold text-white">{userName}</span>
           </span>
+          <span className="text-sm text-slate-300"><a className='text-white' href='/sanctum'>Home</a></span>
         </div>
       </div>
     )
