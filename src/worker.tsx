@@ -166,12 +166,19 @@ export default defineApp([
         const memberships = await getCachedUserMemberships(ctx.user.id);
 
         if (memberships.length === 0) {
-          console.log('⚠️ User has no organization, redirecting to create lair');
+          console.log('⚠️ [ORG CHECK] User has no org | Path:', url.pathname, '| Redirecting to /user/create-lair');
           return new Response(null, {
             status: 302,
             headers: { Location: '/user/create-lair' }
           });
         }
+      }
+
+      // Log when we SKIP the org check (to debug the issue)
+      if (ctx.user && url.pathname === '/') {
+        const { getCachedUserMemberships } = await import('@/lib/cache/authCache');
+        const memberships = await getCachedUserMemberships(ctx.user.id);
+        console.log('ℹ️ [ROOT PATH] User on / with', memberships.length, 'orgs - NOT redirecting (root exempted)');
       }
       
       // Handle organization errors for frontend routes

@@ -26,6 +26,8 @@ import { SandboxManager } from '@/app/services/cardGame/managers/SandboxManager'
 import { TokenManager } from '@/app/services/cardGame/managers/TokenManager';
 import { getStarterDeck } from './app/serverActions/cardGame/starterDecks';
 import { WebSocketHelper } from './app/services/cardGame/WebSocketHelper';
+import { DeltaManager } from './app/services/cardGame/DeltaManager';
+import type { Delta } from './app/services/cardGame/DeltaManager';
 import { env } from "cloudflare:workers";
 
 // ✅ Storage-only state (actions stored separately)
@@ -44,6 +46,9 @@ export class CardGameDO extends DurableObject {
   //ws helper class for logic
   private wsHelper: WebSocketHelper;
 
+  // Delta manager for testing delta updates alongside full state
+  private deltaManager: DeltaManager;
+
   private lastCursorBroadcast: Map<string, number> = new Map();
   private spectatorCount = 0;
 
@@ -55,6 +60,7 @@ export class CardGameDO extends DurableObject {
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     this.wsHelper = new WebSocketHelper();
+    this.deltaManager = new DeltaManager();
   
     this.ctx.blockConcurrencyWhile(async () => {
       const initialized = await this.ctx.storage.get('initialized');
@@ -700,10 +706,16 @@ export class CardGameDO extends DurableObject {
       await this.assignSandboxDeck(data.playerId, this.gameState.players.length - 1);
     }
 
+    // Generate delta for player joined
+    const delta = this.deltaManager.generatePlayerJoinedDelta(data.playerId, data.playerName);
+
     this.broadcast({
       type: 'player_joined',
-      player: newPlayer
+      player: newPlayer,
+      delta
     });
+
+    console.log(`📡 Delta generated: player_joined (${data.playerName})`);
 
     return this.gameState;
   }
@@ -864,10 +876,19 @@ export class CardGameDO extends DurableObject {
 
       this.persist();
 
+      // Generate delta for this action
+      const delta = this.deltaManager.generateDeltaFromAction(gameAction, this.gameState);
+
+      // Broadcast BOTH state and delta for safe testing
       this.broadcast({
         type: 'state_update',
-        state: this.gameState
+        state: this.gameState,
+        delta: delta || undefined // Include delta if generated
       });
+
+      if (delta) {
+        console.log(`📡 Delta generated: ${delta.type} (${delta.actionType})`);
+      }
     }
   
     return this.gameState;

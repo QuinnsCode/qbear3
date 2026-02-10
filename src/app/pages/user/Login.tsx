@@ -12,19 +12,19 @@ import {
   FantasyButton 
 } from "@/app/components/theme/FantasyTheme";
 
-export default function LoginPage({ ctx, request }: RequestInfo) {
+export default async function LoginPage({ ctx, request }: RequestInfo) {
   // Check if we're on a subdomain
   const orgSlug = extractOrgFromSubdomain(request);
-  
+
   // If on subdomain, redirect to main domain
   if (orgSlug) {
     const currentUrl = new URL(request.url);
     const protocol = currentUrl.protocol;
-    const mainDomain = currentUrl.hostname.includes('localhost') 
-      ? 'localhost:5173' 
+    const mainDomain = currentUrl.hostname.includes('localhost')
+      ? 'localhost:5173'
       : currentUrl.hostname.split('.').slice(-2).join('.');
     const pathname = currentUrl.pathname; // preserves /user/login
-    
+
     // Redirect to main domain, keeping the same path
     return new Response(null, {
       status: 302,
@@ -32,6 +32,16 @@ export default function LoginPage({ ctx, request }: RequestInfo) {
         Location: `${protocol}//${mainDomain}${pathname}`
       }
     });
+  }
+
+  // Determine redirect path based on org membership
+  let redirectPath = "/sanctum";
+  if (ctx.user) {
+    const { getCachedUserMemberships } = await import('@/lib/cache/authCache');
+    const memberships = await getCachedUserMemberships(ctx.user.id);
+    if (memberships.length === 0) {
+      redirectPath = "/user/create-lair";
+    }
   }
 
   // If user is already logged in, show fantasy-themed status page
@@ -128,7 +138,7 @@ export default function LoginPage({ ctx, request }: RequestInfo) {
     <FantasyLogin
       organizationName={ctx.organization?.name}
       variant="adventure"
-      redirectPath="/sanctum"
+      redirectPath={redirectPath}
       showDevTools={false}
     />
   );

@@ -1,6 +1,8 @@
 // src/app/hooks/useCardGameSync.ts
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CardGameState } from '@/app/services/cardGame/CardGameState';
+import { DeltaApplicator } from '@/app/services/cardGame/DeltaApplicator';
+import type { Delta } from '@/app/services/cardGame/DeltaManager';
 
 const CARD_GAME_SYNC_SETTINGS = {
   HEARTBEAT_INTERVAL: 30000,
@@ -44,6 +46,10 @@ export function useCardGameSync({
   const reconnectAttemptsRef = useRef<number>(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initializingRef = useRef<boolean>(false);
+  const deltaApplicatorRef = useRef<DeltaApplicator>(new DeltaApplicator());
+
+  // Delta testing stats
+  const deltaStatsRef = useRef({ successes: 0, failures: 0, total: 0 });
 
   const callbacksRef = useRef({
     onStateUpdate,
@@ -115,7 +121,35 @@ export function useCardGameSync({
         switch (message.type) {
           case 'state_update':
             if (message.state) {
-              setGameState(message.state);
+              // Try to apply delta if available, otherwise use full state
+              if (message.delta) {
+                deltaStatsRef.current.total++;
+
+                setGameState((currentState) => {
+                  // If no current state, must use full state
+                  if (!currentState) {
+                    console.log('No current state, using full state');
+                    return message.state;
+                  }
+
+                  try {
+                    // Try to apply delta
+                    const deltaState = deltaApplicatorRef.current.applyDelta(currentState, message.delta);
+                    deltaStatsRef.current.successes++;
+                    console.log(`📊 Delta stats: ${deltaStatsRef.current.successes}/${deltaStatsRef.current.total} succeeded`);
+                    return deltaState;
+                  } catch (error) {
+                    // Delta failed, fall back to full state
+                    deltaStatsRef.current.failures++;
+                    console.error(`⚠️ Delta application failed, using full state. Stats: ${deltaStatsRef.current.successes}/${deltaStatsRef.current.total} succeeded`);
+                    return message.state;
+                  }
+                });
+              } else {
+                // No delta, use full state
+                setGameState(message.state);
+              }
+
               callbacksRef.current.onStateUpdate?.(message.state);
             }
             break;
@@ -204,7 +238,7 @@ export function useCardGameSync({
       initializingRef.current = false;
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      if (cursorThrottleTimeoutRef.current) clearTimeout(cursorThrottleTimeoutRef.current); // ✅ ADD THIS
+      if (cursorThrottleTimeoutRef.current) clearTimeout(cursorThrottleTimeoutRef.current);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
@@ -212,6 +246,12 @@ export function useCardGameSync({
       setIsConnected(false);
       setGameState(null);
       setIsLoading(false);
+
+      // Log delta stats on cleanup
+      const stats = deltaStatsRef.current;
+      if (stats.total > 0) {
+        console.log(`📊 Final Delta Stats: ${stats.successes}/${stats.total} succeeded (${Math.round(stats.successes / stats.total * 100)}%), ${stats.failures} failed`);
+      }
     };
   }, [cardGameId, playerId, enabled, initializeCardGameSync]);
 
