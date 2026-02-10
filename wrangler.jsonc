@@ -1,151 +1,174 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "qntbr",
-  "main": "src/worker.tsx",
-  "compatibility_date": "2025-08-21",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "binding": "ASSETS",
-    "directory": "public"
-  },
-  "routes": [
-    "qntbr.com/*",
-    "*.qntbr.com/*"
-  ],
-  "observability": {
-    "enabled": true
-  },
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "SESSION_DURABLE_OBJECT",
-        "class_name": "SessionDurableObject"
-      },
-      {
-        "name": "REALTIME_DURABLE_OBJECT",
-        "class_name": "RealtimeDurableObject"
-      },
-      {
-        "name": "GAME_STATE_DO",
-        "class_name": "GameStateDO"
-      },
-      {
-        "name": "CARD_GAME_STATE_DO",
-        "class_name": "CardGameDO"
-      },
-      {
-        "name": "CARD_CACHE_DO",
-        "class_name": "CardCacheDO"
-      },
-      {
-        "name": "CACHE_WARMING_DO",
-        "class_name": "CacheWarmingDO"
-      },
-      {
-        "name": "SYNCED_STATE_SERVER",
-        "class_name": "SyncedStateServer"
-      },
-      {
-        "name": "DRAFT_DO",
-        "class_name": "DraftDO"
-      },
-      {
-        "name": "USER_SESSION_DO",
-        "class_name": "UserSessionDO"
-      },
-      {
-        "name": "MATCHMAKING_DO",
-        "class_name": "MatchmakingDO"
-      },
-      {
-        "name": "VTT_DO",
-        "class_name": "VTTDO"
-      }
-    ]
-  },
-  "vars": {
-    "WEBAUTHN_APP_NAME": "qntbr",
-    "BETTER_AUTH_URL": "https://qntbr.com"
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_sqlite_classes": ["SessionDurableObject", "RealtimeDurableObject"]
-    },
-    {
-      "tag": "v2", 
-      "new_sqlite_classes": ["GameStateDO"]
-    },
-    {
-      "tag": "v3",
-      "new_sqlite_classes": ["CardGameDO"]
-    },
-    {
-      "tag": "v4",
-      "new_sqlite_classes": ["CardCacheDO"]
-    },
-    {
-      "tag": "v5",
-      "new_sqlite_classes": ["SyncedStateServer"]
-    },
-    {
-      "tag": "v6",
-      "new_sqlite_classes": ["DraftDO"]
-    },
-    {
-      "tag": "v7",
-      "new_sqlite_classes": ["UserSessionDO"]
-    },
-    {
-      "tag": "v8",
-      "new_sqlite_classes": ["MatchmakingDO"]
-    },
-    {
-      "tag": "v9",
-      "new_sqlite_classes": ["CacheWarmingDO"]
-    },
-    {
-      "tag": "v10",
-      "new_sqlite_classes": ["VTTDO"]
-    }
-  ],
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "qntbr-db1",
-      "database_id": "75b80f5a-6013-48cf-ba65-38ea0c97f275"
-    }
-  ],
-  "kv_namespaces": [
-    {
-      "binding": "GAME_REGISTRY_KV",
-      "id": "380205cd1f27416599725dddb8e1dd39"
-    },
-    {
-      "binding": "CARD_GAME_REGISTRY_KV",
-      "id": "4494cacc3d484b82a9be1f98059ad9f0"
-    },
-    {
-      "binding": "DECKS_KV",
-      "id": "537030e82ec64f23a404d64bbe43c73d"
-    },
-    {
-      "binding":"RATELIMIT_KV",
-      "id":"20704f4f986f4c09ad4b2b6dd7cb7e04"
-    },
-    {
-      "binding": "AUTH_CACHE_KV",
-      "id": "83656302bd814de585f655d5a7412979"
-    },
-    {
-      "binding": "CARDS_KV",
-      "id": "d8d7f7a702754933a469612c6f1ef515"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "VTT_ASSETS",
-      "bucket_name": "qbear3-vtt-models"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "qntbr",
+	"main": "src/worker.tsx",
+	"compatibility_date": "2025-08-21",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "public"
+	},
+	"routes": [
+		"qntbr.com/*",
+		"*.qntbr.com/*"
+	],
+	"observability": {
+		"enabled": true
+	},
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "SESSION_DURABLE_OBJECT",
+				"class_name": "SessionDurableObject"
+			},
+			{
+				"name": "REALTIME_DURABLE_OBJECT",
+				"class_name": "RealtimeDurableObject"
+			},
+			{
+				"name": "GAME_STATE_DO",
+				"class_name": "GameStateDO"
+			},
+			{
+				"name": "CARD_GAME_STATE_DO",
+				"class_name": "CardGameDO"
+			},
+			{
+				"name": "CARD_CACHE_DO",
+				"class_name": "CardCacheDO"
+			},
+			{
+				"name": "CACHE_WARMING_DO",
+				"class_name": "CacheWarmingDO"
+			},
+			{
+				"name": "SYNCED_STATE_SERVER",
+				"class_name": "SyncedStateServer"
+			},
+			{
+				"name": "DRAFT_DO",
+				"class_name": "DraftDO"
+			},
+			{
+				"name": "USER_SESSION_DO",
+				"class_name": "UserSessionDO"
+			},
+			{
+				"name": "MATCHMAKING_DO",
+				"class_name": "MatchmakingDO"
+			},
+			{
+				"name": "VTT_DO",
+				"class_name": "VTTDO"
+			}
+		]
+	},
+	"vars": {
+		"WEBAUTHN_APP_NAME": "qntbr",
+		"BETTER_AUTH_URL": "https://qntbr.com"
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"SessionDurableObject",
+				"RealtimeDurableObject"
+			]
+		},
+		{
+			"tag": "v2",
+			"new_sqlite_classes": [
+				"GameStateDO"
+			]
+		},
+		{
+			"tag": "v3",
+			"new_sqlite_classes": [
+				"CardGameDO"
+			]
+		},
+		{
+			"tag": "v4",
+			"new_sqlite_classes": [
+				"CardCacheDO"
+			]
+		},
+		{
+			"tag": "v5",
+			"new_sqlite_classes": [
+				"SyncedStateServer"
+			]
+		},
+		{
+			"tag": "v6",
+			"new_sqlite_classes": [
+				"DraftDO"
+			]
+		},
+		{
+			"tag": "v7",
+			"new_sqlite_classes": [
+				"UserSessionDO"
+			]
+		},
+		{
+			"tag": "v8",
+			"new_sqlite_classes": [
+				"MatchmakingDO"
+			]
+		},
+		{
+			"tag": "v9",
+			"new_sqlite_classes": [
+				"CacheWarmingDO"
+			]
+		},
+		{
+			"tag": "v10",
+			"new_sqlite_classes": [
+				"VTTDO"
+			]
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "qntbr-db1",
+			"database_id": "75b80f5a-6013-48cf-ba65-38ea0c97f275"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "GAME_REGISTRY_KV",
+			"id": "380205cd1f27416599725dddb8e1dd39"
+		},
+		{
+			"binding": "CARD_GAME_REGISTRY_KV",
+			"id": "4494cacc3d484b82a9be1f98059ad9f0"
+		},
+		{
+			"binding": "DECKS_KV",
+			"id": "537030e82ec64f23a404d64bbe43c73d"
+		},
+		{
+			"binding": "RATELIMIT_KV",
+			"id": "20704f4f986f4c09ad4b2b6dd7cb7e04"
+		},
+		{
+			"binding": "AUTH_CACHE_KV",
+			"id": "83656302bd814de585f655d5a7412979"
+		},
+		{
+			"binding": "CARDS_KV",
+			"id": "d8d7f7a702754933a469612c6f1ef515"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "VTT_ASSETS",
+			"bucket_name": "qbear3-vtt-models"
+		}
+	]
 }

@@ -38,7 +38,7 @@ export function useCardGameSync({
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const wsRef = useRef<WebSocket | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef<number>(0);
@@ -111,7 +111,7 @@ export function useCardGameSync({
 
       ws.onmessage = (event) => {
         const message = JSON.parse(event.data);
-        
+
         switch (message.type) {
           case 'state_update':
             if (message.state) {
@@ -119,40 +119,40 @@ export function useCardGameSync({
               callbacksRef.current.onStateUpdate?.(message.state);
             }
             break;
-            
+
           case 'player_joined':
             if (message.player) {
               callbacksRef.current.onPlayerJoined?.(message.player);
             }
             break;
-            
+
           case 'player_left':
             if (message.playerId) {
               callbacksRef.current.onPlayerLeft?.(message.playerId);
             }
             break;
-            
+
           case 'deck_imported':
             if (message.playerId && message.cardData) {
               callbacksRef.current.onDeckImported?.(message.playerId, message.cardData);
             }
             break;
-            
+
           case 'cursor_update':
             if (message.playerId && typeof message.x === 'number' && typeof message.y === 'number') {
               callbacksRef.current.onCursorUpdate?.(message.playerId, message.x, message.y);
             }
             break;
-            
+
           case 'game_deleted':
             const errorMsg = 'Card game has been deleted';
             setError(errorMsg);
             callbacksRef.current.onError?.(errorMsg);
             break;
-            
+
           case 'pong':
             break;
-            
+
           case 'error':
             const err = message.error || 'Unknown error';
             setError(err);

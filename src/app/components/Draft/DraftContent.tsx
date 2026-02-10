@@ -472,60 +472,35 @@ export default function DraftContent({
     if (!hasBuiltDeck) {
       return (
         <div className="min-h-screen bg-slate-900 flex flex-col">
-          <DraftAuthBanner 
+          <DraftAuthBanner
             isLoggedIn={isLoggedIn}
             userName={userName}
             onExportDeck={handleExportDeck}
           />
-          
+
           <div className="flex-1 flex items-center justify-center p-4">
             <div className="bg-slate-800 rounded-xl p-8 max-w-2xl w-full">
-              <div className="text-center mb-8">
-                <div className="text-6xl mb-4">✅</div>
+              <div className="text-center mb-6">
                 <h2 className="text-white text-3xl font-bold mb-2">Draft Complete!</h2>
                 <p className="text-gray-400 text-lg">
                   You drafted {currentPlayer.draftPool.length} cards
                 </p>
               </div>
-              
-              <div className="mb-8">
-                <h3 className="text-white font-semibold mb-3">Your Cards:</h3>
-                <DraftPool 
-                  cards={mainDeckCards} 
-                  draftId={draftId} 
-                  compact 
-                  sideboardCards={sideboardCards}
-                  onMoveToSideboard={handleMoveToSideboard}
-                  onMoveToMainDeck={handleMoveToMainDeck}
-                  onClearSideboard={handleClearSideboard}
-                  showDeckCounter={true}
-                />
-              </div>
-              
+
               {isLoggedIn ? (
                 <>
                   <button
                     onClick={() => setShowDeckBuilder(true)}
-                    disabled={mainDeckCards.length < 40}
-                    className={`w-full font-bold py-4 px-6 rounded-lg transition-all text-lg shadow-lg hover:shadow-xl ${
-                      mainDeckCards.length >= 40
-                        ? 'bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
-                        : 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                    }`}
+                    className="w-full font-bold py-4 px-6 rounded-lg transition-all text-lg shadow-lg hover:shadow-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white mb-6"
                   >
-                    {mainDeckCards.length >= 40 
-                      ? '🃏 Build Your Deck' 
-                      : `⚠️ Need ${40 - mainDeckCards.length} more cards in main deck`}
+                    Build Your Deck
                   </button>
-                  <div className="mt-4 text-center space-y-1">
+                  <div className="mb-6 text-center space-y-1">
                     <p className="text-gray-400 text-sm">
-                      • Minimum 40 cards in main deck required
+                      • Add basic lands and finalize your 40+ card deck
                     </p>
                     <p className="text-gray-400 text-sm">
-                      • Move cards to sideboard before building
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      • Add unlimited basic lands in deck builder
+                      • Organize cards and set up sideboard in deck builder
                     </p>
                   </div>
                 </>
@@ -533,11 +508,11 @@ export default function DraftContent({
                 <>
                   <button
                     onClick={handleExportDeck}
-                    className="w-full bg-linear-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-lg transition-all text-lg shadow-lg hover:shadow-xl mb-3"
+                    className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-lg transition-all text-lg shadow-lg hover:shadow-xl mb-3"
                   >
                     📥 Export Deck to Text
                   </button>
-                  <div className="bg-amber-900/20 border border-amber-700/50 rounded-lg p-4 text-center">
+                  <div className="bg-amber-900/20 border border-amber-700/50 rounded-lg p-4 text-center mb-6">
                     <p className="text-amber-100 text-sm mb-2">
                       💡 <strong>Want to save your deck?</strong>
                     </p>
@@ -561,9 +536,19 @@ export default function DraftContent({
                   </div>
                 </>
               )}
+
+              <div>
+                <h3 className="text-white font-semibold mb-3">Your Drafted Cards:</h3>
+                <DraftPool
+                  cards={currentPlayer.draftPool}
+                  draftId={draftId}
+                  compact
+                  showDeckCounter={false}
+                />
+              </div>
             </div>
           </div>
-          
+
           {showDeckBuilder && isLoggedIn && (
             <DraftDeckBuilderModal
               draftId={draftId}

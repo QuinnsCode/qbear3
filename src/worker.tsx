@@ -44,6 +44,7 @@ import LandingPage from "./app/pages/landing/LandingPage";
 import DeckBuilderPage from "./app/pages/deckBuilder/DeckBuilderPage";
 import { SANDBOX_CONFIG } from "./lib/sandbox/config";
 import { SyncedStateServer, syncedStateRoutes } from "rwsdk/use-synced-state/worker";
+import AdminPage from "./app/pages/admin/Admin";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -594,7 +595,7 @@ export default defineApp([
 
     route("/no-access", NoAccessPage),
 
-    route("/admin", AdminDashboard),
+    route("/admin", AdminPage),
     route("/admin/cache", CacheBrowserPage),
 
     route("/sanctum", SanctumPage),

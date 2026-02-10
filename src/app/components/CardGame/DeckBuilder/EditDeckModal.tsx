@@ -6,7 +6,7 @@ import type { Deck } from '@/app/types/Deck'
 import CardSearch from '../CardGameBoard/MiddleRow/CardSearch'
 import DeckListView from './DeckListView'
 import type { Card as ScryfallCard } from '@/app/api/scryfall/scryfallTypes'
-import { GripVertical, Plus, X, Filter, SlidersHorizontal, Eye, Columns3, LayoutGrid, List, ChevronDown, RefreshCw } from 'lucide-react'
+import { GripVertical, Plus, X, Filter, SlidersHorizontal, Eye, Columns3, LayoutGrid, List, ChevronDown, RefreshCw, Save } from 'lucide-react'
 import ManaSymbols from '../ManaSymbols/ManaSymbols'
 import type { CardZone } from './editDeckFunctions'
 import { useCardRefresh } from '@/app/hooks/useCardRefresh'
@@ -1398,7 +1398,7 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
                 Saving...
               </>
             ) : (
-              <>💾 Save Changes</>
+              <><Save/> Save Changes</>
             )}
           </button>
         </div>
