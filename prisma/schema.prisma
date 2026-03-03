@@ -69,7 +69,7 @@ model User {
 model Credential {
   id           String   @id @default(uuid()) // Internal DB ID
   userId       String   @unique // Every credential is linked to a specific user
-  user         User     @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
   credentialId String   @unique // WebAuthn credential identifier
   publicKey    Bytes
@@ -94,6 +94,7 @@ model Session {
 
   activeOrganizationId String?
 
+  @@index([userId])
   @@map("session")
 }
 
@@ -113,6 +114,7 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
+  @@index([userId])
   @@map("account")
 }
 
@@ -124,6 +126,8 @@ model Verification {
   createdAt  DateTime? @default(now())
   updatedAt  DateTime? @updatedAt
 
+  @@unique([identifier, value])
+  @@index([identifier])
   @@map("verification")
 }
 
@@ -143,6 +147,8 @@ model Order {
 
   @@index([orderNumber])
   @@index([shipstationId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model OrderNote {
@@ -152,8 +158,11 @@ model OrderNote {
   content    String
   isInternal Boolean  @default(false)
   createdAt  DateTime @default(now())
-  order      Order    @relation(fields: [orderId], references: [id])
-  user       User?    @relation(fields: [userId], references: [id])
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([userId])
 }
 
 model ShipstationWebhookResponse {
@@ -203,6 +212,9 @@ model Member {
 
   teamId String?
 
+  @@index([organizationId])
+  @@index([userId])
+  @@unique([organizationId, userId])
   @@map("member")
 }
 
@@ -219,6 +231,9 @@ model Invitation {
 
   teamId String?
 
+  @@index([organizationId])
+  @@index([email])
+  @@index([status])
   @@map("invitation")
 }
 
@@ -230,6 +245,7 @@ model Team {
   createdAt      DateTime
   updatedAt      DateTime?
 
+  @@index([organizationId])
   @@map("team")
 }
 

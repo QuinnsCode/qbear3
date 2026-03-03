@@ -1,7 +1,8 @@
 // app/components/CardGame/Battlefield/BattlefieldContainer.tsx
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
+import { ZoomIn, ZoomOut } from 'lucide-react'
 import type { Card, CardGameState } from '@/app/services/cardGame/CardGameState'
 import { BattlefieldCard } from './BattlefieldCard'
 import { SelectionBox } from './SelectionBox'
@@ -46,6 +47,15 @@ export function BattlefieldContainer({
   const [viewportSize, setViewportSize] = useState({ width: 1000, height: 600 })
   const [scrollOffset, setScrollOffset] = useState({ left: 0, top: 0 })
   const [contextMenu, setContextMenu] = useState<{ card: Card, x: number, y: number } | null>(null)
+  const [scale, setScale] = useState(1)
+
+  const SCALE_MIN = 0.25
+  const SCALE_MAX = 2.0
+  const SCALE_STEP = 0.25
+
+  const adjustScale = useCallback((delta: number) => {
+    setScale(s => Math.max(SCALE_MIN, Math.min(SCALE_MAX, Math.round((s + delta) * 100) / 100)))
+  }, [])
   
   // Handle tap/untap for selected cards
   const handleTapSelected = async () => {
@@ -152,7 +162,8 @@ export function BattlefieldContainer({
       selectionBox.currentX,
       selectionBox.currentY,
       scrollOffset.left,
-      scrollOffset.top
+      scrollOffset.top,
+      scale
     )
     
     // Check which cards intersect with selection box (both in battlefield space)
@@ -212,16 +223,17 @@ export function BattlefieldContainer({
   // Convert selection box from viewport coords to battlefield coords for rendering
   const getSelectionBoxInBattlefieldSpace = () => {
     if (!selectionBox) return null
-    
+
     const bounds = getSelectionBounds(
       selectionBox.startX,
       selectionBox.startY,
       selectionBox.currentX,
       selectionBox.currentY,
       scrollOffset.left,
-      scrollOffset.top
+      scrollOffset.top,
+      scale
     )
-    
+
     return bounds
   }
   
@@ -241,15 +253,15 @@ export function BattlefieldContainer({
           scrollbarColor: '#94a3b8 #1e293b'
         }}
       >
-        {/* Fixed-size battlefield surface */}
+        {/* Scaled battlefield surface */}
         <div
           ref={battlefieldRef}
           className="relative bg-slate-800/50"
           style={{
-            width: `${BATTLEFIELD_CONFIG.WIDTH}px`,
-            height: `${BATTLEFIELD_CONFIG.HEIGHT}px`,
-            minWidth: `${BATTLEFIELD_CONFIG.WIDTH}px`,
-            minHeight: `${BATTLEFIELD_CONFIG.HEIGHT}px`
+            width: `${BATTLEFIELD_CONFIG.WIDTH * scale}px`,
+            height: `${BATTLEFIELD_CONFIG.HEIGHT * scale}px`,
+            minWidth: `${BATTLEFIELD_CONFIG.WIDTH * scale}px`,
+            minHeight: `${BATTLEFIELD_CONFIG.HEIGHT * scale}px`
           }}
           onDragOver={(e) => {
             if (spectatorMode) return
@@ -280,9 +292,10 @@ export function BattlefieldContainer({
               screenX,
               screenY,
               scrollOffset.left,
-              scrollOffset.top
+              scrollOffset.top,
+              scale
             )
-            
+
             // Clamp to battlefield bounds
             const clampedPos = clampToBattlefield(battlefieldPos.x, battlefieldPos.y)
             
@@ -313,6 +326,7 @@ export function BattlefieldContainer({
               playerId={playerId}
               cardGameId={cardGameId}
               scrollOffset={scrollOffset}
+              scale={scale}
               onHover={() => onHover(card.instanceId)}
               isSelected={selectedCards.has(card.instanceId)}
               onSelect={() => handleCardSelect(card.instanceId)}
@@ -341,20 +355,42 @@ export function BattlefieldContainer({
         
         {/* Selection box - positioned within battlefield space using your styled component */}
         {selectionBox && battlefieldSelectionBox && (
-          <SelectionBox 
+          <SelectionBox
             box={{
-              left: battlefieldSelectionBox.x,
-              top: battlefieldSelectionBox.y,
-              width: battlefieldSelectionBox.width,
-              height: battlefieldSelectionBox.height,
+              left: battlefieldSelectionBox.x * scale,
+              top: battlefieldSelectionBox.y * scale,
+              width: battlefieldSelectionBox.width * scale,
+              height: battlefieldSelectionBox.height * scale,
             }}
           />
         )}
         
-        {/* Scroll indicator */}
-        <div className="fixed bottom-24 right-4 bg-slate-900/90 text-white px-3 py-1 rounded-lg text-xs z-50 pointer-events-none border border-slate-700">
-          📍 {Math.round(scrollOffset.left)} x {Math.round(scrollOffset.top)}
-        </div>
+        {/* Floating zoom controls — top-left, fixed position */}
+        {!spectatorMode && (
+          <div className="fixed top-4 left-4 z-20 flex items-center gap-2 bg-black/80 backdrop-blur-sm border border-slate-700 rounded-lg px-3 py-2 shadow-lg select-none"
+            style={{ boxShadow: '0 0 8px rgba(168, 85, 247, 0.15)' }}
+          >
+            <button
+              onPointerDown={(e) => { e.stopPropagation(); adjustScale(-SCALE_STEP) }}
+              className="w-8 h-8 flex items-center justify-center text-white hover:text-purple-400 hover:bg-slate-700 transition-all rounded-md"
+              title="Zoom out (25%)"
+              aria-label="Zoom out"
+            >
+              <ZoomOut className="w-5 h-5" />
+            </button>
+            <span className="text-sm text-slate-300 w-12 text-center tabular-nums font-medium">
+              {Math.round(scale * 100)}%
+            </span>
+            <button
+              onPointerDown={(e) => { e.stopPropagation(); adjustScale(SCALE_STEP) }}
+              className="w-8 h-8 flex items-center justify-center text-white hover:text-purple-400 hover:bg-slate-700 transition-all rounded-md"
+              title="Zoom in (25%)"
+              aria-label="Zoom in"
+            >
+              <ZoomIn className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Context Menu */}

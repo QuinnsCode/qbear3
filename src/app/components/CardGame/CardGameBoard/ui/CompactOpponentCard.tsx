@@ -3,6 +3,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { Heart, Swords } from 'lucide-react'
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'
 
 interface CompactOpponentCardProps {
@@ -184,7 +185,7 @@ export default function CompactOpponentCard({
           <span className="text-sm font-medium truncate max-w-[100px]">
             {player.name}
           </span>
-          <span className="text-xs opacity-75">❤️ {player.life}</span>
+          <span className="flex items-center gap-0.5 text-xs opacity-75"><Heart className="w-3 h-3 text-red-400" /> {player.life}</span>
         </button>
 
         {showHover && mounted && createPortal(
@@ -214,7 +215,7 @@ export default function CompactOpponentCard({
           <span className="text-white font-semibold text-sm">{player.name}</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-xl">❤️</span>
+          <Heart className="w-5 h-5 text-red-400" />
           <span className="text-green-400 font-bold text-lg">{player.life}</span>
         </div>
       </div>
@@ -233,7 +234,7 @@ export default function CompactOpponentCard({
           <span className="font-semibold">{player.zones.graveyard.length}</span>
         </div>
         <div className="flex justify-between text-slate-300">
-          <span>⚔️ Board</span>
+          <span className="flex items-center gap-1"><Swords className="w-3 h-3" /> Board</span>
           <span className="font-semibold">{player.zones.battlefield.length}</span>
         </div>
       </div>

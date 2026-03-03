@@ -1,6 +1,8 @@
+// src/app/components/Social/FriendsModal.tsx
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, UserPlus, Users, Search } from "lucide-react";
 import {
   getFriends,
@@ -107,17 +109,17 @@ export function FriendsModal({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/70 z-40"
+        className="fixed inset-0 bg-black/70 z-[1100]"
         onClick={onClose}
         style={{ WebkitTapHighlightColor: "transparent" }}
       />
 
       {/* Modal */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] bg-slate-800 rounded-lg border-2 border-slate-600 shadow-2xl z-50 flex flex-col">
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] bg-slate-800 rounded-lg border-2 border-slate-600 shadow-2xl z-[1200] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-600 flex-shrink-0">
           <h2 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -382,6 +384,7 @@ export function FriendsModal({
           )}
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }

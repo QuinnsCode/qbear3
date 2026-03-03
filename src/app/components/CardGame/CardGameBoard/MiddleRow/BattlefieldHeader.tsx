@@ -1,7 +1,7 @@
 // app/components/CardGame/CardGameBoard/MiddleRow/BattlefieldHeader.tsx
 'use client'
 
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { Heart, Maximize2, Minimize2 } from 'lucide-react'
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'
 
 interface BattlefieldHeaderProps {
@@ -65,9 +65,9 @@ export default function BattlefieldHeader({
             title={isLargeBattlefieldView ? "Exit Large View" : "Large Battlefield View"}
           >
             {isLargeBattlefieldView ? (
-              <ChevronUp className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              <Minimize2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
             ) : (
-              <ChevronDown className="w-4 h-4 group-hover:scale-110 transition-transform" />
+              <Maximize2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
             )}
           </button>
         )}
@@ -79,14 +79,14 @@ export default function BattlefieldHeader({
           onClick={onOpenLifeTracker}
           className="bg-slate-800 hover:bg-slate-700 rounded-lg px-4 py-2 flex items-center gap-2 shadow-lg border border-slate-600 transition-colors"
         >
-          <span className="text-xl">💚</span>
+          <Heart className="w-5 h-5 text-green-500" />
           <span className="text-white text-lg font-bold">{player.life}</span>
         </button>
       ) : (
         <div className={`text-white flex items-center gap-2 ${
           isLargeBattlefieldView ? 'text-sm' : 'text-base'
         }`}>
-          <span className="text-xl">💚</span>
+          <Heart className="w-5 h-5 text-green-500" />
           <span className="font-bold">{player.life}</span>
         </div>
       )}

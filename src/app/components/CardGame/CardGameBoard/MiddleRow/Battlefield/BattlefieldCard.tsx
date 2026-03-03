@@ -13,6 +13,7 @@ interface Props {
   playerId: string
   cardGameId: string
   scrollOffset: { left: number; top: number }
+  scale?: number
   onHover: () => void
   isSelected: boolean
   onSelect: () => void
@@ -27,6 +28,7 @@ export function BattlefieldCard({
   playerId,
   cardGameId,
   scrollOffset,
+  scale = 1,
   onHover,
   isSelected,
   onSelect,
@@ -146,30 +148,32 @@ export function BattlefieldCard({
         screenX,
         screenY,
         scrollOffset.left,
-        scrollOffset.top
+        scrollOffset.top,
+        scale
       )
-      
+
       // Clamp to battlefield bounds
       const clampedPos = clampToBattlefield(battlefieldPos.x, battlefieldPos.y)
-      
+
       // ✅ INSTANT CLIENT UPDATE - NO SERVER CALL
       setLocalPosition(clampedPos)
     }
-    
+
     const handleEnd = (upEvent: MouseEvent | TouchEvent) => {
       const clientPos = 'changedTouches' in upEvent && upEvent.changedTouches.length > 0 ?
         { x: upEvent.changedTouches[0].clientX, y: upEvent.changedTouches[0].clientY } :
         getClientPos(upEvent)
-      
+
       // Convert final screen position to battlefield position
       const screenX = clientPos.x - parentRect.left - offsetX
       const screenY = clientPos.y - parentRect.top - offsetY
-      
+
       const battlefieldPos = screenToBattlefield(
         screenX,
         screenY,
         scrollOffset.left,
-        scrollOffset.top
+        scrollOffset.top,
+        scale
       )
       
       // Clamp to battlefield bounds
@@ -268,11 +272,11 @@ export function BattlefieldCard({
             : 'border-blue-700'
       }`}
       style={{
-        // Position in battlefield space (absolute positioning within battlefield)
-        left: `${localPosition.x}px`,
-        top: `${localPosition.y}px`,
-        width: `${BATTLEFIELD_CONFIG.CARD_WIDTH}px`,
-        height: `${BATTLEFIELD_CONFIG.CARD_HEIGHT}px`,
+        // Position in scaled battlefield space
+        left: `${localPosition.x * scale}px`,
+        top: `${localPosition.y * scale}px`,
+        width: `${BATTLEFIELD_CONFIG.CARD_WIDTH * scale}px`,
+        height: `${BATTLEFIELD_CONFIG.CARD_HEIGHT * scale}px`,
         transform: `rotate(${card.rotation}deg)`,
         transition: isDragging ? 'none' : 'transform 0.2s ease-out',
         boxShadow: isSelected 

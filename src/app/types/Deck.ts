@@ -415,9 +415,55 @@ export function ensureCardZones(deck: DeckV4): DeckV4 {
     ...card,
     zone: card.zone || (card.isCommander ? 'commander' : 'main') as DeckCardZone
   }))
-  
+
   return {
     ...deck,
     cards: cardsWithZones
+  }
+}
+
+/**
+ * Group duplicate cards in old decks (before quantity grouping was implemented)
+ *
+ * OLD FORMAT: [{ name: "Swamp", quantity: 1 }, { name: "Swamp", quantity: 1 }, ...]
+ * NEW FORMAT: [{ name: "Swamp", quantity: 6 }]
+ */
+export function groupDuplicateCards(cards: DeckCard[]): DeckCard[] {
+  const cardMap = new Map<string, DeckCard>()
+
+  for (const card of cards) {
+    // Use scryfallId as unique key (or id as fallback)
+    const key = card.scryfallId || card.id
+    const existing = cardMap.get(key)
+
+    if (existing) {
+      // Card already exists - increment quantity
+      existing.quantity += (card.quantity || 1)
+    } else {
+      // First occurrence - ensure quantity is set
+      cardMap.set(key, {
+        ...card,
+        quantity: card.quantity || 1
+      })
+    }
+  }
+
+  return Array.from(cardMap.values())
+}
+
+/**
+ * Migrate and normalize a deck's card storage
+ * - Groups duplicate cards
+ * - Recalculates totalCards
+ * - Ensures all required fields exist
+ */
+export function normalizeDeck(deck: DeckV4): DeckV4 {
+  const groupedCards = groupDuplicateCards(deck.cards || [])
+  const totalCards = groupedCards.reduce((sum, card) => sum + (card.quantity || 1), 0)
+
+  return {
+    ...deck,
+    cards: groupedCards,
+    totalCards: totalCards
   }
 }

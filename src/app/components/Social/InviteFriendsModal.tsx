@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { X, UserPlus } from "lucide-react";
 import { getFriends, type Friend } from "@/app/serverActions/social/friends";
 import { sendGameInvite, type GameType } from "@/app/serverActions/social/gameInvites";
+import { FriendsModal } from "./FriendsModal";
 
 type InviteFriendsModalProps = {
   isOpen: boolean;
@@ -14,18 +17,19 @@ type InviteFriendsModalProps = {
   gameUrl: string;
 };
 
-export function InviteFriendsModal({ 
-  isOpen, 
-  onClose, 
-  userId, 
-  gameId, 
+export function InviteFriendsModal({
+  isOpen,
+  onClose,
+  userId,
+  gameId,
   gameType,
   gameName,
-  gameUrl 
+  gameUrl,
 }: InviteFriendsModalProps) {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [invitedFriends, setInvitedFriends] = useState<Set<string>>(new Set());
+  const [showAddFriends, setShowAddFriends] = useState(false);
 
   useEffect(() => {
     if (isOpen && userId) {
@@ -39,7 +43,7 @@ export function InviteFriendsModal({
       const friendsData = await getFriends(userId);
       setFriends(friendsData);
     } catch (error) {
-      console.error('Error loading friends:', error);
+      console.error("Error loading friends:", error);
     } finally {
       setLoading(false);
     }
@@ -49,184 +53,107 @@ export function InviteFriendsModal({
     try {
       const result = await sendGameInvite(userId, friendId, gameId, gameType, gameUrl);
       if (result.success) {
-        setInvitedFriends(prev => new Set(prev).add(friendId));
+        setInvitedFriends((prev) => new Set(prev).add(friendId));
       } else {
         alert(result.message);
       }
     } catch (error) {
-      console.error('Error sending invite:', error);
-      alert('Failed to send invite');
+      console.error("Error sending invite:", error);
+      alert("Failed to send invite");
     }
   };
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
+    <>
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0, 0, 0, 0.7)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: '1rem',
-        overflowY: 'auto', // ✅ Allow backdrop to scroll if needed
-      }}
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        style={{
-          background: 'linear-gradient(135deg, #f4e4bc 0%, #e8d5a8 50%, #dcc794 100%)',
-          borderRadius: '12px',
-          maxWidth: '600px',
-          width: '100%',
-          maxHeight: '90vh', // ✅ Changed from 80vh to 90vh and added to outer container
-          display: 'flex',
-          flexDirection: 'column', // ✅ Make it flex column
-          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
-          border: '4px solid #3c2415',
-          position: 'relative', // ✅ Changed from implicit to explicit
-          margin: 'auto', // ✅ Center in scrollable backdrop if tall
-        }}
+        className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-slate-800 border border-slate-600 rounded-xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header - Fixed */}
-        <div
-          style={{
-            padding: '24px',
-            borderBottom: '2px solid rgba(146, 64, 14, 0.3)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexShrink: 0, // ✅ Prevent header from shrinking
-          }}
-        >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700 shrink-0">
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#92400e', margin: 0 }}>
-              📨 Invite Friends
-            </h2>
-            <p style={{ fontSize: '14px', color: '#a16207', margin: '4px 0 0 0' }}>
-              {gameName}
-            </p>
+            <h2 className="text-lg font-bold text-white">Invite Friends</h2>
+            <p className="text-xs text-slate-400 mt-0.5">{gameName}</p>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'rgba(146, 64, 14, 0.2)',
-              border: '2px solid rgba(146, 64, 14, 0.4)',
-              borderRadius: '50%',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: '#92400e',
-              fontSize: '18px',
-              fontWeight: 'bold',
-            }}
-          >
-            ×
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAddFriends(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-xs rounded-lg transition-colors"
+              title="Add new friends"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Add Friends
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-700 hover:bg-slate-600 text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        {/* Friends List - Scrollable */}
-        <div 
-          style={{ 
-            flex: 1, // ✅ Take remaining space
-            overflowY: 'auto', // ✅ Scroll only this section
-            padding: '24px',
-            minHeight: 0, // ✅ Important for flex child to scroll properly
-          }}
-        >
+        {/* Friends list */}
+        <div className="flex-1 overflow-y-auto p-4 min-h-0">
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#a16207' }}>
+            <div className="flex items-center justify-center py-12 text-slate-400 text-sm">
               Loading...
             </div>
           ) : friends.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#a16207' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>👥</div>
-              <div style={{ fontSize: '16px', fontWeight: '500', marginBottom: '8px', color: '#92400e' }}>
-                No friends yet
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center mb-3">
+                <span className="text-2xl">👥</span>
               </div>
-              <div style={{ fontSize: '14px' }}>
-                Add friends to invite them to games!
-              </div>
+              <p className="text-white font-medium mb-1">No friends yet</p>
+              <p className="text-slate-400 text-sm mb-4">Add friends to invite them to games!</p>
+              <button
+                onClick={() => setShowAddFriends(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <UserPlus className="w-4 h-4" />
+                Add Friends
+              </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="flex flex-col gap-2">
               {friends.map((friend) => {
                 const alreadyInvited = invitedFriends.has(friend.friendId);
-                
                 return (
                   <div
                     key={friend.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '16px',
-                      background: 'rgba(251, 191, 36, 0.15)',
-                      border: '2px solid rgba(180, 83, 9, 0.4)',
-                      borderRadius: '8px',
-                    }}
+                    className="flex items-center gap-3 p-3 bg-slate-700/50 border border-slate-600 rounded-lg"
                   >
                     {friend.friendImage ? (
                       <img
                         src={friend.friendImage}
                         alt={friend.friendName}
-                        style={{
-                          width: '48px',
-                          height: '48px',
-                          borderRadius: '50%',
-                          marginRight: '16px',
-                          objectFit: 'cover',
-                        }}
+                        className="w-10 h-10 rounded-full object-cover shrink-0"
                       />
                     ) : (
-                      <div
-                        style={{
-                          width: '48px',
-                          height: '48px',
-                          borderRadius: '50%',
-                          background: 'rgba(146, 64, 14, 0.3)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginRight: '16px',
-                          fontSize: '24px',
-                        }}
-                      >
+                      <div className="w-10 h-10 rounded-full bg-slate-600 flex items-center justify-center shrink-0 text-xl">
                         👤
                       </div>
                     )}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: '600', color: '#92400e', marginBottom: '4px' }}>
-                        {friend.friendName}
-                      </div>
-                      <div style={{ fontSize: '14px', color: '#a16207' }}>
-                        {friend.friendEmail}
-                      </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-medium text-sm truncate">{friend.friendName}</p>
+                      <p className="text-slate-400 text-xs truncate">{friend.friendEmail}</p>
                     </div>
                     <button
                       onClick={() => handleInvite(friend.friendId)}
                       disabled={alreadyInvited}
-                      style={{
-                        padding: '8px 16px',
-                        background: alreadyInvited 
-                          ? 'rgba(146, 64, 14, 0.1)' 
-                          : 'rgba(146, 64, 14, 0.2)',
-                        border: '2px solid rgba(146, 64, 14, 0.4)',
-                        borderRadius: '8px',
-                        color: '#92400e',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: alreadyInvited ? 'not-allowed' : 'pointer',
-                        opacity: alreadyInvited ? 0.6 : 1,
-                      }}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors shrink-0 ${
+                        alreadyInvited
+                          ? "bg-slate-600 text-slate-400 cursor-not-allowed"
+                          : "bg-purple-600 hover:bg-purple-500 text-white cursor-pointer"
+                      }`}
                     >
-                      {alreadyInvited ? '✓ Invited' : 'Invite'}
+                      {alreadyInvited ? "Invited" : "Invite"}
                     </button>
                   </div>
                 );
@@ -236,5 +163,16 @@ export function InviteFriendsModal({
         </div>
       </div>
     </div>
+
+    <FriendsModal
+      isOpen={showAddFriends}
+      onClose={() => {
+        setShowAddFriends(false);
+        loadFriends(); // refresh list after adding friends
+      }}
+      userId={userId}
+    />
+    </>,
+    document.body
   );
 }

@@ -4,6 +4,7 @@ import type { DraftState, DraftConfig, DraftPlayer, CubeCard, DraftAction } from
 import { DraftManager } from '@/app/services/draft/DraftManager'
 import { sanitizeArrayForPlayer, CommonRules } from '@/lib/durableObjectSecurity'
 import { DraftAI } from '@/app/services/draft/DraftAI'
+import { updateDraftMetadata, completeDraft } from '@/app/serverActions/draft/draftTracking'
 
 export class DraftDO extends DurableObject {
   private draftState: DraftState | null = null
@@ -210,13 +211,23 @@ export class DraftDO extends DurableObject {
         
         this.draftState.updatedAt = new Date()
         this.persist()
-        
+
         if (!action.playerId.startsWith('ai-')) {
             this.broadcast({
                 type: 'pick_confirmed',
                 state: this.enrichState(this.draftState)
             })
-            
+
+            // ✅ Update draft tracking for human player
+            const draftId = (this.ctx.id as DurableObjectId).name
+            updateDraftMetadata(action.playerId, draftId, {
+              lastActivity: Date.now(),
+              packNumber: this.draftState.currentRound + 1,
+              pickNumber: this.draftState.currentPick + 1
+            }).catch(err => {
+              console.error('[DraftDO] Failed to update draft metadata:', err)
+            })
+
             this.scheduleAIProcessing()  // ✅ Same level
         }
       }
@@ -389,6 +400,16 @@ export class DraftDO extends DurableObject {
           } else {
             this.draftState.status = 'complete'
             this.broadcast({ type: 'draft_complete' })
+
+            // ✅ Mark draft as complete in KV for all human players
+            const draftId = (this.ctx.id as DurableObjectId).name
+            const humanPlayers = this.draftState.players.filter(p => !p.isAI)
+            humanPlayers.forEach(player => {
+              completeDraft(player.id, draftId).catch(err => {
+                console.error(`[DraftDO] Failed to complete draft for ${player.id}:`, err)
+              })
+            })
+
             break
           }
         }

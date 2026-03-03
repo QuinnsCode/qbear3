@@ -4,14 +4,18 @@ import { getOrgGames } from "@/app/serverActions/gameRegistry";
 import { getFirstOrgSlugOfUser } from "@/app/serverActions/admin/getFirstOrgSlugOfUser";
 import { getOrgCardGames } from "@/app/serverActions/cardGame/cardGameRegistry";
 import { extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
-import { DeckSection } from "@/app/pages/sanctum/DeckSection";
 import { getUserDecks } from "@/app/serverActions/deckBuilder/deckActions";
 import { getEffectiveTier, getTierConfig } from "@/app/lib/subscriptions/tiers";
 import { db } from "@/db";
 import { getFriends, getFriendRequests } from "@/app/serverActions/social/friends";
 import { getGameInvites } from "@/app/serverActions/social/gameInvites";
-import { SocialSection } from "@/app/pages/sanctum/SocialSection";
-import { Gamepad2, Dice6, Swords } from "lucide-react";
+import { SanctumClient } from "./SanctumClient";
+import {
+  getCachedUserProfile,
+  setCachedUserProfile,
+  getCachedSocialData,
+  setCachedSocialData
+} from "@/app/lib/cache/userDataCache";
 
 export default async function SanctumPage({ ctx, request }: RequestInfo) {
   const orgSlug = extractOrgFromSubdomain(request);
@@ -58,37 +62,63 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
     maxPlayers: 4,
     maxDecks: 2,
   };
-  
-  if (ctx.user?.id) {
-    const user = await db.user.findUnique({
-      where: { id: ctx.user.id },
-      include: { 
-        squeezeSubscription: true,
-        stripeSubscription: true
-      }
-    });
-    
-    if (user) {
-      currentTier = getEffectiveTier(user);
-      const tierConfig = getTierConfig(currentTier as any);
-      
-      tierLimits = {
-        maxGames: tierConfig.features.maxGamesPerOrg,
-        maxPlayers: tierConfig.features.maxPlayersPerGame,
-        maxDecks: tierConfig.features.maxDecksPerUser,
-      };
-    }
-  }
-
   let hasDiscord = false;
+
+  // Try to get cached user profile first
   if (ctx.user?.id) {
-    const discordAccount = await db.account.findFirst({
-      where: {
-        userId: ctx.user.id,
-        providerId: "discord"
+    const cachedProfile = await getCachedUserProfile(ctx.user.id);
+
+    if (cachedProfile) {
+      // Use cached data
+      console.log(`[Cache] Using cached user profile for ${ctx.user.id}`);
+      currentTier = cachedProfile.tier;
+      tierLimits = cachedProfile.tierLimits;
+      hasDiscord = cachedProfile.hasDiscord;
+    } else {
+      // Cache miss - fetch from database
+      console.log(`[Cache] Cache miss - fetching user profile from DB for ${ctx.user.id}`);
+
+      const [user, discordAccount] = await Promise.all([
+        db.user.findUnique({
+          where: { id: ctx.user.id },
+          include: {
+            squeezeSubscription: true,
+            stripeSubscription: true
+          }
+        }),
+        db.account.findFirst({
+          where: {
+            userId: ctx.user.id,
+            providerId: "discord"
+          }
+        })
+      ]);
+
+      if (user) {
+        currentTier = getEffectiveTier(user);
+        const tierConfig = getTierConfig(currentTier as any, user.email);
+
+        tierLimits = {
+          maxGames: tierConfig.features.maxGamesPerOrg,
+          maxPlayers: tierConfig.features.maxPlayersPerGame,
+          maxDecks: tierConfig.features.maxCommanderDecks + tierConfig.features.maxDraftDecks,  // Total for display
+        };
+
+        hasDiscord = !!discordAccount;
+
+        // Cache the profile for next time
+        await setCachedUserProfile({
+          id: ctx.user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          tier: currentTier,
+          hasDiscord,
+          tierLimits,
+          cachedAt: Date.now()
+        });
       }
-    });
-    hasDiscord = !!discordAccount;
+    }
   }
   
   if (!orgSlug && ctx?.user?.id) {
@@ -104,86 +134,74 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
     }
   }
 
-  const activeGames = orgSlug ? await getOrgGames(orgSlug) : [];
-  const activeCardGames = orgSlug ? await getOrgCardGames(orgSlug) : [];
-  
-  let userDecks: any[] = [];
+  // Try to get cached social data first
   let friends: any[] = [];
   let friendRequests: { incoming: any[]; outgoing: any[] } = { incoming: [], outgoing: [] };
   let gameInvites: { received: any[]; sent: any[] } = { received: [], sent: [] };
-  
+
   if (ctx.user?.id) {
-    const { decks } = await getUserDecks(ctx.user.id);
-    userDecks = decks;
-    
-    // Load social data
-    friends = await getFriends(ctx.user.id);
-    friendRequests = await getFriendRequests(ctx.user.id);
-    gameInvites = await getGameInvites(ctx.user.id);
+    const cachedSocial = await getCachedSocialData(ctx.user.id);
+
+    if (cachedSocial) {
+      console.log(`[Cache] Using cached social data for ${ctx.user.id}`);
+      friends = cachedSocial.friends;
+      friendRequests = cachedSocial.friendRequests;
+      gameInvites = cachedSocial.gameInvites;
+    } else {
+      console.log(`[Cache] Cache miss - fetching social data from DB for ${ctx.user.id}`);
+      // Will be fetched below with other data
+    }
+  }
+
+  // Fetch remaining data in parallel (skip social if cached)
+  const needsSocialData = ctx.user?.id && friends.length === 0 && friendRequests.incoming.length === 0 && gameInvites.received.length === 0;
+
+  const [activeGames, activeCardGames, userDecksResult, freshFriends, freshFriendRequests, freshGameInvites] = await Promise.all([
+    orgSlug ? getOrgGames(orgSlug) : Promise.resolve([]),
+    orgSlug ? getOrgCardGames(orgSlug) : Promise.resolve([]),
+    ctx.user?.id ? getUserDecks(ctx.user.id) : Promise.resolve({ success: true, decks: [] }),
+    needsSocialData && ctx.user?.id ? getFriends(ctx.user.id) : Promise.resolve(friends),
+    needsSocialData && ctx.user?.id ? getFriendRequests(ctx.user.id) : Promise.resolve(friendRequests),
+    needsSocialData && ctx.user?.id ? getGameInvites(ctx.user.id) : Promise.resolve(gameInvites),
+  ]);
+
+  const userDecks = userDecksResult.decks || [];
+
+  // Use fresh data if we fetched it, otherwise keep cached
+  if (needsSocialData && ctx.user?.id) {
+    friends = freshFriends;
+    friendRequests = freshFriendRequests;
+    gameInvites = freshGameInvites;
+
+    // Cache the social data for next time
+    await setCachedSocialData(ctx.user.id, {
+      friends,
+      friendRequests,
+      gameInvites
+    });
   }
 
   return (
     <div className="min-h-screen bg-slate-700">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {!orgSlug ? (
+      {!orgSlug ? (
+        <div className="max-w-7xl mx-auto px-4 py-8">
           <NoOrgSelected firstOrgSlug={usersFirstOrgSlugFound} />
-        ) : (
-          <>
-            <Header ctx={ctx} currentTier={currentTier} />
-            
-            {/* Social Section - Full Width at Top */}
-            {ctx.user?.id && (
-              <div className="mt-6">
-                <SocialSection
-                  userId={ctx.user.id}
-                  friends={friends}
-                  friendRequests={friendRequests}
-                  gameInvites={gameInvites}
-                />
-              </div>
-            )}
-
-            {/* PVP Matchmaking Section */}
-            <div className="mt-6">
-              <a
-                href="/pvp"
-                className="block bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 rounded-lg p-6 shadow-xl transition-all hover:scale-[1.02] group"
-              >
-                <div className="flex items-center gap-4">
-                  <Swords className="w-12 h-12 text-white" />
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-white mb-1">PVP Draft Arena</h2>
-                    <p className="text-red-100">Draft vs AI, then battle other players in competitive 1v1 matches</p>
-                  </div>
-                  <div className="text-white font-bold text-lg group-hover:translate-x-2 transition-transform">
-                    →
-                  </div>
-                </div>
-              </a>
-            </div>
-
-            {/* Two Column Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-              <DeckSection
-                decks={userDecks}
-                currentTier={currentTier}
-                maxDecks={tierLimits.maxDecks}
-                atLimit={userDecks.length >= tierLimits.maxDecks}
-              />
-              <GameSection 
-                games={activeCardGames} 
-                type="cardGame" 
-                orgSlug={orgSlug}
-                currentTier={currentTier}
-                tierLimits={tierLimits}
-                atLimit={activeCardGames.length >= tierLimits.maxGames}
-              />
-            </div>
-            
-            <StatusCard ctx={ctx} currentTier={currentTier} hasDiscord={hasDiscord} />
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <SanctumClient
+          userDecks={userDecks}
+          activeGames={activeCardGames}
+          friends={friends}
+          friendRequests={friendRequests}
+          gameInvites={gameInvites}
+          currentTier={currentTier}
+          tierLimits={tierLimits}
+          userId={ctx.user!.id}
+          userName={ctx.user?.name || undefined}
+          organizationName={ctx.organization?.name || undefined}
+          orgSlug={orgSlug}
+        />
+      )}
     </div>
   );
 }
@@ -206,177 +224,4 @@ function NoOrgSelected({ firstOrgSlug }: { firstOrgSlug: string | null }) {
   );
 }
 
-function Header({ ctx, currentTier }: any) {
-  const tierConfig: Record<string, { icon: string; name: string; color: string }> = {
-    free: { icon: '🏕️', name: 'Free', color: '#78716c' },
-    starter: { icon: '⚔️', name: 'Starter', color: '#f59e0b' },
-    pro: { icon: '👑', name: 'Pro', color: '#eab308' }
-  };
-  
-  const tier = tierConfig[currentTier] || tierConfig.free;
-  
-  return (
-    <div className="bg-linear-to-r from-blue-600 to-purple-600 rounded-lg p-4 shadow-xl">
-      <div className="flex items-center justify-between gap-4">
-        {/* Left: Title and User Info */}
-        <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-bold text-white">Sanctum</h1>
-          <div className="text-blue-100 text-sm">
-            {ctx.organization?.name || 'Your Dashboard'} • {ctx.user?.name || 'Player'}
-          </div>
-        </div>
-        
-        {/* Right: Tier Badge */}
-        <div 
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 bg-black/20 shrink-0"
-          style={{ borderColor: tier.color }}
-        >
-          <span className="text-xl">{tier.icon}</span>
-          <span className="font-semibold text-white text-sm">{tier.name} Tier</span>
-          {currentTier === 'free' && (
-            <a 
-              href="/pricing" 
-              className="ml-2 px-3 py-1 rounded text-white text-sm font-bold transition-all hover:scale-105"
-              style={{ background: tier.color }}
-            >
-              Upgrade
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatusCard({ ctx, currentTier, hasDiscord }: any) {
-  const tierConfig: Record<string, { icon: string; name: string; color: string }> = {
-    free: { icon: '🏕️', name: 'Free', color: '#78716c' },
-    starter: { icon: '⚔️', name: 'Starter', color: '#f59e0b' },
-    pro: { icon: '👑', name: 'Pro', color: '#eab308' }
-  };
-  
-  const tier = tierConfig[currentTier] || tierConfig.free;
-  
-  return (
-    <div className="mt-6 bg-slate-800 rounded-lg border-2 border-slate-600 p-6 shadow-lg">
-      <h3 className="text-xl font-bold text-white mb-4">Account Info</h3>
-      <div className="space-y-3">
-        <div className="flex justify-between items-center p-3 bg-slate-700/70 rounded border border-slate-600">
-          <span className="text-gray-300">Role:</span>
-          <span className="font-medium text-white">
-            {ctx.userRole === 'admin' ? 'Admin' : ctx.userRole === 'owner' ? 'Owner' : 'Member'}
-          </span>
-        </div>
-        <div className="flex justify-between items-center p-3 bg-slate-700/70 rounded border border-slate-600">
-          <span className="text-gray-300">Organization:</span>
-          <span className="font-medium text-white">{ctx.organization?.name || 'None'}</span>
-        </div>
-        <div className="flex justify-between items-center p-3 bg-slate-700/70 rounded border border-slate-600">
-          <span className="text-gray-300">Tier:</span>
-          <span className="font-medium flex items-center gap-2" style={{ color: tier.color }}>
-            <span>{tier.icon}</span>
-            <span>{tier.name}</span>
-          </span>
-        </div>
-        <div className="flex justify-between items-center p-3 bg-slate-700/70 rounded border border-slate-600">
-          <span className="text-gray-300">Discord:</span>
-          <span className="font-medium text-white">
-            {hasDiscord ? '✅ Connected' : '❌ Not Connected'}
-          </span>
-        </div>
-      </div>
-      <div className="mt-6">
-        <a href="/" className="text-blue-400 hover:text-blue-300 transition-colors font-medium">
-          ← Return Home
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function GameSection({ games, type, orgSlug, currentTier, tierLimits, atLimit }: any) {
-  const isCardGame = type === 'cardGame';
-  const title = isCardGame ? 'Card Games' : 'Active Games';
-  const Icon = isCardGame ? Gamepad2 : Dice6;
-  const route = isCardGame ? '/cardGame' : '/game';
-  const idField = isCardGame ? 'cardGameId' : 'gameId';
-
-  return (
-    <div className="bg-slate-800 rounded-lg border-2 border-slate-600 p-6 shadow-lg">
-      <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-        <Icon className="w-6 h-6" />
-        <span>{title}</span>
-        <span className="ml-auto text-sm bg-slate-700 text-gray-300 px-3 py-1 rounded-full border border-slate-600">
-          {games.length}/{tierLimits.maxGames}
-        </span>
-      </h2>
-      
-      {atLimit && currentTier !== 'pro' && (
-        <div className="mb-4 p-4 bg-red-900/30 border-2 border-red-500 rounded-lg">
-          <div className="font-bold text-red-400 mb-2">
-            🚨 Game Limit Reached
-          </div>
-          <div className="text-sm text-red-300 mb-3">
-            You've reached your limit. 
-            {currentTier === 'free' && ' Upgrade to Starter for 5 games ($1/mo)'}
-            {currentTier === 'starter' && ' Upgrade to Pro for 10 games ($5/mo)'}
-          </div>
-          <a 
-            href="/pricing"
-            className="inline-block px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-bold transition-colors"
-          >
-            Upgrade Now
-          </a>
-        </div>
-      )}
-      
-      {games.length === 0 ? (
-        <div className="text-center py-12">
-          <Icon className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-          <div className="text-xl font-semibold text-gray-200 mb-2">No Games Yet</div>
-          <a 
-            href={route} 
-            className="inline-block mt-4 px-6 py-3 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold transition-all shadow-lg"
-          >
-            Create Your First Game
-          </a>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {games.map((game: any) => (
-            <div 
-              key={game[idField]} 
-              className="bg-slate-700/70 rounded-lg border border-slate-600 p-4 hover:border-blue-500 hover:shadow-lg transition-all"
-            >
-              <div className="font-bold text-white text-lg mb-2">{game.name}</div>
-              <div className="text-sm text-gray-300 mb-3">
-                Created {new Date(game.createdAt).toLocaleDateString()}
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300 text-sm">
-                  Players: {game.playerCount}/{tierLimits.maxPlayers}
-                </span>
-                <a 
-                  href={`${route}/${game[idField]}`} 
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-medium transition-colors"
-                >
-                  Enter Game →
-                </a>
-              </div>
-            </div>
-          ))}
-          
-          {!atLimit && (
-            <a 
-              href={route} 
-              className="flex items-center justify-center gap-2 mt-4 p-4 bg-slate-700/50 hover:bg-slate-700/70 text-white rounded-lg font-semibold border-2 border-dashed border-slate-600 hover:border-blue-500 transition-all"
-            >
-              <span className="text-2xl">➕</span>
-              <span>Create New Game</span>
-            </a>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+// Old components removed - now using SanctumClient

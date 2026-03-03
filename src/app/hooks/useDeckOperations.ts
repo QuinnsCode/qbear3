@@ -223,31 +223,33 @@ async function importNormalDeck(
 }
 
 async function importDeckData(deck: Deck, cardGameId: string, currentPlayerId: string) {
-  const deckListText = [
-    ...(deck.commanders?.map(c => `Commander: ${c}`) || []),
-    ...deck.cards
-      .filter(card => !card.isCommander)
-      .map(card => `${card.quantity || 1} ${card.name}`)
-  ].filter(Boolean).join('\n')
-  
+  // Use import_deck_direct instead of import_deck to avoid the fragile text parser.
+  // import_deck reconstructs a deck-list string then re-parses it, which fails if the
+  // card count isn't exactly 100 or if commander metadata is missing. import_deck_direct
+  // skips parsing and uses the structured card objects directly, which is always reliable.
+
+  // Filter to only include commander and main deck cards (exclude sideboard and contemplating)
+  const gameCards = deck.cards.filter(deckCard => {
+    const zone = deckCard.zone || (deckCard.isCommander ? 'commander' : 'main')
+    return zone === 'commander' || zone === 'main'
+  })
+
   await applyCardGameAction(cardGameId, {
-    type: 'import_deck',
+    type: 'import_deck_direct',
     playerId: currentPlayerId,
-    data: { 
-      deckListText,
+    data: {
       deckName: deck.name,
-      cardData: deck.cards.map(deckCard => ({
+      deckCards: gameCards.map(deckCard => ({
+        scryfallId: deckCard.scryfallId || deckCard.id,
         id: deckCard.scryfallId || deckCard.id,
         name: deckCard.name,
-        image_uris: {
-          small: deckCard.imageUrl || '',
-          normal: deckCard.imageUrl || '',
-          large: deckCard.imageUrl || ''
-        },
-        type_line: deckCard.type || '',
-        mana_cost: deckCard.manaCost || '',
+        quantity: deckCard.quantity || 1,
+        // Map zone: commander stays commander, everything else goes to library (main)
+        zone: (deckCard.zone === 'commander' || deckCard.isCommander) ? 'commander' : 'main',
+        imageUrl: deckCard.imageUrl || '',
+        type: deckCard.type || '',
+        manaCost: deckCard.manaCost || '',
         colors: deckCard.colors || [],
-        color_identity: deckCard.colors || []
       }))
     }
   })
@@ -259,12 +261,18 @@ async function shuffleAndDraw(
   setStatus: (status: DeckImportStatus) => void
 ) {
   setStatus({ loading: true, error: null, step: 'Shuffling library...' })
-  
-  await applyCardGameAction(cardGameId, {
+
+  const stateAfterShuffle = await applyCardGameAction(cardGameId, {
     type: 'shuffle_library',
     playerId: currentPlayerId,
     data: {}
   })
+
+  // Guard: if the library is empty the import silently failed — surface a real error
+  const player = stateAfterShuffle.players.find(p => p.id === currentPlayerId)
+  if (!player || player.zones.library.length === 0) {
+    throw new Error('Deck import produced no cards. Check that the deck has cards and try again.')
+  }
 
   setStatus({ loading: true, error: null, step: 'Drawing 7 cards...' })
 

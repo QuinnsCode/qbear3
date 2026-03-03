@@ -5,11 +5,12 @@
 import { DurableObject } from "cloudflare:workers";
 
 // Types
-import type { 
-  CardGameState, 
+import type {
+  CardGameState,
   CardGameAction,
   MTGPlayer,
-  Card
+  Card,
+  GameEvent
 } from '@/app/services/cardGame/CardGameState'
 
 import { 
@@ -35,9 +36,48 @@ type StoredGameState = Omit<CardGameState, 'actions' | 'currentActionIndex'>;
 
 const CURSOR_COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B'];
 
-// ✅ Cleanup configuration
-const INACTIVE_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours
-const CLEANUP_INTERVAL = 24 * 60 * 60 * 1000;   // Run cleanup every 24 hours
+// ✅ Cleanup configuration - Selective broadcasting for bandwidth optimization
+const INACTIVE_THRESHOLD = 2 * 60 * 60 * 1000;  // 2 hours - Track player activity (not used for removal)
+const CLEANUP_INTERVAL = 30 * 60 * 1000;         // 30 minutes - Cleanup WebSocket activity map
+const WS_BROADCAST_THRESHOLD = 5 * 60 * 1000;    // 5 minutes - Only broadcast to recently active WebSockets
+
+type ActionDescriber = (data: any) => string | null;
+
+const ACTION_LOG_DESCRIPTIONS: Partial<Record<string, ActionDescriber>> = {
+  draw_cards:   (d) => `drew ${d.count} card${d.count !== 1 ? 's' : ''}`,
+  move_card:    (d) => {
+    const { fromZone: from, toZone: to } = d;
+    if (to === 'battlefield') return `played a card from ${from} to battlefield`;
+    if (to === 'graveyard')   return `put a card from ${from} into the graveyard`;
+    if (to === 'exile')       return `exiled a card`;
+    if (to === 'hand')        return `returned a card to hand`;
+    if (to === 'library')     return `put a card back into library`;
+    if (to === 'command')     return `moved a card to command zone`;
+    return null;
+  },
+  update_life:                  (d) => `life total changed to ${d.life}`,
+  import_deck:                  (d) => `imported deck: ${d.deckName || d.name || 'deck'}`,
+  import_deck_direct:           (d) => `imported deck: ${d.deckName || d.name || 'deck'}`,
+  shuffle_library:              ()  => `shuffled library`,
+  mill_cards:                   (d) => `milled ${d.count} card${d.count !== 1 ? 's' : ''}`,
+  create_token:                 (d) => `created a ${d.tokenData?.name ?? 'token'} token`,
+  reset_game:                   ()  => `reset the game`,
+  move_hand_to_battlefield_tapped: () => `put all hand cards onto battlefield (tapped)`,
+
+  // Explicitly skipped (too noisy)
+  move_card_position:     () => null,
+  rotate_card:            () => null,
+  rotate_cards_batch:     () => null,
+  flip_card:              () => null,
+  tap_card:               () => null,
+  untap_card:             () => null,
+  update_game_state_info: () => null,
+};
+
+function describeAction(action: CardGameAction): string | null {
+  const handler = ACTION_LOG_DESCRIPTIONS[action.type];
+  return handler ? handler(action.data) : null;
+}
 
 export class CardGameDO extends DurableObject {
   private gameState: CardGameState | null = null;
@@ -52,8 +92,11 @@ export class CardGameDO extends DurableObject {
   private lastCursorBroadcast: Map<string, number> = new Map();
   private spectatorCount = 0;
 
-  // ✅ Track player activity for cleanup
+  // ✅ Track player activity for cleanup (used for player removal in old approach - now deprecated)
   private playerActivity: Map<string, number> = new Map();
+
+  // ✅ Track WebSocket connection activity (for selective broadcasting)
+  private wsActivity: Map<WebSocket, number> = new Map();
 
   private starterDecks: any[] | null = null;
 
@@ -73,12 +116,12 @@ export class CardGameDO extends DurableObject {
       if (isSandbox) {
         // ✅ Load starter decks into memory
         this.starterDecks = await this.ctx.storage.get('starterDecks') as any[];
-        
+
         const hasAlarm = await this.ctx.storage.get('cleanupScheduled');
         if (!hasAlarm) {
           await this.ctx.storage.setAlarm(Date.now() + CLEANUP_INTERVAL);
-          await this.ctx.storage.put('cleanupScheduled', true);
-          console.log('⏰ Scheduled first cleanup alarm for sandbox game');
+          this.ctx.storage.put('cleanupScheduled', true); // No await - output gate handles it
+          console.log('⏰ [Sandbox] Scheduled first cleanup alarm (30min intervals, 2h inactivity threshold)');
         }
       }
       
@@ -90,83 +133,62 @@ export class CardGameDO extends DurableObject {
   }
 
   /**
-   * ✅ ALARM HANDLER - Called automatically every 24 hours
-   * Removes inactive players from sandbox games
+   * ✅ ALARM HANDLER - Called automatically every 30 minutes
+   * Cleans up WebSocket activity tracking (does NOT remove players)
+   * Players and their cards stay in the game for consistent table setup
    */
   async alarm(): Promise<void> {
     const isSandbox = await this.ctx.storage.get('isSandbox');
-    
+
     if (!isSandbox) {
       console.log('⏰ Alarm fired but not sandbox - skipping cleanup');
       return;
     }
-    
-    console.log('🧹 Running sandbox cleanup...');
-    
-    const state = await this.getState();
-    const now = Date.now();
-    let removedCount = 0;
-    
-    // Check each player's last activity
-    const activePlayers = state.players.filter(player => {
-      const lastActivity = this.playerActivity.get(player.id) || 0;
-      const timeSinceActivity = now - lastActivity;
-      
-      if (timeSinceActivity > INACTIVE_THRESHOLD) {
-        console.log(`🗑️ Removing inactive player: ${player.name} (inactive for ${Math.round(timeSinceActivity / 1000 / 60 / 60)} hours)`);
-        removedCount++;
-        return false; // Remove this player
-      }
-      
-      return true; // Keep this player
-    });
-    
-    if (removedCount > 0) {
-      // Update game state
-      this.gameState = {
-        ...state,
-        players: activePlayers,
-        updatedAt: new Date()
-      };
-      
-      // Clean up their cards from the battlefield
-      const activePlayerIds = new Set(activePlayers.map(p => p.id));
-      const updatedCards: Record<string, Card> = {};
-      
-      for (const [cardId, card] of Object.entries(state.cards)) {
-        if (activePlayerIds.has(card.ownerId)) {
-          updatedCards[cardId] = card;
-        }
-      }
-      
-      this.gameState.cards = updatedCards;
-      
-      // Persist changes
-      this.persist();
-      
-      // Clean up activity tracking
-      for (const player of state.players) {
-        if (!activePlayers.find(p => p.id === player.id)) {
-          this.playerActivity.delete(player.id);
-        }
-      }
-      await this.ctx.storage.put('playerActivity', Object.fromEntries(this.playerActivity));
 
-      // Broadcast update
-      this.broadcast({
-        type: 'players_cleaned_up',
-        state: this.gameState,
-        removedCount
-      });
-      
-      console.log(`✅ Cleanup complete: removed ${removedCount} inactive player(s)`);
-    } else {
-      console.log('✅ Cleanup complete: all players active');
+    console.log('🧹 [Sandbox Cleanup] Starting WebSocket activity cleanup...');
+
+    const now = Date.now();
+    const sockets = this.ctx.getWebSockets();
+
+    // Clean up wsActivity map for disconnected WebSockets
+    let disconnectedCount = 0;
+    const activeWebSockets = new Set(sockets);
+
+    for (const [ws, _] of this.wsActivity) {
+      if (!activeWebSockets.has(ws)) {
+        this.wsActivity.delete(ws);
+        disconnectedCount++;
+      }
     }
-    
+
+    if (disconnectedCount > 0) {
+      console.log(`🧹 [Sandbox Cleanup] Cleaned up ${disconnectedCount} disconnected WebSocket(s) from activity map`);
+    }
+
+    // Log stats about current connections
+    const activeConnections = sockets.length;
+    const state = await this.getState();
+    const totalPlayers = state?.players?.length || 0;
+
+    console.log(`📊 [Sandbox Stats] ${totalPlayers} player(s) in game, ${activeConnections} active WebSocket(s)`);
+
+    // Update player activity timestamps for connected players
+    for (const ws of sockets) {
+      const tags = this.ctx.getTags(ws);
+      const playerId = tags[1]; // ['card-game', playerId, playerName]
+      if (playerId && playerId !== 'spectator') {
+        const lastActivity = this.playerActivity.get(playerId) || 0;
+        const hoursInactive = (now - lastActivity) / (1000 * 60 * 60);
+
+        if (hoursInactive > 0.1) { // Only log if > 6 minutes
+          console.log(`👤 Player ${tags[2]} (${playerId}): ${Math.round(hoursInactive * 10) / 10}h since last action`);
+        }
+      }
+    }
+
     // Schedule next cleanup
     await this.ctx.storage.setAlarm(Date.now() + CLEANUP_INTERVAL);
-    console.log('⏰ Scheduled next cleanup in 24 hours');
+    console.log('⏰ [Sandbox Cleanup] Scheduled next cleanup in 30 minutes');
   }
 
   /**
@@ -208,10 +230,10 @@ export class CardGameDO extends DurableObject {
       sharedBattlefield: true,
     });
     
-    // ✅ Schedule cleanup alarm
+    // ✅ Schedule cleanup alarm (30min intervals, removes players after 2h inactive)
     await this.ctx.storage.setAlarm(Date.now() + CLEANUP_INTERVAL);
-    await this.ctx.storage.put('cleanupScheduled', true);
-    console.log('⏰ Scheduled cleanup alarm');
+    this.ctx.storage.put('cleanupScheduled', true); // No await - output gate handles it
+    console.log('⏰ [Sandbox] Scheduled cleanup alarm (30min intervals, 2h inactivity threshold)');
     
     console.log('✅ Sandbox initialized successfully');
     return { success: true, alreadyInitialized: false };
@@ -350,7 +372,10 @@ export class CardGameDO extends DurableObject {
       playerName,                  // Tag[2]: display name
       isSpectator ? '1' : '0'      // Tag[3]: spectator flag
     ]);
-    
+
+    // ✅ Track initial WebSocket activity
+    this.wsActivity.set(server, Date.now());
+
     // Rest stays the same
     if (isSpectator) {
       this.spectatorCount++;
@@ -363,8 +388,11 @@ export class CardGameDO extends DurableObject {
   }
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    // ✅ Track WebSocket activity for selective broadcasting
+    this.wsActivity.set(ws, Date.now());
+
     let messageString: string;
-    
+
     if (typeof message === 'string') {
       messageString = message;
     } else if (message instanceof ArrayBuffer) {
@@ -372,13 +400,13 @@ export class CardGameDO extends DurableObject {
     } else {
       return;
     }
-    
+
     // ✅ GET IDENTITY FROM PLATFORM, NOT CLIENT
     const tags = this.ctx.getTags(ws);
     const playerId = tags[1];
     const playerName = tags[2];
     const isSpectator = tags[3] === '1';
-    
+
     try {
       const data = JSON.parse(messageString);
       
@@ -436,24 +464,38 @@ export class CardGameDO extends DurableObject {
         }
         return value;
       });
-      
+
       const sockets = this.ctx.getWebSockets();
-      
+      const now = Date.now();
+
       let successCount = 0;
       let failCount = 0;
-      
+      let skippedInactive = 0;
+
       for (const ws of sockets) {
         try {
-          ws.send(jsonString);
-          successCount++;
+          // Check if this WebSocket has been active recently
+          const lastActivity = this.wsActivity.get(ws) || 0;
+          const timeSinceActivity = now - lastActivity;
+
+          // Only send to WebSockets active recently (or always for critical messages)
+          const isCriticalMessage = ['game_deleted', 'player_joined', 'player_rejoined', 'game_restarted'].includes(message.type);
+          const isRecentlyActive = timeSinceActivity < WS_BROADCAST_THRESHOLD;
+
+          if (isCriticalMessage || isRecentlyActive) {
+            ws.send(jsonString);
+            successCount++;
+          } else {
+            skippedInactive++;
+          }
         } catch (error) {
           console.error('Failed to send:', error);
           failCount++;
         }
       }
-      
-      if (failCount > 0 || message.type !== 'cursor_update') {
-        console.log(`📊 Broadcast ${message.type}: ${successCount} sent, ${failCount} failed`);
+
+      if (failCount > 0 || skippedInactive > 0 || message.type !== 'cursor_update') {
+        console.log(`📊 Broadcast ${message.type}: ${successCount} sent, ${failCount} failed, ${skippedInactive} skipped (inactive)`);
       }
     } catch (error) {
       console.error('Error broadcasting:', error);
@@ -566,6 +608,49 @@ export class CardGameDO extends DurableObject {
       // Ensure Dates are proper Date objects
       this.gameState.createdAt = new Date(this.gameState.createdAt);
       this.gameState.updatedAt = new Date(this.gameState.updatedAt);
+
+      // DATA HEALING: fix up any fields that may be missing in old persisted state
+      let healed = false;
+
+      // Heal player zones — ensure sideboard array exists
+      for (const player of this.gameState.players) {
+        if (!Array.isArray(player.zones.sideboard)) {
+          player.zones.sideboard = [];
+          healed = true;
+        }
+      }
+
+      // Heal cards — ensure required fields exist
+      for (const card of Object.values(this.gameState.cards)) {
+        if (!card.position) {
+          (card as any).position = { x: 0, y: 0 };
+          healed = true;
+        }
+        if (card.rotation === undefined || card.rotation === null) {
+          (card as any).rotation = 0;
+          healed = true;
+        }
+        if (card.isFaceUp === undefined || card.isFaceUp === null) {
+          (card as any).isFaceUp = card.zone === 'battlefield';
+          healed = true;
+        }
+        // Remove stale isTapped field (rotation is the source of truth)
+        if ('isTapped' in card) {
+          delete (card as any).isTapped;
+          healed = true;
+        }
+      }
+
+      // Heal actionLog — ensure it exists
+      if (!Array.isArray(this.gameState.actionLog)) {
+        this.gameState.actionLog = [];
+        healed = true;
+      }
+
+      if (healed) {
+        console.log('🩹 Data healing applied to loaded game state');
+        this.persist();
+      }
     }
   }
 
@@ -579,17 +664,18 @@ export class CardGameDO extends DurableObject {
       cards: {},
       actions: [], // Empty in memory
       currentActionIndex: -1,
+      actionLog: [],
       createdAt: new Date(),
       updatedAt: new Date()
     };
-  
+
     this.persist();
     return this.gameState;
   }
 
   async restartGame(): Promise<CardGameState> {
     const gameId = this.ctx.id.toString()
-    
+
     this.gameState = {
       id: gameId,
       status: 'active',
@@ -597,20 +683,21 @@ export class CardGameDO extends DurableObject {
       cards: {},
       actions: [], // Empty in memory
       currentActionIndex: -1,
+      actionLog: [],
       createdAt: new Date(),
       updatedAt: new Date()
     };
   
     // ✅ Clear activity tracking on restart
     this.playerActivity.clear();
-    await this.ctx.storage.put('playerActivity', {});
-    
+    this.ctx.storage.put('playerActivity', {}); // No await - output gate handles it
+
     // ✅ Clear actions on restart
     const isSandbox = await this.ctx.storage.get('isSandbox');
     if (!isSandbox) {
-      await this.ctx.storage.delete('gameActions');
+      this.ctx.storage.delete('gameActions'); // No await - output gate handles it
     }
-  
+
     this.persist();
 
     this.broadcast({
@@ -690,10 +777,11 @@ export class CardGameDO extends DurableObject {
         battlefield: [],
         graveyard: [],
         exile: [],
-        command: []
+        command: [],
+        sideboard: []
       }
     };
-  
+
     this.gameState.players.push(newPlayer);
     this.gameState.updatedAt = new Date();
   
@@ -864,6 +952,21 @@ export class CardGameDO extends DurableObject {
       this.gameState = newState;
       this.gameState.updatedAt = new Date();
 
+      // Append action log entry
+      const description = describeAction(gameAction);
+      if (description) {
+        const player = this.gameState.players.find(p => p.id === gameAction.playerId);
+        const entry: GameEvent = {
+          id: crypto.randomUUID(),
+          playerId: gameAction.playerId,
+          playerName: player?.name ?? 'Unknown',
+          message: description,
+          timestamp: Date.now(),
+          type: gameAction.type === 'reset_game' ? 'system' : 'action',
+        };
+        this.gameState.actionLog = [...this.gameState.actionLog, entry].slice(-100);
+      }
+
       // ✅ ONLY STORE ACTIONS FOR NON-SANDBOX GAMES
       const isSandbox = await this.ctx.storage.get('isSandbox');
       if (!isSandbox) {
@@ -1013,7 +1116,8 @@ export class CardGameDO extends DurableObject {
               battlefield: [],
               graveyard: [],
               exile: [],
-              command: []
+              command: [],
+              sideboard: []
             }
           }))
         };

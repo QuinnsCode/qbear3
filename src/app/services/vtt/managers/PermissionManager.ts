@@ -12,9 +12,9 @@ export class PermissionManager {
   /**
    * Check if a player can perform an action
    */
-  static canPerformAction(gameState: VTTGameState, action: VTTAction): boolean {
+  static canPerformAction(gameState: VTTGameState, action: VTTAction, isGMOverride?: boolean): boolean {
     const playerId = action.playerId
-    const isGM = this.isGameMaster(gameState, playerId)
+    const isGM = isGMOverride ?? this.isGameMaster(gameState, playerId)
 
     switch (action.type) {
       // ========================================================================
@@ -259,13 +259,14 @@ export class PermissionManager {
    */
   static authorizeAction(
     gameState: VTTGameState,
-    action: VTTAction
+    action: VTTAction,
+    isGMOverride?: boolean
   ): { authorized: boolean; error?: string } {
-    if (this.canPerformAction(gameState, action)) {
+    if (this.canPerformAction(gameState, action, isGMOverride)) {
       return { authorized: true }
     }
 
-    const isGM = this.isGameMaster(gameState, action.playerId)
+    const isGM = isGMOverride ?? this.isGameMaster(gameState, action.playerId)
 
     // Specific error messages
     switch (action.type) {

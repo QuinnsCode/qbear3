@@ -10,9 +10,11 @@ interface Props {
   onDelete?: () => void
   onEdit?: () => void
   isSandbox?: boolean
+  isBulkEditMode?: boolean
+  isSelected?: boolean
 }
 
-export default function DeckCard({ deck, onSelect, onDelete, onEdit, isSandbox = false }: Props) {
+export default function DeckCard({ deck, onSelect, onDelete, onEdit, isSandbox = false, isBulkEditMode = false, isSelected = false }: Props) {
   const [isHovered, setIsHovered] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [activeCommanderIndex, setActiveCommanderIndex] = useState(0)
@@ -69,13 +71,34 @@ export default function DeckCard({ deck, onSelect, onDelete, onEdit, isSandbox =
         setActiveCommanderIndex(0) // Reset to first commander
       }}
       onMouseMove={handleMouseMove}
-      className="group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] border-2 border-slate-700/50 hover:border-blue-500/50 shadow-xl hover:shadow-2xl"
+      className={`group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-[1.02] border-2 shadow-xl hover:shadow-2xl ${
+        isBulkEditMode && isSelected
+          ? 'border-blue-500 ring-4 ring-blue-500/30'
+          : 'border-slate-700/50 hover:border-blue-500/50'
+      }`}
       style={{
         height: '380px',
         perspective: '1200px',
         transformStyle: 'preserve-3d',
       }}
     >
+      {/* Selection Checkbox - Only show in bulk edit mode */}
+      {isBulkEditMode && (
+        <div className="absolute top-4 left-4 z-30">
+          <div className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all duration-200 ${
+            isSelected
+              ? 'bg-blue-600 border-blue-500 shadow-lg shadow-blue-500/50'
+              : 'bg-slate-800/90 border-slate-600 backdrop-blur-sm hover:border-blue-400'
+          }`}>
+            {isSelected && (
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Commander Art Background with Parallax */}
       <div className="absolute inset-0 overflow-hidden">
         {commanderImages.length > 0 ? (

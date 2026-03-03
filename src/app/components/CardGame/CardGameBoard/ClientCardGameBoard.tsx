@@ -11,6 +11,8 @@ import BattlefieldSection from './MiddleRow/BattlefieldSection'
 import BottomZonesBar from './BottomRow/BottomZonesBar'
 import CardGameMenu from './ui/CardGameMenu'
 import CardSearch from './MiddleRow/CardSearch'
+import { ActionLogFeed } from './ui/ActionLogFeed'
+import { Search, ScrollText } from 'lucide-react'
 import MobileGameLayout from '../Mobile/MobileGameLayout'
 import TokenCreationModal from '../TokenCreationModal'
 import { DeckImportOverlay } from './ui/DeckImportOverlay'
@@ -45,6 +47,7 @@ export default function ClientCardGameBoard({
   const { layout, setLayout, isDragging, startDrag, resetLayout } = useDraggableLayout()
   const { selectedPlayerId, setSelectedPlayerId, hoveredCard, setHoveredCard, viewingZone, setViewingZone, showTokenCreator, setShowTokenCreator } = useCardGameViewState()
   const { decks, deckImportStatus, handleCreateDeck, handleDeleteDeck, handleSelectDeck, handleEditDeck, prefetchDecks } = useDeckOperations({ currentPlayerId, cardGameId, spectatorMode, isSandbox })
+  const [rightTab, setRightTab] = useState<'search' | 'feed'>('search')
 
   // Null safety check
   if (!gameState?.players?.length) {
@@ -92,7 +95,15 @@ export default function ClientCardGameBoard({
     <div className="h-screen w-screen bg-slate-900 flex flex-col relative overflow-hidden">
       {/* Game Menu - Top Right */}
       {!spectatorMode && (
-        <div className="absolute top-2 right-2 z-30 flex gap-2">
+        <div className="absolute top-2 right-2 z-30 flex gap-2 items-start">
+          {!isSandbox && (
+            <GameSocialPanel
+              userId={currentPlayerId}
+              cardGameId={cardGameId}
+              gameName={gameName}
+              gameType="card"
+            />
+          )}
           <CardGameMenu
             cardGameId={cardGameId}
             gameName={gameName}
@@ -122,16 +133,6 @@ export default function ClientCardGameBoard({
 
       {/* Desktop Layout */}
       <div className="hidden lg:flex flex-col h-full p-2 gap-1">
-        {/* Game Social Panel */}
-        {!spectatorMode && !isSandbox && (
-          <GameSocialPanel
-            userId={currentPlayerId}
-            cardGameId={cardGameId}
-            gameName={gameName}
-            gameType="card"
-          />
-        )}
-
         {/* Top Row: Opponents */}
         <div 
           className="bg-slate-800 rounded-t-lg overflow-visible shrink-0"
@@ -183,17 +184,50 @@ export default function ClientCardGameBoard({
           />
 
           {!isRightPanelCollapsed && (
-            <div 
-              className="bg-slate-800 rounded-br-lg overflow-hidden shrink-0"
+            <div
+              className="bg-slate-800 rounded-br-lg overflow-hidden shrink-0 flex flex-col"
               style={{ width: `${layout.rightPanelWidth}px` }}
             >
-              <CardSearch 
-                hoveredCard={hoveredCard}
-                onCardSelect={(card) => {
-                  if (spectatorMode) return
-                  console.log('Selected card:', card)
-                }}
-              />
+              {/* Tab strip */}
+              <div className="flex bg-slate-900 border-b border-slate-700 shrink-0">
+                <button
+                  onClick={() => setRightTab('search')}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+                    rightTab === 'search'
+                      ? 'bg-slate-700 text-white border-b-2 border-purple-500'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  Search
+                </button>
+                <button
+                  onClick={() => setRightTab('feed')}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${
+                    rightTab === 'feed'
+                      ? 'bg-slate-700 text-white border-b-2 border-purple-500'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <ScrollText className="w-3.5 h-3.5" />
+                  Log
+                </button>
+              </div>
+
+              {/* Tab content */}
+              <div className="flex-1 overflow-hidden">
+                {rightTab === 'search' ? (
+                  <CardSearch
+                    hoveredCard={hoveredCard}
+                    onCardSelect={(card) => {
+                      if (spectatorMode) return
+                      console.log('Selected card:', card)
+                    }}
+                  />
+                ) : (
+                  <ActionLogFeed gameState={gameState} />
+                )}
+              </div>
             </div>
           )}
 

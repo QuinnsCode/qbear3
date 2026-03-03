@@ -2,6 +2,7 @@
 
 import { db } from "@/db";
 import { publishEvent } from "@/app/serverActions/events/publishEvent";
+import { invalidateSocialData } from "@/app/lib/cache/userDataCache";
 
 // Types
 export type FriendRequest = {
@@ -11,6 +12,9 @@ export type FriendRequest = {
   senderEmail: string;
   senderImage?: string;
   receiverId: string;
+  receiverName?: string;
+  receiverEmail?: string;
+  receiverImage?: string;
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: number;
 };
@@ -129,6 +133,9 @@ export async function getFriendRequests(userId: string): Promise<{
         senderName: 'You',
         senderEmail: '',
         receiverId: req.receiverId,
+        receiverName: req.receiver.name || 'Unknown',
+        receiverEmail: req.receiver.email || '',
+        receiverImage: req.receiver.image || undefined,
         status: req.status as 'pending',
         createdAt: req.createdAt.getTime(),
       }))
@@ -206,6 +213,12 @@ export async function sendFriendRequest(
       },
     });
 
+    // Invalidate cache for both users
+    await Promise.all([
+      invalidateSocialData(fromUserId),
+      invalidateSocialData(toUserId)
+    ]);
+
     return { success: true, message: 'Friend request sent!' };
   } catch (error) {
     console.error('Error sending friend request:', error);
@@ -242,28 +255,25 @@ export async function acceptFriendRequest(
       return { success: false, message: 'Friend request already processed' };
     }
     
-    // Use a transaction to ensure atomicity
-    await db.$transaction(async (tx) => {
-      // Update request status
-      await tx.friendRequest.update({
+    // Use batch transaction (D1 only supports array-style, not interactive callbacks)
+    await db.$transaction([
+      db.friendRequest.update({
         where: { id: requestId },
         data: { status: 'accepted' }
-      });
-      
-      // Create bidirectional friendship
-      await tx.friendship.createMany({
-        data: [
-          {
-            userId: friendRequest.senderId,
-            friendId: friendRequest.receiverId,
-          },
-          {
-            userId: friendRequest.receiverId,
-            friendId: friendRequest.senderId,
-          }
-        ]
-      });
-    });
+      }),
+      db.friendship.create({
+        data: {
+          userId: friendRequest.senderId,
+          friendId: friendRequest.receiverId,
+        }
+      }),
+      db.friendship.create({
+        data: {
+          userId: friendRequest.receiverId,
+          friendId: friendRequest.senderId,
+        }
+      }),
+    ]);
     
     // Notify sender
     await publishEvent({
@@ -274,6 +284,12 @@ export async function acceptFriendRequest(
         requestId,
       },
     });
+
+    // Invalidate cache for both users
+    await Promise.all([
+      invalidateSocialData(userId),
+      invalidateSocialData(friendRequest.senderId)
+    ]);
 
     return { success: true, message: 'Friend request accepted!' };
   } catch (error) {
@@ -310,7 +326,13 @@ export async function rejectFriendRequest(
       where: { id: requestId },
       data: { status: 'rejected' }
     });
-    
+
+    // Invalidate cache for both users
+    await Promise.all([
+      invalidateSocialData(userId),
+      invalidateSocialData(friendRequest.senderId)
+    ]);
+
     return { success: true, message: 'Friend request rejected' };
   } catch (error) {
     console.error('Error rejecting friend request:', error);
@@ -339,7 +361,13 @@ export async function removeFriend(
         ]
       }
     });
-    
+
+    // Invalidate cache for both users
+    await Promise.all([
+      invalidateSocialData(userId),
+      invalidateSocialData(friendId)
+    ]);
+
     return { success: true, message: 'Friend removed' };
   } catch (error) {
     console.error('Error removing friend:', error);

@@ -2,6 +2,7 @@
 
 import { db } from "@/db";
 import { publishEvent } from "@/app/serverActions/events/publishEvent";
+import { invalidateSocialData } from "@/app/lib/cache/userDataCache";
 
 // Types
 export type GameType = 'main' | 'card';
@@ -192,7 +193,13 @@ export async function sendGameInvite(
         inviteId: gameInvite.id,
       },
     });
-    
+
+    // Invalidate cache for both users
+    await Promise.all([
+      invalidateSocialData(fromUserId),
+      invalidateSocialData(toUserId)
+    ]);
+
     return { success: true, message: 'Game invite sent!' };
   } catch (error) {
     console.error('Error sending game invite:', error);
@@ -251,10 +258,16 @@ export async function acceptGameInvite(
         gameUrl: invite.gameUrl,
       },
     });
-    
-    return { 
-      success: true, 
-      message: 'Invite accepted! Joining game...', 
+
+    // Invalidate cache for both users
+    await Promise.all([
+      invalidateSocialData(userId),
+      invalidateSocialData(invite.fromUserId)
+    ]);
+
+    return {
+      success: true,
+      message: 'Invite accepted! Joining game...',
       gameUrl: invite.gameUrl
     };
   } catch (error) {
@@ -291,7 +304,13 @@ export async function declineGameInvite(
       where: { id: inviteId },
       data: { status: 'declined' }
     });
-    
+
+    // Invalidate cache for both users
+    await Promise.all([
+      invalidateSocialData(userId),
+      invalidateSocialData(invite.fromUserId)
+    ]);
+
     return { success: true, message: 'Invite declined' };
   } catch (error) {
     console.error('Error declining invite:', error);

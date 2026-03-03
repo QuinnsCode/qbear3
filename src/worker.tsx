@@ -155,24 +155,10 @@ export default defineApp([
       await setupSessionContext(ctx, request);
       await setupOrganizationContext(ctx, request);
       
-      // ✅ NEW: Check if user needs org
-      const url = new URL(request.url);
-      if (ctx.user &&
-          !url.pathname.startsWith('/api/') &&
-          !url.pathname.startsWith('/user/create-lair') &&
-          url.pathname !== '/') {
-
-        const { getCachedUserMemberships } = await import('@/lib/cache/authCache');
-        const memberships = await getCachedUserMemberships(ctx.user.id);
-
-        if (memberships.length === 0) {
-          console.log('⚠️ [ORG CHECK] User has no org | Path:', url.pathname, '| Redirecting to /user/create-lair');
-          return new Response(null, {
-            status: 302,
-            headers: { Location: '/user/create-lair' }
-          });
-        }
-      }
+      // ✅ AUTO-CREATE ORG: Automatically create org for users who don't have one
+      const { autoCreateOrgMiddleware } = await import('@/lib/middleware/autoCreateOrgMiddleware');
+      const autoOrgResult = await autoCreateOrgMiddleware(ctx, request);
+      if (autoOrgResult) return autoOrgResult;
 
       // Log when we SKIP the org check (to debug the issue)
       if (ctx.user && url.pathname === '/') {
@@ -291,6 +277,9 @@ export default defineApp([
     if (ctx.user) {
       headers.set('X-Auth-User-Id', ctx.user.id);
       headers.set('X-Auth-User-Name', ctx.user.name || ctx.user.email || 'Player');
+    }
+    if (url.searchParams.get('gm') === 'true') {
+      headers.set('X-Auth-Is-GM', 'true');
     }
 
     // Forward request to DO (handles WebSocket upgrade)

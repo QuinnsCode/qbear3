@@ -4,7 +4,8 @@ import type {
   MTGPlayer,
   Card,
   ScryfallCard,
-  CardGameAction
+  CardGameAction,
+  ZoneType
 } from '@/app/services/cardGame/CardGameState'
 import { parseDeckList, type DeckFormat } from '@/app/lib/cardGame/deckListParser'
 
@@ -102,17 +103,22 @@ export class DeckImportManager {
       for (let i = 0; i < (deckCard.quantity || 1); i++) {
         const instanceId = `${action.playerId}-${scryfallId}-${i}-${crypto.randomUUID()}`
 
-        // Use deckCard zone, defaulting to library for main deck
-        const zone = deckCard.zone === 'sideboard' ? 'sideboard' : 'library'
+        // Map DeckCard zone ('main'|'commander'|'sideboard') to CardGameState ZoneType.
+        // 'commander' → 'command' because DeckCard uses the DeckCardZone vocabulary
+        // while the game state uses ZoneType ('command' not 'commander').
+        // Everything else defaults to library — sideboard stays as-is, main goes to library.
+        const zone: ZoneType = deckCard.zone === 'sideboard' ? 'sideboard'
+          : deckCard.zone === 'commander' ? 'command'
+          : 'library'
 
         const card: Card = {
           instanceId,
           scryfallId,
           ownerId: action.playerId,
-          zone: zone as ZoneType,
+          zone,
           position: { x: 0, y: 0 },
           rotation: 0,
-          isFaceUp: false
+          isFaceUp: zone === 'command' // commanders start face-up in the command zone
         }
 
         newCards.push(card)
@@ -123,13 +129,14 @@ export class DeckImportManager {
     console.log(`✅ Created ${newCards.length} card instances`)
     console.log(`✅ Converted ${scryfallCardData.length} unique cards to Scryfall format`)
 
-    // Separate main deck from sideboard
+    // Separate cards by destination zone
     const mainDeckCards = newCards.filter(c => c.zone === 'library')
     const sideboardCards = newCards.filter(c => c.zone === 'sideboard')
+    const commandCards = newCards.filter(c => c.zone === 'command')
 
-    console.log(`📊 Main deck: ${mainDeckCards.length} cards, Sideboard: ${sideboardCards.length} cards`)
+    console.log(`📊 Main deck: ${mainDeckCards.length} cards, Command: ${commandCards.length}, Sideboard: ${sideboardCards.length} cards`)
 
-    // Shuffle main deck (keep sideboard unshuffled)
+    // Shuffle main deck only (command zone and sideboard stay ordered)
     const shuffledMainDeck = this.shuffleArray([...mainDeckCards])
 
     // Add all cards to game state
@@ -146,7 +153,7 @@ export class DeckImportManager {
             raw: '', // No text format for direct import
             deckName: action.data.deckName || 'Draft Deck',
             scryfallIds,
-            cardData: scryfallCardData // Use converted Scryfall format
+            cardData: scryfallCardData
           },
           zones: {
             hand: [],
@@ -154,7 +161,7 @@ export class DeckImportManager {
             graveyard: [],
             exile: [],
             battlefield: [],
-            command: [],
+            command: commandCards.map(c => c.instanceId),
             sideboard: sideboardCards.map(c => c.instanceId)
           }
         }
@@ -313,11 +320,12 @@ export class DeckImportManager {
             },
             zones: {
               hand: [],
-              library: libraryCards,  // 99 cards
+              library: libraryCards,
               graveyard: [],
               exile: [],
               battlefield: [],
-              command: commanderCards  // 1 commander
+              command: commanderCards,
+              sideboard: []
             }
           }
         }

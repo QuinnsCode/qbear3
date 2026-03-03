@@ -28,7 +28,7 @@ type OtherPlayer = {
   camera: CameraPosition | null
 }
 
-export function useVTTSync({ gameId, playerId }: { gameId: string; playerId: string }) {
+export function useVTTSync({ gameId, playerId, isGM = false }: { gameId: string; playerId: string; isGM?: boolean }) {
   const [gameState, setGameState] = useState<VTTGameState | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const [otherPlayers, setOtherPlayers] = useState<Map<string, OtherPlayer>>(new Map())
@@ -96,7 +96,7 @@ export function useVTTSync({ gameId, playerId }: { gameId: string; playerId: str
       if (isCancelled) return
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//${window.location.host}/__vttsync?key=${gameId}`
+      const wsUrl = `${protocol}//${window.location.host}/__vttsync?key=${gameId}${isGM ? '&gm=true' : ''}`
 
       console.log('[useVTTSync] Connecting to', wsUrl)
 

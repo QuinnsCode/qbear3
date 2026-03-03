@@ -31,40 +31,47 @@ export const BATTLEFIELD_CONFIG = {
   }
   
   /**
-   * Convert screen/viewport coordinates to battlefield coordinates
+   * Convert screen/viewport coordinates to battlefield coordinates.
+   * When scale != 1, the battlefield surface is larger/smaller, so we divide by scale
+   * to get back to the logical battlefield coordinate space (0–WIDTH, 0–HEIGHT).
    * @param screenX - X position in viewport (relative to container)
    * @param screenY - Y position in viewport (relative to container)
    * @param scrollLeft - Current horizontal scroll offset
    * @param scrollTop - Current vertical scroll offset
+   * @param scale - Current zoom scale (default 1)
    */
   export function screenToBattlefield(
     screenX: number,
     screenY: number,
     scrollLeft: number,
-    scrollTop: number
+    scrollTop: number,
+    scale: number = 1
   ): Point {
     return {
-      x: screenX + scrollLeft,
-      y: screenY + scrollTop
+      x: (screenX + scrollLeft) / scale,
+      y: (screenY + scrollTop) / scale
     }
   }
-  
+
   /**
-   * Convert battlefield coordinates to screen/viewport coordinates
+   * Convert battlefield coordinates to screen/viewport coordinates.
+   * Multiply by scale to get the rendered pixel position, then subtract scroll.
    * @param battlefieldX - X position in battlefield space
    * @param battlefieldY - Y position in battlefield space
    * @param scrollLeft - Current horizontal scroll offset
    * @param scrollTop - Current vertical scroll offset
+   * @param scale - Current zoom scale (default 1)
    */
   export function battlefieldToScreen(
     battlefieldX: number,
     battlefieldY: number,
     scrollLeft: number,
-    scrollTop: number
+    scrollTop: number,
+    scale: number = 1
   ): Point {
     return {
-      x: battlefieldX - scrollLeft,
-      y: battlefieldY - scrollTop
+      x: battlefieldX * scale - scrollLeft,
+      y: battlefieldY * scale - scrollTop
     }
   }
   
@@ -90,7 +97,8 @@ export const BATTLEFIELD_CONFIG = {
   }
   
   /**
-   * Clamp a position to stay within battlefield bounds
+   * Clamp a position to stay within battlefield bounds (in logical coordinates).
+   * The bounds are always the logical battlefield dimensions regardless of scale.
    */
   export function clampToBattlefield(x: number, y: number): Point {
     return {
@@ -98,9 +106,10 @@ export const BATTLEFIELD_CONFIG = {
       y: Math.max(0, Math.min(BATTLEFIELD_CONFIG.HEIGHT - BATTLEFIELD_CONFIG.CARD_HEIGHT, y))
     }
   }
-  
+
   /**
-   * Get the bounds for a selection box in battlefield coordinates
+   * Get the bounds for a selection box in battlefield coordinates.
+   * @param scale - Current zoom scale (default 1)
    */
   export function getSelectionBounds(
     startX: number,
@@ -108,17 +117,18 @@ export const BATTLEFIELD_CONFIG = {
     endX: number,
     endY: number,
     scrollLeft: number,
-    scrollTop: number
+    scrollTop: number,
+    scale: number = 1
   ): { x: number; y: number; width: number; height: number } {
     // Convert screen coordinates to battlefield coordinates
-    const start = screenToBattlefield(startX, startY, scrollLeft, scrollTop)
-    const end = screenToBattlefield(endX, endY, scrollLeft, scrollTop)
-    
+    const start = screenToBattlefield(startX, startY, scrollLeft, scrollTop, scale)
+    const end = screenToBattlefield(endX, endY, scrollLeft, scrollTop, scale)
+
     const x = Math.min(start.x, end.x)
     const y = Math.min(start.y, end.y)
     const width = Math.abs(end.x - start.x)
     const height = Math.abs(end.y - start.y)
-    
+
     return { x, y, width, height }
   }
   

@@ -1,7 +1,7 @@
 // app/components/CardGame/CardGameBoard/Zones/ZoneButtons.tsx
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { BookOpen, Skull, Flame, Crown, Swords, Coins } from 'lucide-react' // ✅ Add Coins
+import { BookOpen, Skull, Flame, Crown, Swords, Coins, Hand } from 'lucide-react'
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
 import { MenuButton, type MenuItemConfig } from '../ui/MenuButton'
@@ -12,12 +12,11 @@ interface ZoneButtonsProps {
   onViewZone: (zone: string) => void
   onSelectBattlefield: () => void
   onOpenLibraryMenu: () => void
-  onCreateToken: () => void // ✅ ADD THIS
+  onCreateToken: () => void
   hasNoDeck: boolean | undefined
   onOpenDeckBuilder: () => void
   spectatorMode?: boolean
   isViewingHand?: boolean
-  libraryButtonRef: React.RefObject<HTMLButtonElement | null>
 }
 
 export default function ZoneButtons({
@@ -26,12 +25,11 @@ export default function ZoneButtons({
   onViewZone,
   onSelectBattlefield,
   onOpenLibraryMenu,
-  onCreateToken, // ✅ ADD THIS
+  onCreateToken,
   hasNoDeck,
   onOpenDeckBuilder,
   spectatorMode,
   isViewingHand,
-  libraryButtonRef
 }: ZoneButtonsProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -73,13 +71,13 @@ export default function ZoneButtons({
     const menuItems: MenuItemConfig[] = [
       {
         label: `Hand (${player.zones.hand.length})`,
-        icon: '🃏',
+        icon: <Hand className="w-4 h-4 text-blue-400" />,
         onClick: () => onViewZone('hand'),
         separator: true,
       },
       {
         label: `Library (${player.zones.library.length})`,
-        icon: '📚',
+        icon: <BookOpen className="w-4 h-4 text-blue-400" />,
         onClick: () => hasNoDeck ? onOpenDeckBuilder() : onViewZone('library'),
       },
       ...(!hasNoDeck && !spectatorMode ? [{
@@ -87,7 +85,6 @@ export default function ZoneButtons({
         icon: '⋯',
         onClick: onOpenLibraryMenu,
       }] : []),
-      // ✅ ADD CREATE TOKEN HERE
       ...(!spectatorMode ? [{
         label: 'Create Token',
         icon: <Coins className="w-4 h-4 text-yellow-400" />,
@@ -96,23 +93,23 @@ export default function ZoneButtons({
       }] : [{ separator: true } as MenuItemConfig]),
       {
         label: `Graveyard (${player.zones.graveyard.length})`,
-        icon: '💀',
+        icon: <Skull className="w-4 h-4 text-purple-400" />,
         onClick: () => onViewZone('graveyard'),
       },
       {
         label: `Exile (${player.zones.exile.length})`,
-        icon: '🔥',
+        icon: <Flame className="w-4 h-4 text-red-400" />,
         onClick: () => onViewZone('exile'),
       },
       {
         label: `Command (${player.zones.command.length})`,
-        icon: '👑',
+        icon: <Crown className="w-4 h-4 text-yellow-400" />,
         onClick: () => onViewZone('command'),
         separator: true,
       },
       {
         label: `Your Board (${player.zones.battlefield.length})`,
-        icon: '⚔️',
+        icon: <Swords className="w-4 h-4 text-white" />,
         onClick: onSelectBattlefield,
       },
     ]
@@ -134,7 +131,6 @@ export default function ZoneButtons({
       {/* Library with menu */}
       <div className="relative">
         <button
-          ref={libraryButtonRef}
           onClick={() => hasNoDeck ? onOpenDeckBuilder() : onViewZone('library')}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {

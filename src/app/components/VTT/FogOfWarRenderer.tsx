@@ -4,185 +4,296 @@ import * as THREE from 'three'
 import type { FogState } from '@/app/services/vtt/VTTGameState'
 
 /**
- * FogOfWarRenderer - Renders fog of war overlay on 3D scene
+ * FogOfWarRenderer - Renders realistic volumetric fog of war
  *
- * - GM sees semi-transparent fog (can edit)
- * - Players see opaque fog (blocks vision)
- * - Chunk-based system (10x10 unit chunks)
- * - Efficient updates (only changed chunks)
+ * Uses layered animated shader planes per chunk to simulate
+ * thick atmospheric fog. GM sees through at low opacity;
+ * players see near-opaque fog that hides unrevealed areas.
  */
+
+// Vertex shader — standard passthrough with UV
+const FOG_VERTEX_SHADER = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+
+// Fragment shader — animated fractal noise fog
+const FOG_FRAGMENT_SHADER = /* glsl */ `
+  varying vec2 vUv;
+  uniform float time;
+  uniform float opacity;
+  uniform vec3 fogColor;
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+  }
+
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(hash(i),               hash(i + vec2(1.0, 0.0)), u.x),
+      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
+      u.y
+    );
+  }
+
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    vec2 shift = vec2(1.7, 9.2);
+    for (int i = 0; i < 5; i++) {
+      v += a * noise(p);
+      p = p * 2.1 + shift;
+      a *= 0.5;
+    }
+    return v;
+  }
+
+  void main() {
+    // Domain-warped fbm for convincing fog billows
+    vec2 uv = vUv * 2.5 + vec2(time * 0.04, time * 0.025);
+    float f = fbm(uv);
+    f = fbm(uv + vec2(f * 1.4, f * 0.9));
+
+    // Soft fade at chunk edges so adjacent chunks blend
+    float edge = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
+    float edgeFade = smoothstep(0.0, 0.12, edge);
+
+    // Density 0.55–1.0 so there are no hard gaps
+    float density = mix(0.55, 1.0, f);
+
+    gl_FragColor = vec4(fogColor, density * opacity * edgeFade);
+  }
+`
+
+interface LayerConfig {
+  y: number       // height above ground
+  opacity: number // base opacity for this layer
+  speed: number   // animation speed multiplier
+}
+
+// GM sees through fog — lighter layers only
+const GM_LAYERS: LayerConfig[] = [
+  { y: 0.15, opacity: 0.28, speed: 1.0 },
+  { y: 2.5,  opacity: 0.16, speed: 1.4 },
+  { y: 5.0,  opacity: 0.08, speed: 0.85 },
+]
+
+// Players are blocked — dense stacked layers
+const PLAYER_LAYERS: LayerConfig[] = [
+  { y: 0.15, opacity: 0.94, speed: 1.0 },
+  { y: 2.5,  opacity: 0.72, speed: 1.4 },
+  { y: 5.0,  opacity: 0.48, speed: 0.85 },
+  { y: 7.5,  opacity: 0.24, speed: 1.2 },
+]
+
+// Dark near-black with slight cool blue for players (unknown territory)
+const PLAYER_COLOR = new THREE.Color(0.05, 0.05, 0.12)
+// Medium grey-blue for GM (can see through to edit)
+const GM_COLOR = new THREE.Color(0.38, 0.44, 0.55)
+
+const CHUNK_SIZE = 10
 
 export class FogOfWarRenderer {
   private scene: THREE.Scene
   private isGM: boolean
   private fogGroup: THREE.Group
-  private fogChunkMeshes: Map<string, THREE.Mesh> = new Map()
-
-  private readonly CHUNK_SIZE = 10
-  private readonly FOG_HEIGHT = 0.2
-  private readonly GM_FOG_OPACITY = 0.3
-  private readonly PLAYER_FOG_OPACITY = 0.9
+  private fogChunks: Map<string, THREE.Group> = new Map()
+  private clock: THREE.Clock
 
   constructor(scene: THREE.Scene, isGM: boolean) {
     this.scene = scene
     this.isGM = isGM
+    this.clock = new THREE.Clock()
 
-    // Create fog group
     this.fogGroup = new THREE.Group()
     this.fogGroup.name = 'fogOfWar'
     this.scene.add(this.fogGroup)
   }
 
   /**
-   * Update fog state from server
+   * Sync fog chunks to server state
    */
   updateFog(fogState: FogState) {
     if (!fogState.enabled) {
-      // Hide all fog
       this.fogGroup.visible = false
       return
     }
 
     this.fogGroup.visible = true
 
-    // For simplicity, render fog for a fixed grid area (-50 to 50 in both axes)
-    // In production, this would be dynamic based on scene bounds
-    const minChunkX = -5
-    const maxChunkX = 5
-    const minChunkZ = -5
-    const maxChunkZ = 5
+    const minX = -5
+    const maxX = 5
+    const minZ = -5
+    const maxZ = 5
 
-    const revealedChunks = new Set(Array.from(fogState.revealedChunks))
+    // Handle Set or array (client state comes from JSON deserialization)
+    const revealed: Set<string> =
+      fogState.revealedChunks instanceof Set
+        ? fogState.revealedChunks
+        : new Set(fogState.revealedChunks as unknown as string[])
 
-    // Create/update fog chunks
-    for (let x = minChunkX; x <= maxChunkX; x++) {
-      for (let z = minChunkZ; z <= maxChunkZ; z++) {
-        const chunkKey = `${x},${z}`
-        const isRevealed = revealedChunks.has(chunkKey)
-
-        if (isRevealed) {
-          // Remove fog chunk if it exists
-          this.removeFogChunk(chunkKey)
-        } else {
-          // Create fog chunk if it doesn't exist
-          if (!this.fogChunkMeshes.has(chunkKey)) {
-            this.createFogChunk(x, z, chunkKey)
-          }
+    for (let x = minX; x <= maxX; x++) {
+      for (let z = minZ; z <= maxZ; z++) {
+        const key = `${x},${z}`
+        if (revealed.has(key)) {
+          this.removeChunk(key)
+        } else if (!this.fogChunks.has(key)) {
+          this.createChunk(x, z, key)
         }
       }
     }
 
-    // Remove chunks outside the grid
-    for (const chunkKey of this.fogChunkMeshes.keys()) {
-      const [x, z] = chunkKey.split(',').map(Number)
-      if (x < minChunkX || x > maxChunkX || z < minChunkZ || z > maxChunkZ) {
-        this.removeFogChunk(chunkKey)
+    // Cull chunks that drifted out of bounds
+    for (const key of this.fogChunks.keys()) {
+      const [x, z] = key.split(',').map(Number)
+      if (x < minX || x > maxX || z < minZ || z > maxZ) {
+        this.removeChunk(key)
       }
     }
   }
 
   /**
-   * Create a fog chunk mesh
+   * Animate shader uniforms — call every frame from SceneManager.update()
    */
-  private createFogChunk(chunkX: number, chunkZ: number, chunkKey: string) {
-    const geometry = new THREE.PlaneGeometry(this.CHUNK_SIZE, this.CHUNK_SIZE)
-    const material = new THREE.MeshBasicMaterial({
-      color: 0x000000,
-      transparent: true,
-      opacity: this.isGM ? this.GM_FOG_OPACITY : this.PLAYER_FOG_OPACITY,
-      side: THREE.DoubleSide,
-      depthWrite: false // Allow seeing objects underneath
-    })
+  update() {
+    const elapsed = this.clock.getElapsedTime()
 
-    const mesh = new THREE.Mesh(geometry, material)
+    for (const group of this.fogChunks.values()) {
+      group.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          const mat = child.material as THREE.ShaderMaterial
+          if (mat.uniforms?.time) {
+            const speed: number = child.userData.animSpeed ?? 1.0
+            const offset: number = child.userData.timeOffset ?? 0
+            mat.uniforms.time.value = elapsed * speed + offset
+          }
+        }
+      })
+    }
+  }
 
-    // Position at chunk coordinates
-    const worldX = chunkX * this.CHUNK_SIZE + this.CHUNK_SIZE / 2
-    const worldZ = chunkZ * this.CHUNK_SIZE + this.CHUNK_SIZE / 2
+  /**
+   * Build a multi-layer fog chunk group
+   */
+  private createChunk(chunkX: number, chunkZ: number, key: string) {
+    const group = new THREE.Group()
+    group.userData.chunkKey = key
 
-    mesh.position.set(worldX, this.FOG_HEIGHT, worldZ)
-    mesh.rotation.x = -Math.PI / 2
-    mesh.userData.chunkKey = chunkKey
+    const worldX = chunkX * CHUNK_SIZE + CHUNK_SIZE / 2
+    const worldZ = chunkZ * CHUNK_SIZE + CHUNK_SIZE / 2
+    group.position.set(worldX, 0, worldZ)
 
-    // Add grid lines for GM (visual aid)
+    const layers = this.isGM ? GM_LAYERS : PLAYER_LAYERS
+    const color = this.isGM ? GM_COLOR : PLAYER_COLOR
+
+    // Random time offset per chunk so they don't breathe in sync
+    const chunkOffset = Math.random() * 100
+
+    for (let i = 0; i < layers.length; i++) {
+      const layer = layers[i]
+      const geo = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE)
+      const mat = new THREE.ShaderMaterial({
+        uniforms: {
+          time:     { value: 0.0 },
+          opacity:  { value: layer.opacity },
+          fogColor: { value: color },
+        },
+        vertexShader: FOG_VERTEX_SHADER,
+        fragmentShader: FOG_FRAGMENT_SHADER,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      })
+
+      const mesh = new THREE.Mesh(geo, mat)
+      mesh.rotation.x = -Math.PI / 2
+      mesh.position.y = layer.y
+      mesh.userData.animSpeed = layer.speed
+      mesh.userData.timeOffset = chunkOffset + i * 13.7 // stagger per layer
+      mesh.userData.baseOpacity = layer.opacity
+      mesh.userData.layerIndex = i
+
+      group.add(mesh)
+    }
+
+    // Subtle blue-grey chunk outline for GM — much less aggressive than red
     if (this.isGM) {
-      const edges = new THREE.EdgesGeometry(geometry)
-      const lineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, opacity: 0.5, transparent: true })
-      const line = new THREE.LineSegments(edges, lineMaterial)
-      line.rotation.x = -Math.PI / 2
-      mesh.add(line)
+      const edgeGeo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE))
+      const edgeMat = new THREE.LineBasicMaterial({
+        color: 0x5577aa,
+        transparent: true,
+        opacity: 0.25,
+      })
+      const outline = new THREE.LineSegments(edgeGeo, edgeMat)
+      outline.rotation.x = -Math.PI / 2
+      outline.position.y = 0.1
+      group.add(outline)
     }
 
-    this.fogGroup.add(mesh)
-    this.fogChunkMeshes.set(chunkKey, mesh)
+    this.fogGroup.add(group)
+    this.fogChunks.set(key, group)
   }
 
   /**
-   * Remove a fog chunk mesh
+   * Dispose and remove a chunk group
    */
-  private removeFogChunk(chunkKey: string) {
-    const mesh = this.fogChunkMeshes.get(chunkKey)
-    if (!mesh) return
+  private removeChunk(key: string) {
+    const group = this.fogChunks.get(key)
+    if (!group) return
 
-    // Dispose geometry and material
-    mesh.geometry.dispose()
-    if (Array.isArray(mesh.material)) {
-      mesh.material.forEach(m => m.dispose())
-    } else {
-      mesh.material.dispose()
-    }
-
-    // Dispose children (grid lines)
-    mesh.traverse((child) => {
-      if (child instanceof THREE.LineSegments) {
+    group.traverse((child) => {
+      if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) {
         child.geometry.dispose()
-        ;(child.material as THREE.Material).dispose()
+        if (Array.isArray(child.material)) {
+          child.material.forEach((m) => m.dispose())
+        } else {
+          (child.material as THREE.Material).dispose()
+        }
       }
     })
 
-    this.fogGroup.remove(mesh)
-    this.fogChunkMeshes.delete(chunkKey)
+    this.fogGroup.remove(group)
+    this.fogChunks.delete(key)
   }
 
   /**
-   * Get fog chunk at world position (for raycasting)
+   * World position → chunk key (for GM paint tools)
    */
   getFogChunkAtPosition(x: number, z: number): string | null {
-    const chunkX = Math.floor(x / this.CHUNK_SIZE)
-    const chunkZ = Math.floor(z / this.CHUNK_SIZE)
-    const chunkKey = `${chunkX},${chunkZ}`
-
-    return this.fogChunkMeshes.has(chunkKey) ? chunkKey : null
+    const key = `${Math.floor(x / CHUNK_SIZE)},${Math.floor(z / CHUNK_SIZE)}`
+    return this.fogChunks.has(key) ? key : null
   }
 
   /**
-   * Highlight fog chunk on hover (GM only)
+   * Hover highlight for GM chunk editing
    */
   highlightChunk(chunkKey: string | null) {
     if (!this.isGM) return
 
-    // Reset all chunks to default opacity
-    for (const mesh of this.fogChunkMeshes.values()) {
-      ;(mesh.material as THREE.MeshBasicMaterial).opacity = this.GM_FOG_OPACITY
-    }
-
-    // Highlight hovered chunk
-    if (chunkKey) {
-      const mesh = this.fogChunkMeshes.get(chunkKey)
-      if (mesh) {
-        ;(mesh.material as THREE.MeshBasicMaterial).opacity = this.GM_FOG_OPACITY + 0.2
-      }
+    for (const [key, group] of this.fogChunks.entries()) {
+      const hovered = key === chunkKey
+      group.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          const mat = child.material as THREE.ShaderMaterial
+          if (mat.uniforms?.opacity) {
+            const base: number = child.userData.baseOpacity ?? 0.2
+            mat.uniforms.opacity.value = hovered ? Math.min(base * 2.0, 0.85) : base
+          }
+        }
+      })
     }
   }
 
-  /**
-   * Cleanup
-   */
   dispose() {
-    for (const chunkKey of this.fogChunkMeshes.keys()) {
-      this.removeFogChunk(chunkKey)
+    for (const key of [...this.fogChunks.keys()]) {
+      this.removeChunk(key)
     }
-
     this.scene.remove(this.fogGroup)
   }
 }

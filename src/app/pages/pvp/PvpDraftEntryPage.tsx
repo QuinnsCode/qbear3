@@ -35,6 +35,7 @@ export default async function PvpDraftEntryPage({ ctx, request }: RequestInfo) {
         <PvpDraftEntryClient
           decksByRegion={decksByRegion}
           pvpDeckExpiryHours={PVP_DECK_EXPIRY_HOURS}
+          userId={ctx.user.id}
         />
 
         {/* Back Button */}

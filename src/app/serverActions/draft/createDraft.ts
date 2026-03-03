@@ -5,6 +5,7 @@ import { env } from "cloudflare:workers"
 import type { DraftConfig, DraftPlayer } from "@/app/types/Draft"
 import { DEFAULT_DRAFT_CONFIG } from "@/app/types/Draft"
 import { loadVintageCube } from "./loadCube"
+import { canCreateDraft, trackNewDraft } from "./draftTracking"
 
 export async function createDraft(options: {
   config?: Partial<DraftConfig>
@@ -22,7 +23,14 @@ export async function createDraft(options: {
       console.error('❌ [createDraft] No userId provided!')
       return { success: false, error: 'User ID required' }
     }
-    
+
+    // ✅ Check if user can create a new draft (limit check)
+    const limitCheck = await canCreateDraft(userId)
+    if (!limitCheck.canCreate) {
+      console.log('⚠️ [createDraft] Draft limit reached for user:', userId)
+      return { success: false, error: limitCheck.reason }
+    }
+
     // Load cube
     const cubeCards = await loadVintageCube()
     
@@ -70,10 +78,26 @@ export async function createDraft(options: {
     
     const startedState = await response.json()
     console.log('✅ [createDraft] Draft started:', draftId)
-    
+
+    // ✅ Track the new draft in KV
+    await trackNewDraft({
+      draftId,
+      userId,
+      userName: userName || 'Guest',
+      status: 'in_progress',
+      createdAt: Date.now(),
+      lastActivity: Date.now(),
+      packNumber: 1,
+      pickNumber: 0,
+      totalPacks: draftConfig.packsPerPlayer,
+      totalPicks: draftConfig.cardsPerPack,
+      playerCount: players.length
+    })
+    console.log('✅ [createDraft] Draft tracked in KV:', draftId)
+
     // ✅ Return the userId so form can set cookie before redirect
-    return { 
-      success: true, 
+    return {
+      success: true,
       draftId,
       userId  // Return this so form knows which ID was used
     }

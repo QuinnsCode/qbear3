@@ -35,6 +35,7 @@ export class SceneManager {
 
   private selectedTokenId: string | null = null
   private isDragging: boolean = false
+  private moveMode: 'map' | 'piece' = 'map'
 
   // Other players' cursor indicators
   private otherPlayerCursors: Map<string, THREE.Mesh> = new Map()
@@ -74,9 +75,10 @@ export class SceneManager {
       this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1
     })
 
-    // Click to select tokens
+    // Click to select tokens (piece mode only)
     window.addEventListener('pointerdown', (event) => {
       if (event.button !== 0) return // Left click only
+      if (this.moveMode !== 'piece') return
 
       this.raycaster.setFromCamera(this.pointer, this.camera)
       const tokenMeshes = this.entityManager.getTokenMeshes()
@@ -96,8 +98,12 @@ export class SceneManager {
       }
     })
 
-    // Release to move token
+    // Release to move token (piece mode only)
     window.addEventListener('pointerup', () => {
+      if (this.moveMode !== 'piece') {
+        this.isDragging = false
+        return
+      }
       if (this.isDragging && this.selectedTokenId) {
         // Raycast to ground to get new position
         this.raycaster.setFromCamera(this.pointer, this.camera)
@@ -257,6 +263,9 @@ export class SceneManager {
     // Update entity animations/interpolations
     this.entityManager.update()
 
+    // Animate fog shader uniforms
+    this.fogRenderer.update()
+
     // Highlight selected token
     if (this.selectedTokenId) {
       const mesh = this.entityManager.getTokenMesh(this.selectedTokenId)
@@ -264,6 +273,16 @@ export class SceneManager {
         // TODO: Add selection ring or highlight
       }
     }
+  }
+
+  /**
+   * Set move mode — 'map' locks token interaction, 'piece' enables it
+   */
+  setMoveMode(mode: 'map' | 'piece') {
+    this.moveMode = mode
+    // Deselect any in-progress drag when switching modes
+    this.selectedTokenId = null
+    this.isDragging = false
   }
 
   /**

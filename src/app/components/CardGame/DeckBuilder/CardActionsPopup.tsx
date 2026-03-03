@@ -42,6 +42,14 @@ export default function CardActionsPopup({
   // Art swapping
   const [showPrintingSelector, setShowPrintingSelector] = useState(false)
 
+  // MDFC face selection (0 = front, 1 = back)
+  const [selectedFace, setSelectedFace] = useState(0)
+  const cardAsAny = card as any
+  const cardFaces = cardAsAny.card_faces
+  const isMDFC = Array.isArray(cardFaces) && cardFaces.length >= 2
+  const currentFace = isMDFC ? cardFaces[selectedFace] : null
+  const displayImage = currentFace?.image_uris?.normal || currentFace?.image_uris?.large || card.imageUrl
+
   const handleRefreshCard = async () => {
     try {
       const updatedCard = await refreshCard(card)
@@ -121,10 +129,10 @@ export default function CardActionsPopup({
             {/* Left: Card Image */}
             <div className="flex flex-col gap-4">
               <div className="relative rounded-lg overflow-hidden shadow-2xl">
-                {card.imageUrl ? (
+                {displayImage ? (
                   <img
-                    src={card.imageUrl}
-                    alt={card.name}
+                    src={displayImage}
+                    alt={currentFace?.name || card.name}
                     className="w-full h-auto"
                   />
                 ) : (
@@ -132,16 +140,42 @@ export default function CardActionsPopup({
                     <p className="text-white text-center text-xl font-bold">{card.name}</p>
                   </div>
                 )}
-                
+
                 {/* Quantity Badge */}
-                <div className="absolute top-3 left-3 bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center font-bold text-lg shadow-lg">
-                  {card.quantity}
+                <div className="absolute top-2 left-2 bg-blue-600/70 backdrop-blur-sm text-white rounded-full px-3 py-1 flex items-center justify-center font-bold text-sm shadow-lg">
+                  {card.quantity}x
                 </div>
 
                 {/* CMC Badge */}
-                <div className="absolute top-3 right-3 bg-purple-600 text-white rounded-full w-12 h-12 flex items-center justify-center font-bold text-lg shadow-lg">
+                <div className="absolute top-2 right-2 bg-purple-600/70 backdrop-blur-sm text-white rounded-full px-3 py-1 flex items-center justify-center font-bold text-sm shadow-lg">
                   {card.cmc || 0}
                 </div>
+
+                {/* MDFC Face Toggle */}
+                {isMDFC && (
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/80 backdrop-blur-sm rounded-lg p-1">
+                    <button
+                      onClick={() => setSelectedFace(0)}
+                      className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${
+                        selectedFace === 0
+                          ? 'bg-blue-600 text-white shadow-lg'
+                          : 'text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      Front
+                    </button>
+                    <button
+                      onClick={() => setSelectedFace(1)}
+                      className={`px-3 py-1.5 rounded text-sm font-medium transition-all ${
+                        selectedFace === 1
+                          ? 'bg-blue-600 text-white shadow-lg'
+                          : 'text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      Back
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Quick Actions */}
@@ -149,7 +183,7 @@ export default function CardActionsPopup({
                 <div className="flex gap-2">
                   <button
                     onClick={() => onAction('increment')}
-                    className="flex-1 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-1"
+                    className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-1 shadow-lg shadow-green-500/20 hover:shadow-green-500/40"
                   >
                     <Plus className="w-4 h-4" />
                     Add
@@ -164,7 +198,7 @@ export default function CardActionsPopup({
                         }
                       }
                     }}
-                    className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-1"
+                    className="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-1 shadow-lg shadow-red-500/20 hover:shadow-red-500/40"
                   >
                     {card.quantity > 1 ? (
                       <>
@@ -184,7 +218,7 @@ export default function CardActionsPopup({
                 {isMainDeck && !isBasicLand && (
                   <button
                     onClick={() => onAction('toCommander')}
-                    className="w-full py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-1"
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-1 shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40"
                   >
                     <Crown className="w-4 h-4" />
                     Set as Commander
@@ -193,7 +227,7 @@ export default function CardActionsPopup({
                 {isCommander && (
                   <button
                     onClick={() => onAction('toMain')}
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors"
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
                   >
                     Move to Main Deck
                   </button>
@@ -201,7 +235,7 @@ export default function CardActionsPopup({
                 {!isSideboard && !isContemplating && (
                   <button
                     onClick={() => onAction('toSideboard')}
-                    className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-1"
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-1 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40"
                   >
                     <Archive className="w-4 h-4" />
                     To Sideboard
@@ -210,7 +244,7 @@ export default function CardActionsPopup({
                 {isSideboard && (
                   <button
                     onClick={() => onAction('toMain')}
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors"
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
                   >
                     To Main Deck
                   </button>
@@ -218,7 +252,7 @@ export default function CardActionsPopup({
                 {!isContemplating && (
                   <button
                     onClick={() => onAction('toContemplating')}
-                    className="w-full py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-1"
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-1 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40"
                   >
                     ☁️ To Contemplating
                   </button>
@@ -226,7 +260,7 @@ export default function CardActionsPopup({
                 {isContemplating && (
                   <button
                     onClick={() => onAction('toMain')}
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors"
+                    className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
                   >
                     To Main Deck
                   </button>
@@ -244,7 +278,7 @@ export default function CardActionsPopup({
                 <button
                   onClick={handleRefreshCard}
                   disabled={refreshing}
-                  className="w-full py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-1"
+                  className="w-full py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-1 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40"
                   title="Fetch latest oracle text, rulings, and legalities from Scryfall"
                 >
                   {refreshing ? (
@@ -263,7 +297,7 @@ export default function CardActionsPopup({
                 {/* Change Art Button */}
                 <button
                   onClick={() => setShowPrintingSelector(true)}
-                  className="w-full py-2 bg-pink-600 hover:bg-pink-500 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-1"
+                  className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-all flex items-center justify-center gap-1 shadow-lg shadow-pink-500/20 hover:shadow-pink-500/40"
                   title="Choose alternate card art from different sets"
                 >
                   <Palette className="w-4 h-4" />
