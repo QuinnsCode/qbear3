@@ -229,7 +229,7 @@ function DeckCard({ deck, onDelete, isDeleting }: {
           )}
         </span>
         <a
-          href={`/deckBuilder/${deck.id}`}
+          href={deck.format === 'draft' ? `/draft/deck/${deck.id}` : `/deckBuilder/${deck.id}`}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
         >
           Edit →

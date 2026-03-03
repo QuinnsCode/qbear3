@@ -209,6 +209,7 @@ export interface DeckV4 {
     draftDate: number
     cubeId?: string
     pickHistory?: string[]
+    importedFromDraft?: boolean  // ✅ Track if imported vs live draft (for tournament validation)
   }
 }
 

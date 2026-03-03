@@ -67,7 +67,12 @@ export async function createDraft(options: {
     const response = await stub.fetch(new Request('https://fake-host/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cubeCards, config: draftConfig, players })
+      body: JSON.stringify({
+        cubeCards,
+        config: draftConfig,
+        players,
+        creatorId: userId  // ✅ Pass creator ID for permissions
+      })
     }))
     
     if (!response.ok) {

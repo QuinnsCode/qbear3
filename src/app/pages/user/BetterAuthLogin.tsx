@@ -38,7 +38,7 @@ export function BetterAuthLogin({
 
   const handleAuthSuccess = (user: any, message: string) => {
     setResult(message);
-    
+
     if (onAuthSuccess) {
       onAuthSuccess(user);
     } else if (redirectOnSuccess) {

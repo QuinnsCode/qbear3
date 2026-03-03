@@ -362,6 +362,357 @@ export async function createDeck(
 }
 
 /**
+ * Normalize deck for duplicate comparison
+ * - Removes basic lands
+ * - Sorts cards alphabetically
+ * - Returns sorted string for comparison
+ */
+function normalizeDeckForComparison(cards: { name: string; quantity: number }[]): string {
+  const BASIC_LANDS = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest']
+
+  // Filter out basic lands and sort
+  const nonBasics = cards
+    .filter(card => !BASIC_LANDS.includes(card.name))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(card => `${card.quantity}x ${card.name}`)
+
+  return nonBasics.join('|')
+}
+
+/**
+ * Fetch draft deck from KV by draft ID
+ */
+async function fetchDraftDeckFromKV(draftId: string): Promise<{ success: boolean; deckList?: string; error?: string }> {
+  try {
+    const key = `draft:${draftId}:deck`
+    const deckData = await env.DECKS_KV.get(key)
+
+    if (!deckData) {
+      return {
+        success: false,
+        error: 'Draft not found in storage. It may have expired or the ID is incorrect.'
+      }
+    }
+
+    return {
+      success: true,
+      deckList: deckData
+    }
+  } catch (error) {
+    console.error('[DeckBuilder] Error fetching draft from KV:', error)
+    return {
+      success: false,
+      error: 'Failed to fetch draft from storage'
+    }
+  }
+}
+
+/**
+ * Parse draft export text to extract draft ID and decklist
+ */
+function parseDraftExport(text: string): { draftId?: string; deckList: string } {
+  const lines = text.split('\n')
+  let draftId: string | undefined
+  const deckListLines: string[] = []
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+
+    // Extract draft ID from header
+    if (trimmed.startsWith('# Draft ID:')) {
+      draftId = trimmed.replace('# Draft ID:', '').trim()
+      continue
+    }
+
+    // Skip other comment lines
+    if (trimmed.startsWith('#')) {
+      continue
+    }
+
+    // Add card lines
+    if (trimmed) {
+      deckListLines.push(trimmed)
+    }
+  }
+
+  return {
+    draftId,
+    deckList: deckListLines.join('\n')
+  }
+}
+
+/**
+ * Create a draft deck (from draft/limited play)
+ * Supports two modes:
+ * 1. Draft ID only (fetches from KV)
+ * 2. Full text export (parses text, extracts draft ID)
+ */
+export async function createDraftDeck(
+  userId: string,
+  deckName: string,
+  deckListText: string,
+  draftId?: string
+) {
+  try {
+    const startTime = Date.now()
+
+    // Initialize database connection
+    await setupDb(env)
+
+    // Check deck count limit
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      include: {
+        stripeSubscription: true,
+        squeezeSubscription: true
+      }
+    })
+
+    if (!user) {
+      return {
+        success: false,
+        errors: ['User not found'],
+      }
+    }
+
+    const tier = getEffectiveTier(user)
+    const tierConfig = getTierConfig(tier, user.email)
+
+    // Count existing decks by format
+    const { decks: existingDecks } = await getUserDecks(userId)
+    const draftDecks = existingDecks.filter(d => d.format === 'draft')
+    const maxDraftDecks = tierConfig.features.maxDraftDecks
+
+    if (draftDecks.length >= maxDraftDecks) {
+      return {
+        success: false,
+        requiresUpgrade: true,
+        currentTier: tier,
+        errors: [
+          `📥 Draft deck limit reached! You have ${draftDecks.length}/${maxDraftDecks} draft decks.`
+        ],
+      }
+    }
+
+    console.log(`[DeckBuilder] Creating draft deck for user ${userId} (${draftDecks.length}/${maxDraftDecks})`)
+
+    let finalDeckList = deckListText
+    let finalDraftId = draftId
+
+    // MODE 1: Draft ID provided (try KV first)
+    if (draftId && !deckListText.trim()) {
+      console.log(`[DeckBuilder] Fetching draft from KV: ${draftId}`)
+      const kvResult = await fetchDraftDeckFromKV(draftId)
+
+      if (!kvResult.success) {
+        return {
+          success: false,
+          errors: [kvResult.error || 'Failed to fetch draft from storage']
+        }
+      }
+
+      finalDeckList = kvResult.deckList!
+    }
+    // MODE 2: Text provided (parse it, extract draft ID if present)
+    else if (deckListText.trim()) {
+      console.log(`[DeckBuilder] Parsing draft export text`)
+      const parsed = parseDraftExport(deckListText)
+      finalDeckList = parsed.deckList
+      if (parsed.draftId && !finalDraftId) {
+        finalDraftId = parsed.draftId
+        console.log(`[DeckBuilder] Extracted draft ID from text: ${finalDraftId}`)
+      }
+    }
+
+    if (!finalDeckList.trim()) {
+      return {
+        success: false,
+        errors: ['No deck list provided']
+      }
+    }
+
+    // Parse deck list (no commander needed for draft)
+    const parseResult = parseDeckList(finalDeckList)
+
+    if (parseResult.errors.length > 0) {
+      return {
+        success: false,
+        errors: parseResult.errors,
+      }
+    }
+
+    if (parseResult.cards.length > 225) {
+      return {
+        success: false,
+        errors: [`Deck too large: ${parseResult.cards.length} cards. Maximum is 225 cards.`],
+      }
+    }
+
+    // Fetch card data
+    const uniqueCardNames = [...new Set(parseResult.cards.map(c => c.name))]
+    const identifiers = uniqueCardNames.map(name => ({ name }))
+
+    const fetchResult = await getCardsByIdentifiers(identifiers)
+
+    if (!fetchResult.success) {
+      return {
+        success: false,
+        errors: ['Failed to fetch cards: ' + fetchResult.error],
+      }
+    }
+
+    // Create lookup map
+    const cardLookup = new Map(
+      fetchResult.cards.map(card => [card.name.toLowerCase(), card])
+    )
+
+    // Convert to DeckCard format
+    const deckCards: DeckCard[] = []
+    const missingCards: string[] = []
+
+    for (const card of parseResult.cards) {
+      const fetchedCard = cardLookup.get(card.name.toLowerCase())
+
+      if (!fetchedCard) {
+        missingCards.push(card.name)
+        continue
+      }
+
+      deckCards.push({
+        id: fetchedCard.id,
+        scryfallId: fetchedCard.id,
+        name: fetchedCard.name,
+        quantity: card.quantity,
+        imageUrl: fetchedCard.image_uris?.normal || fetchedCard.image_uris?.large || '',
+        type: fetchedCard.type_line || '',
+        manaCost: fetchedCard.mana_cost || '',
+        colors: fetchedCard.colors || [],
+        isCommander: false, // Draft decks don't have commanders
+        zone: 'main',
+        cmc: fetchedCard.cmc,
+        rarity: fetchedCard.rarity,
+        oracle_text: fetchedCard.oracle_text,
+      })
+    }
+
+    // Calculate total cards
+    const totalCards = deckCards.reduce((sum, card) => sum + card.quantity, 0)
+
+    // Validate minimum cards for draft
+    if (totalCards < 40) {
+      return {
+        success: false,
+        errors: [`Draft deck must have at least 40 cards. You have ${totalCards} cards.`],
+      }
+    }
+
+    // ✅ CHECK FOR DUPLICATE DECKS (smart comparison)
+    const newDeckNormalized = normalizeDeckForComparison(
+      deckCards.map(c => ({ name: c.name, quantity: c.quantity }))
+    )
+
+    for (const existingDeck of draftDecks) {
+      const existingNormalized = normalizeDeckForComparison(
+        existingDeck.cards.map(c => ({ name: c.name, quantity: c.quantity }))
+      )
+
+      if (newDeckNormalized === existingNormalized) {
+        return {
+          success: false,
+          errors: [
+            `⚠️ Duplicate deck detected!`,
+            `You already have an identical deck: "${existingDeck.name}"`,
+            `(Ignoring basic lands, ${existingDeck.cards.filter(c => !['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'].includes(c.name)).length} non-basic cards match)`,
+            ``,
+            `This check ignores basic lands you may have added.`,
+            `If you want to import anyway, delete the existing deck first.`
+          ]
+        }
+      }
+    }
+
+    // Detect colors from cards
+    const allColors = new Set<string>()
+    deckCards.forEach(card => {
+      card.colors?.forEach(color => allColors.add(color))
+    })
+
+    // Create deck object
+    const deckId = crypto.randomUUID()
+    const deck: Deck = {
+      version: CURRENT_DECK_VERSION,
+      id: deckId,
+      name: deckName,
+      format: 'draft',
+      commanders: [],
+      colors: Array.from(allColors),
+      cards: deckCards,
+      totalCards,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      draftMetadata: {
+        draftId: finalDraftId || `draft-${Date.now()}`,
+        draftDate: Date.now(),
+        importedFromDraft: true, // ✅ Track that this was imported (not live draft)
+      }
+    }
+
+    // Store in KV
+    await env.DECKS_KV.put(
+      `deck:${userId}:${deckId}`,
+      JSON.stringify(deck),
+      {
+        expirationTtl: DECK_CACHE_TTL,
+        metadata: {
+          deckName: deck.name,
+          format: deck.format,
+          totalCards: deck.totalCards,
+          createdAt: deck.createdAt,
+        }
+      }
+    )
+
+    // Update user's deck list
+    const deckListKey = `deck:${userId}:list`
+    const existingListJson = await env.DECKS_KV.get(deckListKey)
+    const existingList: string[] = existingListJson ? JSON.parse(existingListJson) : []
+    const updatedList = [deck.id, ...existingList].slice(0, 50)
+
+    await env.DECKS_KV.put(
+      deckListKey,
+      JSON.stringify(updatedList),
+      {
+        expirationTtl: DECK_CACHE_TTL
+      }
+    )
+
+    const totalTime = Date.now() - startTime
+    console.log(`[DeckBuilder] ✅ Created draft deck "${deckName}" in ${totalTime}ms`)
+
+    const warnings = missingCards.length > 0
+      ? [`Warning: ${missingCards.length} cards not found on Scryfall: ${missingCards.slice(0, 5).join(', ')}${missingCards.length > 5 ? '...' : ''}`]
+      : undefined
+
+    return {
+      success: true,
+      deck,
+      warnings,
+      stats: {
+        totalTime,
+        cardsFound: deckCards.length,
+        cardsMissing: missingCards.length,
+      }
+    }
+  } catch (error) {
+    console.error('[DeckBuilder] Error creating draft deck:', error)
+    return {
+      success: false,
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
+    }
+  }
+}
+
+/**
  * Get all decks for a user from KV
  */
 export async function getUserDecks(userId: string) {

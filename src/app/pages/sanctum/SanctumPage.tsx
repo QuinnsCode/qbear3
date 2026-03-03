@@ -17,6 +17,30 @@ import {
   setCachedSocialData
 } from "@/app/lib/cache/userDataCache";
 
+/**
+ * ⚠️⚠️⚠️ SANCTUM PAGE - MAIN LANDING PAGE AFTER LOGIN ⚠️⚠️⚠️
+ *
+ * This is THE most important page - users land here after login
+ *
+ * CRITICAL DEPENDENCIES:
+ * - extractOrgFromSubdomain(request) MUST return org slug from URL
+ * - ctx.user MUST be set by middleware
+ * - Lines 124-135: Redirect logic if no orgSlug (sends main domain -> org subdomain)
+ *
+ * THE REDIRECT LOGIC (lines 124-135) IS CRITICAL:
+ * - If user is on qntbr.com/sanctum (no org), lookup their org and redirect
+ * - Redirect to ryan.qntbr.com/sanctum (with org)
+ * - DO NOT REMOVE THIS LOGIC - it's how login flow completes
+ *
+ * WHAT BREAKS THIS:
+ * ❌ Removing the conditional render (!orgSlug ? <NoOrgSelected> : <SanctumClient>)
+ * ❌ Changing extractOrgFromSubdomain to use ctx.organization (might be null)
+ * ❌ Removing the redirect logic (lines 124-135)
+ * ❌ Passing empty userId (causes "Cannot read properties of undefined")
+ *
+ * TESTED WORKING: March 2, 2026 @ 6:46 PM PST (commit b4d443e)
+ * LAST BROKEN: March 3, 2026 (removed conditional render, crashed with Error 1101)
+ */
 export default async function SanctumPage({ ctx, request }: RequestInfo) {
   const orgSlug = extractOrgFromSubdomain(request);
   

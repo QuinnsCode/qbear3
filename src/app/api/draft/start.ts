@@ -59,7 +59,12 @@ export default async function handler({ request, ctx }: any) {
     const response = await stub.fetch(new Request('https://fake-host/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cubeCards, config: draftConfig, players })
+      body: JSON.stringify({
+        cubeCards,
+        config: draftConfig,
+        players,
+        creatorId: ctx.user?.id || null  // ✅ Pass creator ID (null for guests)
+      })
     }))
     
     if (!response.ok) {

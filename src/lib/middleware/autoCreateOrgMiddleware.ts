@@ -22,11 +22,11 @@ export async function autoCreateOrgMiddleware(
 ): Promise<Response | null> {
   const url = new URL(request.url);
 
-  // Skip for API routes, create-lair page, and root
+  // Skip for API routes, create-lair page, and sanctum
   if (!ctx.user ||
       url.pathname.startsWith('/api/') ||
-      url.pathname.startsWith('/user/create-lair') ||
-      url.pathname === '/') {
+      url.pathname.startsWith('/user/') ||
+      url.pathname.startsWith('/sanctum')) {
     return null;
   }
 
@@ -66,9 +66,6 @@ export async function autoCreateOrgMiddleware(
     // Auto-create org for user
     await autoCreateOrgForOAuthUser(ctx.user);
 
-    // Invalidate membership cache
-    await invalidateMember(ctx.user.id, '*');
-
     // Get fresh membership with org data
     const freshMemberships = await db.member.findMany({
       where: { userId: ctx.user.id },
@@ -77,7 +74,12 @@ export async function autoCreateOrgMiddleware(
     });
 
     if (freshMemberships.length > 0) {
+      const orgId = freshMemberships[0].organization.id;
       const orgSlug = freshMemberships[0].organization.slug;
+
+      // Invalidate membership cache with the actual org ID
+      await invalidateMember(ctx.user.id, orgId);
+
       const redirectUrl = buildOrgRedirectUrl(orgSlug, request);
 
       console.log('✅ [AUTO-ORG] Created and redirecting to:', redirectUrl);

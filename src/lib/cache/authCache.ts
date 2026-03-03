@@ -165,14 +165,11 @@ export async function getCachedMember(
     });
 
     if (!member) {
-      // Cache negative result to avoid repeated queries
-      await env.AUTH_CACHE_KV.put(cacheKey, "null", {
-        expirationTtl: 60 // Short TTL for negative cache
-      });
+      // Don't cache negative results - membership status can change quickly
       return null;
     }
 
-    // Store in cache
+    // Store positive result in cache
     await env.AUTH_CACHE_KV.put(
       cacheKey,
       JSON.stringify(member),

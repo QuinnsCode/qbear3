@@ -4,10 +4,11 @@
 import { useState, useMemo } from 'react'
 import DeckCard from './DeckCard'
 import CreateDeckModal from './CreateDeckModal'
+import CreateDraftDeckModal from './CreateDraftDeckModal'
 import type { Deck, DeckCard as DeckCardType } from '@/app/types/Deck'
 import EditDeckModal from './EditDeckModal'
 import { EDH_SANDBOX_STARTER_DECK_DATA } from '@/app/components/CardGame/Sandbox/starterDeckData'
-import { createDeck, deleteDeck, updateDeckFromEditor } from '@/app/serverActions/deckBuilder/deckActions'
+import { createDeck, createDraftDeck, deleteDeck, updateDeckFromEditor } from '@/app/serverActions/deckBuilder/deckActions'
 import { Gamepad2 } from 'lucide-react'
 
 interface Props {
@@ -67,6 +68,7 @@ export default function DeckBuilder({
   const [isSaving, setIsSaving] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isCreateDraftModalOpen, setIsCreateDraftModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [bulkEditMode, setBulkEditMode] = useState(false)
   const [selectedDeckIds, setSelectedDeckIds] = useState<Set<string>>(new Set())
@@ -123,6 +125,35 @@ export default function DeckBuilder({
           window.location.reload()
         } else {
           // User wants to try again - don't reload
+          return
+        }
+      } else {
+        window.location.reload()
+      }
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleCreateDraftDeck = async (deckList: string, deckName: string, draftId?: string) => {
+    setIsCreating(true)
+    try {
+      const result = await createDraftDeck(userId, deckName, deckList, draftId)
+      if (!result.success) {
+        throw new Error(result.errors?.join(', ') || 'Failed to create draft deck')
+      }
+
+      // Show warnings if some cards are missing or incomplete
+      if (result.warnings && result.warnings.length > 0) {
+        const warningMessage = [
+          '⚠️ Draft deck created with issues:\n',
+          ...result.warnings,
+          '\n\nYou can refresh card data from the deck editor.'
+        ].join('\n')
+
+        if (confirm(warningMessage + '\n\nClick OK to continue or Cancel to try again.')) {
+          window.location.reload()
+        } else {
           return
         }
       } else {
@@ -245,6 +276,7 @@ export default function DeckBuilder({
   const validDecksCount = (displayDecks || []).filter(d => d != null).length
   // Can create more commander decks if under limit (new decks are commander format by default)
   const canCreateMore = !isSandbox && commanderDecksCount < maxCommanderDecks
+  const canCreateMoreDraft = !isSandbox && draftDecksCount < maxDraftDecks
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
@@ -303,17 +335,28 @@ export default function DeckBuilder({
             </div>
           </div>
 
-          {/* Create Button - Hidden in sandbox or at limit */}
+          {/* Create Buttons - Hidden in sandbox */}
           {!isSandbox && (
-            <div className="flex-1">
+            <div className="flex-1 flex gap-3">
               <button
                 onClick={() => setIsCreateModalOpen(true)}
                 disabled={!canCreateMore}
-                className="w-full h-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-slate-700 disabled:to-slate-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-3"
+                className="flex-1 h-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-slate-700 disabled:to-slate-700 text-white font-bold py-4 px-4 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 text-sm md:text-base"
               >
                 <span className="text-2xl">+</span>
-                <span>Create Commander Deck</span>
+                <span className="hidden md:inline">Create Commander</span>
+                <span className="md:hidden">Commander</span>
                 {!canCreateMore && <span className="text-xs">(Max {maxCommanderDecks})</span>}
+              </button>
+              <button
+                onClick={() => setIsCreateDraftModalOpen(true)}
+                disabled={!canCreateMoreDraft}
+                className="flex-1 h-full bg-linear-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 disabled:from-slate-700 disabled:to-slate-700 text-white font-bold py-4 px-4 rounded-xl transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2 text-sm md:text-base"
+              >
+                <span className="text-2xl">📥</span>
+                <span className="hidden md:inline">Import Draft</span>
+                <span className="md:hidden">Draft</span>
+                {!canCreateMoreDraft && <span className="text-xs">(Max {maxDraftDecks})</span>}
               </button>
             </div>
           )}
@@ -446,6 +489,16 @@ export default function DeckBuilder({
             isOpen={isCreateModalOpen}
             onClose={() => setIsCreateModalOpen(false)}
             onCreate={handleCreateDeck}
+            isCreating={isCreating}
+          />
+        )}
+
+        {/* Create Draft Deck Modal - Only in normal mode */}
+        {!isSandbox && (
+          <CreateDraftDeckModal
+            isOpen={isCreateDraftModalOpen}
+            onClose={() => setIsCreateDraftModalOpen(false)}
+            onCreate={handleCreateDraftDeck}
             isCreating={isCreating}
           />
         )}

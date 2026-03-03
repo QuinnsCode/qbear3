@@ -8,6 +8,7 @@ import { OverviewSection } from './components/sections/OverviewSection'
 import { DecksSectionClient } from './components/sections/DecksSectionClient'
 import { AnnouncementsSectionClient } from './components/sections/AnnouncementsSectionClient'
 import { SocialSection } from './SocialSection'
+import { SettingsSection } from './SettingsSection'
 import type { Deck } from '@/app/types/Deck'
 
 interface Props {
@@ -196,19 +197,7 @@ export function SanctumClient({
         )
 
       case 'settings':
-        return (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-slate-600 to-slate-700 rounded-lg p-4 md:p-6 shadow-xl">
-              <h1 className="text-2xl md:text-3xl font-bold text-white">Settings</h1>
-              <p className="text-sm md:text-base text-slate-200 mt-1">Account and preferences</p>
-            </div>
-            <div className="bg-slate-800 rounded-lg border-2 border-slate-600 p-6 md:p-8 text-center">
-              <div className="text-5xl md:text-6xl mb-4">⚙️</div>
-              <div className="text-lg md:text-xl font-semibold text-gray-200 mb-2">Coming Soon</div>
-              <div className="text-sm md:text-base text-gray-400">Settings page under construction</div>
-            </div>
-          </div>
-        )
+        return <SettingsSection />
 
       default:
         return (

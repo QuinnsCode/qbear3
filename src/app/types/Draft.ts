@@ -58,6 +58,14 @@ export interface CubeCard {
     playersWhoPickedThisRound?: string[]  // Track who picked THIS ROUND
     updatedAt?: Date
     cubeCards?: CubeCard[]  // ✅ NEW: Store cube cards for deck building
+
+    // ✅ NEW: Protected drafts and spectator support
+    creatorId?: string  // User who created (null for guest drafts)
+    permissions?: {
+      isPublic: boolean        // Default: false for logged-in, true for guest
+      allowSpectators: boolean // Default: true
+      spectatorList: string[]  // User IDs allowed to spectate if !isPublic
+    }
   }
   
   export const DEFAULT_DRAFT_CONFIG: DraftConfig = {

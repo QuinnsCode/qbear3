@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import type { AppContext } from "@/worker";
 import { 
   FantasyBackground, 
@@ -63,6 +63,10 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
   const [checkingSlug, setCheckingSlug] = useState(false);
 
+  // Refs for debounce and abort control
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     setIsHydrated(true);
   }, []);
@@ -112,28 +116,66 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
     }
   }, [lairName]);
 
-  // Check slug availability (debounced)
+  // Check slug availability (debounced with AbortController)
   useEffect(() => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Abort previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
     if (!lairSlug || lairSlug.length < 6) {
       setSlugAvailable(null);
+      setCheckingSlug(false);
       return;
     }
 
-    const timer = setTimeout(async () => {
+    debounceTimerRef.current = setTimeout(async () => {
+      // Create new AbortController for this request
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setCheckingSlug(true);
       try {
-        const response = await fetch(`/api/main/check-username?username=${lairSlug}`);
-        const { available } = await response.json();
-        setSlugAvailable(available);
+        const response = await fetch(`/api/main/check-username?username=${lairSlug}`, {
+          signal: controller.signal
+        });
+
+        // Only update state if not aborted
+        if (!controller.signal.aborted) {
+          const { available } = await response.json();
+          setSlugAvailable(available);
+        }
       } catch (error) {
+        // Ignore abort errors
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+
         console.error('Error checking slug:', error);
-        setSlugAvailable(null);
+        if (!controller.signal.aborted) {
+          setSlugAvailable(null);
+        }
       } finally {
-        setCheckingSlug(false);
+        if (!controller.signal.aborted) {
+          setCheckingSlug(false);
+        }
       }
     }, 500);
 
-    return () => clearTimeout(timer);
+    // Cleanup function
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [lairSlug]);
 
   // Show loading state while redirecting logged-in users

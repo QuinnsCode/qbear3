@@ -16,7 +16,7 @@ interface UseDraftSyncOptions {
   onError?: (error: string) => void
 }
 
-export function useDraftSync({ 
+export function useDraftSync({
   draftId,
   initialState,
   currentPlayerId,
@@ -26,7 +26,11 @@ export function useDraftSync({
   const [draftState, setDraftState] = useState<DraftState>(initialState)
   const [isConnected, setIsConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
+
+  // ✅ NEW: Spectator mode state
+  const [mode, setMode] = useState<'drafter' | 'spectator'>('drafter')
+  const [focusedPlayerId, setFocusedPlayerId] = useState<string | undefined>(undefined)
+
   const wsRef = useRef<WebSocket | null>(null)
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectAttemptsRef = useRef<number>(0)
@@ -42,22 +46,29 @@ export function useDraftSync({
       switch (message.type) {
         case 'state_update':
           return message.state
-  
+
         case 'pick_confirmed':
             return message.state  // ✅ Updates after your pick
-        
+
         case 'packs_passed':
             return message.state  // ✅ Updates after packs pass
-        
+
         case 'round_started':
           return message.state  // ✅ Just replace entire state
-        
+
         case 'draft_complete':
           return {
             ...prevState,
             status: 'complete'
           }
-        
+
+        case 'permissions_updated':
+          // ✅ NEW: Update permissions when changed
+          return {
+            ...prevState,
+            permissions: message.permissions
+          }
+
         default:
           return prevState
       }
@@ -104,25 +115,34 @@ export function useDraftSync({
 
       ws.onmessage = (event) => {
         const message = JSON.parse(event.data)
-  
+
         console.log('📨 Received:', message.type, message)  // ✅ ADD THIS
-        
+
         if (message.type === 'pong') return
-        
+
         if (message.type === 'draft_deleted') {
           const errorMsg = 'Draft has been deleted'
           setError(errorMsg)
           callbacksRef.current.onError?.(errorMsg)
           return
         }
-        
+
         if (message.type === 'error') {
           const err = message.error || 'Unknown error'
           setError(err)
           callbacksRef.current.onError?.(err)
           return
         }
-        
+
+        // ✅ NEW: Extract spectator mode info from initial state_update
+        if (message.type === 'state_update' && message.mode) {
+          setMode(message.mode)
+          if (message.focusedPlayerId) {
+            setFocusedPlayerId(message.focusedPlayerId)
+          }
+          console.log(`🎭 Connected as ${message.mode}${message.focusedPlayerId ? ` (watching ${message.focusedPlayerId})` : ''}`)
+        }
+
         // Apply delta to state
         applyDelta(message)
       }
@@ -203,6 +223,8 @@ export function useDraftSync({
     isConnected,
     error,
     makePick,
+    mode,              // ✅ NEW: 'drafter' or 'spectator'
+    focusedPlayerId,   // ✅ NEW: playerId being spectated (if spectator mode)
     utils: {
       reconnect: () => {
         if (wsRef.current) wsRef.current.close()
