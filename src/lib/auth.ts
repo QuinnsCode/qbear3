@@ -116,18 +116,26 @@ export const createAuth = () => {
       updateAge: 60 * 60 * 24,
     },
     advanced: {
-      crossSubDomainCookies: env.BETTER_AUTH_URL.includes('localhost') 
+      crossSubDomainCookies: env.BETTER_AUTH_URL.includes('localhost')
       ? { enabled: false }
       : { enabled: true, domain: ".qntbr.com" }
     },
     trustedOrigins: [
       "https://qntbr.com",
-      "https://*.qntbr.com", 
+      "https://*.qntbr.com",
       "http://localhost:5173",
       "http://*.localhost:5173",
       "http://localhost:8787",
       "http://*.localhost:8787",
     ],
+    account: {
+      accountLinking: {
+        enabled: true,
+        // When user signs in with Google and email already exists,
+        // create a new Account record for same User instead of new User
+        trustedProviders: ["google", "discord"]
+      }
+    },
   });
 };
 

@@ -12,6 +12,8 @@ interface UseLibraryActionsProps {
 export function useLibraryActions({ cardGameId, player, onViewZone }: UseLibraryActionsProps) {
   const [showDrawModal, setShowDrawModal] = useState(false)
   const [drawCount, setDrawCount] = useState(1)
+  const [showMillModal, setShowMillModal] = useState(false)
+  const [millCount, setMillCount] = useState(1)
 
   const handleDrawCards = async (count: number) => {
     setShowDrawModal(false)
@@ -21,7 +23,6 @@ export function useLibraryActions({ cardGameId, player, onViewZone }: UseLibrary
         playerId: player.id,
         data: { count }
       })
-      onViewZone('hand')
     } catch (error) {
       console.error('Failed to draw cards:', error)
     }
@@ -40,15 +41,16 @@ export function useLibraryActions({ cardGameId, player, onViewZone }: UseLibrary
   }
 
   const handleMillCards = async (count: number) => {
+    setShowMillModal(false)
     try {
       for (let i = 0; i < count; i++) {
         const topCardId = player.zones.library[i]
         if (!topCardId) break
-        
+
         await applyCardGameAction(cardGameId, {
           type: 'move_card',
           playerId: player.id,
-          data: { 
+          data: {
             cardId: topCardId,
             fromZone: 'library',
             toZone: 'graveyard'
@@ -109,8 +111,6 @@ export function useLibraryActions({ cardGameId, player, onViewZone }: UseLibrary
         playerId: player.id,
         data: { count: 7 }
       })
-      
-      onViewZone('hand')
     } catch (error) {
       console.error('Failed to mulligan:', error)
     }
@@ -173,6 +173,11 @@ export function useLibraryActions({ cardGameId, player, onViewZone }: UseLibrary
     setDrawCount(1)
   }
 
+  const openMillModal = () => {
+    setShowMillModal(true)
+    setMillCount(1)
+  }
+
   return {
     showDrawModal,
     drawCount,
@@ -185,6 +190,11 @@ export function useLibraryActions({ cardGameId, player, onViewZone }: UseLibrary
     handleMulligan,
     handleLibraryToHand,
     handleHandToBattlefieldTapped,
-    openDrawModal
+    openDrawModal,
+    showMillModal,
+    millCount,
+    setMillCount,
+    setShowMillModal,
+    openMillModal
   }
 }

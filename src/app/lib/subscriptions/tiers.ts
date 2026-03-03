@@ -10,13 +10,14 @@ export const SQUEEZE_TIERS = {
     features: {
       maxGamesPerOrg: 3,
       maxPlayersPerGame: 4,
-      maxDecksPerUser: 2, // ✅ ADDED
+      maxCommanderDecks: 2,  // ✅ Separate limits per format
+      maxDraftDecks: 10,
       canUseDiscord: false,
       prioritySupport: false,
     },
     description: 'Perfect for trying out QNTBR',
   },
-  
+
   starter: {
     id: 'starter',
     name: 'QNTBR Founding Starter',
@@ -25,13 +26,14 @@ export const SQUEEZE_TIERS = {
     features: {
       maxGamesPerOrg: 5,
       maxPlayersPerGame: 6,
-      maxDecksPerUser: 5, // ✅ ADDED
+      maxCommanderDecks: 5,
+      maxDraftDecks: 20,
       canUseDiscord: false,
       prioritySupport: true,
     },
     description: 'Great for small groups',
   },
-  
+
   pro: {
     id: 'pro',
     name: 'QNTBR Founding Pro',
@@ -40,7 +42,8 @@ export const SQUEEZE_TIERS = {
     features: {
       maxGamesPerOrg: 10,
       maxPlayersPerGame: 8,
-      maxDecksPerUser: 12, // ✅ ADDED
+      maxCommanderDecks: 20,
+      maxDraftDecks: 50,
       canUseDiscord: true,
       prioritySupport: true,
     },
@@ -78,32 +81,66 @@ function getActiveSubscription(user: {
   return null
 }
 
-// Helper to get tier config
-export function getTierConfig(tier: SqueezeTier) {
-  return SQUEEZE_TIERS[tier]
+// ✅ User-specific overrides for testing accounts
+export function getUserTierOverride(userEmail?: string): Partial<typeof SQUEEZE_TIERS['free']['features']> | null {
+  const TESTING_EMAILS = [
+    'notryanquinn@gmail.com',  // Ryan's testing account
+  ]
+
+  if (userEmail && TESTING_EMAILS.includes(userEmail.toLowerCase())) {
+    return {
+      maxCommanderDecks: 100,
+      maxDraftDecks: 100,
+      maxGamesPerOrg: 100,
+      maxPlayersPerGame: 16,
+    }
+  }
+
+  return null
 }
 
-// ✅ UPDATED: Now checks both sources
+// Helper to get tier config (with optional user override by email)
+export function getTierConfig(tier: SqueezeTier, userEmail?: string) {
+  const config = SQUEEZE_TIERS[tier]
+
+  // Apply override if exists
+  const override = userEmail ? getUserTierOverride(userEmail) : null
+  if (override) {
+    return {
+      ...config,
+      features: { ...config.features, ...override }
+    }
+  }
+
+  return config
+}
+
+// ✅ UPDATED: Now checks both sources + user overrides
 export function canCreateGame(user: any, currentGameCount: number) {
   const subscription = getActiveSubscription(user)
   const tier = subscription?.tier || 'free'
-  const config = getTierConfig(tier as SqueezeTier)
+  const config = getTierConfig(tier as SqueezeTier, user?.email)
   return currentGameCount < config.features.maxGamesPerOrg
 }
 
-// ✅ NEW: Check if user can create another deck
-export function canCreateDeck(user: any, currentDeckCount: number) {
+// ✅ UPDATED: Check if user can create another deck + user overrides (per format)
+export function canCreateDeck(user: any, currentCommanderDecks: number, currentDraftDecks: number, format: 'commander' | 'draft') {
   const subscription = getActiveSubscription(user)
   const tier = subscription?.tier || 'free'
-  const config = getTierConfig(tier as SqueezeTier)
-  return currentDeckCount < config.features.maxDecksPerUser
+  const config = getTierConfig(tier as SqueezeTier, user?.email)
+
+  if (format === 'commander') {
+    return currentCommanderDecks < config.features.maxCommanderDecks
+  } else {
+    return currentDraftDecks < config.features.maxDraftDecks
+  }
 }
 
-// ✅ UPDATED: Now checks both sources
+// ✅ UPDATED: Now checks both sources + user overrides
 export function canAddPlayer(user: any, currentPlayerCount: number) {
   const subscription = getActiveSubscription(user)
   const tier = subscription?.tier || 'free'
-  const config = getTierConfig(tier as SqueezeTier)
+  const config = getTierConfig(tier as SqueezeTier, user?.email)
   return currentPlayerCount < config.features.maxPlayersPerGame
 }
 

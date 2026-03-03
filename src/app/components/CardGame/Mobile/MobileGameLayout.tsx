@@ -10,6 +10,7 @@ import MobileFloatingButtons from './MobileFloatingButtons'
 import TokenCreationModal from '../TokenCreationModal'
 import { Deck } from '@/app/types/Deck'
 import { GameSocialPanel } from '@/app/components/Social/GameSocialPanel'
+import SpectatorBanner from './SpectatorBanner'
 
 interface Props {
   gameState: CardGameState
@@ -93,9 +94,11 @@ export default function MobileGameLayout({
     }
   }
 
-  const displayedPlayer = viewingPlayer 
+  const displayedPlayer = viewingPlayer
     ? gameState.players.find(p => p.id === viewingPlayer) || currentPlayer
-    : currentPlayer
+    : spectatorMode
+      ? gameState.players[0] || currentPlayer  // Show first player in spectator mode
+      : currentPlayer
   const isViewingSelf = viewingPlayer === currentPlayer.id
   
   // Get battlefield cards for displayed player
@@ -168,7 +171,7 @@ export default function MobileGameLayout({
       </div>
 
       {/* Player Name Header - Below opponents */}
-      {viewingPlayer && (
+      {displayedPlayer && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 bg-slate-800/90 backdrop-blur-sm px-4 py-2 rounded-lg border border-slate-700/50 shadow-lg">
           <div className="flex items-center gap-2">
             <div 
@@ -195,7 +198,7 @@ export default function MobileGameLayout({
       )}
 
       {/* Battlefield - Full Screen */}
-      {viewingPlayer && (
+      {displayedPlayer && (
         <div className="absolute inset-0 pt-32 pb-28">
           <BattlefieldContainer
             cards={battlefieldCards}
@@ -249,55 +252,12 @@ export default function MobileGameLayout({
         onCreateToken={handleCreateToken}
       />
 
-      {/* Spectator Mode - Initial Player Selection Modal */}
+      {/* Spectator Mode - Collapsible Banner */}
       {spectatorMode && !viewingPlayer && (
-        <div className="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-sm">
-          <div className="h-full w-full flex items-center justify-center p-4">
-            <div className="text-center bg-slate-800/90 backdrop-blur-sm p-6 rounded-xl border border-purple-500/50 shadow-2xl max-w-md w-full">
-              <div className="text-5xl mb-4">👁️</div>
-              <p className="text-2xl mb-2 font-bold text-white">Spectator Mode</p>
-              <p className="text-slate-300 mb-6">Choose a player to watch</p>
-              
-              <div className="space-y-3">
-                {gameState.players.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => setViewingPlayer(p.id)}
-                    className="w-full bg-purple-600/20 hover:bg-purple-600/40 border border-purple-500/50 text-white px-4 py-3 rounded-lg transition-colors flex items-center gap-3"
-                  >
-                    <div 
-                      className="w-4 h-4 rounded-full border border-white"
-                      style={{ backgroundColor: p.cursorColor }}
-                    />
-                    <span className="font-semibold">{p.name}</span>
-                    <span className="text-sm text-slate-400 ml-auto">
-                      💚 {p.life}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              
-              <p className="text-xs text-slate-500 mt-6">
-                Players: {gameState.players.length}/4
-              </p>
-              
-              <div className="flex gap-3 mt-6">
-                <a 
-                  href="/user/signup"
-                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
-                >
-                  Sign Up
-                </a>
-                <a 
-                  href="/user/login"
-                  className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-colors border border-purple-500/50"
-                >
-                  Log In
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
+        <SpectatorBanner
+          onSelectPlayer={setViewingPlayer}
+          players={gameState.players}
+        />
       )}
     </div>
   )

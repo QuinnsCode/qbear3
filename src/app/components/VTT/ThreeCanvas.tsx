@@ -2,7 +2,7 @@
 
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useVTTSync } from '@/app/hooks/vtt/useVTTSync'
@@ -38,10 +38,21 @@ export function ThreeCanvas({ gameId, playerId, isGM }: ThreeCanvasProps) {
   const [contextMenuToken, setContextMenuToken] = useState<Token | null>(null)
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null)
   const cameraPositionRef = useRef({ x: 0, y: 20, z: 20 })
+  const [moveMode, setMoveMode] = useState<'map' | 'piece'>('map')
+  const moveModeRef = useRef<'map' | 'piece'>('map')
+
+  const toggleMoveMode = useCallback(() => {
+    const next = moveModeRef.current === 'map' ? 'piece' : 'map'
+    moveModeRef.current = next
+    setMoveMode(next)
+    if (controlsRef.current) controlsRef.current.enabled = next === 'map'
+    sceneManagerRef.current?.setMoveMode(next)
+  }, [])
 
   const { gameState, isConnected, otherPlayers, sendAction, sendCameraPosition } = useVTTSync({
     gameId,
-    playerId
+    playerId,
+    isGM
   })
 
   // Initialize Three.js scene
@@ -273,6 +284,38 @@ export function ThreeCanvas({ gameId, playerId, isGM }: ThreeCanvasProps) {
           </div>
         </div>
       )}
+
+      {/* Move mode toggle */}
+      <div className="absolute bottom-6 right-6 z-20 flex rounded-full overflow-hidden border border-slate-600 shadow-lg bg-slate-900/90 backdrop-blur-sm select-none">
+        <button
+          onClick={toggleMoveMode}
+          className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+            moveMode === 'map'
+              ? 'bg-purple-600 text-white'
+              : 'text-slate-400 hover:text-white'
+          }`}
+          title="Map mode — drag to orbit camera"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+          Map
+        </button>
+        <button
+          onClick={toggleMoveMode}
+          className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+            moveMode === 'piece'
+              ? 'bg-purple-600 text-white'
+              : 'text-slate-400 hover:text-white'
+          }`}
+          title="Piece mode — drag to move tokens"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+          </svg>
+          Pieces
+        </button>
+      </div>
 
       {/* GM Toolbar */}
       {isGM && gameState && (

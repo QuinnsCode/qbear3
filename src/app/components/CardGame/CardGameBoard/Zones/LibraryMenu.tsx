@@ -1,8 +1,18 @@
 // app/components/CardGame/CardGameBoard/Zones/LibraryMenu.tsx
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { Coins } from 'lucide-react'
+import { useRef } from 'react'
+import {
+  Coins,
+  Package,
+  RotateCcw,
+  Library,
+  Layers,
+  Shuffle,
+  Trash2,
+  Eye,
+  MoveRight
+} from 'lucide-react'
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'
 
 interface LibraryMenuProps {
@@ -17,12 +27,12 @@ interface LibraryMenuProps {
   onLibraryToHand: () => void
   onShuffle: () => void
   onMill: (count: number) => void
+  onMillX: () => void
   onReveal: () => void
   onHandToBattlefieldTapped: () => void
-  onCreateToken: () => void // ✅ ADD THIS
+  onCreateToken: () => void
   onPrefetchDecks?: () => void
   spectatorMode?: boolean
-  buttonRef: React.RefObject<HTMLButtonElement | null>
   isMobile?: boolean
 }
 
@@ -38,59 +48,28 @@ export default function LibraryMenu({
   onLibraryToHand,
   onShuffle,
   onMill,
+  onMillX,
   onReveal,
   onHandToBattlefieldTapped,
   onCreateToken,
   onPrefetchDecks,
   spectatorMode,
-  buttonRef,
   isMobile = false
 }: LibraryMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
-  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 })
-  const [menuPositionClass, setMenuPositionClass] = useState<'below' | 'above'>('below')
-
-  useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect()
-      
-      // Estimate menu height
-      const estimatedMenuHeight = player.deckList ? 450 : 150
-      const spaceBelow = window.innerHeight - rect.bottom
-      const spaceAbove = rect.top
-      
-      // Decide if menu should appear above or below
-      const shouldShowAbove = spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow
-      
-      setMenuPositionClass(shouldShowAbove ? 'above' : 'below')
-      setMenuPosition({
-        top: rect.top - 180,
-        right: window.innerWidth - rect.right
-      })
-    }
-  }, [isOpen, player.deckList, buttonRef])
 
   if (!isOpen) return null
 
-  const menuClasses = isMobile
-    ? "fixed z-50 bg-slate-800 rounded-lg shadow-xl border border-slate-600 min-w-[160px] max-w-[240px]"
-    : `absolute right-0 mt-2 bg-slate-800 rounded-lg shadow-xl border border-slate-600 p-2 min-w-[200px] z-50 max-h-[calc(100vh-20px)] overflow-y-auto ${
-        menuPositionClass === 'above' ? 'bottom-full mb-2' : 'top-full'
-      }`
+  const menuClasses = "fixed z-50 bg-slate-800 rounded-lg shadow-xl border border-slate-600 min-w-[200px] max-w-[280px]"
 
-  const menuStyle = isMobile
-    ? {
-        top: `${menuPosition.top}px`,
-        right: `${menuPosition.right}px`,
-        maxHeight: 'calc(100vh - 16px)',
-        overflowY: 'auto' as const,
-        scrollbarWidth: 'thin' as const,
-        scrollbarColor: '#475569 #1e293b',
-      }
-    : {
-        scrollbarWidth: 'thin' as const,
-        scrollbarColor: '#475569 #1e293b',
-      }
+  const menuStyle = {
+    bottom: '80px',
+    right: '16px',
+    maxHeight: 'calc(100vh - 120px)',
+    overflowY: 'auto' as const,
+    scrollbarWidth: 'thin' as const,
+    scrollbarColor: '#475569 #1e293b',
+  }
 
   return (
     <>
@@ -112,12 +91,12 @@ export default function LibraryMenu({
             disabled={spectatorMode}
             onMouseEnter={onPrefetchDecks}
             onTouchStart={onPrefetchDecks}
-            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+            className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
           >
-            🎴 My Decks
+            <Package className="w-4 h-4 text-blue-400" />
+            <span>My Decks</span>
           </button>
 
-          {/* ✅ ADD CREATE TOKEN BUTTON */}
           <button
             onClick={() => {
               onCreateToken()
@@ -138,9 +117,10 @@ export default function LibraryMenu({
                   onMulligan()
                   onClose()
                 }}
-                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
               >
-                🔄 Mulligan
+                <RotateCcw className="w-4 h-4 text-orange-400" />
+                <span>Mulligan</span>
               </button>
               <div className="border-t border-slate-600 my-1"></div>
               <button
@@ -148,27 +128,30 @@ export default function LibraryMenu({
                   onDrawCards(1)
                   onClose()
                 }}
-                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
               >
-                🃏 Draw 1 Card
+                <Library className="w-4 h-4 text-blue-400" />
+                <span>Draw 1 Card</span>
               </button>
               <button
                 onClick={() => {
                   onDrawX()
                   onClose()
                 }}
-                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
               >
-                🎴 Draw X Cards
+                <Layers className="w-4 h-4 text-blue-400" />
+                <span>Draw X Cards</span>
               </button>
               <button
                 onClick={() => {
                   onDrawCards(7)
                   onClose()
                 }}
-                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
               >
-                🃏 Draw 7 Cards
+                <Library className="w-4 h-4 text-blue-400" />
+                <span>Draw 7 Cards</span>
               </button>
               <div className="border-t border-slate-600 my-1"></div>
               <button
@@ -176,36 +159,50 @@ export default function LibraryMenu({
                   onLibraryToHand()
                   onClose()
                 }}
-                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
               >
-                📤 Library → Hand
+                <MoveRight className="w-4 h-4 text-green-400" />
+                <span>Library → Hand</span>
               </button>
-              <button 
+              <button
                 onClick={() => {
                   onShuffle()
                   onClose()
                 }}
-                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
               >
-                🔀 Shuffle Library
+                <Shuffle className="w-4 h-4 text-purple-400" />
+                <span>Shuffle Library</span>
               </button>
-              <button 
+              <button
                 onClick={() => {
                   onMill(3)
                   onClose()
                 }}
-                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
               >
-                ⚰️ Mill 3 Cards
+                <Trash2 className="w-4 h-4 text-red-400" />
+                <span>Mill 3 Cards</span>
               </button>
-              <button 
+              <button
+                onClick={() => {
+                  onMillX()
+                  onClose()
+                }}
+                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4 text-orange-400" />
+                <span>Mill X Cards</span>
+              </button>
+              <button
                 onClick={() => {
                   onReveal()
                   onClose()
                 }}
-                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
               >
-                👁️ Reveal Top Card
+                <Eye className="w-4 h-4 text-cyan-400" />
+                <span>Reveal Top Card</span>
               </button>
               <div className="border-t border-slate-600 my-1"></div>
               <button
@@ -213,9 +210,10 @@ export default function LibraryMenu({
                   onHandToBattlefieldTapped()
                   onClose()
                 }}
-                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm"
+                className="w-full text-left px-3 py-2 text-white hover:bg-slate-700 rounded transition-colors text-sm flex items-center gap-2"
               >
-                🎴 Hand → Battlefield (Tapped)
+                <MoveRight className="w-4 h-4 text-green-400" />
+                <span>Hand → Battlefield (Tapped)</span>
               </button>
             </>
           )}

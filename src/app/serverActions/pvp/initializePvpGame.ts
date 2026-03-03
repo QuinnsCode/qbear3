@@ -91,10 +91,18 @@ export async function initializePvpGame(config: PvpGameConfig) {
       const player = players[i];
       const deck = deckData[i];
 
+      // Filter to only include commander and main deck cards (exclude sideboard and contemplating)
+      const gameCards = (deck.cards || []).filter((deckCard: any) => {
+        const zone = deckCard.zone || (deckCard.isCommander ? 'commander' : 'main')
+        return zone === 'commander' || zone === 'main'
+      });
+
       console.log(`🟢 Importing deck for ${player.userName} (${player.userId}):`, {
         deckName: deck.name,
-        cardCount: deck.cards?.length,
-        totalCards: deck.totalCards
+        totalCards: deck.cards?.length,
+        gameCards: gameCards.length,
+        commanderCards: gameCards.filter((c: any) => c.zone === 'commander' || c.isCommander).length,
+        mainDeckCards: gameCards.filter((c: any) => c.zone === 'main' || (!c.zone && !c.isCommander)).length
       });
 
       // Import deck directly with full card data (no text parsing)
@@ -105,7 +113,7 @@ export async function initializePvpGame(config: PvpGameConfig) {
           type: 'import_deck_direct',
           playerId: player.userId,
           data: {
-            deckCards: deck.cards, // Full card objects with scryfallId, name, imageUrl, etc.
+            deckCards: gameCards, // Only commander + main deck cards
             deckName: deck.name
           }
         })

@@ -124,8 +124,42 @@ export default defineApp([
     }
   },
   
-  // CONDITIONAL MIDDLEWARE - Only runs for non-auth routes
-  // CONDITIONAL MIDDLEWARE - Only runs for non-auth routes
+  /**
+   * ⚠️⚠️⚠️ CRITICAL MIDDLEWARE CHAIN - DO NOT FUCK WITH THIS ⚠️⚠️⚠️
+   *
+   * This middleware runs BEFORE every request and sets up:
+   * - ctx.user (from session cookie)
+   * - ctx.organization (from subdomain)
+   * - ctx.userRole (from membership)
+   *
+   * THE LOGIN FLOW DEPENDS ON THIS EXACT ORDER:
+   * 1. setupSessionContext() - reads better-auth cookie, sets ctx.user
+   * 2. setupOrganizationContext() - extracts org from URL, sets ctx.organization
+   * 3. autoCreateOrgMiddleware() - redirects main domain to org subdomain
+   *
+   * IF YOU BREAK THIS ORDER:
+   * - Login redirects fail
+   * - Users get "No Organization" errors
+   * - Sanctum page crashes
+   * - Root route shows landing page
+   *
+   * WHAT NOT TO DO:
+   * ❌ Don't add conditional checks (shouldRunMiddleware, needsOrganizationContext, etc)
+   * ❌ Don't change the order of setupSessionContext -> setupOrganizationContext
+   * ❌ Don't remove autoCreateOrgMiddleware
+   * ❌ Don't add new middleware without testing the ENTIRE login flow
+   * ❌ Don't assume ctx.organization will be set - it might be null on main domain
+   *
+   * CACHE ISSUES:
+   * - KV cache (AUTH_CACHE_KV) has 5-10 min TTL
+   * - Stale cache can return null orgs even when they exist
+   * - Wait 10 mins or flush KV cache manually if weird issues happen
+   *
+   * TESTED WORKING: March 2, 2026 @ 6:46 PM PST (commit b4d443e)
+   * LAST BROKEN: March 3, 2026 @ 12:00 AM PST (tried to add config-based middleware)
+   *
+   * REPEAT: DO NOT MODIFY UNLESS YOU TEST THE FULL LOGIN FLOW
+   */
   async ({ ctx, request, response }) => {
     try {
       // Always initialize services
@@ -155,23 +189,17 @@ export default defineApp([
       await setupSessionContext(ctx, request);
       await setupOrganizationContext(ctx, request);
       
-      // ✅ NEW: Check if user needs org
-      const url = new URL(request.url);
-      if (ctx.user &&
-          !url.pathname.startsWith('/api/') &&
-          !url.pathname.startsWith('/user/create-lair') &&
-          url.pathname !== '/') {
+      // ✅ AUTO-CREATE ORG: Automatically create org for users who don't have one
+      const { autoCreateOrgMiddleware } = await import('@/lib/middleware/autoCreateOrgMiddleware');
+      const autoOrgResult = await autoCreateOrgMiddleware(ctx, request);
+      if (autoOrgResult) return autoOrgResult;
 
+      // Log when we SKIP the org check (to debug the issue)
+      const url = new URL(request.url);
+      if (ctx.user && url.pathname === '/') {
         const { getCachedUserMemberships } = await import('@/lib/cache/authCache');
         const memberships = await getCachedUserMemberships(ctx.user.id);
-
-        if (memberships.length === 0) {
-          console.log('⚠️ User has no organization, redirecting to create lair');
-          return new Response(null, {
-            status: 302,
-            headers: { Location: '/user/create-lair' }
-          });
-        }
+        console.log('ℹ️ [ROOT PATH] User on / with', memberships.length, 'orgs - NOT redirecting (root exempted)');
       }
       
       // Handle organization errors for frontend routes
@@ -284,6 +312,9 @@ export default defineApp([
     if (ctx.user) {
       headers.set('X-Auth-User-Id', ctx.user.id);
       headers.set('X-Auth-User-Name', ctx.user.name || ctx.user.email || 'Player');
+    }
+    if (url.searchParams.get('gm') === 'true') {
+      headers.set('X-Auth-Is-GM', 'true');
     }
 
     // Forward request to DO (handles WebSocket upgrade)

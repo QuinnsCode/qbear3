@@ -2,8 +2,8 @@
 'use client'
 
 import type { MTGPlayer, CardGameState, TokenData } from '@/app/services/cardGame/CardGameState'
-import { useState, useRef } from 'react'
-import { Swords, BookOpen, Skull, Flame, Crown, Coins } from 'lucide-react'
+import { useState } from 'react'
+import { Swords, BookOpen, Skull, Flame, Crown, Coins, Hand } from 'lucide-react'
 import DeckBuilder from '@/app/components/CardGame/DeckBuilder/DeckBuilder'
 import type { Deck } from '@/app/types/Deck'
 
@@ -16,6 +16,7 @@ import LibraryMenu from '../Zones/LibraryMenu'
 import HandCarousel from '../Zones/HandCarousel'
 import ZoneButtons from '../Zones/ZoneButtons'
 import DrawCardsModal from '../ui/Modals/DrawCardsModal'
+import MillCardsModal from '../ui/Modals/MillCardsModal'
 import TokenCreationModal from '../../TokenCreationModal'
 
 interface Props {
@@ -55,7 +56,6 @@ export default function YourZones({
 }: Props) {
   const [libraryMenuOpen, setLibraryMenuOpen] = useState(false)
   const [tokenModalOpen, setTokenModalOpen] = useState(false)
-  const libraryButtonRef = useRef<HTMLButtonElement>(null)
 
   const hasNoDeck = player.zones.library.length === 0 && isSandbox
 
@@ -136,10 +136,10 @@ export default function YourZones({
         <div className="flex-1 flex flex-col gap-2 min-w-0">
           <button
             onClick={() => onViewZone('hand')}
-            className="flex-1 bg-slate-900 hover:bg-slate-800 rounded border-2 border-slate-700 p-2 flex items-center justify-between transition-colors"
+            className="flex-1 bg-slate-900 hover:bg-slate-800 rounded border-2 border-slate-700 p-2 flex items-center justify-between transition-colors group"
           >
             <div className="flex items-center gap-2">
-              <span className="text-xl">🃏</span>
+              <Hand className="w-5 h-5 text-white group-hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.8)] transition-all" />
               <span className="text-white text-sm font-semibold">Hand</span>
             </div>
             <span className="text-white font-bold">{player.zones.hand.length}</span>
@@ -168,7 +168,6 @@ export default function YourZones({
           {/* Library with menu */}
           <div>
             <button
-              ref={libraryButtonRef}
               onClick={() => onViewZone('library')}
               className="w-full bg-slate-900 hover:bg-slate-800 border-2 border-slate-700 rounded p-2 flex items-center justify-between relative transition-colors group"
             >
@@ -231,7 +230,6 @@ export default function YourZones({
         onCreateToken={() => setTokenModalOpen(true)}
         onPrefetchDecks={onPrefetchDecks}
         spectatorMode={spectatorMode}
-        buttonRef={libraryButtonRef}
         isMobile={true}
       />
       
@@ -258,7 +256,6 @@ export default function YourZones({
           onCreateToken={() => setTokenModalOpen(true)}
           spectatorMode={spectatorMode}
           isViewingHand={isViewingHand}
-          libraryButtonRef={libraryButtonRef}
         />
       </div>
 
@@ -275,15 +272,15 @@ export default function YourZones({
         onLibraryToHand={libraryActions.handleLibraryToHand}
         onShuffle={libraryActions.handleShuffleLibrary}
         onMill={libraryActions.handleMillCards}
+        onMillX={libraryActions.openMillModal}
         onReveal={libraryActions.handleRevealTopCard}
         onHandToBattlefieldTapped={libraryActions.handleHandToBattlefieldTapped}
         onCreateToken={() => setTokenModalOpen(true)}
         onPrefetchDecks={onPrefetchDecks}
         spectatorMode={spectatorMode}
-        buttonRef={libraryButtonRef}
         isMobile={false}
       />
-      
+
       {/* Draw X Cards Modal */}
       <DrawCardsModal
         isOpen={libraryActions.showDrawModal}
@@ -291,6 +288,16 @@ export default function YourZones({
         setDrawCount={libraryActions.setDrawCount}
         onDraw={libraryActions.handleDrawCards}
         onClose={() => libraryActions.setShowDrawModal(false)}
+        player={player}
+      />
+
+      {/* Mill X Cards Modal */}
+      <MillCardsModal
+        isOpen={libraryActions.showMillModal}
+        millCount={libraryActions.millCount}
+        setMillCount={libraryActions.setMillCount}
+        onMill={libraryActions.handleMillCards}
+        onClose={() => libraryActions.setShowMillModal(false)}
         player={player}
       />
 

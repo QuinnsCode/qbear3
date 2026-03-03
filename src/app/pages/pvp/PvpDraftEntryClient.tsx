@@ -2,16 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { REGION_LIST, type Region } from "@/app/lib/constants/regions";
-import { Swords, Users, Clock, Trophy, AlertCircle, Play, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Swords, Users, Clock, Trophy, AlertCircle, Play, Sparkles, ChevronDown, ChevronUp, Package } from "lucide-react";
+import { MyDraftsModal } from "@/app/components/Draft/MyDraftsModal";
 
 interface PvpDraftEntryClientProps {
   decksByRegion: Record<Region, any[]>;
   pvpDeckExpiryHours: number;
+  userId: string;
 }
 
-export function PvpDraftEntryClient({ decksByRegion, pvpDeckExpiryHours }: PvpDraftEntryClientProps) {
+export function PvpDraftEntryClient({ decksByRegion, pvpDeckExpiryHours, userId }: PvpDraftEntryClientProps) {
   const [savedRegion, setSavedRegion] = useState<Region | null>(null);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const [draftsModalOpen, setDraftsModalOpen] = useState(false);
 
   // Load saved region from localStorage on mount
   useEffect(() => {
@@ -32,6 +35,24 @@ export function PvpDraftEntryClient({ decksByRegion, pvpDeckExpiryHours }: PvpDr
 
   return (
     <>
+      {/* My Drafts Button - Fixed Position */}
+      <div className="mb-6">
+        <button
+          onClick={() => setDraftsModalOpen(true)}
+          className="bg-slate-800 hover:bg-slate-700 border-2 border-slate-600 hover:border-slate-500 text-white rounded-lg px-6 py-3 transition-all shadow-md hover:shadow-lg font-medium flex items-center gap-2"
+        >
+          <Package className="w-5 h-5" />
+          <span>My Drafts</span>
+        </button>
+      </div>
+
+      {/* My Drafts Modal */}
+      <MyDraftsModal
+        isOpen={draftsModalOpen}
+        onClose={() => setDraftsModalOpen(false)}
+        userId={userId}
+      />
+
       {/* Quick Start Section - Shows if user has a saved region */}
       {savedRegion && savedRegionData && (
         <div className="bg-gradient-to-r from-purple-900/50 to-blue-900/50 rounded-lg border-2 border-purple-500/50 p-6 shadow-xl mb-8">

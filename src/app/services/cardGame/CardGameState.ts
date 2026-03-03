@@ -11,6 +11,15 @@
 // CORE GAME STATE
 // ============================================================================
 
+export type GameEvent = {
+  id: string
+  playerId: string
+  playerName: string
+  message: string      // e.g. "drew 3 cards", "played Forest to battlefield"
+  timestamp: number    // unix ms
+  type: 'action' | 'system' | 'chat'
+}
+
 export type CardGameState = {
   id: string
   status: 'active' // Always active, no separate lobby phase
@@ -18,6 +27,7 @@ export type CardGameState = {
   cards: Record<string, Card> // Keyed by instanceId
   actions: CardGameAction[]
   currentActionIndex: number
+  actionLog: GameEvent[]   // last 100 entries, included in every broadcast
   createdAt: Date
   updatedAt: Date
 }
@@ -144,7 +154,7 @@ export type ScryfallCard = {
   toughness?: string
   colors?: string[]
   color_identity?: string[]
-  
+
   // Image URLs
   image_uris?: {
     small?: string
@@ -154,7 +164,7 @@ export type ScryfallCard = {
     art_crop?: string
     border_crop?: string
   }
-  
+
   // For double-faced cards
   card_faces?: Array<{
     name: string
@@ -168,13 +178,20 @@ export type ScryfallCard = {
       png?: string
     }
   }>
-  
+
   // Additional useful fields
   set: string
   set_name: string
   collector_number: string
   rarity: string
   legalities?: Record<string, string>
+
+  // Deck builder compatibility fields (flat structure)
+  imageUrl?: string      // Flattened from image_uris.normal
+  type?: string          // Alias for type_line (for categorization)
+  manaCost?: string      // Alias for mana_cost (camelCase)
+  cmc?: number           // Converted mana cost
+  quantity?: number      // Number of copies (for deck lists)
 }
 
 // ============================================================================
@@ -349,7 +366,7 @@ export type CardFilter = {
 
 export const CURSOR_COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B'] as const // Blue, Red, Green, Yellow
 
-export const ZONE_TYPES: ZoneType[] = ['library', 'hand', 'battlefield', 'graveyard', 'exile', 'command'] as const
+export const ZONE_TYPES: ZoneType[] = ['library', 'hand', 'battlefield', 'graveyard', 'exile', 'command', 'sideboard'] as const
 
 export const ROTATION_VALUES = [0, 90, 180, 270] as const
 

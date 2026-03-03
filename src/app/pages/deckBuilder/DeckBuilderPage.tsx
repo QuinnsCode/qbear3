@@ -29,8 +29,9 @@ export default async function DeckBuilderPage({ ctx, request, params }: RequestI
 
   // Get tier info
   const tier = getEffectiveTier(user);
-  const tierConfig = getTierConfig(tier);
-  const maxDecks = tierConfig.features.maxDecksPerUser;
+  const tierConfig = getTierConfig(tier, user?.email || undefined);
+  const maxCommanderDecks = tierConfig.features.maxCommanderDecks;
+  const maxDraftDecks = tierConfig.features.maxDraftDecks;
 
   // ✅ EDIT MODE: deckId provided AND deck exists
   if (deckId) {
@@ -55,16 +56,20 @@ export default async function DeckBuilderPage({ ctx, request, params }: RequestI
   // ✅ CREATE MODE: No deckId provided - show deck list
   const { decks } = await getUserDecks(userId);
 
+  const commanderDecksCount = decks.filter(d => d.format === 'commander').length;
+  const draftDecksCount = decks.filter(d => d.format === 'draft').length;
+
   return (
     <div>
       <DeckBuilder
         decks={decks}
         userId={userId}
         isSandbox={false}
-        maxDecks={maxDecks}
+        maxCommanderDecks={maxCommanderDecks}
+        maxDraftDecks={maxDraftDecks}
         currentTier={tier}
       />
-      
+
       {/* Tier info banner */}
       <div style={{
         position: 'fixed',
@@ -78,8 +83,8 @@ export default async function DeckBuilderPage({ ctx, request, params }: RequestI
         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
         zIndex: 1000
       }}>
-        <div style={{ 
-          color: '#cbd5e1', 
+        <div style={{
+          color: '#cbd5e1',
           fontSize: '12px',
           display: 'flex',
           alignItems: 'center',
@@ -87,7 +92,9 @@ export default async function DeckBuilderPage({ ctx, request, params }: RequestI
         }}>
           <span style={{ fontSize: '16px' }}>🃏</span>
           <span>
-            <strong style={{ color: '#f1f5f9' }}>{decks.length}/{maxDecks}</strong> decks
+            <strong style={{ color: '#f1f5f9' }}>{commanderDecksCount}/{maxCommanderDecks}</strong> Commander
+            {' • '}
+            <strong style={{ color: '#f1f5f9' }}>{draftDecksCount}/{maxDraftDecks}</strong> Draft
             {' • '}
             <span style={{ color: tier === 'free' ? '#94a3b8' : tier === 'starter' ? '#fbbf24' : '#eab308' }}>
               {tier === 'free' ? '🏕️ Free' : tier === 'starter' ? '⚔️ Starter' : '👑 Pro'}

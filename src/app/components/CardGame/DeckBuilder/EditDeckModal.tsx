@@ -11,12 +11,15 @@ import ManaSymbols from '../ManaSymbols/ManaSymbols'
 import type { CardZone } from './editDeckFunctions'
 import { useCardRefresh } from '@/app/hooks/useCardRefresh'
 import RefreshProgressModal from './RefreshProgressModal'
+import { updateDeckFromEditor } from '@/app/serverActions/deckBuilder/deckActions'
 
 interface Props {
   deck: Deck
-  onClose: () => void
-  onSave: (deckId: string, updatedCards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
-  isSaving: boolean
+  userId?: string
+  deckId?: string
+  onClose?: () => void
+  onSave?: (deckId: string, updatedCards: DeckCard[], deckName: string) => Promise<void>
+  isSaving?: boolean
 }
 
 
@@ -86,11 +89,18 @@ const COLOR_FILTERS = [
   { value: 'C', label: '⬜ Colorless', emoji: '⬜' }
 ]
 
-export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavingProp }: Props) {
+export default function EditDeckModal({ deck, userId, deckId, onClose, onSave, isSaving: isSavingProp }: Props) {
   // Handle missing props when rendered from server component
   const [internalSaving, setInternalSaving] = useState(false)
   const isSaving = isSavingProp || internalSaving
-  
+
+  // Use provided IDs or fall back to deck properties
+  const effectiveUserId = userId || (deck as any).userId
+  const effectiveDeckId = deckId || deck.id
+
+  // Track last save time for auto-save indicator
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
+
   const handleClose = () => {
     console.log('Close button clicked')
     if (onClose) {
@@ -101,24 +111,30 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
     }
   }
   
-  const [activeTab, setActiveTab] = useState<'search' | 'deck'>('deck')
+  const [showSearchModal, setShowSearchModal] = useState(false)
+  const [selectedSearchCard, setSelectedSearchCard] = useState<ScryfallCard | null>(null)
   const [deckName, setDeckName] = useState(deck.name)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   
   const [cards, setCards] = useState<DeckCard[]>(
-    (deck.cards || []).map(card => ({
-      id: card.id || '',
-      scryfallId: card.scryfallId || card.id || '',
-      name: card.name || 'Unknown Card',
-      quantity: card.quantity || 1,
-      imageUrl: card.imageUrl || '',
-      type: card.type || '',
-      manaCost: card.manaCost || '',
-      colors: card.colors || [],
-      zone: (card.zone || (card.isCommander ? 'commander' : 'main')) as CardZone,
-      cmc: parseManaValue(card.manaCost || ''),
-      rarity: (card as any).rarity || 'common'
-    }))
+    (deck.cards || []).map(card => {
+      // Handle both flat fields (new) and nested fields (old format) for backward compatibility
+      const cardAny = card as any
+
+      return {
+        id: card.id || '',
+        scryfallId: card.scryfallId || card.id || '',
+        name: card.name || 'Unknown Card',
+        quantity: card.quantity || 1,
+        imageUrl: card.imageUrl || cardAny.image_uris?.normal || cardAny.image_uris?.large || '',
+        type: card.type || cardAny.type_line || '',
+        manaCost: card.manaCost || cardAny.mana_cost || '',
+        colors: card.colors || [],
+        zone: (card.zone || (card.isCommander ? 'commander' : 'main')) as CardZone,
+        cmc: cardAny.cmc || parseManaValue(card.manaCost || cardAny.mana_cost || ''),
+        rarity: cardAny.rarity || 'common'
+      }
+    })
   )
 
   const [columns, setColumns] = useState<KanbanColumn[]>(
@@ -173,8 +189,14 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
   const sideboardCards = cards.filter(c => c.zone === 'sideboard')
   const contemplatingCards = cards.filter(c => c.zone === 'contemplating')
 
+  // MDFC detection
+  const isMDFC = (card: DeckCard) => card.name.includes(' // ')
+  const mdfcCards = mainDeckCards.filter(isMDFC)
+  const mdfcTotal = mdfcCards.reduce((sum, card) => sum + card.quantity, 0)
+  const mdfcLands = mdfcCards.filter(c => c.type?.toLowerCase().includes('land'))
+  const mdfcLandTotal = mdfcLands.reduce((sum, card) => sum + card.quantity, 0)
 
-  const totalCards = mainDeckCards.reduce((sum, card) => sum + card.quantity, 0) + 
+  const totalCards = mainDeckCards.reduce((sum, card) => sum + card.quantity, 0) +
                    commanderCards.reduce((sum, card) => sum + card.quantity, 0)
 
   const contemplatingTotal = contemplatingCards.reduce((sum, card) => sum + card.quantity, 0)
@@ -381,6 +403,33 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cards, viewMode, globalFilters, isMobileView])
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    const autoSaveInterval = setInterval(() => {
+      if (!isSaving) {
+        console.log('[EditDeckModal] Auto-saving deck...')
+        handleSave().catch(error => {
+          console.error('[EditDeckModal] Auto-save failed:', error)
+          // Don't show alerts for auto-save failures, just log them
+        })
+      }
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(autoSaveInterval)
+  }, [cards, deckName, isSaving]) // Re-create interval when cards or deckName change
+
+  // Update "last saved" display every second
+  const [, forceUpdate] = useState(0)
+  useEffect(() => {
+    if (!lastSaved) return
+
+    const updateInterval = setInterval(() => {
+      forceUpdate(n => n + 1) // Force re-render to update relative time
+    }, 1000)
+
+    return () => clearInterval(updateInterval)
+  }, [lastSaved])
 
   const handleAddCard = async (scryfallCard: ScryfallCard) => {
     const existingCard = cards.find(c => c.scryfallId === scryfallCard.id)
@@ -603,23 +652,47 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
       if (onSave) {
         await onSave(deck.id, cardsToSave, deckName)
       } else {
-        console.log('No onSave prop, calling API directly')
-        const response = await fetch(`/api/decks/${deck.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cards: cardsToSave, deckName })
-        })
-        
-        if (!response.ok) {
-          throw new Error('Failed to update deck')
+        console.log('No onSave prop, calling server action directly')
+
+        if (!effectiveUserId) {
+          throw new Error('User ID is required to save deck')
         }
-        
-        console.log('Save successful, navigating to /sanctum')
-        window.location.href = '/sanctum'
+
+        const result = await updateDeckFromEditor(effectiveUserId, effectiveDeckId, deckName, cardsToSave)
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to update deck')
+        }
+
+        console.log('Save successful!')
       }
+
+      // Update last saved timestamp
+      setLastSaved(new Date())
     } catch (error) {
       console.error('Failed to save deck:', error)
-      alert('Failed to save deck: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+      // Check if it's an incomplete card data error
+      if (errorMessage.includes('incomplete data')) {
+        const shouldRefresh = confirm(
+          `⚠️ ${errorMessage}\n\n` +
+          `Click OK to automatically refresh all card data, or Cancel to review manually.`
+        )
+
+        if (shouldRefresh) {
+          await handleRefreshAllCards()
+          // Try saving again after refresh
+          try {
+            await handleSave()
+            return // Exit if successful
+          } catch (retryError) {
+            alert('Failed to save after refresh: ' + (retryError instanceof Error ? retryError.message : String(retryError)))
+          }
+        }
+      } else {
+        alert('Failed to save deck: ' + errorMessage)
+      }
     } finally {
       setInternalSaving(false)
     }
@@ -955,42 +1028,80 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
         <button
           onClick={handleClose}
           disabled={isSaving}
-          className="text-white/80 hover:text-white text-3xl leading-none disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          ×
+          <X className="w-4 h-4" />
+          Return to Decks
         </button>
       </div>
 
-      <div className="bg-slate-800 border-b border-slate-700 flex">
-        <button
-          onClick={() => setActiveTab('search')}
-          className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-            activeTab === 'search'
-              ? 'bg-slate-700 text-white border-b-2 border-slate-500'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          🔍 Search Cards
-        </button>
-        <button
-          onClick={() => setActiveTab('deck')}
-          className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-            activeTab === 'deck'
-              ? 'bg-slate-700 text-white border-b-2 border-slate-500'
-              : 'text-gray-400 hover:text-white'
-          }`}
-        >
-          📜 My Deck ({totalCards})
-        </button>
-      </div>
+      {/* Main content area: Search panel (desktop) + Deck view */}
+      <div className="flex-1 overflow-hidden flex">
+        {/* Search panel — desktop only, left sidebar */}
+        <div className="hidden lg:flex lg:w-[28%] lg:flex-col border-r border-slate-700">
+          <div className="bg-slate-800 border-b border-slate-700 p-3 shrink-0">
+            <h3 className="text-white font-semibold text-sm">🔍 Search Cards to Add</h3>
+          </div>
 
-      <div className="flex-1 overflow-hidden">
-        {activeTab === 'search' ? (
-          <CardSearch onCardSelect={handleAddCard} />
-        ) : (
-          <div className="h-full flex flex-col">
+          {/* Selected card preview with add button */}
+          {selectedSearchCard && (
+            <div className="bg-slate-800/50 border-b border-slate-700 p-3 shrink-0">
+              <div className="flex gap-3 items-start">
+                <img
+                  src={selectedSearchCard.image_uris?.small || selectedSearchCard.image_uris?.normal || ''}
+                  alt={selectedSearchCard.name}
+                  className="w-16 h-auto rounded shadow-lg"
+                />
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-white font-semibold text-sm truncate mb-2">{selectedSearchCard.name}</h4>
+                  {cards.some(c => c.name === selectedSearchCard.name) ? (
+                    <button
+                      onClick={() => {
+                        handleAddCard(selectedSearchCard)
+                        setSelectedSearchCard(null)
+                      }}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1.5 text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Already in deck! Add more?
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        handleAddCard(selectedSearchCard)
+                        setSelectedSearchCard(null)
+                      }}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded px-3 py-1.5 text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add to Deck
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto">
+            <CardSearch onCardSelect={(card) => setSelectedSearchCard(card)} />
+          </div>
+        </div>
+
+        {/* Deck view — always visible */}
+        <div className="flex-1 overflow-hidden flex flex-col">
             {/* Shared Toolbar - Shows for both Kanban and List views */}
             <div className="bg-slate-800 border-b border-slate-700 p-3 space-y-2">
+              {/* Mobile: Add Cards button */}
+              <div className="lg:hidden">
+                <button
+                  onClick={() => setShowSearchModal(true)}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-4 py-2.5 font-semibold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Cards from Search
+                </button>
+              </div>
+
               {isMobileView && viewMode === 'kanban' && (
                 <div className="flex items-center gap-2 mb-2">
                   <button
@@ -1345,8 +1456,72 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
           )}
           </div>
         </div>
-        )}
       </div>
+
+      {/* Mobile search modal */}
+      {showSearchModal && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-slate-900 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="bg-slate-800 border-b border-slate-700 p-4 flex items-center justify-between shrink-0">
+              <h3 className="text-white font-semibold text-lg">🔍 Add Cards</h3>
+              <button
+                onClick={() => {
+                  setShowSearchModal(false)
+                  setSelectedSearchCard(null)
+                }}
+                className="text-white/80 hover:text-white text-3xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Selected card preview with add button */}
+            {selectedSearchCard && (
+              <div className="bg-slate-800/50 border-b border-slate-700 p-4 shrink-0">
+                <div className="flex gap-4 items-start">
+                  <img
+                    src={selectedSearchCard.image_uris?.small || selectedSearchCard.image_uris?.normal || ''}
+                    alt={selectedSearchCard.name}
+                    className="w-20 h-auto rounded shadow-lg"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-white font-semibold mb-3">{selectedSearchCard.name}</h4>
+                    {cards.some(c => c.name === selectedSearchCard.name) ? (
+                      <button
+                        onClick={() => {
+                          handleAddCard(selectedSearchCard)
+                          setSelectedSearchCard(null)
+                          setShowSearchModal(false)
+                        }}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2.5 font-semibold transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-5 h-5" />
+                        Already in deck! Add more?
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          handleAddCard(selectedSearchCard)
+                          setSelectedSearchCard(null)
+                          setShowSearchModal(false)
+                        }}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-4 py-2.5 font-semibold transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-5 h-5" />
+                        Add to Deck
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto">
+              <CardSearch onCardSelect={(card) => setSelectedSearchCard(card)} />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-slate-800 border-t border-slate-700 p-4 space-y-3">
         <div className="flex items-center justify-between text-sm">
@@ -1367,6 +1542,11 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
             {contemplatingTotal > 0 && (
               <div className="text-gray-400">
                 <span className="font-bold text-cyan-400">{contemplatingTotal}</span> ☁️
+              </div>
+            )}
+            {mdfcTotal > 0 && (
+              <div className="text-gray-400" title={`${mdfcTotal} Modal Double-Faced Cards${mdfcLandTotal > 0 ? ` (${mdfcLandTotal} with land side)` : ''}`}>
+                <span className="font-bold text-orange-400">{mdfcTotal}</span> 🔄 MDFC
               </div>
             )}
           </div>
@@ -1402,6 +1582,23 @@ export default function EditDeckModal({ deck, onClose, onSave, isSaving: isSavin
             )}
           </button>
         </div>
+
+        {/* Last saved indicator */}
+        {lastSaved && (
+          <div className="text-xs text-slate-400 text-center mt-2">
+            Last saved: {(() => {
+              const secondsAgo = Math.floor((Date.now() - lastSaved.getTime()) / 1000)
+              if (secondsAgo < 5) return 'just now'
+              if (secondsAgo < 60) return `${secondsAgo}s ago`
+              const minutesAgo = Math.floor(secondsAgo / 60)
+              if (minutesAgo < 60) return `${minutesAgo}m ago`
+              const hoursAgo = Math.floor(minutesAgo / 60)
+              return `${hoursAgo}h ago`
+            })()}
+            {' • '}
+            <span className="text-green-400">Auto-saves every 30s</span>
+          </div>
+        )}
       </div>
 
       {showColumnBuilder && (

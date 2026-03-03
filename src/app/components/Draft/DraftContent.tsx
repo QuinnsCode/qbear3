@@ -2,18 +2,21 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { Eye, Settings, AlertTriangle } from 'lucide-react'
 import { useDraftSync } from '@/app/hooks/draft/useDraftSync'
 import PackDisplay from './PackDisplay'
 import DraftPool from './DraftPool'
 import DraftProgress from './DraftProgress'
 import DraftDeckBuilderModal from './DraftDeckBuilderModal'
 import DraftAuthBanner from './DraftAuthBanner'
+import DraftSettingsModal from './DraftSettingsModal'
 import MobileDraftTabs, { type DraftTab } from './MobileDraftTabs'
 import DragHandle from '../CardGame/CardGameBoard/ui/DragHandle'
 import type { DraftState } from '@/app/types/Draft'
 import { makePick as makePickAction } from '@/app/serverActions/draft/makePick'
 import { exportDraftDeck } from '@/app/serverActions/draft/exportDraftDeck'
 import { exportPvpDeck } from '@/app/serverActions/draft/exportPvpDeck'
+import { updateDraftPermissions } from '@/app/serverActions/draft/updateDraftPermissions'
 import type { Region } from '@/app/lib/constants/regions'
 
 interface Props {
@@ -35,17 +38,26 @@ export default function DraftContent({
   pvpRegion,
   returnTo
 }: Props) {
-  const { draftState, isConnected, error, utils } = useDraftSync({
+  const { draftState, isConnected, error, mode, focusedPlayerId, utils } = useDraftSync({
     draftId,
     initialState,
     currentPlayerId: userId,
     onError: (err) => console.error('Draft error:', err)
   })
+
+  // ✅ NEW: Spectator mode - determine which player we're viewing
+  const isSpectator = mode === 'spectator'
+  const viewingPlayerId = isSpectator && focusedPlayerId ? focusedPlayerId : userId
+  const viewingPlayer = draftState.players.find(p => p.id === viewingPlayerId)
   
   const [selectedCards, setSelectedCards] = useState<string[]>([])
   const [showDeckBuilder, setShowDeckBuilder] = useState(false)
   const [showReconnecting, setShowReconnecting] = useState(false)
-  
+  const [showSettings, setShowSettings] = useState(false)
+
+  // Check if current user is the creator
+  const isCreator = draftState.creatorId === userId
+
   // Sideboard state - persisted to localStorage
   const [sideboardCards, setSideboardCards] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
@@ -333,6 +345,12 @@ export default function DraftContent({
   }
   
   const handleConfirmPick = async () => {
+    // ✅ Spectators cannot make picks
+    if (isSpectator) {
+      alert('You are in spectator mode and cannot make picks.')
+      return
+    }
+
     if (selectedCards?.length === pickCount) {
       const result = await makePickAction(draftId, selectedCards, userId)
       if (result.success) {
@@ -466,7 +484,25 @@ export default function DraftContent({
       throw error
     }
   }
-  
+
+  const handleUpdatePermissions = async (permissions: {
+    isPublic?: boolean
+    allowSpectators?: boolean
+    spectatorList?: string[]
+  }) => {
+    try {
+      const result = await updateDraftPermissions(draftId, userId, permissions)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update permissions')
+      }
+      console.log('✅ Permissions updated:', result.permissions)
+      // The DO will broadcast the update, and we'll receive it via WebSocket
+    } catch (error) {
+      console.error('Failed to update permissions:', error)
+      throw error
+    }
+  }
+
   // Draft complete screens
   if (isDraftComplete && !isAI) {
     if (!hasBuiltDeck) {
@@ -624,25 +660,70 @@ export default function DraftContent({
   // Draft in progress
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col">
-      <DraftAuthBanner 
+      <DraftAuthBanner
         isLoggedIn={isLoggedIn}
         userName={userName}
         onExportDeck={handleExportDeck}
       />
-      
+
+      {/* Public Draft Warning */}
+      {draftState.permissions?.isPublic && isCreator && (
+        <div className="bg-yellow-900/30 border-b border-yellow-600 px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-yellow-200 font-semibold">Public Draft - Stream Sniping Warning</p>
+              <p className="text-yellow-300/80 text-sm">
+                This draft is public. Anyone with the link can view your picks in real-time.
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="ml-2 underline hover:text-yellow-200"
+                >
+                  Change settings
+                </button>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-slate-800 border-b border-slate-700 p-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">Cube Draft</h1>
-            <DraftProgress 
+            <DraftProgress
               round={draftState.currentRound + 1}
               pick={draftState.currentPick + 1}
               totalRounds={draftState.config.packsPerPlayer}
               totalPicks={draftState.config.packSize}
             />
+
+            {/* ✅ NEW: Spectator mode indicator */}
+            {isSpectator && viewingPlayer && (
+              <div className="mt-2 flex items-center gap-2 text-sm">
+                <Eye className="w-4 h-4 text-blue-400" />
+                <span className="text-slate-300">
+                  Spectating <span className="font-semibold text-white">{viewingPlayer.name}</span>
+                </span>
+                <span className="text-slate-500">•</span>
+                <span className="text-slate-400 text-xs">View only</span>
+              </div>
+            )}
           </div>
-          
+
           <div className="flex items-center gap-4">
+            {/* Settings button (only show for logged-in users) */}
+            {isLoggedIn && (
+              <button
+                onClick={() => setShowSettings(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                title="Draft Settings"
+              >
+                <Settings className="w-4 h-4" />
+                <span className="text-sm hidden sm:inline">Settings</span>
+              </button>
+            )}
+
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
               <span className="text-slate-300 text-sm hidden sm:inline">
@@ -676,14 +757,23 @@ export default function DraftContent({
                   <button
                     type="button"
                     onClick={handleConfirmPick}
-                    disabled={selectedCards?.length !== pickCount}
+                    disabled={isSpectator || selectedCards?.length !== pickCount}
                     className={`w-full py-3 rounded-lg font-semibold transition-all ${
-                      selectedCards?.length === pickCount
+                      isSpectator
+                        ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                        : selectedCards?.length === pickCount
                         ? 'bg-blue-600 hover:bg-blue-700 text-white'
                         : 'bg-slate-700 text-slate-500'
                     }`}
                   >
-                    Confirm Pick ({selectedCards?.length}/{pickCount})
+                    {isSpectator ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Eye className="w-4 h-4" />
+                        Spectating
+                      </span>
+                    ) : (
+                      `Confirm Pick (${selectedCards?.length}/${pickCount})`
+                    )}
                   </button>
                 </div>
                 
@@ -728,14 +818,23 @@ export default function DraftContent({
                       <button
                         type="button"
                         onClick={handleConfirmPick}
-                        disabled={selectedCards?.length !== pickCount}
+                        disabled={isSpectator || selectedCards?.length !== pickCount}
                         className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                          selectedCards?.length === pickCount
+                          isSpectator
+                            ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                            : selectedCards?.length === pickCount
                             ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
                             : 'bg-slate-700 text-slate-500 cursor-not-allowed'
                         }`}
                       >
-                        Confirm Pick ({selectedCards?.length}/{pickCount})
+                        {isSpectator ? (
+                          <span className="flex items-center gap-2">
+                            <Eye className="w-4 h-4" />
+                            Spectating
+                          </span>
+                        ) : (
+                          `Confirm Pick (${selectedCards?.length}/${pickCount})`
+                        )}
                       </button>
                     </div>
                     
@@ -808,6 +907,18 @@ export default function DraftContent({
           </>
         )}
       </div>
+
+      {/* Settings Modal */}
+      {draftState.permissions && (
+        <DraftSettingsModal
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          draftId={draftId}
+          isCreator={isCreator}
+          currentPermissions={draftState.permissions}
+          onUpdate={handleUpdatePermissions}
+        />
+      )}
     </div>
   )
 }

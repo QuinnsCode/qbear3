@@ -4,6 +4,7 @@ import type { DraftState, DraftConfig, DraftPlayer, CubeCard, DraftAction } from
 import { DraftManager } from '@/app/services/draft/DraftManager'
 import { sanitizeArrayForPlayer, CommonRules } from '@/lib/durableObjectSecurity'
 import { DraftAI } from '@/app/services/draft/DraftAI'
+import { updateDraftMetadata, completeDraft } from '@/app/serverActions/draft/draftTracking'
 
 export class DraftDO extends DurableObject {
   private draftState: DraftState | null = null
@@ -60,17 +61,54 @@ export class DraftDO extends DurableObject {
       }
       
       if (method === 'POST' && url.pathname === '/start') {
-        const { cubeCards, config, players } = await request.json() as any
-        const state = await this.startDraft(cubeCards, config, players)
+        const { cubeCards, config, players, creatorId } = await request.json() as any
+        const state = await this.startDraft(cubeCards, config, players, creatorId)
         return Response.json(state)
       }
       
+      if (method === 'PATCH' && url.pathname === '/permissions') {
+        const userId = request.headers.get('X-Auth-User-Id') || null
+        const { isPublic, allowSpectators, spectatorList } = await request.json() as any
+
+        const state = await this.getState()
+
+        // Only creator can update permissions
+        if (userId !== state.creatorId) {
+          return Response.json({ error: 'Only the creator can update permissions' }, { status: 403 })
+        }
+
+        // Update permissions
+        if (!state.permissions) {
+          state.permissions = {
+            isPublic: false,
+            allowSpectators: true,
+            spectatorList: []
+          }
+        }
+
+        if (typeof isPublic === 'boolean') {
+          state.permissions.isPublic = isPublic
+        }
+        if (typeof allowSpectators === 'boolean') {
+          state.permissions.allowSpectators = allowSpectators
+        }
+        if (Array.isArray(spectatorList)) {
+          state.permissions.spectatorList = spectatorList
+        }
+
+        this.draftState = state
+        await this.persist()
+        this.broadcast({ type: 'permissions_updated', permissions: state.permissions })
+
+        return Response.json({ success: true, permissions: state.permissions })
+      }
+
       if (method === 'POST') {
         const action = await request.json() as any
         const result = await this.applyAction(action)
         return Response.json(result)
       }
-      
+
       if (method === 'DELETE') {
         this.broadcast({ type: 'draft_deleted' })
         this.closeAllWebSockets()
@@ -91,30 +129,72 @@ export class DraftDO extends DurableObject {
   private async handleWebSocketUpgrade(request: Request): Promise<Response> {
     const webSocketPair = new WebSocketPair();
     const [client, server] = Object.values(webSocketPair);
-    
-    const playerId = request.headers.get('X-Auth-User-Id') || `guest-${crypto.randomUUID()}`;
+
+    const userId = request.headers.get('X-Auth-User-Id') || null;
     const playerName = request.headers.get('X-Auth-User-Name') || 'Guest';
-    
-    this.ctx.acceptWebSocket(server, ['draft', playerId, playerName]);
-    
+
     const state = await this.getState();
+
+    // ✅ HEALING: If no creator set and this is a logged-in user who's a player, set them as creator
+    if (!state.creatorId && userId && !userId.startsWith('guest-')) {
+      const isPlayerInDraft = state.players.some(p => p.id === userId && !p.isAI)
+      if (isPlayerInDraft) {
+        console.log(`[DraftDO] Healing creator for draft ${state.id}: setting ${userId} as creator`)
+        state.creatorId = userId
+
+        // Update permissions to protected since this is a logged-in user's draft
+        if (state.permissions) {
+          state.permissions.isPublic = false
+        }
+
+        this.draftState = state
+        await this.persist()
+      }
+    }
+
+    // ✅ Check permissions
+    const canUserDraft = this.canDraft(userId);
+    const canUserSpectate = this.canSpectate(userId);
+
+    if (!canUserDraft && !canUserSpectate) {
+      // User has no access to this draft
+      return new Response('Unauthorized: This draft is protected', { status: 403 });
+    }
+
+    const mode = canUserDraft ? 'drafter' : 'spectator';
+    const playerId = userId || `guest-${crypto.randomUUID()}`;
+
+    // Tag WebSocket: ['draft', playerId, playerName, mode]
+    this.ctx.acceptWebSocket(server, ['draft', playerId, playerName, mode]);
+
+    // ✅ For spectators, focus on the first human player (MVP for single-player vs AI)
+    const humanPlayer = state.players.find(p => !p.isAI);
+    const focusedPlayerId = mode === 'spectator' && humanPlayer ? humanPlayer.id : playerId;
 
     // Enrich packs with full card data
     const enrichedState = {
-    ...state,
-    players: state.players.map(p => ({
+      ...state,
+      players: state.players.map(p => ({
         ...p,
         currentPack: p.currentPack ? {
-        ...p.currentPack,
-        cards: p.currentPack.cards.map((id: string) => 
-            this.cubeCards.find(c => c.scryfallId === id)
-        ).filter(Boolean) as CubeCard[]
+          ...p.currentPack,
+          // ✅ Spectators only see the focused player's pack
+          cards: (mode === 'spectator' && p.id !== focusedPlayerId)
+            ? [] // Hide other players' packs from spectators
+            : p.currentPack.cards.map((id: string) =>
+                this.cubeCards.find(c => c.scryfallId === id)
+              ).filter(Boolean) as CubeCard[]
         } : undefined
-    }))
+      }))
     };
 
-    server.send(JSON.stringify({ type: 'state_update', state: enrichedState }));
-    
+    server.send(JSON.stringify({
+      type: 'state_update',
+      state: enrichedState,
+      mode,
+      focusedPlayerId: mode === 'spectator' ? focusedPlayerId : undefined
+    }));
+
     return new Response(null, { status: 101, webSocket: client });
   }
   
@@ -141,14 +221,71 @@ export class DraftDO extends DurableObject {
   async getState(): Promise<DraftState> {
     if (!this.draftState) {
       const stored = await this.ctx.storage.get<DraftState>('draftState')
-      if (stored) this.draftState = stored
-      
+      if (stored) {
+        this.draftState = stored
+
+        // ✅ HEALING: Set default permissions for existing drafts
+        let healed = false
+
+        if (this.draftState.permissions === undefined) {
+          // Default: guest drafts are public, logged-in drafts are protected
+          const isGuestDraft = !this.draftState.creatorId
+          this.draftState.permissions = {
+            isPublic: isGuestDraft,
+            allowSpectators: true,
+            spectatorList: []
+          }
+          healed = true
+          console.log(`[DraftDO] Healed permissions for draft ${this.draftState.id} (guest=${isGuestDraft})`)
+        }
+
+        if (healed) {
+          await this.ctx.storage.put('draftState', this.draftState)
+        }
+      }
+
       const cards = await this.ctx.storage.get<CubeCard[]>('cubeCards')
       if (cards) this.cubeCards = cards
     }
-    
+
     if (!this.draftState) throw new Error('Draft not initialized')
     return this.draftState
+  }
+
+  /**
+   * Check if a user can actively participate in this draft
+   * - Guest drafts (no creator): anyone can draft (multiplayer)
+   * - Logged-in drafts (has creator): only creator can draft (single-player vs AI)
+   */
+  private canDraft(userId: string | null): boolean {
+    if (!this.draftState?.permissions) return true // Default allow if no permissions set
+
+    // Guest drafts (no creator): anyone with the link can draft
+    if (!this.draftState.creatorId) return true
+
+    // Logged-in drafts: locked to creator only (single-player vs AI)
+    return userId !== null && userId === this.draftState.creatorId
+  }
+
+  /**
+   * Check if a user can spectate this draft
+   * - Public drafts: anyone can spectate if allowSpectators is true
+   * - Protected drafts: creator + spectatorList can spectate if allowSpectators is true
+   */
+  private canSpectate(userId: string | null): boolean {
+    if (!this.draftState?.permissions) return true // Default allow if no permissions set
+
+    // Spectating must be enabled
+    if (!this.draftState.permissions.allowSpectators) return false
+
+    // Creator can always spectate their own draft
+    if (userId !== null && userId === this.draftState.creatorId) return true
+
+    // Public drafts allow anyone to spectate
+    if (this.draftState.permissions.isPublic) return true
+
+    // Protected drafts: check spectator list
+    return userId !== null && this.draftState.permissions.spectatorList.includes(userId)
   }
 
   private clearAITimeouts() {
@@ -168,20 +305,36 @@ export class DraftDO extends DurableObject {
     this.aiTimeouts.add(timeout)
   }
   
-  async startDraft(cubeCards: CubeCard[], config: DraftConfig, players: DraftPlayer[]): Promise<DraftState> {
+  async startDraft(
+    cubeCards: CubeCard[],
+    config: DraftConfig,
+    players: DraftPlayer[],
+    creatorId?: string | null
+  ): Promise<DraftState> {
     console.log('🎴 Starting draft with', players.length, 'players')
     console.log('📦 Cube has', cubeCards.length, 'cards')
-    
+
     this.cubeCards = cubeCards  // Already storing this
     this.draftState = DraftManager.initializeDraft(cubeCards, config, players)
-    
-    // ✅ ADD: Store cubeCards in state for deck building later
+
+    // ✅ Store cubeCards in state for deck building later
     this.draftState.cubeCards = cubeCards
-    
-    console.log('✅ Draft initialized, status:', this.draftState.status)
-    
+
+    // ✅ NEW: Set creator and permissions
+    this.draftState.creatorId = creatorId || undefined
+
+    // Default permissions based on whether creator is logged in
+    const isGuestDraft = !creatorId
+    this.draftState.permissions = {
+      isPublic: isGuestDraft,       // Guest drafts are public by default
+      allowSpectators: true,        // Allow spectators by default
+      spectatorList: []             // Empty spectator list initially
+    }
+
+    console.log(`✅ Draft initialized, status: ${this.draftState.status}, isPublic: ${this.draftState.permissions.isPublic}`)
+
     this.persist()
-    
+
     return this.draftState
   }
   
@@ -210,13 +363,23 @@ export class DraftDO extends DurableObject {
         
         this.draftState.updatedAt = new Date()
         this.persist()
-        
+
         if (!action.playerId.startsWith('ai-')) {
             this.broadcast({
                 type: 'pick_confirmed',
                 state: this.enrichState(this.draftState)
             })
-            
+
+            // ✅ Update draft tracking for human player
+            const draftId = (this.ctx.id as DurableObjectId).name
+            updateDraftMetadata(action.playerId, draftId, {
+              lastActivity: Date.now(),
+              packNumber: this.draftState.currentRound + 1,
+              pickNumber: this.draftState.currentPick + 1
+            }).catch(err => {
+              console.error('[DraftDO] Failed to update draft metadata:', err)
+            })
+
             this.scheduleAIProcessing()  // ✅ Same level
         }
       }
@@ -389,6 +552,19 @@ export class DraftDO extends DurableObject {
           } else {
             this.draftState.status = 'complete'
             this.broadcast({ type: 'draft_complete' })
+
+            // ✅ Mark draft as complete in KV for all human players
+            const draftId = (this.ctx.id as DurableObjectId).name
+            const humanPlayers = this.draftState.players.filter(p => !p.isAI)
+            humanPlayers.forEach(player => {
+              completeDraft(player.id, draftId).catch(err => {
+                console.error(`[DraftDO] Failed to complete draft for ${player.id}:`, err)
+              })
+            })
+
+            // ✅ Store draft decks in KV for easy import
+            this.storeDraftDecksInKV(draftId, humanPlayers)
+
             break
           }
         }
@@ -433,5 +609,67 @@ export class DraftDO extends DurableObject {
   private persist(): void {
     if (this.draftState) this.ctx.storage.put('draftState', this.draftState)
     if (this.cubeCards.length) this.ctx.storage.put('cubeCards', this.cubeCards)
+  }
+
+  /**
+   * Store draft decks in KV for easy import
+   *
+   * For guest drafts (1 human player): draft:${draftId}:deck
+   * For multi-player drafts: draft:${draftId}:${playerId}:deck
+   *
+   * TTL: 7 days
+   */
+  private async storeDraftDecksInKV(draftId: string, players: DraftPlayer[]): Promise<void> {
+    try {
+      if (!this.env.DECKS_KV) {
+        console.warn('[DraftDO] DECKS_KV not available, skipping deck storage')
+        return
+      }
+
+      // For single-player (guest) drafts, use simple key
+      const isSinglePlayer = players.length === 1
+
+      for (const player of players) {
+        // Group cards by name and count quantities
+        const cardCounts = new Map<string, number>()
+
+        for (const scryfallId of player.draftPool) {
+          const card = this.cubeCards.find(c => c.scryfallId === scryfallId)
+          if (card) {
+            const current = cardCounts.get(card.name) || 0
+            cardCounts.set(card.name, current + 1)
+          }
+        }
+
+        // Format as decklist text
+        const decklistLines: string[] = []
+
+        for (const [cardName, quantity] of cardCounts.entries()) {
+          decklistLines.push(`${quantity} ${cardName}`)
+        }
+
+        // Create full decklist text (matches import format)
+        const decklistText = decklistLines.join('\n')
+
+        // Choose key based on player count
+        const key = isSinglePlayer
+          ? `draft:${draftId}:deck`
+          : `draft:${draftId}:${player.id}:deck`
+
+        // Store in KV with 7-day expiration
+        await this.env.DECKS_KV.put(
+          key,
+          decklistText,
+          {
+            expirationTtl: 60 * 60 * 24 * 7 // 7 days
+          }
+        )
+
+        console.log(`[DraftDO] Stored draft deck in KV: ${key} (${decklistLines.length} unique cards, ${player.draftPool.length} total)`)
+      }
+    } catch (error) {
+      console.error('[DraftDO] Error storing draft decks in KV:', error)
+      // Don't throw - this is not critical to draft completion
+    }
   }
 }

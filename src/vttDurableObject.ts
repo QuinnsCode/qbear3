@@ -134,9 +134,10 @@ export class VTTDO extends DurableObject {
     const playerName = request.headers.get('X-Auth-User-Name') || 'Guest'
     const isSpectator = !request.headers.has('X-Auth-User-Id')
 
-    // Check if player is GM
-    const state = await this.getState()
-    const isGM = state.gameMaster?.id === playerId
+    // isGM: either the header says so (from ?gm=true) or they're already registered as GM
+    await this.getState()
+    const claimsGM = request.headers.get('X-Auth-Is-GM') === 'true'
+    const isGM = claimsGM || this.gameState?.gameMaster?.id === playerId
 
     // Tags: type, playerId, playerName, isSpectator, isGM
     this.ctx.acceptWebSocket(server, [
@@ -151,9 +152,10 @@ export class VTTDO extends DurableObject {
       this.spectatorCount++
     }
 
-    // Send initial state (filtered for player)
-    const filteredState = isGM ? state : PermissionManager.filterStateForPlayer(state, playerId)
-    server.send(JSON.stringify({ type: 'state_update', state: filteredState }))
+    // Send initial state (filtered for player, Sets serialized to arrays)
+    const currentState = this.gameState!
+    const filteredState = isGM ? currentState : PermissionManager.filterStateForPlayer(currentState, playerId)
+    server.send(JSON.stringify({ type: 'state_update', state: this.serializeState(filteredState) }))
 
     return new Response(null, { status: 101, webSocket: client })
   }
@@ -205,8 +207,19 @@ export class VTTDO extends DurableObject {
         return
       }
 
+      // Join handshake — register the player using their WS tag data
+      if (data.type === 'join') {
+        const playerName = tags[2] || 'Unknown'
+        await this.joinGame({
+          playerId,
+          playerName,
+          role: isGM ? 'gm' : 'player'
+        })
+        return
+      }
+
       // Camera update (ephemeral, only to GM)
-      if (data.type === 'camera_update') {
+      if (data.type === 'camera_move' || data.type === 'camera_update') {
         if (isSpectator) return
 
         const now = Date.now()
@@ -231,7 +244,7 @@ export class VTTDO extends DurableObject {
       // Action request
       if (data.type && data.playerId) {
         // Authorization check
-        const authResult = PermissionManager.authorizeAction(await this.getState(), data)
+        const authResult = PermissionManager.authorizeAction(await this.getState(), data, isGM)
 
         if (!authResult.authorized) {
           ws.send(JSON.stringify({ type: 'error', error: authResult.error }))
@@ -499,9 +512,33 @@ export class VTTDO extends DurableObject {
       case 'hide_fog':
         return FogManager.hideFog(gameState, action as any)
 
+      case 'toggle_fog':
+        return FogManager.toggleFog(gameState, action as any)
+
       default:
         console.warn(`[VTTDO] Unknown action type: ${action.type}`)
         return gameState
+    }
+  }
+
+  /**
+   * Convert game state to a JSON-safe object (Sets → arrays)
+   */
+  private serializeState(state: VTTGameState): object {
+    return {
+      ...state,
+      scenes: Object.fromEntries(
+        Object.entries(state.scenes).map(([id, scene]) => [
+          id,
+          {
+            ...scene,
+            fogState: {
+              ...scene.fogState,
+              revealedChunks: Array.from(scene.fogState.revealedChunks)
+            }
+          }
+        ])
+      )
     }
   }
 
@@ -510,24 +547,7 @@ export class VTTDO extends DurableObject {
    */
   private persist(): void {
     if (this.gameState) {
-      // Convert Sets to arrays for serialization
-      const serializableState = {
-        ...this.gameState,
-        scenes: Object.fromEntries(
-          Object.entries(this.gameState.scenes).map(([id, scene]) => [
-            id,
-            {
-              ...scene,
-              fogState: {
-                ...scene.fogState,
-                revealedChunks: Array.from(scene.fogState.revealedChunks)
-              }
-            }
-          ])
-        )
-      }
-
-      this.ctx.storage.put('vttGameState', serializableState)
+      this.ctx.storage.put('vttGameState', this.serializeState(this.gameState))
     }
   }
 
@@ -594,7 +614,7 @@ export class VTTDO extends DurableObject {
   }
 
   /**
-   * Broadcast state update (filtered per player)
+   * Broadcast state update (filtered per player, Sets serialized to arrays)
    */
   private broadcastStateUpdate(): void {
     const sockets = this.ctx.getWebSockets()
@@ -605,11 +625,11 @@ export class VTTDO extends DurableObject {
       const isGM = tags[4] === '1'
 
       const state = isGM
-        ? this.gameState
+        ? this.gameState!
         : PermissionManager.filterStateForPlayer(this.gameState!, playerId)
 
       try {
-        ws.send(JSON.stringify({ type: 'state_update', state }))
+        ws.send(JSON.stringify({ type: 'state_update', state: this.serializeState(state) }))
       } catch (error) {
         console.error('[VTTDO] Failed to send state update:', error)
       }

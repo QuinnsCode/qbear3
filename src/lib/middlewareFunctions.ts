@@ -175,6 +175,38 @@ export async function setupSessionContext(ctx: AppContext, request: Request) {
   }
 }
 
+/**
+ * ⚠️⚠️⚠️ CRITICAL AUTH MIDDLEWARE - DO NOT MODIFY WITHOUT TESTING ⚠️⚠️⚠️
+ *
+ * This function sets ctx.organization and ctx.userRole which are used EVERYWHERE
+ *
+ * IF YOU BREAK THIS:
+ * - Users cannot login (infinite redirects)
+ * - Sanctum page shows "No Organization" error
+ * - Root route shows landing page instead of sanctum
+ * - Everything falls apart
+ *
+ * WHAT THIS DOES:
+ * 1. Extracts org slug from subdomain (ryan.qntbr.com -> "ryan")
+ * 2. Looks up org in database
+ * 3. Checks if user has membership in that org
+ * 4. Sets ctx.organization and ctx.userRole
+ *
+ * DEPENDENCIES:
+ * - extractOrgFromSubdomain() MUST work correctly
+ * - getCachedOrganization() MUST return org or null
+ * - getCachedMember() MUST return membership or null
+ * - KV cache can become stale - has 5-10 min TTL
+ *
+ * TESTED WORKING: March 2, 2026 @ 6:46 PM PST (commit b4d443e)
+ *
+ * IF YOU MUST CHANGE THIS:
+ * 1. Test login flow: qntbr.com/user/login -> ryan.qntbr.com/sanctum
+ * 2. Test root redirect: ryan.qntbr.com/ -> ryan.qntbr.com/sanctum
+ * 3. Test sanctum page loads with org context
+ * 4. Test deckBuilder still works
+ * 5. DO NOT DEPLOY UNTIL ALL TESTS PASS
+ */
 export async function setupOrganizationContext(ctx: AppContext, request: Request) {
   try {
     const url = new URL(request.url);

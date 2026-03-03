@@ -33,7 +33,6 @@ export class ZoneManager {
           ...rest,
           zone: 'hand',
           isFaceUp: true,
-          isTapped: false,
           rotation: 0
         }
       }
@@ -103,7 +102,6 @@ export class ZoneManager {
           ...rest,
           zone: 'graveyard',
           isFaceUp: true,
-          isTapped: false,
           rotation: 0
         }
       }
@@ -250,8 +248,7 @@ export class ZoneManager {
         zone: to,
         position: action.data.position || { x: 100, y: 50 },
         isFaceUp: action.data.isFaceUp !== undefined ? action.data.isFaceUp : true,
-        isTapped: false,
-        rotation: 0
+        rotation: action.data.isTapped ? 90 : (action.data.rotation ?? 0)
       }
     } else {
       console.log('  Destination is NOT battlefield - removing position')
@@ -260,16 +257,14 @@ export class ZoneManager {
         ...rest,
         zone: to,
         isFaceUp: toZone === 'library' ? false : true,
-        isTapped: false,
         rotation: 0
       }
     }
-    
+
     console.log('✅ Card updated:')
     console.log('  zone:', updatedCard.zone)
     console.log('  isFaceUp:', updatedCard.isFaceUp)
     console.log('  has position:', !!updatedCard.position)
-    console.log('  isTapped:', updatedCard.isTapped)
     
     // Update zones
     console.log('\n🔨 Updating player zones...')
