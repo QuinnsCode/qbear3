@@ -4,13 +4,14 @@ import { LogoutButton } from "./LoginButton";
 import { RoleToggleButton } from "./RoleToggleButton";
 import { FantasyLogin } from "./FantasyLogin";
 import { extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
-import { 
-  FantasyBackground, 
-  FantasyCard, 
-  FantasyTitle, 
-  FantasyText, 
-  FantasyButton 
+import {
+  FantasyBackground,
+  FantasyCard,
+  FantasyTitle,
+  FantasyText,
+  FantasyButton
 } from "@/app/components/theme/FantasyTheme";
+import { Castle } from "lucide-react";
 
 export default async function LoginPage({ ctx, request }: RequestInfo) {
   // Check if we're on a subdomain
@@ -52,7 +53,7 @@ export default async function LoginPage({ ctx, request }: RequestInfo) {
           <div className="max-w-2xl w-full">
             
             <div className="text-center mb-8">
-              <div className="text-6xl mb-4">🏰</div>
+              <Castle className="w-16 h-16 text-amber-400 mx-auto mb-4" />
               <FantasyTitle size="lg" className="mb-4">
                 Welcome Back, {ctx.user.name?.split(' ')[0] || 'Adventurer'}!
               </FantasyTitle>

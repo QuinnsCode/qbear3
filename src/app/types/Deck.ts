@@ -172,8 +172,9 @@ export interface DeckV4 {
   id: string
   name: string
   format: DeckFormat  // ✅ NEW: 'commander' or 'draft'
-  
+
   // Optional for draft decks
+  draftId?: string  // ✅ Link to original draft (for draft decks)
   commanders?: string[]
   commanderImageUrls?: string[]
   

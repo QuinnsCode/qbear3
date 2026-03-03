@@ -26,6 +26,7 @@ import GamePage from "@/app/pages/game/GamePage";
 import CardGamePage from "@/app/pages/cardGame/CardGamePage";
 import DraftPage from '@/app/pages/draft/DraftPage'
 import NewDraftPage from '@/app/pages/draft/NewDraftPage'
+import DraftDeckEditorPage from '@/app/pages/draft/deck/DraftDeckEditorPage'
 import SanctumPage from "@/app/pages/sanctum/SanctumPage";
 import PvpDraftEntryPage from "@/app/pages/pvp/PvpDraftEntryPage";
 import PvpDraftPage from "@/app/pages/pvp/PvpDraftPage";
@@ -448,20 +449,20 @@ export default defineApp([
         });
       }
     }),
-    
+
     route("/auth/*", async ({ request }) => {
       try {
         // Check if this is a signup request and verify Turnstile
         if (request.url.includes('/sign-up') && request.method === 'POST') {
           const body = await request.clone().json();
-          
+
           const { turnstileToken } = body;
-          
+
           if (turnstileToken) {
             const isValid = await verifyTurnstileToken(turnstileToken);
             if (!isValid) {
-              return new Response(JSON.stringify({ 
-                error: 'Bot protection verification failed' 
+              return new Response(JSON.stringify({
+                error: 'Bot protection verification failed'
               }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
@@ -469,15 +470,13 @@ export default defineApp([
             }
           }
         }
-        
+
         await initializeServices();
         const authInstance = initAuth();
-        
-        const response = await authInstance.handler(request);
-        return response;
+        return await authInstance.handler(request);
       } catch (error) {
-        return new Response(JSON.stringify({ 
-          error: 'Auth failed', 
+        return new Response(JSON.stringify({
+          error: 'Auth failed',
           message: error?.message || String(error)
         }), {
           status: 500,
@@ -749,6 +748,7 @@ export default defineApp([
     ]),
 
     route("/draft/new", NewDraftPage),
+    route("/draft/deck/:deckId", DraftDeckEditorPage),
     route("/draft/:draftId", DraftPage),
 
 
@@ -764,7 +764,7 @@ export default defineApp([
         }
         
         // Skip processing for auth routes
-        if (pathname.startsWith('/user/') || pathname.startsWith('/auth/')) {
+        if (pathname.startsWith('/user/') || pathname.startsWith('/api/auth/')) {
           return;
         }
 

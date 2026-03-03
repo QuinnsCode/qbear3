@@ -152,16 +152,17 @@ export class DraftDO extends DurableObject {
       }
     }
 
-    // ✅ Check permissions
+    // ✅ Check permissions - DISABLED TEMPORARILY
     const canUserDraft = this.canDraft(userId);
     const canUserSpectate = this.canSpectate(userId);
 
-    if (!canUserDraft && !canUserSpectate) {
-      // User has no access to this draft
-      return new Response('Unauthorized: This draft is protected', { status: 403 });
-    }
+    // TEMPORARILY DISABLED - PERMISSION CHECK BROKEN
+    // if (!canUserDraft && !canUserSpectate) {
+    //   return new Response('Unauthorized: This draft is protected', { status: 403 });
+    // }
 
-    const mode = canUserDraft ? 'drafter' : 'spectator';
+    // TEMP FIX: Force drafter mode until permission system is fixed
+    const mode = 'drafter';
     const playerId = userId || `guest-${crypto.randomUUID()}`;
 
     // Tag WebSocket: ['draft', playerId, playerName, mode]

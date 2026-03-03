@@ -3,6 +3,7 @@
 
 import { CollapsibleSection } from '@/app/components/settings/CollapsibleSection'
 import { AccountLinkingSection } from '@/app/components/settings/AccountLinking'
+import { ShieldCheck, Bell, Construction, Lock, AlertTriangle } from 'lucide-react'
 
 export function SettingsSection() {
   return (
@@ -17,7 +18,7 @@ export function SettingsSection() {
       <CollapsibleSection
         title="Account & Security"
         description="Manage your login methods and security settings"
-        icon="🔐"
+        icon={<ShieldCheck className="w-6 h-6 text-blue-400" />}
         defaultOpen={true}
       >
         <AccountLinkingSection />
@@ -27,11 +28,11 @@ export function SettingsSection() {
       <CollapsibleSection
         title="Notifications"
         description="Control what emails and alerts you receive"
-        icon="🔔"
+        icon={<Bell className="w-6 h-6 text-yellow-400" />}
         defaultOpen={false}
       >
         <div className="text-center py-8">
-          <div className="text-4xl mb-3">🚧</div>
+          <Construction className="w-12 h-12 text-slate-500 mx-auto mb-3" />
           <div className="text-slate-400">Notification settings coming soon</div>
         </div>
       </CollapsibleSection>
@@ -40,11 +41,11 @@ export function SettingsSection() {
       <CollapsibleSection
         title="Privacy"
         description="Control who can see your profile and activity"
-        icon="🔒"
+        icon={<Lock className="w-6 h-6 text-purple-400" />}
         defaultOpen={false}
       >
         <div className="text-center py-8">
-          <div className="text-4xl mb-3">🚧</div>
+          <Construction className="w-12 h-12 text-slate-500 mx-auto mb-3" />
           <div className="text-slate-400">Privacy settings coming soon</div>
         </div>
       </CollapsibleSection>
@@ -53,7 +54,7 @@ export function SettingsSection() {
       <CollapsibleSection
         title="Danger Zone"
         description="Irreversible account actions"
-        icon="⚠️"
+        icon={<AlertTriangle className="w-6 h-6 text-red-400" />}
         defaultOpen={false}
       >
         <div className="space-y-4">

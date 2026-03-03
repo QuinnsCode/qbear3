@@ -223,8 +223,8 @@ export function FantasyButton({
         opacity-0
         ${variantClasses[variant].match(/shadow-[\w-]+\/(\d+)/)?.[0]?.replace('shadow-', 'shadow-[0_0_10px_]') ?? ''}
       `}></span>
-      
-      <span className="relative z-10">{children}</span>
+
+      <span className="relative z-10 flex items-center justify-center gap-2">{children}</span>
     </button>
   );
 }

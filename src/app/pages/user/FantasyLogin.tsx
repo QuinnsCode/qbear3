@@ -3,15 +3,16 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
-import { 
-  FantasyBackground, 
-  FantasyCard, 
-  FantasyTitle, 
-  FantasyText, 
+import {
+  FantasyBackground,
+  FantasyCard,
+  FantasyTitle,
+  FantasyText,
   FantasyButton,
   CaveEntrance,
   WizardStudy
 } from "@/app/components/theme/FantasyTheme";
+import { Castle } from "lucide-react";
 
 interface FantasyLoginProps {
   organizationName?: string;
@@ -38,6 +39,7 @@ export function FantasyLogin({
   const [password, setPassword] = useState("");
   const [result, setResult] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [isGooglePending, setIsGooglePending] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -85,12 +87,17 @@ export function FantasyLogin({
   const handleGoogleSignIn = async () => {
     try {
       setResult("");
+      setIsGooglePending(true);
+      console.log('[Google Sign-In] Starting OAuth flow...');
       await authClient.signIn.social({
         provider: "google",
         callbackURL: redirectPath,
       });
+      console.log('[Google Sign-In] OAuth flow initiated');
     } catch (err) {
+      console.error('[Google Sign-In] Error:', err);
       setResult(`Google sign-in failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setIsGooglePending(false);
     }
   };
 
@@ -279,11 +286,12 @@ export function FantasyLogin({
                 onClick={handleGoogleSignIn}
                 variant="secondary"
                 size="lg"
-                disabled={isPending}
+                disabled={isGooglePending}
                 className="w-full"
                 type="button"
               >
-                🏰 Sign in with Google
+                <Castle className="w-5 h-5" />
+                {isGooglePending ? 'Redirecting to Google...' : 'Sign in with Google'}
               </FantasyButton>
 
 
