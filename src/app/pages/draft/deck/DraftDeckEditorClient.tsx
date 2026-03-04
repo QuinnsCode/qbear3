@@ -89,6 +89,7 @@ export default function DraftDeckEditorClient({
         playerName={playerName}
         onClose={handleClose}
         onFinalize={handleFinalize}
+        finalizeLabel="Save Deck"
         initialConfig={initialConfig}
       />
       {saving && (

@@ -594,6 +594,7 @@ export default function DraftContent({
               playerName={userName}
               onClose={() => setShowDeckBuilder(false)}
               onFinalize={handleFinalizeDeck}
+              finalizeLabel="Finalize Deck"
               initialConfig={currentPlayer.deckConfiguration}
             />
           )}
@@ -649,6 +650,7 @@ export default function DraftContent({
               playerName={userName}
               onClose={() => setShowDeckBuilder(false)}
               onFinalize={handleFinalizeDeck}
+              finalizeLabel="Finalize Deck"
               initialConfig={currentPlayer.deckConfiguration}
             />
           )}

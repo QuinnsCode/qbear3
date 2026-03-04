@@ -3,17 +3,14 @@
 
 import { db } from "@/db"
 
-export async function getFirstOrgSlugOfUser(userId: string) {
-    // Find the oldest org membership where user has admin/owner privileges
+export async function getFirstOrgSlugOfUser(userId: string): Promise<string | null> {
+    // Find the oldest org membership for the user (any role)
     const oldestMembership = await db.member.findFirst({
         where: {
             userId: userId,
-            role: {
-                in: ['admin', 'owner', 'superadmin'] // Fixed: proper role filtering
-            }
         },
         orderBy: {
-            createdAt: 'asc' // Get the OLDEST membership
+            createdAt: 'asc'
         },
         include: {
             organization: {
@@ -24,13 +21,5 @@ export async function getFirstOrgSlugOfUser(userId: string) {
         }
     })
 
-    if (!oldestMembership) {
-        throw new Error("User has no admin/owner organization memberships")
-    }
-
-    if (!oldestMembership.organization?.slug) {
-        throw new Error("Organization slug not found")
-    }
-
-    return oldestMembership.organization.slug
+    return oldestMembership?.organization?.slug ?? null
 }

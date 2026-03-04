@@ -54,8 +54,8 @@ export default async function DraftDeckEditorPage({ params, ctx }: RequestInfo) 
     )
   }
 
-  // Get draft ID from deck metadata
-  const draftId = deck.draftId
+  // Get draft ID from deck metadata (stored in draftMetadata.draftId or top-level draftId)
+  const draftId = deck.draftId ?? deck.draftMetadata?.draftId
 
   if (!draftId) {
     return (

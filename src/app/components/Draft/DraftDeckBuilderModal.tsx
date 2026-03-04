@@ -48,6 +48,7 @@ interface Props {
     sideboard: Array<{ scryfallId: string; quantity: number }>
     basics: Record<BasicLandColor, number>
   }) => Promise<void>
+  finalizeLabel?: string
   initialConfig?: {
     mainDeck: Array<{ scryfallId: string; quantity: number }>
     sideboard: Array<{ scryfallId: string; quantity: number }>
@@ -72,6 +73,7 @@ export default function DraftDeckBuilderModal({
   playerName,
   onClose,
   onFinalize,
+  finalizeLabel = 'Export Deck',
   initialConfig
 }: Props) {
   const [isMobile, setIsMobile] = useState(false)
@@ -698,39 +700,7 @@ export default function DraftDeckBuilderModal({
             <div className="flex items-center justify-between gap-3 mb-2">
               <h3 className="text-white text-sm font-bold shrink-0">📦 Pool ({availableInPool.length})</h3>
               
-              {/* Deck Scale Slider */}
-              <div className="flex items-center gap-2 flex-1">
-                <span className="text-[9px] text-slate-400 shrink-0">Deck:</span>
-                <ZoomOut className="w-3 h-3 text-slate-400 shrink-0" />
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2.0"
-                  step="0.1"
-                  value={deckScale}
-                  onChange={(e) => handleDeckScaleChange(parseFloat(e.target.value))}
-                  className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:border-0"
-                />
-                <ZoomIn className="w-3 h-3 text-slate-400 shrink-0" />
-                <span className="text-[9px] text-slate-400 w-8 text-center shrink-0">
-                  {Math.round(deckScale * 100)}%
-                </span>
-              </div>
-
-              {/* Lock Button */}
-              <button
-                onClick={toggleScalesLock}
-                className={`p-1 rounded transition-all ${
-                  scalesLocked
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-700 text-slate-400 hover:text-white'
-                }`}
-                title={scalesLocked ? 'Unlock scales' : 'Lock scales together'}
-              >
-                {scalesLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-              </button>
-
-              {/* Sideboard Scale Slider */}
+              {/* Sideboard Scale Slider (left) - controls pool/sideboard cards */}
               <div className="flex items-center gap-2 flex-1">
                 <span className="text-[9px] text-slate-400 shrink-0">Side:</span>
                 <ZoomOut className="w-3 h-3 text-slate-400 shrink-0" />
@@ -748,6 +718,38 @@ export default function DraftDeckBuilderModal({
                   {Math.round(sideboardScale * 100)}%
                 </span>
               </div>
+
+              {/* Lock Button */}
+              <button
+                onClick={toggleScalesLock}
+                className={`p-1 rounded transition-all ${
+                  scalesLocked
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-700 text-slate-400 hover:text-white'
+                }`}
+                title={scalesLocked ? 'Unlock scales' : 'Lock scales together'}
+              >
+                {scalesLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+              </button>
+
+              {/* Deck Scale Slider (right) - controls main deck cards */}
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-[9px] text-slate-400 shrink-0">Deck:</span>
+                <ZoomOut className="w-3 h-3 text-slate-400 shrink-0" />
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.1"
+                  value={deckScale}
+                  onChange={(e) => handleDeckScaleChange(parseFloat(e.target.value))}
+                  className="flex-1 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:border-0"
+                />
+                <ZoomIn className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="text-[9px] text-slate-400 w-8 text-center shrink-0">
+                  {Math.round(deckScale * 100)}%
+                </span>
+              </div>
               
               {sideboardCount > 0 && (
                 <span className="text-purple-400 text-xs bg-purple-600/20 px-2 py-0.5 rounded-full shrink-0">
@@ -756,7 +758,7 @@ export default function DraftDeckBuilderModal({
               )}
             </div>
             <div className="flex gap-1 overflow-x-auto pb-1">
-              {availableInPool.map(card => renderPoolCard(card, deckScale))}
+              {availableInPool.map(card => renderPoolCard(card, sideboardScale))}
             </div>
           </div>
 
@@ -986,7 +988,7 @@ export default function DraftDeckBuilderModal({
             disabled={!canFinalize || isFinalizing}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white rounded text-sm font-semibold"
           >
-            {isFinalizing ? 'Saving...' : `Export Deck`}
+            {isFinalizing ? 'Saving...' : finalizeLabel}
           </button>
         </div>
       </div>

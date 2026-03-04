@@ -1,8 +1,9 @@
 // app/pages/sanctum/components/Sidebar.tsx
 'use client'
 
-import { Home, Package, Gamepad2, Dice6, Users, Swords, Megaphone, Settings, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Home, Package, Gamepad2, Dice6, Users, Swords, Megaphone, Settings, ChevronLeft, ChevronRight, X, LogOut } from 'lucide-react'
 import { useState } from 'react'
+import { authClient } from '@/lib/auth-client'
 
 export type Section = 'overview' | 'decks' | 'cardGames' | 'riskGames' | 'social' | 'pvp' | 'announcements' | 'settings'
 
@@ -134,6 +135,18 @@ export function Sidebar({
             ← Return Home
           </a>
         )}
+
+        <button
+          onClick={async () => {
+            await authClient.signOut();
+            window.location.href = '/user/login';
+          }}
+          className={`w-full flex items-center gap-2 px-4 py-2 bg-red-900/40 hover:bg-red-800/60 text-red-300 hover:text-red-200 rounded-lg transition-colors ${isCollapsed ? 'justify-center' : ''}`}
+          title="Logout"
+        >
+          <LogOut className="w-4 h-4 flex-shrink-0" />
+          {!isCollapsed && <span className="text-sm">Logout</span>}
+        </button>
 
         {/* Collapse Button - Desktop only */}
         <button

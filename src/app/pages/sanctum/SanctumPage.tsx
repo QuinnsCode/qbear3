@@ -10,6 +10,7 @@ import { db } from "@/db";
 import { getFriends, getFriendRequests } from "@/app/serverActions/social/friends";
 import { getGameInvites } from "@/app/serverActions/social/gameInvites";
 import { SanctumClient } from "./SanctumClient";
+import { LogoutButton } from "@/app/pages/user/LoginButton";
 import {
   getCachedUserProfile,
   setCachedUserProfile,
@@ -146,14 +147,24 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   }
   
   if (!orgSlug && ctx?.user?.id) {
-    usersFirstOrgSlugFound = await getFirstOrgSlugOfUser(ctx.user.id);
+    try {
+      usersFirstOrgSlugFound = await getFirstOrgSlugOfUser(ctx.user.id);
+    } catch (e) {
+      console.warn('[SanctumPage] getFirstOrgSlugOfUser failed:', e);
+    }
     if (usersFirstOrgSlugFound) {
-      const protocol = new URL(request.url).protocol;
-      const fullUrl = `${protocol}//${usersFirstOrgSlugFound}.qntbr.com/sanctum`;
-      
+      const url = new URL(request.url);
+      const hostname = url.hostname;
+      let redirectHost: string;
+      if (hostname.includes('localhost')) {
+        const port = url.port || '5173';
+        redirectHost = `${usersFirstOrgSlugFound}.localhost:${port}`;
+      } else {
+        redirectHost = `${usersFirstOrgSlugFound}.qntbr.com`;
+      }
       return new Response(null, {
         status: 302,
-        headers: { Location: fullUrl }
+        headers: { Location: `${url.protocol}//${redirectHost}/sanctum` }
       });
     }
   }
@@ -209,7 +220,7 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
     <div className="min-h-screen bg-slate-700">
       {!orgSlug ? (
         <div className="max-w-7xl mx-auto px-4 py-8">
-          <NoOrgSelected firstOrgSlug={usersFirstOrgSlugFound} />
+          <NoOrgSelected firstOrgSlug={usersFirstOrgSlugFound} isLoggedIn={!!ctx.user} />
         </div>
       ) : (
         <SanctumClient
@@ -230,20 +241,44 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   );
 }
 
-function NoOrgSelected({ firstOrgSlug }: { firstOrgSlug: string | null }) {
+function NoOrgSelected({ firstOrgSlug, isLoggedIn }: { firstOrgSlug: string | null; isLoggedIn: boolean }) {
   return (
     <div className="bg-slate-800 rounded-lg border-2 border-slate-600 p-8 text-center shadow-lg">
       <h2 className="text-2xl font-bold text-white mb-4">No Organization Selected</h2>
-      <p className="text-gray-300 mb-4">
+      <p className="text-gray-300 mb-6">
         Please select an organization or add your subdomain.
       </p>
       {firstOrgSlug && (
-        <div className="mt-4 p-4 bg-slate-700/70 rounded-lg border border-slate-600">
+        <div className="mb-6 p-4 bg-slate-700/70 rounded-lg border border-slate-600">
           <p className="text-gray-200">
-            Your first org: <strong className="text-blue-400">{firstOrgSlug}</strong>
+            Your org: <strong className="text-blue-400">{firstOrgSlug}</strong>
           </p>
         </div>
       )}
+      <div className="flex flex-wrap justify-center gap-4">
+        {!isLoggedIn && (
+          <a
+            href="/user/login"
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors"
+          >
+            Login
+          </a>
+        )}
+        {isLoggedIn && (
+          <LogoutButton
+            className="px-6 py-3 bg-red-700 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors"
+            redirectTo="/user/login"
+          >
+            Logout
+          </LogoutButton>
+        )}
+        <a
+          href="/"
+          className="px-6 py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-semibold transition-colors"
+        >
+          Return Home
+        </a>
+      </div>
     </div>
   );
 }

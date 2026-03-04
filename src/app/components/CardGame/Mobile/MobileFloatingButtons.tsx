@@ -2,6 +2,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Hand, BookOpen, Heart } from 'lucide-react'
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'
 import LifeTracker from '../LifeTracker/LifeTracker'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
@@ -60,7 +61,7 @@ export default function MobileFloatingButtons({
         onClick={onOpenHand}
         className="absolute bottom-4 left-4 z-30 bg-slate-800 hover:bg-slate-700 rounded-lg px-4 py-3 flex items-center gap-2 shadow-xl border border-slate-600 transition-colors"
       >
-        <span className="text-2xl">🃏</span>
+        <Hand className="w-6 h-6 text-white" />
         <div className="flex flex-col items-start">
           <span className="text-white text-xs font-semibold">Hand</span>
           <span className="text-green-400 text-sm font-bold">{player.zones.hand.length}</span>
@@ -72,7 +73,7 @@ export default function MobileFloatingButtons({
         onClick={onOpenZones}
         className="absolute bottom-4 right-4 z-30 bg-slate-800 hover:bg-slate-700 rounded-lg px-4 py-3 flex items-center gap-2 shadow-xl border border-slate-600 transition-colors"
       >
-        <span className="text-2xl">📚</span>
+        <BookOpen className="w-6 h-6 text-white" />
         <div className="flex flex-col items-start">
           <span className="text-white text-xs font-semibold">Zones</span>
           <span className="text-blue-400 text-sm font-bold">{player.zones.library.length}</span>
@@ -84,7 +85,7 @@ export default function MobileFloatingButtons({
         onClick={() => setShowLifeTracker(true)}
         className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 bg-slate-800 hover:bg-slate-700 rounded-lg px-4 py-3 flex items-center gap-2 shadow-xl border border-slate-600 transition-colors"
       >
-        <span className="text-2xl">💚</span>
+        <Heart className="w-6 h-6 text-green-400" />
         <div className="flex flex-col items-start">
           <span className="text-white text-xs font-semibold">Life</span>
           <span className="text-green-400 text-sm font-bold">{player.life}</span>
