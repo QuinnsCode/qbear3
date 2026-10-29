@@ -14,16 +14,16 @@ QNTBR is a Magic: The Gathering (MTG) virtual tabletop for Commander format mult
 
 ```bash
 pnpm install              # Install dependencies
-npm run dev               # Local dev server (localhost:5173)
-npm run build             # Production build (Vite)
-npm run check             # Generate Prisma client + wrangler types + tsc
-npm run types             # TypeScript type checking only
-npm run generate          # Generate Prisma client + wrangler types
-npm run migrate:dev       # Apply migrations locally
-npm run migrate:prd       # Apply migrations to production D1
-npm run migrate:new       # Create new migration
-npm run seed              # Run seed script
-npm run release           # Full production deploy (generate + build + wrangler deploy)
+pnpm run dev               # Local dev server (localhost:5173)
+pnpm run build             # Production build (Vite)
+pnpm run check             # Generate Prisma client + wrangler types + tsc
+pnpm run types             # TypeScript type checking only
+pnpm run generate          # Generate Prisma client + wrangler types
+pnpm run migrate:dev       # Apply migrations locally
+pnpm run migrate:prd       # Apply migrations to production D1
+pnpm run migrate:new       # Create new migration
+pnpm run seed              # Run seed script
+pnpm run release           # Full production deploy (generate + build + wrangler deploy)
 ```
 
 ### Rusty Buns (desktop binary, typed Cloudflare deploy)
@@ -31,15 +31,15 @@ npm run release           # Full production deploy (generate + build + wrangler 
 [Rusty Buns](https://github.com/QuinnsCode/RustyBuns) is a dev dependency that packs this app from `rustybuns.config.ts`. It never edits `src/` and nothing of it ships in the Worker.
 
 ```bash
-npm run desktop:dev       # vite build + run the Worker on a local Bun host (sqlite behind D1/KV/R2/DOs), opens Chrome
-npm run desktop:build     # dist/qntbr-<os>-<arch>: one double-clickable file
-npm run rb:plan           # typecheck the generated Alchemy stack; list what a deploy would create (creates nothing)
-npm run rb:deploy         # alchemy deploy; refuses without a matching plan, then asks
+pnpm run desktop:dev      # vite build + run the Worker on a local Bun host (sqlite behind D1/KV/R2/DOs), opens Chrome
+pnpm run desktop:build    # dist/qntbr-<os>-<arch>: one double-clickable file
+pnpm run rb:plan          # typecheck the generated Alchemy stack; list what a deploy would create (creates nothing)
+pnpm run rb:deploy        # alchemy deploy; refuses without a matching plan, then asks
                           # (plan/deploy need `pnpm exec rustybuns add deploy` once: pinned Alchemy + Effect, and `rustybuns login cloudflare`)
 pnpm exec rustybuns generate   # regenerate .rustybuns/ and wrangler.generated.jsonc from the config
 ```
 
-Secret values come from `.dev.vars` or the shell (`BETTER_AUTH_SECRET`, `AUTH_SECRET_KEY` and `API_ENCRYPTION_KEY` are required; the rest are optional). The custom-domain routes and observability still live in `wrangler.jsonc`, and `npm run release` still deploys the live Worker through wrangler.
+Secret values come from `.dev.vars` or the shell (`BETTER_AUTH_SECRET`, `AUTH_SECRET_KEY` and `API_ENCRYPTION_KEY` are required; the rest are optional). The custom-domain routes and observability still live in `wrangler.jsonc`, and `pnpm run release` still deploys the live Worker through wrangler.
 
 
 ## Architecture
@@ -135,7 +135,8 @@ Game state types are defined in `src/app/services/cardGame/CardGameState.ts`.
 ## Key Conventions
 
 - **Path aliases**: `@/*` → `src/*`, `@generated/*` → `generated/*`
-- **Package manager**: pnpm (10.11.0)
+- **Package manager**: pnpm (version pinned in package.json `packageManager`). Always `pnpm run` / `pnpm exec` / `pnpm dlx`, never npm or npx
+- **pnpm 12 release-age policy**: installs reject any package version published less than 24h ago (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`). Don't disable it; pin the previous version or wait a day
 - **TypeScript strict mode** enabled
 - **React 19** with Server Components — components are server by default
 - **Client components** must have `"use client"` directive

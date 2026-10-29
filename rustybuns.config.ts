@@ -15,7 +15,7 @@ import { defineConfig } from "@rustybuns/cli/config";
 //
 // What stays in wrangler.jsonc for now: the custom-domain routes (qntbr.com/*,
 // *.qntbr.com/*) and observability. This CLI version has no field for them, and
-// `npm run release` still deploys the live Worker through wrangler as before.
+// `pnpm run release` still deploys the live Worker through wrangler as before.
 //
 // Alchemy names the resources it creates itself (`adopt` is off), so a first
 // `plan`/`deploy` from here cannot touch the live Worker, D1 database or buckets.
