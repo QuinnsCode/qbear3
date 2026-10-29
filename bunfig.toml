@@ -1,0 +1,4 @@
+# `bun test` runs the e2e suite in tests/ (see tests/e2e/kit.ts); src/ is not crawled for tests.
+[test]
+root = "tests"
+preload = ["./tests/e2e/setup.ts"]

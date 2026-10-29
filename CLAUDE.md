@@ -24,7 +24,17 @@ pnpm run migrate:prd       # Apply migrations to production D1
 pnpm run migrate:new       # Create new migration
 pnpm run seed              # Run seed script
 pnpm run release           # Full production deploy (generate + build + wrangler deploy)
+pnpm run test:e2e          # End-to-end suite under `bun test` (starts its own vite dev server)
 ```
+
+### Tests (Bun, no browser)
+
+The e2e suite is plain `bun test` over HTTP: `tests/e2e/kit.ts` starts `vite dev` on a free port
+(or reuses `E2E_BASE_URL`), sends every request with an explicit `Host` header so lair subdomains
+need no DNS, follows redirects across `*.localhost`, and keeps one cookie jar per `Browser`.
+Pages are asserted from their server-rendered HTML; auth goes through better-auth's endpoints.
+Run one file with `bun test tests/e2e/portal.test.ts`. `pnpm run types` typechecks `tests/` with
+Bun types (`tests/tsconfig.json`). CI runs the whole suite (`.github/workflows/e2e.yml`).
 
 ## Architecture
 

@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["bun"],
+    "lib": ["ESNext", "DOM", "DOM.AsyncIterable"],
+    "allowImportingTsExtensions": true
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["../node_modules"]
+}

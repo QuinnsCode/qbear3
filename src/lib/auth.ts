@@ -120,14 +120,24 @@ export const createAuth = () => {
       ? { enabled: false }
       : { enabled: true, domain: ".qntbr.com" }
     },
-    trustedOrigins: [
-      "https://qntbr.com",
-      "https://*.qntbr.com",
-      "http://localhost:5173",
-      "http://*.localhost:5173",
-      "http://localhost:8787",
-      "http://*.localhost:8787",
-    ],
+    // Loopback hosts (vite dev, wrangler dev, the Rusty Buns host, the e2e suite's
+    // free port) trust their own origin whatever the port: none of them is the live site.
+    trustedOrigins: (request) => {
+      const origins = [
+        "https://qntbr.com",
+        "https://*.qntbr.com",
+        "http://localhost:5173",
+        "http://*.localhost:5173",
+        "http://localhost:8787",
+        "http://*.localhost:8787",
+      ];
+      const host = request?.headers.get("host");
+      const hostname = host?.replace(/:\d+$/, "");
+      if (hostname && (hostname === "localhost" || hostname.endsWith(".localhost") || hostname === "127.0.0.1" || hostname === "[::1]")) {
+        origins.push(`http://${host}`);
+      }
+      return origins;
+    },
     account: {
       accountLinking: {
         enabled: true,
