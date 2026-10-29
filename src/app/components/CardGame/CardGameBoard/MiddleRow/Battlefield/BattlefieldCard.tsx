@@ -16,6 +16,13 @@ interface Props {
   scale?: number
   onHover: () => void
   isSelected: boolean
+  selectedCount: number
+  multiDragDelta?: { dx: number; dy: number } | null
+  isDraggingMulti?: boolean
+  onMultiDragMove?: (dx: number, dy: number) => void
+  onMultiDragEnd?: (dx: number, dy: number) => void
+  onDeselectAll?: () => void
+  isMobileSelectionMode?: boolean
   onSelect: () => void
   spectatorMode?: boolean
   onContextMenu?: (e: React.MouseEvent) => void
@@ -31,6 +38,13 @@ export function BattlefieldCard({
   scale = 1,
   onHover,
   isSelected,
+  selectedCount,
+  multiDragDelta,
+  isDraggingMulti = false,
+  onMultiDragMove,
+  onMultiDragEnd,
+  onDeselectAll,
+  isMobileSelectionMode = false,
   onSelect,
   spectatorMode = false,
   onContextMenu
@@ -51,10 +65,13 @@ export function BattlefieldCard({
     if (isDragging || now < ignoreServerUpdatesUntil.current) {
       return
     }
-    
+    // Suppress server updates for all selected cards while any multi-drag is in progress
+    if (isSelected && isDraggingMulti) {
+      return
+    }
     // Update from server state (already in battlefield coordinates)
     setLocalPosition({ x: card.position.x, y: card.position.y })
-  }, [card.position, isDragging])
+  }, [card.position, isDragging, isSelected, isDraggingMulti])
   
   // Handle tap/untap (rotate 90 degrees clockwise)
   const handleTapCard = async () => {
@@ -87,26 +104,47 @@ export function BattlefieldCard({
     if (timeSinceLastTap < DOUBLE_TAP_DELAY) {
       e.preventDefault()
       handleTapCard()
+      // Double-click on a card also deselects the entire group
+      onDeselectAll?.()
       lastTapTime.current = 0
       return
     }
-    
+
     lastTapTime.current = now
-    
-    // Single click - select card
+
+    // When this card is already part of a multi-selection (2+ cards selected),
+    // don't call onSelect() — that would collapse the group to just this card.
+    // Just start the drag timer so the group can be dragged.
+    if (isSelected && selectedCount > 1) {
+      const dragStartTimeout = setTimeout(() => {
+        startDrag(e)
+      }, DOUBLE_TAP_DELAY)
+
+      const cancelDrag = () => {
+        clearTimeout(dragStartTimeout)
+        document.removeEventListener('mouseup', cancelDrag)
+        document.removeEventListener('touchend', cancelDrag)
+      }
+
+      document.addEventListener('mouseup', cancelDrag, { once: true })
+      document.addEventListener('touchend', cancelDrag, { once: true })
+      return
+    }
+
+    // Single click — select this card (clears any existing selection)
     onSelect()
-    
+
     // Start drag after a short delay to distinguish from double-tap
     const dragStartTimeout = setTimeout(() => {
       startDrag(e)
     }, DOUBLE_TAP_DELAY)
-    
+
     const cancelDrag = () => {
       clearTimeout(dragStartTimeout)
       document.removeEventListener('mouseup', cancelDrag)
       document.removeEventListener('touchend', cancelDrag)
     }
-    
+
     document.addEventListener('mouseup', cancelDrag, { once: true })
     document.addEventListener('touchend', cancelDrag, { once: true })
   }
@@ -115,48 +153,43 @@ export function BattlefieldCard({
     if (!isCurrentPlayer || spectatorMode) return
     e.preventDefault()
     setIsDragging(true)
-    
+
     const cardRect = cardRef.current?.getBoundingClientRect()
     if (!cardRect) return
-    
+
     const parent = cardRef.current?.parentElement
     if (!parent) return
     const parentRect = parent.getBoundingClientRect()
-    
+
     const getClientPos = (event: MouseEvent | TouchEvent) => {
       if ('touches' in event && event.touches.length > 0) {
         return { x: event.touches[0].clientX, y: event.touches[0].clientY }
       }
       return { x: (event as MouseEvent).clientX, y: (event as MouseEvent).clientY }
     }
-    
-    const startPos = 'touches' in e ? 
+
+    const startPos = 'touches' in e ?
       { x: e.touches[0].clientX, y: e.touches[0].clientY } :
       { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY }
-    
+
     const offsetX = startPos.x - cardRect.left
     const offsetY = startPos.y - cardRect.top
-    
+
+    // Multi-drag mode: report delta to container, container moves all selected cards
+    const isMultiDrag = isSelected && selectedCount > 1
+    const startBFPos = isMultiDrag ? { ...localPosition } : null
+
     const handleMove = (moveEvent: MouseEvent | TouchEvent) => {
       const clientPos = getClientPos(moveEvent)
-      
-      // Convert screen position to battlefield position
       const screenX = clientPos.x - parentRect.left - offsetX
       const screenY = clientPos.y - parentRect.top - offsetY
-      
-      const battlefieldPos = screenToBattlefield(
-        screenX,
-        screenY,
-        scrollOffset.left,
-        scrollOffset.top,
-        scale
-      )
+      const battlefieldPos = screenToBattlefield(screenX, screenY, scrollOffset.left, scrollOffset.top, scale)
 
-      // Clamp to battlefield bounds
-      const clampedPos = clampToBattlefield(battlefieldPos.x, battlefieldPos.y)
-
-      // ✅ INSTANT CLIENT UPDATE - NO SERVER CALL
-      setLocalPosition(clampedPos)
+      if (isMultiDrag && startBFPos) {
+        onMultiDragMove?.(battlefieldPos.x - startBFPos.x, battlefieldPos.y - startBFPos.y)
+      } else {
+        setLocalPosition(clampToBattlefield(battlefieldPos.x, battlefieldPos.y))
+      }
     }
 
     const handleEnd = (upEvent: MouseEvent | TouchEvent) => {
@@ -164,47 +197,38 @@ export function BattlefieldCard({
         { x: upEvent.changedTouches[0].clientX, y: upEvent.changedTouches[0].clientY } :
         getClientPos(upEvent)
 
-      // Convert final screen position to battlefield position
       const screenX = clientPos.x - parentRect.left - offsetX
       const screenY = clientPos.y - parentRect.top - offsetY
+      const battlefieldPos = screenToBattlefield(screenX, screenY, scrollOffset.left, scrollOffset.top, scale)
 
-      const battlefieldPos = screenToBattlefield(
-        screenX,
-        screenY,
-        scrollOffset.left,
-        scrollOffset.top,
-        scale
-      )
-      
-      // Clamp to battlefield bounds
-      const clampedPos = clampToBattlefield(battlefieldPos.x, battlefieldPos.y)
-      
-      // ✅ IGNORE SERVER UPDATES FOR 500MS (client prediction)
-      ignoreServerUpdatesUntil.current = Date.now() + 500
-      setLocalPosition(clampedPos)
-      
-      // ✅ ONLY COMMIT FINAL POSITION TO SERVER (on mouse up)
-      // Position is now in battlefield coordinates, not normalized
-      applyCardGameAction(cardGameId, {
-        type: 'move_card_position',
-        playerId: playerId,
-        data: { 
-          cardId: card.instanceId,
-          position: clampedPos
-        }
-      }).catch(err => {
-        console.error('Failed to update position:', err)
-        ignoreServerUpdatesUntil.current = 0
-      })
-      
+      if (isMultiDrag && startBFPos) {
+        const dx = battlefieldPos.x - startBFPos.x
+        const dy = battlefieldPos.y - startBFPos.y
+        // Don't set localPosition here — multiDragDelta owns the visual position for
+        // all selected cards until handleMultiDragEnd clears it (with a delay for server response).
+        // isDraggingMulti stays true and suppresses server updates during that window.
+        onMultiDragEnd?.(dx, dy)
+      } else {
+        const clampedPos = clampToBattlefield(battlefieldPos.x, battlefieldPos.y)
+        ignoreServerUpdatesUntil.current = Date.now() + 500
+        setLocalPosition(clampedPos)
+        applyCardGameAction(cardGameId, {
+          type: 'move_card_position',
+          playerId: playerId,
+          data: { cardId: card.instanceId, position: clampedPos }
+        }).catch(err => {
+          console.error('Failed to update position:', err)
+          ignoreServerUpdatesUntil.current = 0
+        })
+      }
+
       setIsDragging(false)
-      
       document.removeEventListener('mousemove', handleMove)
       document.removeEventListener('mouseup', handleEnd)
       document.removeEventListener('touchmove', handleMove)
       document.removeEventListener('touchend', handleEnd)
     }
-    
+
     document.addEventListener('mousemove', handleMove)
     document.addEventListener('mouseup', handleEnd)
     document.addEventListener('touchmove', handleMove, { passive: false })
@@ -221,6 +245,10 @@ export function BattlefieldCard({
   const imageUrl = getCardImageUrl()
   const isFaceUp = card.isFaceUp !== false
   const isTapped = card.rotation === 90
+
+  // Apply multi-drag delta offset for all selected cards during group drag
+  const displayX = isSelected && multiDragDelta ? localPosition.x + multiDragDelta.dx : localPosition.x
+  const displayY = isSelected && multiDragDelta ? localPosition.y + multiDragDelta.dy : localPosition.y
   
   // ✅ RENDER TOKEN PLACEHOLDER (when no image but is token)
   const renderTokenPlaceholder = () => {
@@ -264,7 +292,7 @@ export function BattlefieldCard({
       onContextMenu={onContextMenu}
       className={`absolute rounded border-2 shadow-lg overflow-hidden select-none ${
         isCurrentPlayer && !spectatorMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
-      } ${isDragging ? 'z-50' : 'z-10'} ${spectatorMode ? '' : 'touch-none'} ${
+      } ${isDragging || (isSelected && isDraggingMulti) ? 'z-50' : 'z-10'} ${spectatorMode ? '' : 'touch-none'} ${
         isSelected 
           ? 'ring-4 ring-amber-500 ring-offset-2 ring-offset-slate-900 border-orange-500' 
           : isFaceUp 
@@ -272,9 +300,9 @@ export function BattlefieldCard({
             : 'border-blue-700'
       }`}
       style={{
-        // Position in scaled battlefield space
-        left: `${localPosition.x * scale}px`,
-        top: `${localPosition.y * scale}px`,
+        // Position in scaled battlefield space (uses multi-drag offset when applicable)
+        left: `${displayX * scale}px`,
+        top: `${displayY * scale}px`,
         width: `${BATTLEFIELD_CONFIG.CARD_WIDTH * scale}px`,
         height: `${BATTLEFIELD_CONFIG.CARD_HEIGHT * scale}px`,
         transform: `rotate(${card.rotation}deg)`,

@@ -1,7 +1,7 @@
 // app/components/CardGame/CardGameBoard/MiddleRow/BattlefieldHeader.tsx
 'use client'
 
-import { Heart, Maximize2, Minimize2 } from 'lucide-react'
+import { Heart, Maximize2, Minimize2, ChevronUp } from 'lucide-react'
 import type { MTGPlayer } from '@/app/services/cardGame/CardGameState'
 
 interface BattlefieldHeaderProps {
@@ -12,6 +12,7 @@ interface BattlefieldHeaderProps {
   onToggleLargeView?: () => void
   onOpenLifeTracker?: () => void
   onOpenMinimap?: () => void
+  onCollapse?: () => void
 }
 
 export default function BattlefieldHeader({
@@ -21,12 +22,11 @@ export default function BattlefieldHeader({
   isLargeBattlefieldView,
   onToggleLargeView,
   onOpenLifeTracker,
-  onOpenMinimap
+  onOpenMinimap,
+  onCollapse
 }: BattlefieldHeaderProps) {
   return (
-    <div className={`flex items-center justify-between transition-all ${
-      isLargeBattlefieldView ? 'mb-2' : 'mb-4'
-    }`}>
+    <div className="flex items-center justify-between">
       {/* Left: Player name & color */}
       <div className="flex items-center gap-2">
         <div 
@@ -56,7 +56,7 @@ export default function BattlefieldHeader({
             <span className="text-lg">🗺️</span>
           </button>
         )}
-        
+
         {/* Large View Toggle */}
         {onToggleLargeView && !spectatorMode && (
           <button
@@ -69,6 +69,17 @@ export default function BattlefieldHeader({
             ) : (
               <Maximize2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
             )}
+          </button>
+        )}
+
+        {/* Collapse button */}
+        {onCollapse && (
+          <button
+            onClick={onCollapse}
+            className="px-2 py-1.5 rounded-lg border transition-all bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border-slate-600"
+            title="Hide header"
+          >
+            <ChevronUp className="w-3.5 h-3.5" />
           </button>
         )}
       </div>

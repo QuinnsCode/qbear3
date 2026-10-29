@@ -1,338 +1,594 @@
 // @/app/pages/landing/LandingPage.tsx
 import { type RequestInfo } from "rwsdk/worker";
-import { 
-  FantasyBackground, 
-  FantasyCard, 
-  FantasyTitle, 
-  FantasyText, 
-  FantasyButton 
-} from "@/app/components/theme/FantasyTheme";
 
-// REAL features for MTG social VTT
-const features = [
+const products = [
   {
-    icon: '🎴',
-    title: 'Magic: The Gathering Sync',
-    description: 'Play MTG Commander online with friends. Every card play, life counter change, and board state syncs instantly.',
+    key: 'qlave',
+    name: 'Qlave',
+    tagline: 'Web Calls & Collaboration',
+    description: 'Audio, video, and real-time collaboration — browser native, no installs. Built for teams who want calls that disappear into the workflow instead of interrupting it.',
+    bullets: ['WebRTC audio & video', 'Live collaboration tools', 'One link, any device', 'Integrated into QVTT'],
+    href: 'https://qlave.dev',
+    cta: 'Open Qlave',
+    gradient: 'linear-gradient(112deg, #09090b 0%, #0e0818 22%, #2d0a5e 50%, #c2410c 82%, #ea580c 100%)',
+    accentBevel: '#4c1d95',
+    glowColor: 'rgba(124, 58, 237, 0.2)',
+    tendrilColor: 'rgba(167, 139, 250, 0.12)',
+    status: 'live',
   },
   {
-    icon: '⚡',
-    title: 'Real-Time Multiplayer',
-    description: 'See everything as it happens. When someone taps mana or plays a spell, everyone sees it instantly—zero lag.',
+    key: 'qvtt',
+    name: 'QVTT',
+    tagline: 'Virtual Tabletop',
+    description: 'Play Magic: The Gathering Commander online with your pod. Real-time board sync, life tracking, and in-game calls — share one link and play.',
+    bullets: ['MTG Commander online', 'Real-time multiplayer sync', 'In-game calls via Qlave', 'No installs for players'],
+    href: '/qvtt',
+    cta: 'Enter the Sanctum',
+    // green → deep purple
+    gradient: 'linear-gradient(112deg, #09090b 0%, #0a1a0e 22%, #14532d 48%, #3b0764 75%, #5b21b6 100%)',
+    accentBevel: '#15803d',
+    glowColor: 'rgba(34, 197, 94, 0.15)',
+    tendrilColor: 'rgba(134, 239, 172, 0.1)',
+    status: 'live',
   },
   {
-    icon: '🔗',
-    title: 'Share One Link',
-    description: 'Just share a link with your playgroup. No accounts required for players, no complicated setup—just click and play.',
+    key: 'flareup',
+    name: 'Flareup',
+    tagline: 'Infrastructure Cost Monitor',
+    description: "Visibility into your infrastructure spend without digging through dashboards. Know what you're burning before your bill surprises you.",
+    bullets: ['Real-time spend alerts', 'Usage breakdowns', 'Cost trend tracking', 'At-a-glance dashboard'],
+    href: 'https://flareup.dev',
+    cta: 'Check the Burn',
+    gradient: 'linear-gradient(112deg, #09090b 0%, #0f1114 22%, #1c2128 48%, #9a3412 75%, #dc2626 100%)',
+    accentBevel: '#374151',
+    glowColor: 'rgba(220, 38, 38, 0.15)',
+    tendrilColor: 'rgba(252, 165, 165, 0.08)',
+    status: 'live',
   },
   {
-    icon: '👥',
-    title: 'Built for Groups',
-    description: 'Play Commander with your whole pod. Track life totals, commander damage, and board states for up to 8 players at once.',
+    key: 'staticflare',
+    name: 'Staticflare',
+    tagline: 'Static Hosting',
+    description: 'Deploy static sites to the edge in one command. Any TypeScript app with a build step can ship — infrastructure wiring handled for you.',
+    bullets: ['Edge-native deployment', 'Any TS/SSG framework', 'One command to ship', 'Your infrastructure'],
+    href: 'https://staticflare.dev',
+    cta: 'Coming Soon',
+    gradient: 'linear-gradient(112deg, #09090b 0%, #0e0e10 50%, #1c1a16 100%)',
+    accentBevel: '#27272a',
+    glowColor: 'rgba(0,0,0,0)',
+    tendrilColor: 'rgba(255,255,255,0.03)',
+    status: 'soon',
   },
 ];
 
-// Helper to get proper domain URLs
-function getDomainUrl(subdomain: string | null, path: string, request: Request): string {
-  const url = new URL(request.url);
-  const isLocalhost = url.hostname.includes('localhost');
-  
-  if (isLocalhost) {
-    const port = url.port || '5173';
-    if (subdomain) {
-      return path;
-    }
-    return path;
-  }
-  
-  const baseDomain = 'qntbr.com';
-  if (subdomain) {
-    return `https://${subdomain}.${baseDomain}${path}`;
-  }
-  return `https://${baseDomain}${path}`;
-}
-
-// Main Landing Page Component
-export default function LandingPage({ ctx, request }: RequestInfo) {
+export default function LandingPage({ ctx }: RequestInfo) {
   const isLoggedIn = !!ctx.user;
-  const userOrg = ctx.organization?.slug;
-  
-  const sandboxUrl = getDomainUrl('sandbox', '/cardGame/regal-gray-wolf', request);
-  const orgUrl = userOrg ? getDomainUrl(userOrg, '/sanctum', request) : null;
 
   return (
-    <FantasyBackground variant="scroll">
-      <div className="min-h-screen">
-        
-        {/* Header */}
-        <header className="p-3 sm:p-4 flex flex-wrap justify-between items-center gap-3 sticky top-0 z-10 backdrop-blur-sm bg-stone-900/80 border-b border-amber-800/50">
-          <a href="/" className="flex items-center space-x-2">
-             <FantasyTitle size="sm" className="!text-white tracking-widest text-lg sm:text-xl">
-               QNTBR
-             </FantasyTitle>
-          </a>
-          
-          <nav className="flex gap-2 sm:gap-3 flex-wrap justify-end">
-            <FantasyButton variant="secondary" className="text-sm sm:text-base whitespace-nowrap">
-              <a href="/pricing" className="px-3 sm:px-4">
-                Pricing
+    <div style={{ minHeight: '100vh', background: '#09090b', color: '#e4e4e7', fontFamily: "'Syne', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        .mono { font-family: 'Geist Mono', monospace; }
+
+        .eyebrow {
+          font-family: 'Geist Mono', monospace;
+          font-size: 0.62rem;
+          letter-spacing: 0.28em;
+          text-transform: uppercase;
+          color: #3f3f46;
+        }
+
+        .nav-link {
+          font-family: 'Geist Mono', monospace;
+          font-size: 0.7rem;
+          letter-spacing: 0.1em;
+          color: #52525b;
+          text-decoration: none;
+          transition: color 0.15s;
+        }
+        .nav-link:hover { color: #a1a1aa; }
+
+        .hero-title {
+          font-size: clamp(2.8rem, 7vw, 5.5rem);
+          font-weight: 800;
+          letter-spacing: -0.035em;
+          line-height: 1.0;
+          color: #fafafa;
+        }
+        .hero-title em {
+          font-style: italic;
+          font-weight: 400;
+          color: #27272a;
+        }
+
+        /* ── Product card ── */
+        .product-card {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          min-height: 400px;
+          text-decoration: none;
+          color: inherit;
+          overflow: hidden;
+          position: relative;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.04),
+            inset 0 -1px 0 rgba(0,0,0,0.5),
+            0 2px 0 rgba(0,0,0,0.6);
+          transition: filter 0.3s, box-shadow 0.3s;
+          border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .product-card:not(.soon):hover {
+          filter: brightness(1.12);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.07),
+            inset 0 -1px 0 rgba(0,0,0,0.5),
+            0 4px 24px rgba(0,0,0,0.5);
+        }
+        .product-card.soon {
+          filter: saturate(0.2) brightness(0.5);
+          pointer-events: none;
+        }
+
+        /* ── Tendril wind layer ── */
+        /* Multiple pseudo-horizontal streaks that drift on hover */
+        .card-tendrils {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          overflow: hidden;
+          opacity: 0;
+          transition: opacity 0.4s ease;
+        }
+        .product-card:not(.soon):hover .card-tendrils {
+          opacity: 1;
+        }
+
+        /* Each tendril is a thin horizontal smear */
+        .tendril {
+          position: absolute;
+          left: -60%;
+          height: 1px;
+          border-radius: 100px;
+          transform-origin: left center;
+          animation: none;
+        }
+        .product-card:not(.soon):hover .tendril {
+          animation: tendrilDrift var(--dur, 2.4s) var(--delay, 0s) ease-in-out infinite alternate;
+        }
+
+        @keyframes tendrilDrift {
+          0% {
+            transform: translateX(0) scaleX(0.6) skewX(-8deg);
+            opacity: 0;
+          }
+          20% {
+            opacity: 1;
+          }
+          60% {
+            transform: translateX(var(--travel, 55%)) scaleX(1) skewX(-4deg);
+            opacity: 0.7;
+          }
+          100% {
+            transform: translateX(var(--travel, 80%)) scaleX(1.3) skewX(-2deg);
+            opacity: 0;
+          }
+        }
+
+        /* Tattered flag rip layer — wider wavering bands */
+        .card-flags {
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          overflow: hidden;
+          opacity: 0;
+          transition: opacity 0.5s ease;
+        }
+        .product-card:not(.soon):hover .card-flags {
+          opacity: 1;
+        }
+
+        .flag-strip {
+          position: absolute;
+          left: 0;
+          width: 100%;
+          border-radius: 0;
+          transform-origin: left center;
+          animation: none;
+        }
+        .product-card:not(.soon):hover .flag-strip {
+          animation: flagWave var(--fdur, 3s) var(--fdelay, 0s) ease-in-out infinite alternate;
+        }
+
+        @keyframes flagWave {
+          0% {
+            clip-path: polygon(0 0, 100% 8%, 100% 92%, 0 100%);
+            transform: translateX(-2%) skewX(-1deg);
+          }
+          25% {
+            clip-path: polygon(0 4%, 100% 0, 100% 100%, 0 96%);
+          }
+          50% {
+            clip-path: polygon(0 0, 100% 5%, 100% 95%, 0 100%);
+            transform: translateX(1%) skewX(1deg);
+          }
+          75% {
+            clip-path: polygon(0 6%, 100% 2%, 100% 98%, 0 94%);
+          }
+          100% {
+            clip-path: polygon(0 2%, 100% 0, 100% 100%, 0 98%);
+            transform: translateX(-1%) skewX(-0.5deg);
+          }
+        }
+
+        .card-bevel {
+          position: absolute;
+          left: 0; top: 0; bottom: 0;
+          width: 3px;
+          opacity: 0.6;
+          z-index: 2;
+        }
+
+        .card-noise {
+          position: absolute;
+          inset: 0;
+          opacity: 0.025;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+          pointer-events: none;
+        }
+
+        .card-left {
+          padding: clamp(2.5rem, 5vw, 4rem) clamp(2rem, 5vw, 3.5rem);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 1.25rem;
+          position: relative;
+          z-index: 3;
+        }
+        .card-right {
+          padding: clamp(2.5rem, 5vw, 4rem) clamp(2rem, 5vw, 3.5rem);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 1.25rem;
+          position: relative;
+          z-index: 3;
+        }
+
+        .card-name {
+          font-size: clamp(3.5rem, 9vw, 6.5rem);
+          font-weight: 800;
+          letter-spacing: -0.04em;
+          line-height: 0.9;
+          color: #ffffff;
+          text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+        }
+        .card-tagline {
+          font-family: 'Geist Mono', monospace;
+          font-size: 0.6rem;
+          letter-spacing: 0.22em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.35);
+        }
+        .card-status {
+          font-family: 'Geist Mono', monospace;
+          font-size: 0.56rem;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          padding: 0.18rem 0.55rem;
+          border-radius: 3px;
+          border: 1px solid rgba(255,255,255,0.1);
+          color: rgba(255,255,255,0.3);
+          width: fit-content;
+          background: rgba(0,0,0,0.2);
+        }
+
+        .card-cta {
+          font-family: 'Geist Mono', monospace;
+          font-size: 0.7rem;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          padding: 0.7rem 1.4rem;
+          border-radius: 4px;
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-bottom: 2px solid rgba(0,0,0,0.4);
+          color: rgba(255,255,255,0.75);
+          width: fit-content;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.08),
+            0 2px 4px rgba(0,0,0,0.3);
+          transition: all 0.12s ease;
+        }
+        .product-card:not(.soon):hover .card-cta {
+          background: rgba(255,255,255,0.11);
+          border-color: rgba(255,255,255,0.18);
+          border-bottom-color: rgba(0,0,0,0.5);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.12),
+            0 3px 8px rgba(0,0,0,0.4);
+          transform: translateY(-1px);
+        }
+        .product-card:not(.soon):active .card-cta {
+          transform: translateY(1px);
+          box-shadow:
+            inset 0 2px 4px rgba(0,0,0,0.4),
+            0 1px 2px rgba(0,0,0,0.3);
+          border-bottom-width: 1px;
+        }
+
+        .card-desc {
+          font-size: clamp(0.88rem, 1.4vw, 0.96rem);
+          font-weight: 400;
+          line-height: 1.78;
+          color: rgba(255,255,255,0.5);
+          max-width: 440px;
+        }
+        .card-bullets {
+          list-style: none;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+        .card-bullets li {
+          font-family: 'Geist Mono', monospace;
+          font-size: 0.72rem;
+          letter-spacing: 0.03em;
+          color: rgba(255,255,255,0.32);
+          display: flex;
+          align-items: center;
+          gap: 0.65rem;
+        }
+        .card-bullets li::before {
+          content: '›';
+          font-size: 0.9rem;
+          opacity: 0.35;
+          flex-shrink: 0;
+        }
+
+        .sep {
+          height: 2px;
+          background: linear-gradient(90deg, #09090b 0%, rgba(255,255,255,0.03) 50%, #09090b 100%);
+        }
+
+        .about-body {
+          font-size: clamp(0.95rem, 1.6vw, 1.05rem);
+          font-weight: 400;
+          color: #3f3f46;
+          line-height: 1.9;
+          max-width: 600px;
+        }
+        .about-body span { color: #71717a; }
+
+        .footer-link {
+          font-family: 'Geist Mono', monospace;
+          font-size: 0.68rem;
+          letter-spacing: 0.1em;
+          color: #52525b;
+          text-decoration: none;
+          transition: color 0.15s;
+        }
+        .footer-link:hover { color: #a1a1aa; }
+
+        @media (max-width: 768px) {
+          .product-card { grid-template-columns: 1fr; min-height: unset; }
+          .card-right { padding-top: 0; }
+        }
+      `}</style>
+
+      {/* ── Nav ── */}
+      <header style={{
+        padding: '1.2rem clamp(1.5rem, 4vw, 3rem)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderBottom: '1px solid #0f0f12',
+        position: 'sticky',
+        top: 0,
+        background: 'rgba(9,9,11,0.93)',
+        backdropFilter: 'blur(16px)',
+        zIndex: 50,
+      }}>
+        <a href="/" style={{
+          fontFamily: "'Geist Mono', monospace",
+          fontSize: '0.88rem',
+          letterSpacing: '0.22em',
+          color: '#fafafa',
+          textDecoration: 'none',
+          fontWeight: 500,
+        }}>QNTBR</a>
+
+        <nav style={{ display: 'flex', gap: 'clamp(1rem, 3vw, 2rem)', alignItems: 'center' }}>
+          <a href="/blog" className="nav-link">Blog</a>
+          <a href="https://qlave.dev" className="nav-link" target="_blank" rel="noreferrer">Qlave</a>
+          <a href="/qvtt" className="nav-link">QVTT</a>
+          <a href="https://flareup.dev" className="nav-link" target="_blank" rel="noreferrer">Flareup</a>
+          {isLoggedIn && (
+            <a href="/sanctum" style={{
+              fontFamily: "'Geist Mono', monospace",
+              fontSize: '0.7rem',
+              letterSpacing: '0.1em',
+              padding: '0.4rem 1rem',
+              borderRadius: '4px',
+              background: '#fafafa',
+              color: '#09090b',
+              textDecoration: 'none',
+              fontWeight: 700,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+            }}>Games →</a>
+          )}
+        </nav>
+      </header>
+
+      {/* ── Hero ── */}
+      <section style={{
+        padding: 'clamp(4.5rem, 11vw, 9rem) clamp(1.5rem, 4vw, 3rem) clamp(3rem, 7vw, 5.5rem)',
+        borderBottom: '1px solid #0f0f12',
+      }}>
+        <p className="eyebrow" style={{ marginBottom: '2rem' }}>Solutions Architect · Web Apps &amp; Web Solutions</p>
+        <h1 className="hero-title" style={{ marginBottom: '1.75rem' }}>
+          Software that<br />makes things<br /><em>work.</em>
+        </h1>
+        <p style={{
+          fontFamily: "'Syne', sans-serif",
+          fontSize: 'clamp(0.9rem, 1.6vw, 1rem)',
+          fontWeight: 400,
+          color: '#3f3f46',
+          lineHeight: 1.8,
+          maxWidth: '440px',
+        }}>
+          A suite of web tools built to solve real problems — calls, games, deployments, visibility. Each one ships, each one runs.
+        </p>
+      </section>
+
+      {/* ── Product Cards ── */}
+      <section style={{ position: 'relative' }}>
+        {products.map((p, i) => {
+          // Generate tendril configs per card
+          const tendrils = [
+            { top: '18%',  width: '45%', opacity: 0.9, dur: '2.2s', delay: '0s',    travel: '70%' },
+            { top: '31%',  width: '32%', opacity: 0.6, dur: '3.1s', delay: '0.3s',  travel: '85%' },
+            { top: '44%',  width: '58%', opacity: 1.0, dur: '2.6s', delay: '0.1s',  travel: '60%' },
+            { top: '57%',  width: '28%', opacity: 0.5, dur: '3.4s', delay: '0.5s',  travel: '90%' },
+            { top: '70%',  width: '40%', opacity: 0.7, dur: '2.9s', delay: '0.2s',  travel: '75%' },
+            { top: '23%',  width: '18%', opacity: 0.4, dur: '4.1s', delay: '0.7s',  travel: '95%' },
+            { top: '63%',  width: '22%', opacity: 0.3, dur: '3.7s', delay: '0.9s',  travel: '80%' },
+            { top: '38%',  width: '12%', opacity: 0.5, dur: '4.5s', delay: '1.1s',  travel: '100%'},
+          ];
+
+          const flags = [
+            { top: '12%',  height: '6px',  opacity: 0.06, fdur: '3.2s', fdelay: '0s'   },
+            { top: '35%',  height: '4px',  opacity: 0.04, fdur: '4.1s', fdelay: '0.4s' },
+            { top: '58%',  height: '8px',  opacity: 0.05, fdur: '2.8s', fdelay: '0.2s' },
+            { top: '78%',  height: '5px',  opacity: 0.04, fdur: '3.6s', fdelay: '0.6s' },
+          ];
+
+          return (
+            <div key={p.key}>
+              <a
+                href={p.status !== 'soon' ? p.href : undefined}
+                target={p.status !== 'soon' && p.href.startsWith('http') ? '_blank' : undefined}
+                rel={p.status !== 'soon' && p.href.startsWith('http') ? 'noreferrer' : undefined}
+                className={`product-card${p.status === 'soon' ? ' soon' : ''}`}
+                style={{ background: p.gradient }}
+              >
+                {/* Bevel */}
+                <div className="card-bevel" style={{ background: p.accentBevel }} />
+
+                {/* Noise */}
+                <div className="card-noise" />
+
+                {/* Glow blob */}
+                <div style={{
+                  position: 'absolute',
+                  right: 0, top: 0, bottom: 0,
+                  width: '50%',
+                  background: `radial-gradient(ellipse at 80% 50%, ${p.glowColor} 0%, transparent 70%)`,
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                }} />
+
+                {/* ── Tendril wind layer ── */}
+                <div className="card-tendrils">
+                  {tendrils.map((t, ti) => (
+                    <div
+                      key={ti}
+                      className="tendril"
+                      style={{
+                        top: t.top,
+                        width: t.width,
+                        background: `linear-gradient(90deg, transparent 0%, ${p.tendrilColor.replace('0.', `${t.opacity * 0.8 * 0}.`)} 20%, ${p.tendrilColor} 60%, transparent 100%)`,
+                        ['--dur' as any]: t.dur,
+                        ['--delay' as any]: t.delay,
+                        ['--travel' as any]: t.travel,
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* ── Tattered flag strips ── */}
+                <div className="card-flags">
+                  {flags.map((f, fi) => (
+                    <div
+                      key={fi}
+                      className="flag-strip"
+                      style={{
+                        top: f.top,
+                        height: f.height,
+                        background: `linear-gradient(90deg, transparent 0%, ${p.tendrilColor} 30%, ${p.glowColor} 70%, transparent 100%)`,
+                        opacity: f.opacity,
+                        ['--fdur' as any]: f.fdur,
+                        ['--fdelay' as any]: f.fdelay,
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Left — name, meta, CTA */}
+                <div className="card-left">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.6rem' }}>
+                    <span className="card-tagline">{p.tagline}</span>
+                    <span className="card-status">
+                      {p.status === 'live' ? '● live' : p.status === 'beta' ? '◐ beta' : '○ soon'}
+                    </span>
+                  </div>
+                  <h2 className="card-name">{p.name}</h2>
+                  <span className="card-cta">{p.cta}{p.status !== 'soon' ? ' →' : ''}</span>
+                </div>
+
+                {/* Right — description + bullets */}
+                <div className="card-right">
+                  <p className="card-desc">{p.description}</p>
+                  <ul className="card-bullets">
+                    {p.bullets.map(b => <li key={b}>{b}</li>)}
+                  </ul>
+                </div>
               </a>
-            </FantasyButton>
-            {isLoggedIn && orgUrl ? (
-              <FantasyButton variant="primary" className="text-sm sm:text-base whitespace-nowrap">
-                <a href={orgUrl} className="px-3 sm:px-4">
-                  My Games
-                </a>
-              </FantasyButton>
-            ) : isLoggedIn ? (
-              <>
-                <FantasyButton variant="secondary" className="text-sm sm:text-base whitespace-nowrap">
-                  <a href={sandboxUrl} className="px-3 sm:px-4">
-                    Try Demo
-                  </a>
-                </FantasyButton>
-                <FantasyButton variant="primary" className="text-sm sm:text-base whitespace-nowrap">
-                  <a href="/user/signup" className="px-3 sm:px-4">
-                    Sign Up
-                  </a>
-                </FantasyButton>
-                <FantasyButton variant="primary" className="text-sm sm:text-base whitespace-nowrap">
-                  <a href="/user/login" className="px-3 sm:px-4">
-                    Sign In
-                  </a>
-                </FantasyButton>
-              </>
-            ) : (
-              <>
-                <FantasyButton variant="secondary" className="text-sm sm:text-base whitespace-nowrap">
-                  <a href={sandboxUrl} className="px-3 sm:px-4">
-                    Try Demo
-                  </a>
-                </FantasyButton>
-                <FantasyButton variant="primary" className="text-sm sm:text-base whitespace-nowrap">
-                  <a href="/user/login" className="px-3 sm:px-4">
-                    Login
-                  </a>
-                </FantasyButton>
-              </>
-            )}
-          </nav>
-        </header>
-
-        {/* Hero */}
-        <section className="min-h-[calc(100vh-80px)] flex items-center justify-center text-center p-4 sm:p-8 bg-linear-to-b from-stone-900 via-stone-800 to-stone-900">
-          <FantasyCard className="p-6 sm:p-12 max-w-4xl w-full bg-stone-900/90 border-2 sm:border-4 border-amber-800 shadow-2xl">
-            <FantasyTitle size="xl" className="mb-3 sm:mb-4 text-white drop-shadow-lg text-2xl sm:text-4xl lg:text-5xl">
-              Play MTG Commander Online
-            </FantasyTitle>
-            <FantasyText variant="primary" className="text-base sm:text-xl text-amber-200 mb-6 sm:mb-8 max-w-2xl mx-auto">
-              The social virtual tabletop for Magic: The Gathering. Share a link, sync your decks, play together—no webcam juggling required.
-            </FantasyText>
-            
-            <div className="flex gap-3 sm:gap-4 justify-center flex-wrap">
-              {isLoggedIn && orgUrl ? (
-                <>
-                  <FantasyButton variant="magic" size="lg" className="text-sm sm:text-base">
-                    <a href={orgUrl} className="block w-full h-full px-4 sm:px-8">
-                      My Games
-                    </a>
-                  </FantasyButton>
-                  <FantasyButton variant="secondary" size="lg" className="text-sm sm:text-base">
-                    <a href={sandboxUrl} className="block w-full h-full px-4 sm:px-8">
-                      Try Demo
-                    </a>
-                  </FantasyButton>
-                </>
-              ) : isLoggedIn ? (
-                <>
-                  <FantasyButton variant="magic" size="lg" className="text-sm sm:text-base">
-                    <a href="/user/signup" className="block w-full h-full px-4 sm:px-8">
-                      Sign Up
-                    </a>
-                  </FantasyButton>
-                  <FantasyButton variant="secondary" size="lg" className="text-sm sm:text-base">
-                    <a href={sandboxUrl} className="block w-full h-full px-4 sm:px-8">
-                      Try Demo
-                    </a>
-                  </FantasyButton>
-                </>
-              ) : (
-                <>
-                  <FantasyButton variant="magic" size="lg" className="text-sm sm:text-base">
-                    <a href={sandboxUrl} className="block w-full h-full px-4 sm:px-8">
-                      🚀 Start Free
-                    </a>
-                  </FantasyButton>
-                  <FantasyButton variant="secondary" size="lg" className="text-sm sm:text-base">
-                    <a href={sandboxUrl} className="block w-full h-full px-4 sm:px-8">
-                      Try Demo
-                    </a>
-                  </FantasyButton>
-                </>
-              )}
+              {i < products.length - 1 && <div className="sep" />}
             </div>
-            
-            {!isLoggedIn && (
-              <p className="mt-3 sm:mt-4 text-xs sm:text-sm text-amber-400/80">
-                Try the demo instantly • No account required • 100% free to start
-              </p>
-            )}
-          </FantasyCard>
-        </section>
+          );
+        })}
+      </section>
 
-        {/* Features */}
-        <section id="features" className="py-12 sm:py-20 px-4 sm:px-8 bg-stone-900/90 border-t border-b border-amber-800/50">
-          <div className="max-w-7xl mx-auto">
-            <FantasyTitle size="lg" className="text-center mb-8 sm:mb-12 text-amber-300 text-xl sm:text-3xl">
-              Built for Social Commander Games
-            </FantasyTitle>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
-              {features.map((feature, index) => (
-                <FantasyCard key={index} glowing={true} className="p-4 sm:p-6 text-center transition-transform duration-300 hover:scale-[1.03] border-amber-600">
-                  <div className="text-4xl sm:text-5xl mb-3 sm:mb-4">{feature.icon}</div>
-                  <FantasyTitle size="md" className="mb-2 sm:mb-3 text-white text-base sm:text-lg">
-                    {feature.title}
-                  </FantasyTitle>
-                  <FantasyText variant="secondary" className="text-xs sm:text-sm text-amber-200">
-                    {feature.description}
-                  </FantasyText>
-                </FantasyCard>
-              ))}
-            </div>
-          </div>
-        </section>
+      {/* ── About ── */}
+      <section style={{
+        padding: 'clamp(3rem, 8vw, 5.5rem) clamp(1.5rem, 4vw, 3rem)',
+        borderTop: '1px solid #0f0f12',
+      }}>
+        <p className="eyebrow" style={{ marginBottom: '1.5rem' }}>About</p>
+        <p className="about-body">
+          QNTBR is a <span>solutions architecture studio</span> focused on web apps and web solutions.
+          We build tools we actually use — each product in the suite is tested against the others in production.
+          The goal is software that works, ships fast, and stays out of your way.
+        </p>
+      </section>
 
-        {/* How It Works */}
-        <section className="py-12 sm:py-20 px-4 sm:px-8 max-w-7xl mx-auto">
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center">
-              
-              <div className="order-2 lg:order-1">
-                 <FantasyTitle size="lg" className="mb-3 sm:mb-4 text-amber-300 text-xl sm:text-3xl">
-                   Everyone Sees Everything, Instantly
-                 </FantasyTitle>
-                 <FantasyText variant="primary" className="text-base sm:text-lg mb-4 sm:mb-6 text-white/90">
-                   No more asking "did you see my board?" or squinting at webcams. When you play a card, tap mana, or update your life total—it appears on everyone's screen instantly.
-                 </FantasyText>
-                 <ul className="list-disc list-inside space-y-1.5 sm:space-y-2 text-sm sm:text-base text-amber-100/90 ml-2 sm:ml-4">
-                    <li>Import your Commander deck in seconds</li>
-                    <li>Track life, commander damage, and poison counters</li>
-                    <li>See everyone's battlefield and graveyards</li>
-                    <li>Share one link—players don't need accounts</li>
-                    <li>Works on desktop, tablet, or phone</li>
-                 </ul>
-                 <div className="mt-6 sm:mt-8">
-                    <FantasyButton variant="magic" className="w-full sm:w-auto">
-                       <a href={sandboxUrl} className="block w-full h-full px-6">
-                        Try Live Demo Now
-                       </a>
-                    </FantasyButton>
-                 </div>
-              </div>
-              
-              <div className="order-1 lg:order-2 rounded-xl overflow-hidden shadow-2xl border-2 sm:border-4 border-amber-700/50 bg-stone-800 flex items-center justify-center h-64 sm:h-96">
-                <FantasyText variant="secondary" className="text-amber-400/60 text-center p-4 sm:p-8 text-sm sm:text-base">
-                  [Screenshot]<br/>
-                  Commander pod with 4 players<br/>
-                  showing synchronized board states
-                </FantasyText>
-              </div>
-              
-           </div>
-        </section>
-
-        {/* Social Features */}
-        <section className="py-12 sm:py-20 px-4 sm:px-8 bg-stone-900/50 border-t border-b border-amber-800/50">
-          <div className="max-w-5xl mx-auto text-center">
-            <FantasyTitle size="lg" className="mb-8 sm:mb-12 text-amber-300 text-2xl sm:text-3xl">
-              Actually Social. Not Just Video Calls.
-            </FantasyTitle>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-              <FantasyCard className="p-6 bg-stone-800/80 border-amber-700/50">
-                <div className="text-5xl mb-4">🔗</div>
-                <FantasyTitle size="md" className="text-amber-300 mb-3">
-                  Share Links, Not Logins
-                </FantasyTitle>
-                <FantasyText variant="secondary" className="text-amber-100/90 text-sm">
-                  Create a game, copy the link, send it to your pod. They click and play—no account required for players.
-                </FantasyText>
-              </FantasyCard>
-              
-              <FantasyCard className="p-6 bg-stone-800/80 border-amber-700/50">
-                <div className="text-5xl mb-4">⚡</div>
-                <FantasyTitle size="md" className="text-amber-300 mb-3">
-                  Live Sync Engine
-                </FantasyTitle>
-                <FantasyText variant="secondary" className="text-amber-100/90 text-sm">
-                  Built from scratch for multiplayer. Every action syncs instantly—no refresh, no delay, no "did you get that?"
-                </FantasyText>
-              </FantasyCard>
-              
-              <FantasyCard className="p-6 bg-stone-800/80 border-amber-700/50">
-                <div className="text-5xl mb-4">👥</div>
-                <FantasyTitle size="md" className="text-amber-300 mb-3">
-                  Your Playgroup, Online
-                </FantasyTitle>
-                <FantasyText variant="secondary" className="text-amber-100/90 text-sm">
-                  Play with friends across the country or around the world. Works great for regular pods or pickup games.
-                </FantasyText>
-              </FantasyCard>
-            </div>
-          </div>
-        </section>
-
-        {/* Final CTA */}
-        <section className="py-12 sm:py-20 px-4 sm:px-8 text-center bg-stone-800 border-t border-amber-800">
-          <div className="max-w-3xl mx-auto">
-            <FantasyTitle size="xl" className="mb-3 sm:mb-4 text-white text-2xl sm:text-4xl lg:text-5xl">
-              Ready to Play Commander Online?
-            </FantasyTitle>
-            <FantasyText variant="primary" className="text-base sm:text-lg mb-6 sm:mb-8 text-amber-200">
-              Join players running their Commander pods on the fastest, smoothest MTG virtual tabletop.
-            </FantasyText>
-            
-            {isLoggedIn && orgUrl ? (
-              <FantasyButton variant="magic" size="lg" className="text-sm sm:text-base">
-                <a href={orgUrl} className="block w-full h-full px-6 sm:px-8">
-                  Go to My Games
-                </a>
-              </FantasyButton>
-            ) : (
-              <div className="flex gap-3 sm:gap-4 justify-center flex-wrap">
-                <FantasyButton variant="magic" size="lg" className="text-sm sm:text-base">
-                  <a href="/user/register" className="block w-full h-full px-4 sm:px-8">
-                    Start Playing Free
-                  </a>
-                </FantasyButton>
-                <FantasyButton variant="secondary" size="lg" className="text-sm sm:text-base">
-                  <a href={sandboxUrl} className="block w-full h-full px-4 sm:px-8">
-                    Try Demo First
-                  </a>
-                </FantasyButton>
-              </div>
-            )}
-            
-            <p className="mt-6 text-sm text-amber-400/80">
-              Free tier: 4 players • 3 games • Perfect for casual pods
-            </p>
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="p-4 sm:p-6 text-center text-xs sm:text-sm text-amber-500 border-t border-amber-900 bg-stone-900">
-          <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-0">
-            <span>© {new Date().getFullYear()} QNTBR - Social Virtual Tabletop for Magic: The Gathering</span>
-            <span className="hidden sm:inline mx-2">|</span>
-            <a href="/privacy" className="hover:underline">Privacy</a>
-            <span className="mx-2">|</span>
-            <a href="/terms" className="hover:underline">Terms</a>
-            <span className="mx-2">|</span>
-            <a href="/changelog" className="hover:underline">Changelog</a>
-          </div>
-        </footer>
-
-      </div>
-    </FantasyBackground>
+      {/* ── Footer ── */}
+      <footer style={{
+        padding: '1.5rem clamp(1.5rem, 4vw, 3rem)',
+        borderTop: '1px solid #0f0f12',
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '1rem',
+      }}>
+        <span style={{
+          fontFamily: "'Geist Mono', monospace",
+          fontSize: '0.62rem',
+          color: '#3f3f46',
+          letterSpacing: '0.15em',
+        }}>
+          © {new Date().getFullYear()} QNTBR LLC
+        </span>
+        <div style={{ display: 'flex', gap: '1.5rem' }}>
+          <a href="/blog" className="footer-link">Blog</a>
+          <a href="/privacy" className="footer-link">Privacy</a>
+          <a href="/terms" className="footer-link">Terms</a>
+        </div>
+      </footer>
+    </div>
   );
 }

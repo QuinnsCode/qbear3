@@ -65,9 +65,10 @@ const ACTION_LOG_DESCRIPTIONS: Partial<Record<string, ActionDescriber>> = {
   move_hand_to_battlefield_tapped: () => `put all hand cards onto battlefield (tapped)`,
 
   // Explicitly skipped (too noisy)
-  move_card_position:     () => null,
-  rotate_card:            () => null,
-  rotate_cards_batch:     () => null,
+  move_card_position:           () => null,
+  move_cards_batch_position:    () => null,
+  rotate_card:                  () => null,
+  rotate_cards_batch:           () => null,
   flip_card:              () => null,
   tap_card:               () => null,
   untap_card:             () => null,
@@ -912,22 +913,36 @@ export class CardGameDO extends DurableObject {
       'flip_card',
       'rotate_card',
     ];
-    
-    if (actionsRequiringPermission.includes(action.type)) {
+
+    if (action.type === 'move_cards_batch_position') {
+      // Batch move has no single cardId — check each card in the update individually
       const isSandbox = await this.ctx.storage.get('isSandbox') as boolean;
       const sandboxConfig = await this.ctx.storage.get('sandboxConfig');
-      
+      const { updates } = action.data as { updates: Array<{ cardId: string, position: { x: number, y: number } }> };
+
+      const allAllowed = updates.every(({ cardId }) =>
+        SandboxManager.canPlayerInteractWithCard(action.playerId, cardId, this.gameState, isSandbox, sandboxConfig)
+      );
+
+      if (!allAllowed) {
+        console.warn(`❌ Player ${action.playerId} cannot batch move one or more cards`);
+        return this.gameState;
+      }
+    } else if (actionsRequiringPermission.includes(action.type)) {
+      const isSandbox = await this.ctx.storage.get('isSandbox') as boolean;
+      const sandboxConfig = await this.ctx.storage.get('sandboxConfig');
+
       const canInteract = SandboxManager.canPlayerInteractWithCard(
-        action.playerId, 
-        action.data.cardId, 
+        action.playerId,
+        action.data.cardId,
         this.gameState,
         isSandbox,
         sandboxConfig
       );
-      
+
       if (!canInteract) {
         console.warn(`❌ Player ${action.playerId} cannot ${action.type} card ${action.data.cardId}`);
-        return this.gameState; // ✅ Reject - return unchanged state
+        return this.gameState;
       }
     }
   
@@ -1057,7 +1072,7 @@ export class CardGameDO extends DurableObject {
         
       case 'rotate_cards_batch': {
         const { cardIds, rotation } = action.data
-        
+
         const updatedCards = { ...gameState.cards }
         cardIds.forEach(cardId => {
           if (updatedCards[cardId]) {
@@ -1067,7 +1082,26 @@ export class CardGameDO extends DurableObject {
             }
           }
         })
-        
+
+        return {
+          ...gameState,
+          cards: updatedCards
+        }
+      }
+
+      case 'move_cards_batch_position': {
+        const { updates } = action.data as { updates: Array<{ cardId: string, position: { x: number, y: number } }> }
+
+        const updatedCards = { ...gameState.cards }
+        updates.forEach(({ cardId, position }) => {
+          if (updatedCards[cardId]) {
+            updatedCards[cardId] = {
+              ...updatedCards[cardId],
+              position
+            }
+          }
+        })
+
         return {
           ...gameState,
           cards: updatedCards

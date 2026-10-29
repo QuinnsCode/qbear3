@@ -53,19 +53,27 @@ export default function DraftPool({
     }
   }, [cardScale])
   
+  // Stable key representing the actual set of card IDs — prevents re-fetching
+  // when the parent re-renders with a new array reference but the same card IDs.
+  const lastFetchedKey = useRef('')
+
   // Fetch all cards (both maindeck and sideboard)
   useEffect(() => {
     const allCards = [...new Set([...cards, ...sideboardCards])]
-    
+    const fetchKey = [...allCards].sort().join(',')
+
+    if (fetchKey === lastFetchedKey.current) return
+    lastFetchedKey.current = fetchKey
+
     if (allCards.length === 0) {
       setLoading(false)
       return
     }
-    
+
     const fetchCards = async () => {
       const chunks = chunkArray(allCards, 75)
       const allData: Record<string, any> = {}
-      
+
       for (const chunk of chunks) {
         try {
           const response = await fetch('https://api.scryfall.com/cards/collection', {
@@ -75,22 +83,22 @@ export default function DraftPool({
               identifiers: chunk.map(id => ({ id }))
             })
           })
-          
+
           const data = await response.json()
           data.data.forEach((card: any) => {
             allData[card.id] = card
           })
-          
+
           await new Promise(r => setTimeout(r, 100))
         } catch (error) {
           console.error('Failed to fetch cards:', error)
         }
       }
-      
+
       setCardData(allData)
       setLoading(false)
     }
-    
+
     fetchCards()
   }, [cards, sideboardCards])
   

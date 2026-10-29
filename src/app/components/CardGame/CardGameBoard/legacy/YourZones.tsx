@@ -234,7 +234,7 @@ export default function YourZones({
       />
       
       {/* DESKTOP LAYOUT */}
-      <div className="hidden lg:flex h-full p-3 gap-3">
+      <div className="hidden lg:flex h-full p-1.5 gap-2">
         {/* Hand Carousel */}
         <HandCarousel
           player={player}

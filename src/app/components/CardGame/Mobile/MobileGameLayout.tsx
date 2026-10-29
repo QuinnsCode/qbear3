@@ -1,7 +1,7 @@
 // app/components/CardGame/Mobile/MobileGameLayout.tsx - UPDATED STYLING
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { CardGameState, MTGPlayer, TokenData } from '@/app/services/cardGame/CardGameState'
 import { BattlefieldContainer } from '../CardGameBoard/MiddleRow/Battlefield/BattlefieldContainer'
 import MobileZoneDrawer from './MobileZoneDrawer'
@@ -44,6 +44,19 @@ export default function MobileGameLayout({
   const [drawerOpen, setDrawerOpen] = useState<'zones' | 'hand' | null>(null)
   const [viewingPlayer, setViewingPlayer] = useState<string | null>(spectatorMode ? null : currentPlayer.id)
   const [tokenModalOpen, setTokenModalOpen] = useState(false)
+  const [showPlayerHeader, setShowPlayerHeader] = useState(true)
+  const headerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const flashHeader = () => {
+    setShowPlayerHeader(true)
+    if (headerTimerRef.current) clearTimeout(headerTimerRef.current)
+    headerTimerRef.current = setTimeout(() => setShowPlayerHeader(false), 3000)
+  }
+
+  useEffect(() => {
+    flashHeader()
+    return () => { if (headerTimerRef.current) clearTimeout(headerTimerRef.current) }
+  }, [])
 
   const opponents = gameState.players.filter(p => p.id !== currentPlayer.id)
 
@@ -170,11 +183,15 @@ export default function MobileGameLayout({
         </div>
       </div>
 
-      {/* Player Name Header - Below opponents */}
+      {/* Player Name Header — auto-hides, tap battlefield to show */}
       {displayedPlayer && (
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 bg-slate-800/90 backdrop-blur-sm px-4 py-2 rounded-lg border border-slate-700/50 shadow-lg">
+        <div
+          className={`absolute top-20 left-1/2 -translate-x-1/2 z-20 bg-slate-800/70 backdrop-blur-sm px-4 py-2 rounded-lg border border-slate-700/40 shadow-lg transition-opacity duration-500 pointer-events-none ${
+            showPlayerHeader ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
           <div className="flex items-center gap-2">
-            <div 
+            <div
               className="w-3 h-3 rounded-full border border-white"
               style={{ backgroundColor: displayedPlayer.cursorColor }}
             />
@@ -197,9 +214,9 @@ export default function MobileGameLayout({
         </button>
       )}
 
-      {/* Battlefield - Full Screen */}
+      {/* Battlefield - True full screen, overlays sit on top */}
       {displayedPlayer && (
-        <div className="absolute inset-0 pt-32 pb-28">
+        <div className="absolute inset-0" onClick={flashHeader}>
           <BattlefieldContainer
             cards={battlefieldCards}
             gameState={gameState}

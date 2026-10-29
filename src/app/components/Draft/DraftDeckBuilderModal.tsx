@@ -203,21 +203,20 @@ export default function DraftDeckBuilderModal({
     return map
   })
 
-  // Initialize customColumns from mainDeck
+  // Initialize customColumns from mainDeck — only fires when mainDeck changes.
+  // Uses functional updater to read latest customColumns without making it a dep.
+  // Returns the same prev reference when nothing is missing (no re-render triggered).
   useEffect(() => {
-    const allCardsInColumns = customColumns.flat()
-    const mainDeckIds = Array.from(mainDeck.keys())
-
-    // If there are cards in mainDeck not in customColumns, add them to first column
-    const missingCards = mainDeckIds.filter(id => !allCardsInColumns.includes(id))
-    if (missingCards.length > 0) {
-      setCustomColumns(prev => {
-        const newColumns = [...prev]
-        newColumns[0] = [...newColumns[0], ...missingCards]
-        return newColumns
-      })
-    }
-  }, [mainDeck, customColumns])
+    setCustomColumns(prev => {
+      const allCardsInColumns = prev.flat()
+      const mainDeckIds = Array.from(mainDeck.keys())
+      const missingCards = mainDeckIds.filter(id => !allCardsInColumns.includes(id))
+      if (missingCards.length === 0) return prev  // same reference = no re-render
+      const newColumns = [...prev]
+      newColumns[0] = [...newColumns[0], ...missingCards]
+      return newColumns
+    })
+  }, [mainDeck])
 
   const [basics, setBasics] = useState<Record<BasicLandColor, number>>(() => {
     // Try to load from localStorage first

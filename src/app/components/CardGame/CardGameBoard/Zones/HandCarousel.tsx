@@ -260,7 +260,7 @@ export default function HandCarousel({
         <div className="flex-1 bg-slate-900 rounded-lg border-2 border-slate-700 relative overflow-hidden flex flex-col">
 
           {/* Header: hand count + selection toggle */}
-          <div className="flex items-center justify-between px-3 pt-2 pb-1 shrink-0">
+          <div className="flex items-center justify-between px-2 pt-1 pb-0.5 shrink-0">
             <span className="text-xs text-slate-400 font-semibold">
               Hand ({cardOrder.length})
               {selectionMode && selectedCards.size > 0 && (
@@ -300,7 +300,7 @@ export default function HandCarousel({
               }
             }}
           >
-            <div className="absolute inset-0 flex gap-3 px-3 items-start pt-2">
+            <div className="absolute inset-0 flex gap-2 px-2 items-start pt-1">
               {cardOrder.map((cardId, idx) => {
                 const card = gameState.cards[cardId]
                 if (!card) return null

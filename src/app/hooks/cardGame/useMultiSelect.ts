@@ -31,8 +31,11 @@ export function useMultiSelect(props?: UseMultiSelectProps) {
         setIsShiftPressed(true)
       }
       
-      // Keyboard shortcuts for selected cards
+      // Keyboard shortcuts for selected cards — skip when typing in an input
       if (selectedCards.size > 0) {
+        const el = document.activeElement
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return
+
         if (e.key === 't' || e.key === 'T') {
           e.preventDefault()
           props?.onTapSelected?.()
@@ -61,10 +64,8 @@ export function useMultiSelect(props?: UseMultiSelectProps) {
 
   const startSelection = (x: number, y: number) => {
     setSelectionBox({ startX: x, startY: y, currentX: x, currentY: y })
-    
-    if (!isShiftPressed) {
-      setSelectedCards(new Set())
-    }
+    // Don't clear selection here — selectCardsInBox handles it once the box grows large enough.
+    // This prevents a click (tiny box) from clearing an existing multi-selection.
   }
 
   const updateSelection = (x: number, y: number) => {
@@ -86,6 +87,10 @@ export function useMultiSelect(props?: UseMultiSelectProps) {
 
     const box = getBoxBounds()
     if (!box) return
+
+    // Ignore tiny boxes (clicks, not drags) — preserves existing selection
+    const MIN_BOX = 5
+    if (box.width < MIN_BOX && box.height < MIN_BOX) return
 
     const newSelected = new Set(isShiftPressed ? selectedCards : [])
 

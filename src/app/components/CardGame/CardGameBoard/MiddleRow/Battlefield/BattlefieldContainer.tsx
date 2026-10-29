@@ -48,6 +48,7 @@ export function BattlefieldContainer({
   const [scrollOffset, setScrollOffset] = useState({ left: 0, top: 0 })
   const [contextMenu, setContextMenu] = useState<{ card: Card, x: number, y: number } | null>(null)
   const [scale, setScale] = useState(1)
+  const [multiDragDelta, setMultiDragDelta] = useState<{ dx: number, dy: number } | null>(null)
 
   const SCALE_MIN = 0.25
   const SCALE_MAX = 2.0
@@ -110,11 +111,90 @@ export function BattlefieldContainer({
     selectCardsInBox,
     toggleCard,
     selectCard,
+    clearSelection,
     getBoxBounds
   } = useMultiSelect({
     onTapSelected: handleTapSelected,
     onUntapSelected: handleUntapSelected
   })
+
+  // Mobile selection mode — tap cards to toggle instead of replace
+  const [isMobileSelectionMode, setIsMobileSelectionMode] = useState(false)
+
+  // Auto-exit mobile selection mode when selection empties
+  useEffect(() => {
+    if (isMobileSelectionMode && selectedCards.size === 0) {
+      setIsMobileSelectionMode(false)
+    }
+  }, [isMobileSelectionMode, selectedCards.size])
+
+  const lastClampedDelta = useRef({ dx: 0, dy: 0 })
+  // Positions we expect the server to confirm — cleared when cards prop matches
+  const pendingMoveRef = useRef<{ cardId: string, position: { x: number, y: number } }[] | null>(null)
+
+  const handleMultiDragMove = useCallback((dx: number, dy: number) => {
+    const selectedCardsList = Array.from(selectedCards)
+      .map(id => cards.find(c => c.instanceId === id))
+      .filter((c): c is NonNullable<typeof c> => c !== undefined)
+
+    if (selectedCardsList.length === 0) return
+
+    // Compute group bounding box so we clamp the entire group, not individual cards
+    const leftmost = Math.min(...selectedCardsList.map(c => c.position.x))
+    const rightmost = Math.max(...selectedCardsList.map(c => c.position.x + BATTLEFIELD_CONFIG.CARD_WIDTH))
+    const topmost = Math.min(...selectedCardsList.map(c => c.position.y))
+    const bottommost = Math.max(...selectedCardsList.map(c => c.position.y + BATTLEFIELD_CONFIG.CARD_HEIGHT))
+
+    const clampedDx = Math.max(-leftmost, Math.min(BATTLEFIELD_CONFIG.WIDTH - rightmost, dx))
+    const clampedDy = Math.max(-topmost, Math.min(BATTLEFIELD_CONFIG.HEIGHT - bottommost, dy))
+
+    lastClampedDelta.current = { dx: clampedDx, dy: clampedDy }
+    setMultiDragDelta({ dx: clampedDx, dy: clampedDy })
+  }, [selectedCards, cards])
+
+  const handleMultiDragEnd = useCallback(async (_dx: number, _dy: number) => {
+    // Use the last group-clamped delta (not raw delta from dragging card)
+    const { dx, dy } = lastClampedDelta.current
+
+    const updates = Array.from(selectedCards).map(cardId => {
+      const card = cards.find(c => c.instanceId === cardId)
+      if (!card) return null
+      return { cardId, position: { x: card.position.x + dx, y: card.position.y + dy } }
+    }).filter((u): u is { cardId: string, position: { x: number, y: number } } => u !== null)
+
+    if (updates.length > 0) {
+      // Record expected positions — the useEffect below clears multiDragDelta
+      // when the server broadcast confirms these positions arrived in cards
+      pendingMoveRef.current = updates
+      applyCardGameAction(cardGameId, {
+        type: 'move_cards_batch_position',
+        playerId,
+        data: { updates }
+      }).catch(err => {
+        console.error('Failed to batch move cards:', err)
+        pendingMoveRef.current = null
+        setMultiDragDelta(null)
+      })
+    } else {
+      setMultiDragDelta(null)
+    }
+  }, [selectedCards, cards, cardGameId, playerId])
+
+  // Clear multiDragDelta once the server confirms the moved positions via WebSocket broadcast
+  useEffect(() => {
+    if (!pendingMoveRef.current || !multiDragDelta) return
+
+    const allConfirmed = pendingMoveRef.current.every(({ cardId, position }) => {
+      const card = cards.find(c => c.instanceId === cardId)
+      if (!card) return false
+      return Math.abs(card.position.x - position.x) < 1 && Math.abs(card.position.y - position.y) < 1
+    })
+
+    if (allConfirmed) {
+      pendingMoveRef.current = null
+      setMultiDragDelta(null)
+    }
+  }, [cards, multiDragDelta])
   
   // Update viewport size on resize
   useEffect(() => {
@@ -213,7 +293,7 @@ export function BattlefieldContainer({
   }
   
   const handleCardSelect = (cardId: string) => {
-    if (isShiftPressed) {
+    if (isShiftPressed || isMobileSelectionMode) {
       toggleCard(cardId)
     } else {
       selectCard(cardId)
@@ -262,6 +342,12 @@ export function BattlefieldContainer({
             height: `${BATTLEFIELD_CONFIG.HEIGHT * scale}px`,
             minWidth: `${BATTLEFIELD_CONFIG.WIDTH * scale}px`,
             minHeight: `${BATTLEFIELD_CONFIG.HEIGHT * scale}px`
+          }}
+          onDoubleClick={(e) => {
+            // Double-click on empty battlefield area → deselect all
+            if (e.target === battlefieldRef.current && selectedCards.size > 0) {
+              clearSelection()
+            }
           }}
           onDragOver={(e) => {
             if (spectatorMode) return
@@ -329,6 +415,13 @@ export function BattlefieldContainer({
               scale={scale}
               onHover={() => onHover(card.instanceId)}
               isSelected={selectedCards.has(card.instanceId)}
+              selectedCount={selectedCards.size}
+              multiDragDelta={selectedCards.has(card.instanceId) ? multiDragDelta : null}
+              isDraggingMulti={multiDragDelta !== null}
+              onMultiDragMove={handleMultiDragMove}
+              onMultiDragEnd={handleMultiDragEnd}
+              onDeselectAll={clearSelection}
+              isMobileSelectionMode={isMobileSelectionMode}
               onSelect={() => handleCardSelect(card.instanceId)}
               spectatorMode={spectatorMode}
               onContextMenu={(e) => {
@@ -343,13 +436,37 @@ export function BattlefieldContainer({
           ))}
         </div>
         
-        {/* Keyboard shortcuts indicator - fixed to viewport */}
+        {/* Desktop keyboard shortcuts indicator */}
         {selectedCards.size > 0 && !spectatorMode && (
-          <div className="fixed top-4 left-4 bg-slate-900/90 text-white px-3 py-2 rounded-lg text-xs border border-amber-500/50 shadow-lg z-50">
+          <div className="hidden lg:block fixed top-4 left-4 bg-slate-900/90 text-white px-3 py-2 rounded-lg text-xs border border-amber-500/50 shadow-lg z-50">
             <div className="font-bold mb-1">🔥 {selectedCards.size} card{selectedCards.size > 1 ? 's' : ''} selected</div>
             <div className="text-gray-400">
               <kbd className="bg-slate-700 px-1 rounded">T</kbd> Tap | <kbd className="bg-slate-700 px-1 rounded">U</kbd> Untap
+              {selectedCards.size > 1 && <> | drag any to move all | double-click empty to deselect</>}
             </div>
+          </div>
+        )}
+
+        {/* Mobile selection mode toggle — top-right tab, mirrors the player name tab style */}
+        {!spectatorMode && (
+          <div className="lg:hidden absolute top-0 right-2 z-20">
+            {isMobileSelectionMode ? (
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => { setIsMobileSelectionMode(false); clearSelection() }}
+                className="bg-amber-700/90 hover:bg-amber-600/90 text-white rounded-b-lg px-3 py-1 border border-t-0 border-amber-600/60 flex items-center gap-1.5 shadow-lg text-xs font-medium backdrop-blur-sm"
+              >
+                {selectedCards.size > 0 ? `${selectedCards.size} selected` : 'Select'} · Done
+              </button>
+            ) : (
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => setIsMobileSelectionMode(true)}
+                className="bg-slate-800/70 hover:bg-slate-800/90 text-slate-300 rounded-b-lg px-3 py-1 border border-t-0 border-slate-600/60 shadow-lg text-xs backdrop-blur-sm"
+              >
+                ☐ Select
+              </button>
+            )}
           </div>
         )}
         

@@ -132,7 +132,7 @@ export default function ClientCardGameBoard({
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden lg:flex flex-col h-full p-2 gap-1">
+      <div className="hidden lg:flex flex-col h-full p-1 gap-0.5">
         {/* Top Row: Opponents */}
         <div 
           className="bg-slate-800 rounded-t-lg overflow-visible shrink-0"

@@ -46,6 +46,8 @@ import DeckBuilderPage from "./app/pages/deckBuilder/DeckBuilderPage";
 import { SANDBOX_CONFIG } from "./lib/sandbox/config";
 import { SyncedStateServer, syncedStateRoutes } from "rwsdk/use-synced-state/worker";
 import AdminPage from "./app/pages/admin/Admin";
+import QVTTPage from "@/app/pages/qvtt/QVTTPage";
+import BlogPage from "@/app/pages/blog/BlogPage";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -627,6 +629,10 @@ export default defineApp([
 
     route("/admin", AdminPage),
     route("/admin/cache", CacheBrowserPage),
+
+    route("/qvtt", QVTTPage),
+
+    route("/blog", BlogPage),
 
     route("/sanctum", SanctumPage),
 
