@@ -49,6 +49,8 @@ import { SyncedStateServer, syncedStateRoutes } from "rwsdk/use-synced-state/wor
 import AdminPage from "./app/pages/admin/Admin";
 import QVTTPage from "@/app/pages/qvtt/QVTTPage";
 import BlogPage from "@/app/pages/blog/BlogPage";
+import GameCenterPage from "@/app/pages/portal/GameCenterPage";
+import AppCenterPage from "@/app/pages/portal/AppCenterPage";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
@@ -635,6 +637,10 @@ export default defineApp([
     route("/qvtt", QVTTPage),
 
     route("/blog", BlogPage),
+
+    // Portal hubs (main domain): Game Center + App Center
+    route("/games", GameCenterPage),
+    route("/apps", AppCenterPage),
 
     route("/sanctum", SanctumPage),
 

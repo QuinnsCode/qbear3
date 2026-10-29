@@ -39,7 +39,7 @@ npm run rb:deploy         # alchemy deploy; refuses without a matching plan, the
 pnpm exec rustybuns generate   # regenerate .rustybuns/ and wrangler.generated.jsonc from the config
 ```
 
-Secret values come from `.dev.vars` or the shell (`BETTER_AUTH_SECRET` and `API_ENCRYPTION_KEY` are required; the rest are optional). The custom-domain routes and observability still live in `wrangler.jsonc`, and `npm run release` still deploys the live Worker through wrangler.
+Secret values come from `.dev.vars` or the shell (`BETTER_AUTH_SECRET`, `AUTH_SECRET_KEY` and `API_ENCRYPTION_KEY` are required; the rest are optional). The custom-domain routes and observability still live in `wrangler.jsonc`, and `npm run release` still deploys the live Worker through wrangler.
 
 
 ## Architecture

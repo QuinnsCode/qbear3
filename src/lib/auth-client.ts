@@ -1,7 +1,7 @@
 // lib/auth-client.ts
 import { createAuthClient } from "better-auth/client";
 import { adminClient } from "better-auth/client/plugins";
-import { apiKeyClient } from "better-auth/client/plugins";
+import { apiKeyClient } from "@better-auth/api-key/client";
 import { organizationClient } from "better-auth/client/plugins"
 import { multiSessionClient } from "better-auth/client/plugins"
 
