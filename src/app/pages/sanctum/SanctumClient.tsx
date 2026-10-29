@@ -9,6 +9,8 @@ import { DecksSectionClient } from './components/sections/DecksSectionClient'
 import { AnnouncementsSectionClient } from './components/sections/AnnouncementsSectionClient'
 import { SocialSection } from './SocialSection'
 import { SettingsSection } from './SettingsSection'
+import { PresenceHeartbeat } from '@/app/components/Social/PresenceHeartbeat'
+import type { UserPresence } from '@/app/serverActions/social/presence'
 import type { Deck } from '@/app/types/Deck'
 
 interface Props {
@@ -17,6 +19,7 @@ interface Props {
   friends: any[]
   friendRequests: { incoming: any[]; outgoing: any[] }
   gameInvites: { received: any[]; sent: any[] }
+  friendPresence?: Record<string, UserPresence>
   currentTier: string
   tierLimits: {
     maxGames: number
@@ -35,6 +38,7 @@ export function SanctumClient({
   friends,
   friendRequests,
   gameInvites,
+  friendPresence,
   currentTier,
   tierLimits,
   userId,
@@ -174,6 +178,7 @@ export function SanctumClient({
               friends={friends}
               friendRequests={friendRequests}
               gameInvites={gameInvites}
+              presence={friendPresence}
             />
           </div>
         )
@@ -210,6 +215,7 @@ export function SanctumClient({
 
   return (
     <div className="flex min-h-screen bg-slate-700">
+      <PresenceHeartbeat userId={userId} />
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 left-0 right-0 bg-slate-800 border-b-2 border-slate-600 z-30 px-4 py-3 flex items-center justify-between">
         <button

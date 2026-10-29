@@ -68,7 +68,7 @@ export default function CreateLairClient({ userId, userName, userEmail }: Create
       if (isSubdomain) {
         const parts = hostname.split('.');
         const mainDomain = hostname.includes('localhost')
-          ? 'localhost:5173'
+          ? `localhost:${window.location.port || '5173'}`
           : parts.slice(-2).join('.');
         const protocol = window.location.protocol;
         const pathname = window.location.pathname;

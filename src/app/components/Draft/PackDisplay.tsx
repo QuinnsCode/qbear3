@@ -5,22 +5,35 @@ import type { CubeCard } from '@/app/types/Draft'
 import DraftCard from './DraftCard'
 
 interface Props {
-  pack: CubeCard[]  // ← Changed from Pack type
+  pack: CubeCard[]
   selectedCards: string[]
   onCardClick: (cardId: string) => void
+  /** Changes whenever a new pack arrives so the entry animation replays */
+  packKey?: string
+  disabled?: boolean
 }
 
-export default function PackDisplay({ pack, selectedCards, onCardClick }: Props) {
+export default function PackDisplay({ pack, selectedCards, onCardClick, packKey, disabled }: Props) {
   return (
-    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-      {pack.map(card => (
-        <DraftCard
-          key={card.scryfallId}
-          card={card}  // ← Pass full object
-          isSelected={selectedCards.includes(card.scryfallId)}
-          onClick={() => onCardClick(card.scryfallId)}
-        />
-      ))}
+    <div
+      key={packKey}
+      className="grid gap-4 sm:gap-5"
+      style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}
+    >
+      {pack.filter(Boolean).map((card, i) => {
+        const selIdx = selectedCards.indexOf(card.scryfallId)
+        return (
+          <DraftCard
+            key={card.scryfallId}
+            card={card}
+            index={i}
+            isSelected={selIdx !== -1}
+            selectionIndex={selIdx !== -1 ? selIdx + 1 : undefined}
+            disabled={disabled}
+            onClick={() => onCardClick(card.scryfallId)}
+          />
+        )
+      })}
     </div>
   )
 }

@@ -127,6 +127,10 @@ export const createAuth = () => {
       "http://*.localhost:5173",
       "http://localhost:8787",
       "http://*.localhost:8787",
+      // Whatever port the local dev server is actually on (see .dev.vars)
+      ...(env.BETTER_AUTH_URL?.includes('localhost')
+        ? [env.BETTER_AUTH_URL, env.BETTER_AUTH_URL.replace('://localhost', '://*.localhost')]
+        : []),
     ],
     account: {
       accountLinking: {
