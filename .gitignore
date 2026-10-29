@@ -67,13 +67,6 @@ coverage
 
 generated/
 
-# Playwright
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
-/playwright/.auth/
-
 # rustybuns
 .rustybuns/
 wrangler.generated.jsonc

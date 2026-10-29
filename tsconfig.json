@@ -44,5 +44,7 @@
 
     /* Skip type checking all .d.ts files. */
     "skipLibCheck": true
-  }
+  },
+  /* tests/ has its own tsconfig (Bun types); `pnpm run types` checks both. */
+  "exclude": ["node_modules", "dist", "tests"]
 }

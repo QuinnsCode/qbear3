@@ -1,0 +1,36 @@
+name: E2E (bun test)
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+jobs:
+  e2e:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+      # Version comes from the packageManager field in package.json
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+        cache: pnpm
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: 1.4.4
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+    - name: Prepare dev environment (env files, Prisma client, wrangler types, local D1)
+      # Done here rather than from the test kit: rwsdk's first-run generate + migrate is slow
+      # on a cold runner, and the kit's boot budget is for the dev server alone.
+      run: |
+        cp .env.example .env
+        cp .env.example .dev.vars
+        pnpm run generate
+        pnpm run migrate:dev
+    - name: Run the e2e suite
+      # tests/e2e/kit.ts starts `vite dev` on a free port and stops it after the run.
+      run: pnpm run test:e2e
+      env:
+        E2E_BOOT_MS: "600000"
