@@ -14,16 +14,16 @@ QNTBR is a Magic: The Gathering (MTG) virtual tabletop for Commander format mult
 
 ```bash
 pnpm install              # Install dependencies
-npm run dev               # Local dev server (localhost:5173)
-npm run build             # Production build (Vite)
-npm run check             # Generate Prisma client + wrangler types + tsc
-npm run types             # TypeScript type checking only
-npm run generate          # Generate Prisma client + wrangler types
-npm run migrate:dev       # Apply migrations locally
-npm run migrate:prd       # Apply migrations to production D1
-npm run migrate:new       # Create new migration
-npm run seed              # Run seed script
-npm run release           # Full production deploy (generate + build + wrangler deploy)
+pnpm run dev               # Local dev server (localhost:5173)
+pnpm run build             # Production build (Vite)
+pnpm run check             # Generate Prisma client + wrangler types + tsc
+pnpm run types             # TypeScript type checking only
+pnpm run generate          # Generate Prisma client + wrangler types
+pnpm run migrate:dev       # Apply migrations locally
+pnpm run migrate:prd       # Apply migrations to production D1
+pnpm run migrate:new       # Create new migration
+pnpm run seed              # Run seed script
+pnpm run release           # Full production deploy (generate + build + wrangler deploy)
 ```
 
 ## Architecture
@@ -119,7 +119,8 @@ Game state types are defined in `src/app/services/cardGame/CardGameState.ts`.
 ## Key Conventions
 
 - **Path aliases**: `@/*` → `src/*`, `@generated/*` → `generated/*`
-- **Package manager**: pnpm (10.11.0)
+- **Package manager**: pnpm (version pinned in package.json `packageManager`). Always `pnpm run` / `pnpm exec` / `pnpm dlx`, never npm or npx
+- **pnpm 12 release-age policy**: installs reject any package version published less than 24h ago (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`). Don't disable it; pin the previous version or wait a day
 - **TypeScript strict mode** enabled
 - **React 19** with Server Components — components are server by default
 - **Client components** must have `"use client"` directive
