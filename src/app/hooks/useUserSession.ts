@@ -60,8 +60,8 @@ export function useUserSession(options: UseUserSessionOptions): UseUserSessionRe
   // True once the effect cleanup has closed the socket; onclose must then not reconnect.
   const closedByUs = useRef(false);
   const reconnectAttempts = useRef(0);
-  const reconnectTimeout = useRef<NodeJS.Timeout>();
-  const pingInterval = useRef<NodeJS.Timeout>();
+  const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const pingInterval = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   const deviceId = useRef(
     typeof window !== 'undefined'
