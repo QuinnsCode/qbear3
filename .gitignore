@@ -73,3 +73,8 @@ generated/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# rustybuns
+.rustybuns/
+wrangler.generated.jsonc
+.alchemy/

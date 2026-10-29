@@ -26,6 +26,21 @@ npm run seed              # Run seed script
 npm run release           # Full production deploy (generate + build + wrangler deploy)
 ```
 
+### Rusty Buns (desktop binary, typed Cloudflare deploy)
+
+[Rusty Buns](https://github.com/QuinnsCode/RustyBuns) is a dev dependency that packs this app from `rustybuns.config.ts`. It never edits `src/` and nothing of it ships in the Worker.
+
+```bash
+npm run desktop:dev       # vite build + run the Worker on a local Bun host (sqlite behind D1/KV/R2/DOs), opens Chrome
+npm run desktop:build     # dist/qntbr-<os>-<arch>: one double-clickable file
+npm run rb:plan           # typecheck the generated Alchemy stack; list what a deploy would create (creates nothing)
+npm run rb:deploy         # alchemy deploy; refuses without a matching plan, then asks
+pnpm exec rustybuns generate   # regenerate .rustybuns/ and wrangler.generated.jsonc from the config
+```
+
+Secret values come from `.dev.vars` or the shell (`BETTER_AUTH_SECRET` and `API_ENCRYPTION_KEY` are required; the rest are optional). The custom-domain routes and observability still live in `wrangler.jsonc`, and `npm run release` still deploys the live Worker through wrangler.
+
+
 ## Architecture
 
 ### RedwoodSDK Framework

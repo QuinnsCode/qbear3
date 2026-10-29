@@ -87,6 +87,12 @@ importers:
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.57.0
+      '@rustybuns/cli':
+        specifier: 0.1.11
+        version: 0.1.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@rustybuns/shell-bun':
+        specifier: 0.1.11
+        version: 0.1.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/node':
         specifier: ^22.16.5
         version: 22.19.1
@@ -1307,6 +1313,27 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@rustybuns/cli@0.1.11':
+    resolution: {integrity: sha512-xUFROZLqn2SRAPe41tBpovdiOE+R+okgNnQP9SEsosiZQJwznm494Rrfk8zb/i/JYC3rfy9JKjrOLWG41Ynqww==}
+    engines: {bun: '>=1.4.0'}
+    hasBin: true
+
+  '@rustybuns/ports@0.1.11':
+    resolution: {integrity: sha512-Q9/NtzMQtpuzOJK6XwWU8HxMmCTTlfhJHgap85SPPUef2QU8wGF82eTekN4ZO7nag5ei8qrDJZMm9B8RHJ3nfQ==}
+    engines: {bun: '>=1.4.0'}
+
+  '@rustybuns/shell-bun@0.1.11':
+    resolution: {integrity: sha512-HaZyj5MkfY4WoA8EhZRP/BuUeP9qGgsSMChFIweR+7nzlHS1xme6M3wOhae1UhuDQ6JQUbPyY3Vdx7XRLWdyeQ==}
+    engines: {bun: '>=1.4.0'}
+    peerDependencies:
+      react: '*'
+      react-dom: '*'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
 
@@ -1533,6 +1560,24 @@ packages:
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
+
+  '@varlock/native-helper-darwin@1.22.0':
+    resolution: {integrity: sha512-SseBFiqO9kugEc8Key8QsthdzrfUwj/vBRJeH4oC+gmT97I/aqmVjG6UH5a3n4RyLE2As2V+Es4aJoeNGav8dA==}
+    os: [darwin]
+
+  '@varlock/native-helper-linux-arm64@1.22.0':
+    resolution: {integrity: sha512-n4xymSJvI3cw7ggGvaiqaVU0+/md3DinB14C7oYGQMMOHbw90XcM0rXTPM79xQRseBwEm5XOX3P8H6m6Lb1rkw==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@varlock/native-helper-linux-x64@1.22.0':
+    resolution: {integrity: sha512-tWKekf01VSq3/1xrqEAZVUjGkw2gntR1oLOH6Djz9cZTYJ/WD8tB2yX6WbiFQicbMokJt5nxA2v67O+2UZTT+A==}
+    cpu: [x64]
+    os: [linux]
+
+  '@varlock/native-helper-win32-x64@1.22.0':
+    resolution: {integrity: sha512-vtoa2TDL45vGw7IFanI6FMPJDz2Brth8hOWeAttNW+NqGJiToOPX3NxCE/kFyXpSMtferuyp8rmsY7Q/cY8qZw==}
+    os: [win32, linux]
 
   '@vitejs/plugin-react@5.0.4':
     resolution: {integrity: sha512-La0KD0vGkVkSk6K+piWDKRUyg8Rl5iAIKRMH0vMJI0Eg47bq1eOxmoObAaQG37WMW9MSyk7Cs8EIWwJC1PtzKA==}
@@ -3420,6 +3465,11 @@ packages:
     resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
     hasBin: true
 
+  varlock@1.22.0:
+    resolution: {integrity: sha512-xpGiBtpmk3mfbLfJWqR1yEiopcXdUMzWLyidiT2slTktB/LPQuWk3+zvhjO0jSL7pn0MiX8qt1F/hjEQD4E/WA==}
+    engines: {bun: '>=1.3.3', node: '>=22.3.0'}
+    hasBin: true
+
   vfile-message@4.0.3:
     resolution: {integrity: sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==}
 
@@ -4651,6 +4701,24 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.53.3':
     optional: true
 
+  '@rustybuns/cli@0.1.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@rustybuns/ports': 0.1.11
+      '@rustybuns/shell-bun': 0.1.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      varlock: 1.22.0
+    transitivePeerDependencies:
+      - react
+      - react-dom
+
+  '@rustybuns/ports@0.1.11': {}
+
+  '@rustybuns/shell-bun@0.1.11(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@rustybuns/ports': 0.1.11
+    optionalDependencies:
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
+
   '@sec-ant/readable-stream@0.4.1': {}
 
   '@simplewebauthn/browser@13.2.2': {}
@@ -4877,6 +4945,18 @@ snapshots:
     optional: true
 
   '@ungap/structured-clone@1.3.0': {}
+
+  '@varlock/native-helper-darwin@1.22.0':
+    optional: true
+
+  '@varlock/native-helper-linux-arm64@1.22.0':
+    optional: true
+
+  '@varlock/native-helper-linux-x64@1.22.0':
+    optional: true
+
+  '@varlock/native-helper-win32-x64@1.22.0':
+    optional: true
 
   '@vitejs/plugin-react@5.0.4(vite@7.2.6(@types/node@22.19.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(tsx@4.21.0))':
     dependencies:
@@ -7112,6 +7192,13 @@ snapshots:
   util-deprecate@1.0.2: {}
 
   uuid@10.0.0: {}
+
+  varlock@1.22.0:
+    optionalDependencies:
+      '@varlock/native-helper-darwin': 1.22.0
+      '@varlock/native-helper-linux-arm64': 1.22.0
+      '@varlock/native-helper-linux-x64': 1.22.0
+      '@varlock/native-helper-win32-x64': 1.22.0
 
   vfile-message@4.0.3:
     dependencies:
