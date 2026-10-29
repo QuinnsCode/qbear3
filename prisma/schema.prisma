@@ -228,6 +228,7 @@ model Invitation {
   expiresAt      DateTime
   inviterId      String
   user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
 
   teamId String?
 
@@ -263,6 +264,8 @@ model Apikey {
   key                 String
   userId              String?       // Make nullable since org keys might not have a user
   user                User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId         String?       // better-auth 1.7: owner reference (backfilled from userId)
+  configId            String        @default("default") // better-auth 1.7: api-key config scope
   refillInterval      Int?
   refillAmount        Int?
   lastRefillAt        DateTime?
@@ -281,6 +284,7 @@ model Apikey {
 
   @@index([organizationId])
   @@index([service, keyType])
+  @@index([referenceId])
   @@map("apikey")
 }
 
