@@ -35,6 +35,7 @@ npm run desktop:dev       # vite build + run the Worker on a local Bun host (sql
 npm run desktop:build     # dist/qntbr-<os>-<arch>: one double-clickable file
 npm run rb:plan           # typecheck the generated Alchemy stack; list what a deploy would create (creates nothing)
 npm run rb:deploy         # alchemy deploy; refuses without a matching plan, then asks
+                          # (plan/deploy need `pnpm exec rustybuns add deploy` once: pinned Alchemy + Effect, and `rustybuns login cloudflare`)
 pnpm exec rustybuns generate   # regenerate .rustybuns/ and wrangler.generated.jsonc from the config
 ```
 

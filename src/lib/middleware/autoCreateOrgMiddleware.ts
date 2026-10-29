@@ -1,5 +1,6 @@
 // @/lib/middleware/autoCreateOrgMiddleware.ts
 import type { AppContext } from "@/worker";
+import { isLoopbackIp } from "@/lib/loopback";
 import { db } from "@/db";
 import { getCachedUserMemberships, invalidateMember } from '@/lib/cache/authCache';
 import { autoCreateOrgForOAuthUser } from '@/lib/auth/autoCreateOrgForOAuthUser';
@@ -106,6 +107,11 @@ export async function autoCreateOrgMiddleware(
 function hasSubdomain(request: Request): boolean {
   const url = new URL(request.url);
   const hostname = url.hostname;
+
+  // 127.0.0.1 (the desktop host) has no subdomain
+  if (isLoopbackIp(hostname)) {
+    return false;
+  }
 
   // Localhost: check for subdomain pattern (e.g., "myorg.localhost")
   if (hostname.includes('localhost')) {

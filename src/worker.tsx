@@ -1,4 +1,5 @@
 import { defineApp, ErrorResponse, requestInfo } from "rwsdk/worker";
+import { isLoopbackHost } from "@/lib/loopback";
 // import { realtimeRoute } from "rwsdk/realtime/worker";
 // import { syncOrderNotes } from "./lib/syncedState";
 import { route, render, prefix } from "rwsdk/router";
@@ -80,9 +81,10 @@ export type AppContext = {
 function normalizeUrl(request: Request): Response | null {
   const url = new URL(request.url);
   const PRIMARY_DOMAIN = 'qntbr.com';
-  const isLocalhost = url.hostname.includes('localhost');
-  
-  // Skip normalization for localhost during development
+  // localhost (vite dev) and the loopback address (the Rusty Buns desktop host binds 127.0.0.1)
+  const isLocalhost = isLoopbackHost(url.hostname);
+
+  // Skip normalization for local hosts: no HTTPS redirect, no www rewrite
   if (isLocalhost) {
     return null;
   }

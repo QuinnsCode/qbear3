@@ -66,6 +66,8 @@ export default defineConfig({
 
     // Required: better-auth signs sessions with it (src/lib/auth.ts).
     BETTER_AUTH_SECRET: { type: "secret" },
+    // Required: rwsdk's session store signs session ids with it (`rw-scripts ensure-deploy-env` checks for it too).
+    AUTH_SECRET_KEY: { type: "secret" },
     // Encrypts stored third-party API keys (src/lib/encrypt.ts).
     API_ENCRYPTION_KEY: { type: "secret" },
 

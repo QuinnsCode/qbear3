@@ -1,5 +1,6 @@
 // @/lib/middlewareFunctions.ts
 import { type User, type Organization, db, setupDb } from "@/db";
+import { isLoopbackIp } from "@/lib/loopback";
 import type { AppContext } from "@/worker";
 import { env } from "cloudflare:workers";
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/rateLimit'
@@ -313,6 +314,11 @@ export async function setupOrganizationContext(ctx: AppContext, request: Request
 export function extractOrgFromSubdomain(request: Request): string | null { 
   const url = new URL(request.url);
   const hostname = url.hostname;
+
+  // 127.0.0.1 (the desktop host) has no subdomain; without this it reads as the org "127"
+  if (isLoopbackIp(hostname)) {
+    return null;
+  }
   
   if (hostname.includes('localhost')) {
     const parts = hostname.split('.');
