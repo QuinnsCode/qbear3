@@ -1,4 +1,5 @@
 import styles from "./styles.css?url";
+import uiStyles from "@qntbr/ui/styles.css?url";
 import { Suspense } from 'react'
 import type { ReactNode } from 'react'
 
@@ -48,7 +49,11 @@ export function Document({ children }: { children: React.ReactNode }) {
       <link rel="icon" type="image/png" href="/favicon.png"/>
       <link rel="modulepreload" href="/src/client.tsx" />
       <link rel="stylesheet" href={styles} />
+      <link rel="stylesheet" href={uiStyles} />
       
+      {/* Geist + Geist Mono for @qntbr/ui */}
+      <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
       {/* Google Fonts - Arabian + Latin Fantasy */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

@@ -16,6 +16,8 @@ export interface PortalEntry {
   requiresAuth?: boolean;
   /** Accent used for the card bevel / glow. */
   accent: string;
+  /** Emoji shown on the craft canvas tile. */
+  glyph?: string;
   /** Short mono tag shown above the name, e.g. "MTG" or "GitHub". */
   tag?: string;
 }
@@ -42,6 +44,7 @@ export function getSandboxUrl(request: Request): string {
 export const games: PortalEntry[] = [
   {
     key: 'sanctum',
+    glyph: '🏛️',
     name: 'Sanctum',
     tag: 'MTG · Commander',
     tagline: 'Your game hub',
@@ -54,6 +57,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'sandbox',
+    glyph: '🏖️',
     name: 'Sandbox',
     tag: 'MTG · No account',
     tagline: 'Play instantly',
@@ -65,6 +69,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'pvp',
+    glyph: '⚔️',
     name: 'PVP Draft Arena',
     tag: 'MTG · Draft',
     tagline: 'Draft, then duel',
@@ -77,6 +82,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'draft',
+    glyph: '📦',
     name: 'Draft Lobby',
     tag: 'MTG · Draft',
     tagline: 'Booster draft with friends',
@@ -89,6 +95,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'deckbuilder',
+    glyph: '🃏',
     name: 'Deck Builder',
     tag: 'MTG · Tools',
     tagline: 'Build and import decks',
@@ -101,6 +108,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'strategy',
+    glyph: '🌍',
     name: 'World Conquest',
     tag: 'Strategy · Multiplayer',
     tagline: 'Territory strategy game',
@@ -113,6 +121,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'community',
+    glyph: '💬',
     name: 'Community',
     tag: 'Social',
     tagline: 'Find a pod',
@@ -130,6 +139,7 @@ export const games: PortalEntry[] = [
 export const apps: PortalEntry[] = [
   {
     key: 'qlave',
+    glyph: '📞',
     name: 'Qlave',
     tag: 'Calls · WebRTC',
     tagline: 'Web calls & collaboration',
@@ -141,6 +151,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'flareup',
+    glyph: '🔥',
     name: 'Flareup',
     tag: 'Cloudflare · Cost',
     tagline: 'Infrastructure cost monitor',
@@ -152,6 +163,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'rustybuns',
+    glyph: '🍔',
     name: 'RustyBuns',
     tag: 'GitHub · Open source',
     tagline: 'Ship your web app as a native binary',
@@ -163,6 +175,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'staticflare',
+    glyph: '⚡',
     name: 'Staticflare',
     tag: 'Hosting · Edge',
     tagline: 'Static hosting',
@@ -174,6 +187,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'shippycloud',
+    glyph: '🚚',
     name: 'Shippycloud',
     tag: 'GitHub · Fulfillment',
     tagline: 'Business fulfillment software',
@@ -185,6 +199,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'qauth',
+    glyph: '🔑',
     name: 'Q Auth',
     tag: 'Account · SSO',
     tagline: 'One account for everything',
