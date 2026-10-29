@@ -23,7 +23,7 @@
     "seed": "pnpm run worker:run ./src/scripts/seed.ts",
     "generate": "rw-scripts ensure-env && prisma generate && wrangler types",
     "check": "pnpm run generate && pnpm run types",
-    "types": "tsc && tsc -p tests",
+    "types": "tsc -p tests && tsc",
     "test": "bun test",
     "test:e2e": "bun test tests/e2e",
     "prepare": "vibe-rules install cursor"
