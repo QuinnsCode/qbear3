@@ -2,6 +2,7 @@
 'use server'
 
 import { env } from "cloudflare:workers"
+import { requestInfo } from "rwsdk/worker"
 
 export type Presence = 'online' | 'away' | 'offline'
 
@@ -17,6 +18,10 @@ export interface UserPresence {
  * call for a whole friends list.
  */
 export async function getPresenceForUsers(userIds: string[]): Promise<Record<string, UserPresence>> {
+  // Presence is only readable by a signed-in user; signed-out callers get nothing
+  // so arbitrary ids cannot be enumerated.
+  if (!requestInfo.ctx.user) return {}
+
   const unique = [...new Set(userIds)].slice(0, 100)
   const entries = await Promise.all(
     unique.map(async (userId): Promise<[string, UserPresence]> => {

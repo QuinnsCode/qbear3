@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FriendsModal } from "@/app/components/Social/FriendsModal";
 import { GameInvitesModal } from "@/app/components/Social/GameInvitesModal";
 import { Avatar } from "@/app/components/Social/Avatar";
@@ -19,9 +19,12 @@ type SocialSectionProps = {
 
 const PRESENCE_ORDER: Record<Presence, number> = { online: 0, away: 1, offline: 2 };
 
-function lastSeen(ts: number) {
+function lastSeen(ts: number, now: number | null) {
   if (!ts) return 'Never online';
-  const mins = Math.floor((Date.now() - ts) / 60000);
+  // `now` is null during SSR and the hydration render, so server and client
+  // markup match; the relative time fills in once mounted.
+  if (now === null) return 'Last seen';
+  const mins = Math.floor((now - ts) / 60000);
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
   const h = Math.floor(mins / 60);
@@ -32,6 +35,15 @@ function lastSeen(ts: number) {
 export function SocialSection({ userId, friends, friendRequests, gameInvites, presence = {} }: SocialSectionProps) {
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [showInvitesModal, setShowInvitesModal] = useState(false);
+  const [now, setNow] = useState<number | null>(null);
+
+  // Relative "last seen" times are computed client-side only, after mount,
+  // and refreshed each minute.
+  useEffect(() => {
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(t);
+  }, []);
 
   const totalIncomingRequests = friendRequests.incoming.length;
   const totalGameInvites = gameInvites.received.length;
@@ -104,7 +116,8 @@ export function SocialSection({ userId, friends, friendRequests, gameInvites, pr
               {sortedFriends.slice(0, 8).map((friend) => {
                 const p = presence[friend.friendId];
                 const state = p?.presence || 'offline';
-                const inGame = (p?.activeGames?.length || 0) > 0;
+                // Note: activeGames is not populated yet (nothing sends join_game to
+                // UserSessionDO), so there is no "in a game" / Watch affordance here.
                 return (
                   <li key={friend.id} className="flex items-center gap-3 px-5 py-3">
                     <Avatar name={friend.friendName} image={friend.friendImage} size="md" presence={state} />
@@ -112,20 +125,12 @@ export function SocialSection({ userId, friends, friendRequests, gameInvites, pr
                       <div className="truncate text-sm font-semibold text-white">{friend.friendName}</div>
                       <div className="truncate text-xs text-slate-400">
                         {state === 'online'
-                          ? inGame ? <span className="inline-flex items-center gap-1 text-emerald-300"><Gamepad2 className="h-3 w-3" /> In a game</span> : <span className="text-emerald-300">Online</span>
+                          ? <span className="text-emerald-300">Online</span>
                           : state === 'away'
                             ? <span className="text-amber-300">Away</span>
-                            : <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {lastSeen(p?.lastActive || 0)}</span>}
+                            : <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {lastSeen(p?.lastActive || 0, now)}</span>}
                       </div>
                     </div>
-                    {state === 'online' && inGame && p?.activeGames?.[0] && (
-                      <a
-                        href={`/cardGame/${p.activeGames[0]}`}
-                        className="rounded-lg bg-emerald-600/20 px-2.5 py-1.5 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-500/30 transition-colors hover:bg-emerald-600/30"
-                      >
-                        Watch
-                      </a>
-                    )}
                   </li>
                 );
               })}

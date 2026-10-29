@@ -330,20 +330,22 @@ export default defineApp([
   }),
 
   // User Session DO - Cross-device sync with Hibernation API
-  route("/__user-session", async ({ request }) => {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
-
-    if (!userId) {
-      return new Response('Missing userId', { status: 400 });
+  route("/__user-session", async ({ request, ctx }) => {
+    // The user id comes from the authenticated session, never from the client,
+    // so nobody can spoof another user's presence.
+    if (!ctx.user?.id) {
+      return new Response('Unauthorized', { status: 401 });
     }
+    const userId = ctx.user.id;
 
     // Get or create User Session DO for this user
     const id = env.USER_SESSION_DO.idFromName(userId);
     const stub = env.USER_SESSION_DO.get(id);
 
-    // Forward request to DO (will handle WebSocket upgrade)
-    return stub.fetch(request);
+    // Forward to the DO with the session-derived userId, dropping any client value
+    const url = new URL(request.url);
+    url.searchParams.set('userId', userId);
+    return stub.fetch(new Request(url.toString(), request));
   }),
 
   // Matchmaking DO - Regional PVP matchmaking

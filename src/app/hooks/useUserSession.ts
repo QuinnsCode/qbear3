@@ -160,7 +160,8 @@ export function useUserSession(options: UseUserSessionOptions): UseUserSessionRe
     try {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.host;
-      const url = `${protocol}//${host}/__user-session?userId=${userId}&deviceId=${deviceId.current}`;
+      // userId is taken from the session server-side; only the deviceId travels in the URL
+      const url = `${protocol}//${host}/__user-session?deviceId=${encodeURIComponent(deviceId.current)}`;
 
       console.log('[useUserSession] Connecting to:', url);
 

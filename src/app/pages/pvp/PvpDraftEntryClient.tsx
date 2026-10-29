@@ -47,7 +47,7 @@ export function PvpDraftEntryClient({ decksByRegion, pvpDeckExpiryHours, userId,
         if (!cancelled) setQueueStats(stats);
       } catch {}
     };
-    const t = setInterval(tick, 15000);
+    const t = setInterval(tick, 60000);
     return () => { cancelled = true; clearInterval(t); };
   }, []);
 

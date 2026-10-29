@@ -2,6 +2,7 @@
 'use server'
 
 import { env } from "cloudflare:workers"
+import { requestInfo } from "rwsdk/worker"
 import { REGION_LIST, type Region } from "@/app/lib/constants/regions"
 
 export interface RegionQueueStats {
@@ -18,6 +19,11 @@ const EMPTY: RegionQueueStats = { queueSize: 0, longestWaitSeconds: 0 }
  * and a region that has never been used just reports an empty queue.
  */
 export async function getQueueStats(): Promise<QueueStatsByRegion> {
+  // Each call wakes every regional DO, so only signed-in users may poll it.
+  if (!requestInfo.ctx.user) {
+    return Object.fromEntries(REGION_LIST.map(r => [r.id, EMPTY])) as QueueStatsByRegion
+  }
+
   const entries = await Promise.all(
     REGION_LIST.map(async (region): Promise<[Region, RegionQueueStats]> => {
       try {
