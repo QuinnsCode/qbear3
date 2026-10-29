@@ -82,6 +82,8 @@ export class UserSessionDO extends DurableObject {
     const { 0: client, 1: server } = new WebSocketPair();
 
     // Use Hibernation API - DO will hibernate when no messages
+    // acceptWebSocket() both accepts the socket and registers it for hibernation;
+    // calling server.accept() afterwards would throw.
     this.state.acceptWebSocket(server, [deviceId]); // Tag with deviceId
 
     // Send initial state to newly connected device
@@ -91,8 +93,6 @@ export class UserSessionDO extends DurableObject {
       ...currentState,
       deviceId
     }));
-
-    server.accept();
 
     // DO hibernates immediately after this (NO COST!)
     return new Response(null, {

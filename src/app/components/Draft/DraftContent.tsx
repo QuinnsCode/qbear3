@@ -1,7 +1,7 @@
 // app/components/Draft/DraftContent.tsx
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   Eye, Settings, AlertTriangle, Hourglass, Sparkles, Wifi, WifiOff, RotateCw,
   PartyPopper, Library, Pencil, Plus, Download, LogIn, UserPlus, PanelRightOpen,
@@ -165,7 +165,13 @@ export default function DraftContent({
   const handleMoveToMainDeck = (cardId: string) => setSideboardCards(prev => prev.filter(id => id !== cardId))
   const handleClearSideboard = () => setSideboardCards([])
 
-  const mainDeckCards = currentPlayer?.draftPool?.filter(cardId => !sideboardCards.includes(cardId)) || []
+  // Memoized so DraftPool's fetch effect is not re-triggered by every
+  // WebSocket state update that leaves the pool unchanged.
+  const draftPool = currentPlayer?.draftPool
+  const mainDeckCards = useMemo(
+    () => draftPool?.filter(cardId => !sideboardCards.includes(cardId)) || [],
+    [draftPool, sideboardCards]
+  )
 
   // Export deck to text (for guest users)
   const handleExportDeck = async () => {

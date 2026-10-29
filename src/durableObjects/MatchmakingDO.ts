@@ -243,22 +243,35 @@ export class MatchmakingDO extends DurableObject {
     console.log(`Creating match between ${player1.userName} and ${player2.userName}`);
     const matchId = await this.createPvpGame(player1, player2);
 
+    // createPvpGame awaits a network round-trip; either player may have
+    // disconnected meanwhile (webSocketClose removes them from `connections`).
     const ws1 = this.connections.get(player1.connectionId);
     const ws2 = this.connections.get(player2.connectionId);
 
     if (!matchId) {
       const err = JSON.stringify({ type: 'error', error: 'Failed to create match. Please try again.' });
+      // Put whoever is still here back at the front of the line
+      await this.requeueFront([player1, player2].filter(p => this.connections.has(p.connectionId)));
       ws1?.send(err);
       ws2?.send(err);
-      // Put them back at the front of the line
-      this.queue.unshift(player1, player2);
-      await this.saveQueue();
       this.broadcastQueueStatus();
       return;
     }
 
-    ws1?.send(JSON.stringify({ type: 'match_found', matchId, opponentName: player2.userName } satisfies MatchmakingMessage));
-    ws2?.send(JSON.stringify({ type: 'match_found', matchId, opponentName: player1.userName } satisfies MatchmakingMessage));
+    if (!ws1 || !ws2) {
+      // One side left during game creation: never send the survivor into a
+      // one-player game. Re-queue them at the front; the queue_status broadcast
+      // keeps their lobby in the searching phase (an 'error' would make the
+      // client leave the queue).
+      const survivors = [player1, player2].filter(p => this.connections.has(p.connectionId));
+      console.log(`Opponent left before match ${matchId} could start; re-queuing ${survivors.map(p => p.userName).join(', ') || 'nobody'}`);
+      await this.requeueFront(survivors);
+      this.broadcastQueueStatus();
+      return;
+    }
+
+    ws1.send(JSON.stringify({ type: 'match_found', matchId, opponentName: player2.userName } satisfies MatchmakingMessage));
+    ws2.send(JSON.stringify({ type: 'match_found', matchId, opponentName: player1.userName } satisfies MatchmakingMessage));
 
     this.broadcastQueueStatus();
 
@@ -269,6 +282,14 @@ export class MatchmakingDO extends DurableObject {
         try { ws?.close(1000, 'Match found'); } catch {}
       }
     }, 2500);
+  }
+
+  /** Put entries back at the head of the queue (skipping any that are already queued). */
+  private async requeueFront(entries: QueueEntry[]): Promise<void> {
+    const fresh = entries.filter(e => !this.queue.some(q => q.connectionId === e.connectionId));
+    if (fresh.length === 0) return;
+    this.queue.unshift(...fresh);
+    await this.saveQueue();
   }
 
   private async createPvpGame(player1: QueueEntry, player2: QueueEntry): Promise<string | null> {

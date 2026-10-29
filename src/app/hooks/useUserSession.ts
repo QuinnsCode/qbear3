@@ -57,6 +57,8 @@ export function useUserSession(options: UseUserSessionOptions): UseUserSessionRe
   const [error, setError] = useState<string | null>(null);
 
   const ws = useRef<WebSocket | null>(null);
+  // True once the effect cleanup has closed the socket; onclose must then not reconnect.
+  const closedByUs = useRef(false);
   const reconnectAttempts = useRef(0);
   const reconnectTimeout = useRef<NodeJS.Timeout>();
   const pingInterval = useRef<NodeJS.Timeout>();
@@ -150,7 +152,7 @@ export function useUserSession(options: UseUserSessionOptions): UseUserSessionRe
 
   // Connect to User Session DO
   const connect = useCallback(() => {
-    if (!userId || !enabled) return;
+    if (!userId || !enabled || closedByUs.current) return;
 
     // Prevent duplicate connections
     if (ws.current?.readyState === WebSocket.OPEN) return;
@@ -165,12 +167,19 @@ export function useUserSession(options: UseUserSessionOptions): UseUserSessionRe
       const socket = new WebSocket(url);
 
       socket.onopen = () => {
+        // Cleanup ran while we were still connecting; drop the socket instead of
+        // starting a heartbeat that would keep the DO awake after unmount.
+        if (closedByUs.current || ws.current !== socket) {
+          socket.close(1000, 'Unmounted');
+          return;
+        }
         console.log('[useUserSession] Connected');
         setIsConnected(true);
         setError(null);
         reconnectAttempts.current = 0;
 
         // Start heartbeat ping (every 30 seconds)
+        if (pingInterval.current) clearInterval(pingInterval.current);
         pingInterval.current = setInterval(() => {
           sendMessage({ type: 'ping' });
         }, 30000);
@@ -185,12 +194,17 @@ export function useUserSession(options: UseUserSessionOptions): UseUserSessionRe
 
       socket.onclose = (event) => {
         console.log('[useUserSession] Disconnected:', event.code, event.reason);
-        setIsConnected(false);
 
         // Clear ping interval
         if (pingInterval.current) {
           clearInterval(pingInterval.current);
+          pingInterval.current = undefined;
         }
+
+        // We closed it (unmount / deps change): no state updates, no reconnect.
+        if (closedByUs.current || ws.current !== socket) return;
+
+        setIsConnected(false);
 
         // Handle logout_all
         if (event.reason === 'Logged out from all devices') {
@@ -221,21 +235,27 @@ export function useUserSession(options: UseUserSessionOptions): UseUserSessionRe
 
   // Connect on mount
   useEffect(() => {
+    closedByUs.current = false;
+    reconnectAttempts.current = 0;
     if (enabled && userId) {
       connect();
     }
 
     return () => {
-      if (ws.current) {
-        ws.current.close();
-        ws.current = null;
-      }
+      closedByUs.current = true;
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current);
+        reconnectTimeout.current = undefined;
       }
       if (pingInterval.current) {
         clearInterval(pingInterval.current);
+        pingInterval.current = undefined;
       }
+      if (ws.current) {
+        ws.current.close(1000, 'Unmounted');
+        ws.current = null;
+      }
+      setIsConnected(false);
     };
   }, [connect, enabled, userId]);
 

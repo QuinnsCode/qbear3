@@ -37,6 +37,9 @@ const STEPS: Array<{ id: LobbyPhase; label: string }> = [
   { id: 'match_found', label: 'Battle' },
 ];
 
+/** Close reason MatchmakingDO uses when a newer socket for the same user replaces this one. */
+const REPLACED_REASON = 'Replaced by a newer connection';
+
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -72,6 +75,10 @@ export function PvpLobbyClient({
 
   const wsRef = useRef<WebSocket | null>(null);
   const matchFoundRef = useRef(false);
+  // Set when MatchmakingDO closed this socket because the same user queued from
+  // a newer tab. That tab now owns the queue entry, so this one must not dequeue
+  // it on cleanup.
+  const replacedRef = useRef(false);
 
   const selectedDeck = pvpDecks.find(d => d.id === selectedDeckId);
   const deckAgeMs = selectedDeck ? now - selectedDeck.createdAt : 0;
@@ -99,6 +106,7 @@ export function PvpLobbyClient({
     if (phase !== 'searching') return;
 
     matchFoundRef.current = false;
+    replacedRef.current = false;
     setSocketState('connecting');
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -150,8 +158,20 @@ export function PvpLobbyClient({
 
     ws.onclose = (event) => {
       setSocketState('idle');
+      if (matchFoundRef.current) return;
+
+      // MatchmakingDO closes the older socket with 1000 when the same user
+      // joins the queue from another tab. Leave the searching phase here and
+      // make sure cleanup does not dequeue the tab that replaced us.
+      if (event.reason === REPLACED_REASON) {
+        replacedRef.current = true;
+        setError('You started searching from another tab. This tab left the queue.');
+        setPhase('ready');
+        return;
+      }
+
       // If the server dropped us mid-search, do not leave the UI spinning forever
-      if (!matchFoundRef.current && event.code !== 1000) {
+      if (event.code !== 1000) {
         setError('Lost connection to matchmaking. You were removed from the queue.');
         setPhase('ready');
       }
@@ -161,7 +181,9 @@ export function PvpLobbyClient({
 
     return () => {
       if (pingTimer) clearInterval(pingTimer);
-      if (ws.readyState === WebSocket.OPEN) {
+      // leave_queue is matched by userId server-side, so a replaced tab must
+      // not send it or it would dequeue the live tab too.
+      if (ws.readyState === WebSocket.OPEN && !replacedRef.current && !matchFoundRef.current) {
         ws.send(JSON.stringify({ type: 'leave_queue', userId }));
       }
       ws.close(1000, 'Left lobby');

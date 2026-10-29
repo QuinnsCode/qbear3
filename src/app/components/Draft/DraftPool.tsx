@@ -76,20 +76,33 @@ export default function DraftPool({
     return idx
   }, [cubeCards])
 
-  // Fetch only what the cube index doesn't know about
-  const lastFetchedKey = useRef('')
-  useEffect(() => {
-    const allCards = [...new Set([...cards, ...sideboardCards])]
-    const missing = allCards.filter(id => !cubeIndex[id] && !fetched[id])
-    const fetchKey = [...missing].sort().join(',')
-    if (missing.length === 0 || fetchKey === lastFetchedKey.current) return
-    lastFetchedKey.current = fetchKey
+  // Fetch only what the cube index doesn't know about.
+  //
+  // The effect is keyed on a stable string of the missing ids, so a parent
+  // re-render that passes a fresh `cards` array does not re-run it. Ids that
+  // are already being fetched are tracked in a ref so a re-run (new ids arriving
+  // mid-fetch) never abandons or duplicates the in-flight request.
+  const inFlight = useRef<Set<string>>(new Set())
+  const missingKey = useMemo(() => {
+    const allCards = new Set([...cards, ...sideboardCards])
+    const missing: string[] = []
+    for (const id of allCards) {
+      if (!cubeIndex[id] && !fetched[id]) missing.push(id)
+    }
+    return missing.sort().join(',')
+  }, [cards, sideboardCards, cubeIndex, fetched])
 
-    let cancelled = false
+  useEffect(() => {
+    if (!missingKey) return
+    const toFetch = missingKey.split(',').filter(id => !inFlight.current.has(id))
+    if (toFetch.length === 0) return
+
+    for (const id of toFetch) inFlight.current.add(id)
+    setLoading(true)
+
     const run = async () => {
-      setLoading(true)
       const next: Record<string, PoolCard> = {}
-      for (const chunk of chunkArray(missing, 75)) {
+      for (const chunk of chunkArray(toFetch, 75)) {
         try {
           const response = await fetch('https://api.scryfall.com/cards/collection', {
             method: 'POST',
@@ -110,14 +123,14 @@ export default function DraftPool({
           console.error('Failed to fetch cards:', error)
         }
       }
-      if (!cancelled) {
-        setFetched(prev => ({ ...prev, ...next }))
-        setLoading(false)
-      }
+      for (const id of toFetch) inFlight.current.delete(id)
+      // Always commit results, even if the component re-rendered meanwhile;
+      // setState on an unmounted component is a no-op in React 18+.
+      if (Object.keys(next).length > 0) setFetched(prev => ({ ...prev, ...next }))
+      if (inFlight.current.size === 0) setLoading(false)
     }
     run()
-    return () => { cancelled = true }
-  }, [cards, sideboardCards, cubeIndex, fetched])
+  }, [missingKey])
 
   const getCard = (id: string): PoolCard | undefined => cubeIndex[id] || fetched[id]
 
