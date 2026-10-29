@@ -18,7 +18,7 @@ export default async function CreateLairPage({ ctx, request }: RequestInfo) {
     const currentUrl = new URL(request.url);
     const protocol = currentUrl.protocol;
     const mainDomain = currentUrl.hostname.includes('localhost')
-      ? 'localhost:5173'
+      ? `localhost:${currentUrl.port || '5173'}`
       : currentUrl.hostname.split('.').slice(-2).join('.');
     const pathname = currentUrl.pathname;
 

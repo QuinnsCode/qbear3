@@ -36,6 +36,22 @@ Pages are asserted from their server-rendered HTML; auth goes through better-aut
 Run one file with `bun test tests/e2e/portal.test.ts`. `pnpm run types` typechecks `tests/` with
 Bun types (`tests/tsconfig.json`). CI runs the whole suite (`.github/workflows/e2e.yml`).
 
+### Rusty Buns (desktop binary, typed Cloudflare deploy)
+
+[Rusty Buns](https://github.com/QuinnsCode/RustyBuns) is a dev dependency that packs this app from `rustybuns.config.ts`. It never edits `src/` and nothing of it ships in the Worker.
+
+```bash
+pnpm run desktop:dev      # vite build + run the Worker on a local Bun host (sqlite behind D1/KV/R2/DOs), opens Chrome
+pnpm run desktop:build    # dist/qntbr-<os>-<arch>: one double-clickable file
+pnpm run rb:plan          # typecheck the generated Alchemy stack; list what a deploy would create (creates nothing)
+pnpm run rb:deploy        # alchemy deploy; refuses without a matching plan, then asks
+                          # (plan/deploy need `pnpm exec rustybuns add deploy` once: pinned Alchemy + Effect, and `rustybuns login cloudflare`)
+pnpm exec rustybuns generate   # regenerate .rustybuns/ and wrangler.generated.jsonc from the config
+```
+
+Secret values come from `.dev.vars` or the shell (`BETTER_AUTH_SECRET`, `AUTH_SECRET_KEY` and `API_ENCRYPTION_KEY` are required; the rest are optional). The custom-domain routes and observability still live in `wrangler.jsonc`, and `pnpm run release` still deploys the live Worker through wrangler.
+
+
 ## Architecture
 
 ### RedwoodSDK Framework

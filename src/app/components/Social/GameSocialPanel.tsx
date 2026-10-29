@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Users, ChevronDown } from "lucide-react";
+import { Users, ChevronDown, Link2, Check, Send } from "lucide-react";
 import { InviteFriendsModal } from "../Social/InviteFriendsModal";
 
 type GameSocialPanelProps = {
@@ -136,14 +136,14 @@ export function GameSocialPanel({
               onClick={handleCopyGameLink}
               className="w-full px-3 py-2 text-sm text-left text-slate-200 hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-2"
             >
-              <span>{copied ? '✓' : '🔗'}</span>
+              {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Link2 className="w-4 h-4" />}
               <span>{copied ? 'Copied!' : 'Copy Game Link'}</span>
             </button>
             <button
               onClick={() => { setShowInviteModal(true); setIsOpen(false); }}
               className="w-full px-3 py-2 text-sm text-left text-slate-200 hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-2"
             >
-              <span>📨</span>
+              <Send className="w-4 h-4" />
               <span>Invite Friends</span>
             </button>
           </div>

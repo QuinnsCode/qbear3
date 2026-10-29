@@ -13,7 +13,7 @@ export default function HomePage({ ctx, request }: RequestInfo) {
   // Get the main domain without subdomain
   const url = new URL(request.url);
   const mainDomain = url.hostname.includes('localhost') 
-    ? 'localhost:5173' 
+    ? `localhost:${url.port || '5173'}`
     : url.hostname.split('.').slice(-2).join('.');
   const mainSiteUrl = `${url.protocol}//${mainDomain}`;
 

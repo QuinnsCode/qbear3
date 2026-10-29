@@ -1,3 +1,6 @@
+packages:
+  - packages/*
+
 # pnpm 12 reads build permissions from here (the `pnpm.onlyBuiltDependencies`
 # field in package.json is no longer honoured).
 allowBuilds:

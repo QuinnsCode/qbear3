@@ -12,9 +12,9 @@ test("landing page has products, game center and app center sections", async () 
   expect(page.hops).toEqual([]);
   for (const id of ["products", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
   // Section links into the hubs, and RustyBuns from the nav.
-  expect(links(page.body, { href: "/games", class: "section-link" })).toHaveLength(1);
-  expect(links(page.body, { href: "/apps", class: "section-link" })).toHaveLength(1);
-  expect(links(page.body, { href: RUSTY_BUNS, class: "nav-link" })).toHaveLength(1);
+  expect(links(page.body, { href: "/games", class: "q-section-link" })).toHaveLength(1);
+  expect(links(page.body, { href: "/apps", class: "q-section-link" })).toHaveLength(1);
+  expect(links(page.body, { href: RUSTY_BUNS, class: "q-nav-link" })).toHaveLength(1);
 });
 
 test("game center lists games and marks itself active", async () => {
@@ -23,8 +23,8 @@ test("game center lists games and marks itself active", async () => {
   expect(page.status).toBe(200);
   expect(page.url.pathname).toBe("/games");
   expect(headings(page.body)).toEqual(expect.arrayContaining(["Sanctum", "Sandbox"]));
-  expect(links(page.body, { href: "/sanctum", class: "portal-card" })).toHaveLength(1);
-  expect(links(page.body, { class: "active" }).map((l) => l.text)).toEqual(["Games"]);
+  expect(links(page.body, { href: "/sanctum", class: "q-tile" })).toHaveLength(1);
+  expect(links(page.body, { class: "q-active" }).map((l) => l.text)).toEqual(["Games"]);
 });
 
 test("app center lists apps including RustyBuns on GitHub", async () => {
@@ -33,9 +33,9 @@ test("app center lists apps including RustyBuns on GitHub", async () => {
   expect(page.status).toBe(200);
   expect(page.url.pathname).toBe("/apps");
   expect(headings(page.body)).toContain("RustyBuns");
-  expect(links(page.body, { href: RUSTY_BUNS, class: "portal-card" })).toHaveLength(1);
-  expect(links(page.body, { href: "https://qlave.dev", class: "portal-card" })).toHaveLength(1);
-  expect(links(page.body, { class: "active" }).map((l) => l.text)).toEqual(["Apps"]);
+  expect(links(page.body, { href: RUSTY_BUNS, class: "q-tile" })).toHaveLength(1);
+  expect(links(page.body, { href: "https://qlave.dev", class: "q-tile" })).toHaveLength(1);
+  expect(links(page.body, { class: "q-active" }).map((l) => l.text)).toEqual(["Apps"]);
 });
 
 test("unknown paths redirect home", async () => {

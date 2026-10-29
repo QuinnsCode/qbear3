@@ -76,7 +76,7 @@ export async function initializePvpGame(config: PvpGameConfig) {
 
     // Verify player count after joins
     const stateAfterJoin = await stub.fetch(new Request('https://fake-host/', { method: 'GET' }));
-    const gameStateAfterJoin = await stateAfterJoin.json();
+    const gameStateAfterJoin: any = await stateAfterJoin.json();
     console.log(`📊 Player count after joins: ${gameStateAfterJoin.players?.length || 0}`);
 
     if (gameStateAfterJoin.players?.length !== 2) {
@@ -126,7 +126,7 @@ export async function initializePvpGame(config: PvpGameConfig) {
           name: deck.name,
           cardCount: deck.cards?.length,
           firstCard: deck.cards?.[0]?.name,
-          deckListPreview: deckListText.split('\n').slice(0, 5).join('\n')
+          deckPreview: (deck.cards || []).slice(0, 5).map((c: any) => c.name).join(', ')
         });
         throw new Error(`Failed to import deck for ${player.userName}: ${errorText}`);
       }
@@ -165,7 +165,7 @@ export async function initializePvpGame(config: PvpGameConfig) {
 
     // Verify final player count
     const finalState = await stub.fetch(new Request('https://fake-host/', { method: 'GET' }));
-    const finalGameState = await finalState.json();
+    const finalGameState: any = await finalState.json();
     console.log(`📊 Final player count: ${finalGameState.players?.length || 0}`);
 
     if (finalGameState.players?.length !== 2) {

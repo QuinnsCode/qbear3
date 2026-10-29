@@ -1,0 +1,24 @@
+{
+  "name": "@qntbr/ui",
+  "version": "0.1.0",
+  "description": "QNTBR design system: paper-tile UI (hairlines, grain, one accent, light/dark) for RedwoodSDK apps.",
+  "private": true,
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css",
+    "./fonts.css": "./src/fonts.css"
+  },
+  "files": [
+    "src"
+  ],
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0"
+  }
+}

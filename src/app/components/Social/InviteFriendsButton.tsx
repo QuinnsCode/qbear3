@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { Send } from "lucide-react";
 import { InviteFriendsModal } from "./InviteFriendsModal";
 import type { GameType } from "@/app/serverActions/social/gameInvites";
 
@@ -20,21 +21,10 @@ export function InviteFriendsButton(props: InviteFriendsButtonProps) {
     <>
       <button
         onClick={() => setShowModal(true)}
-        style={{
-          padding: '12px 24px',
-          background: 'rgba(146, 64, 14, 0.2)',
-          border: '2px solid rgba(146, 64, 14, 0.4)',
-          borderRadius: '8px',
-          color: '#92400e',
-          fontSize: '16px',
-          fontWeight: '600',
-          cursor: 'pointer',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
+        className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors"
+        style={{ WebkitTapHighlightColor: "transparent", touchAction: "manipulation" }}
       >
-        <span>📨</span>
+        <Send className="w-4 h-4" />
         Invite Friends
       </button>
 

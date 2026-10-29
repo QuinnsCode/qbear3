@@ -9,6 +9,7 @@ import { getEffectiveTier, getTierConfig } from "@/app/lib/subscriptions/tiers";
 import { db } from "@/db";
 import { getFriends, getFriendRequests } from "@/app/serverActions/social/friends";
 import { getGameInvites } from "@/app/serverActions/social/gameInvites";
+import { getPresenceForUsers, type UserPresence } from "@/app/serverActions/social/presence";
 import { SanctumClient } from "./SanctumClient";
 import { LogoutButton } from "@/app/pages/user/LoginButton";
 import {
@@ -191,16 +192,33 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   // Fetch remaining data in parallel (skip social if cached)
   const needsSocialData = ctx.user?.id && friends.length === 0 && friendRequests.incoming.length === 0 && gameInvites.received.length === 0;
 
-  const [activeGames, activeCardGames, userDecksResult, freshFriends, freshFriendRequests, freshGameInvites] = await Promise.all([
+  // Live presence for the friends list (never cached: it changes by the minute).
+  // When friends came from cache their ids are already known, so the lookup
+  // runs inside the parallel batch; on a cache miss it waits for getFriends.
+  const lookupPresence = async (list: any[]): Promise<Record<string, UserPresence>> => {
+    if (list.length === 0) return {};
+    try {
+      return await getPresenceForUsers(list.map((f: any) => f.friendId));
+    } catch (e) {
+      console.warn('[SanctumPage] presence lookup failed:', e);
+      return {};
+    }
+  };
+
+  const [activeGames, activeCardGames, userDecksResult, freshFriends, freshFriendRequests, freshGameInvites, cachedPresence] = await Promise.all([
     orgSlug ? getOrgGames(orgSlug) : Promise.resolve([]),
     orgSlug ? getOrgCardGames(orgSlug) : Promise.resolve([]),
     ctx.user?.id ? getUserDecks(ctx.user.id) : Promise.resolve({ success: true, decks: [] }),
     needsSocialData && ctx.user?.id ? getFriends(ctx.user.id) : Promise.resolve(friends),
     needsSocialData && ctx.user?.id ? getFriendRequests(ctx.user.id) : Promise.resolve(friendRequests),
     needsSocialData && ctx.user?.id ? getGameInvites(ctx.user.id) : Promise.resolve(gameInvites),
+    needsSocialData && ctx.user?.id ? Promise.resolve<Record<string, UserPresence>>({}) : lookupPresence(friends),
   ]);
 
   const userDecks = userDecksResult.decks || [];
+
+  const friendPresence: Record<string, UserPresence> =
+    needsSocialData && ctx.user?.id ? await lookupPresence(freshFriends) : cachedPresence;
 
   // Use fresh data if we fetched it, otherwise keep cached
   if (needsSocialData && ctx.user?.id) {
@@ -229,6 +247,7 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
           friends={friends}
           friendRequests={friendRequests}
           gameInvites={gameInvites}
+          friendPresence={friendPresence}
           currentTier={currentTier}
           tierLimits={tierLimits}
           userId={ctx.user!.id}

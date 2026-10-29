@@ -1,4 +1,5 @@
 import { defineApp, ErrorResponse, requestInfo } from "rwsdk/worker";
+import { isLoopbackHost } from "@/lib/loopback";
 // import { realtimeRoute } from "rwsdk/realtime/worker";
 // import { syncOrderNotes } from "./lib/syncedState";
 import { route, render, prefix } from "rwsdk/router";
@@ -82,9 +83,10 @@ export type AppContext = {
 function normalizeUrl(request: Request): Response | null {
   const url = new URL(request.url);
   const PRIMARY_DOMAIN = 'qntbr.com';
-  const isLocalhost = url.hostname.includes('localhost');
-  
-  // Skip normalization for localhost during development
+  // localhost (vite dev) and the loopback address (the Rusty Buns desktop host binds 127.0.0.1)
+  const isLocalhost = isLoopbackHost(url.hostname);
+
+  // Skip normalization for local hosts: no HTTPS redirect, no www rewrite
   if (isLocalhost) {
     return null;
   }
@@ -223,7 +225,7 @@ export default defineApp([
         if (ctx.orgError === 'ORG_NOT_FOUND') {
           // Redirect to main domain with org creation option
           const mainDomain = url.hostname.includes('localhost') 
-            ? 'localhost:5173' 
+            ? `localhost:${url.port || '5173'}`
             : 'qntbr.com';
           
           const orgSlug = extractOrgFromSubdomain(request);
@@ -330,20 +332,22 @@ export default defineApp([
   }),
 
   // User Session DO - Cross-device sync with Hibernation API
-  route("/__user-session", async ({ request }) => {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
-
-    if (!userId) {
-      return new Response('Missing userId', { status: 400 });
+  route("/__user-session", async ({ request, ctx }) => {
+    // The user id comes from the authenticated session, never from the client,
+    // so nobody can spoof another user's presence.
+    if (!ctx.user?.id) {
+      return new Response('Unauthorized', { status: 401 });
     }
+    const userId = ctx.user.id;
 
     // Get or create User Session DO for this user
     const id = env.USER_SESSION_DO.idFromName(userId);
     const stub = env.USER_SESSION_DO.get(id);
 
-    // Forward request to DO (will handle WebSocket upgrade)
-    return stub.fetch(request);
+    // Forward to the DO with the session-derived userId, dropping any client value
+    const url = new URL(request.url);
+    url.searchParams.set('userId', userId);
+    return stub.fetch(new Request(url.toString(), request));
   }),
 
   // Matchmaking DO - Regional PVP matchmaking

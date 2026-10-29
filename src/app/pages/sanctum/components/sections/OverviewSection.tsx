@@ -115,7 +115,7 @@ export function OverviewSection({ stats, currentTier, organizationName, userName
           </a>
 
           <a
-            href="/draft"
+            href="/draft/new"
             className="flex flex-col items-center gap-3 p-6 bg-orange-600 hover:bg-orange-500 rounded-lg text-white font-semibold transition-all hover:scale-105 shadow-md"
           >
             <span className="text-3xl">📦</span>

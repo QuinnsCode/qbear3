@@ -131,6 +131,10 @@ export const createAuth = () => {
         "http://localhost:8787",
         "http://*.localhost:8787",
       ];
+      // Whatever port the local dev server is actually on (see .dev.vars)
+      if (env.BETTER_AUTH_URL?.includes("localhost")) {
+        origins.push(env.BETTER_AUTH_URL, env.BETTER_AUTH_URL.replace("://localhost", "://*.localhost"));
+      }
       const host = request?.headers.get("host");
       const hostname = host?.replace(/:\d+$/, "");
       if (hostname && (hostname === "localhost" || hostname.endsWith(".localhost") || hostname === "127.0.0.1" || hostname === "[::1]")) {
