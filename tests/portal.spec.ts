@@ -15,8 +15,8 @@ test.describe('Portal', () => {
     await expect(page.locator('section#apps')).toBeVisible();
 
     // Section links into the hubs
-    await expect(page.locator('a.section-link[href="/games"]')).toBeVisible();
-    await expect(page.locator('a.section-link[href="/apps"]')).toBeVisible();
+    await expect(page.locator('a.q-section-link[href="/games"]')).toBeVisible();
+    await expect(page.locator('a.q-section-link[href="/apps"]')).toBeVisible();
 
     // RustyBuns is linked from the nav
     await expect(page.locator(`header a[href="${RUSTY_BUNS}"]`)).toBeVisible();
@@ -27,17 +27,17 @@ test.describe('Portal', () => {
     await expect(page).toHaveURL(/\/games$/);
     await expect(page.getByRole('heading', { name: 'Sanctum' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Sandbox' })).toBeVisible();
-    await expect(page.locator('a.portal-card[href="/sanctum"]')).toBeVisible();
-    await expect(page.locator('header a.nav-link.active')).toHaveText('Games');
+    await expect(page.locator('a.q-tile[href="/sanctum"]')).toBeVisible();
+    await expect(page.locator('header a.q-nav-link.q-active')).toHaveText('Games');
   });
 
   test('app center lists apps including RustyBuns on GitHub', async ({ page }) => {
     await page.goto('/apps');
     await expect(page).toHaveURL(/\/apps$/);
     await expect(page.getByRole('heading', { name: 'RustyBuns' })).toBeVisible();
-    await expect(page.locator(`a.portal-card[href="${RUSTY_BUNS}"]`)).toBeVisible();
-    await expect(page.locator('a.portal-card[href="https://qlave.dev"]')).toBeVisible();
-    await expect(page.locator('header a.nav-link.active')).toHaveText('Apps');
+    await expect(page.locator(`a.q-tile[href="${RUSTY_BUNS}"]`)).toBeVisible();
+    await expect(page.locator('a.q-tile[href="https://qlave.dev"]')).toBeVisible();
+    await expect(page.locator('header a.q-nav-link.q-active')).toHaveText('Apps');
   });
 
   test('unknown paths still redirect home', async ({ page }) => {

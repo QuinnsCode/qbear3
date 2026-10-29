@@ -175,6 +175,9 @@ importers:
       '@prisma/client':
         specifier: ~6.8.2
         version: 6.8.2(prisma@6.8.2(typescript@5.9.3))(typescript@5.9.3)
+      '@qntbr/ui':
+        specifier: workspace:*
+        version: link:packages/ui
       '@radix-ui/react-select':
         specifier: ^2.4.1
         version: 2.4.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -284,6 +287,16 @@ importers:
       wrangler:
         specifier: 4.154.0
         version: 4.154.0(@cloudflare/workers-types@4.20260702.1)(@types/node@22.20.5)
+
+  packages/ui:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.3.1
+    devDependencies:
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
 
 packages:
 
