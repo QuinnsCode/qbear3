@@ -1,5 +1,7 @@
 // @/app/pages/landing/LandingPage.tsx
 import { type RequestInfo } from "rwsdk/worker";
+import { apps, games, RUSTY_BUNS_URL } from "@/app/pages/portal/portalData";
+import { PORTAL_BG, PortalFooter, PortalGrid, PortalNav, PortalSectionHead, PortalStyles } from "@/app/pages/portal/PortalShell";
 
 const products = [
   {
@@ -61,48 +63,13 @@ const products = [
   },
 ];
 
-export default function LandingPage({ ctx }: RequestInfo) {
+export default function LandingPage({ ctx, request }: RequestInfo) {
   const isLoggedIn = !!ctx.user;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#09090b', color: '#e4e4e7', fontFamily: "'Syne', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: PORTAL_BG, color: '#e4e4e7', fontFamily: "'Syne', sans-serif" }}>
+      <PortalStyles />
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap');
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        .mono { font-family: 'Geist Mono', monospace; }
-
-        .eyebrow {
-          font-family: 'Geist Mono', monospace;
-          font-size: 0.62rem;
-          letter-spacing: 0.28em;
-          text-transform: uppercase;
-          color: #3f3f46;
-        }
-
-        .nav-link {
-          font-family: 'Geist Mono', monospace;
-          font-size: 0.7rem;
-          letter-spacing: 0.1em;
-          color: #52525b;
-          text-decoration: none;
-          transition: color 0.15s;
-        }
-        .nav-link:hover { color: #a1a1aa; }
-
-        .hero-title {
-          font-size: clamp(2.8rem, 7vw, 5.5rem);
-          font-weight: 800;
-          letter-spacing: -0.035em;
-          line-height: 1.0;
-          color: #fafafa;
-        }
-        .hero-title em {
-          font-style: italic;
-          font-weight: 400;
-          color: #27272a;
-        }
-
         /* ── Product card ── */
         .product-card {
           display: grid;
@@ -348,79 +315,13 @@ export default function LandingPage({ ctx }: RequestInfo) {
           flex-shrink: 0;
         }
 
-        .sep {
-          height: 2px;
-          background: linear-gradient(90deg, #09090b 0%, rgba(255,255,255,0.03) 50%, #09090b 100%);
-        }
-
-        .about-body {
-          font-size: clamp(0.95rem, 1.6vw, 1.05rem);
-          font-weight: 400;
-          color: #3f3f46;
-          line-height: 1.9;
-          max-width: 600px;
-        }
-        .about-body span { color: #71717a; }
-
-        .footer-link {
-          font-family: 'Geist Mono', monospace;
-          font-size: 0.68rem;
-          letter-spacing: 0.1em;
-          color: #52525b;
-          text-decoration: none;
-          transition: color 0.15s;
-        }
-        .footer-link:hover { color: #a1a1aa; }
-
         @media (max-width: 768px) {
           .product-card { grid-template-columns: 1fr; min-height: unset; }
           .card-right { padding-top: 0; }
         }
       `}</style>
 
-      {/* ── Nav ── */}
-      <header style={{
-        padding: '1.2rem clamp(1.5rem, 4vw, 3rem)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderBottom: '1px solid #0f0f12',
-        position: 'sticky',
-        top: 0,
-        background: 'rgba(9,9,11,0.93)',
-        backdropFilter: 'blur(16px)',
-        zIndex: 50,
-      }}>
-        <a href="/" style={{
-          fontFamily: "'Geist Mono', monospace",
-          fontSize: '0.88rem',
-          letterSpacing: '0.22em',
-          color: '#fafafa',
-          textDecoration: 'none',
-          fontWeight: 500,
-        }}>QNTBR</a>
-
-        <nav style={{ display: 'flex', gap: 'clamp(1rem, 3vw, 2rem)', alignItems: 'center' }}>
-          <a href="/blog" className="nav-link">Blog</a>
-          <a href="https://qlave.dev" className="nav-link" target="_blank" rel="noreferrer">Qlave</a>
-          <a href="/qvtt" className="nav-link">QVTT</a>
-          <a href="https://flareup.dev" className="nav-link" target="_blank" rel="noreferrer">Flareup</a>
-          {isLoggedIn && (
-            <a href="/sanctum" style={{
-              fontFamily: "'Geist Mono', monospace",
-              fontSize: '0.7rem',
-              letterSpacing: '0.1em',
-              padding: '0.4rem 1rem',
-              borderRadius: '4px',
-              background: '#fafafa',
-              color: '#09090b',
-              textDecoration: 'none',
-              fontWeight: 700,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-            }}>Games →</a>
-          )}
-        </nav>
-      </header>
+      <PortalNav isLoggedIn={isLoggedIn} current="home" />
 
       {/* ── Hero ── */}
       <section style={{
@@ -441,10 +342,16 @@ export default function LandingPage({ ctx }: RequestInfo) {
         }}>
           A suite of web tools built to solve real problems — calls, games, deployments, visibility. Each one ships, each one runs.
         </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '2.25rem' }}>
+          <a href="#products" className="section-link">Products</a>
+          <a href="#games" className="section-link">Game Center</a>
+          <a href="#apps" className="section-link">App Center</a>
+          <a href={RUSTY_BUNS_URL} className="section-link" target="_blank" rel="noreferrer">RustyBuns ↗</a>
+        </div>
       </section>
 
-      {/* ── Product Cards ── */}
-      <section style={{ position: 'relative' }}>
+      {/* ── Section 1: Products (the original portal) ── */}
+      <section id="products" style={{ position: 'relative' }}>
         {products.map((p, i) => {
           // Generate tendril configs per card
           const tendrils = [
@@ -552,6 +459,30 @@ export default function LandingPage({ ctx }: RequestInfo) {
         })}
       </section>
 
+      {/* ── Section 2: Game Center ── */}
+      <section id="games" style={{ borderTop: '1px solid #0f0f12' }}>
+        <PortalSectionHead
+          eyebrow="Game Center"
+          title={<>Pick a table.<br /><em style={{ fontStyle: 'italic', fontWeight: 400, color: '#27272a' }}>Play.</em></>}
+          lede="Commander tables, drafts, a sandbox that never closes, and a strategy map. One Q auth account, every game."
+          linkHref="/games"
+          linkLabel="Open Game Center"
+        />
+        <PortalGrid entries={games.slice(0, 4)} request={request} />
+      </section>
+
+      {/* ── Section 3: App Center ── */}
+      <section id="apps" style={{ borderTop: '1px solid #0f0f12' }}>
+        <PortalSectionHead
+          eyebrow="App Center"
+          title={<>Tools that<br /><em style={{ fontStyle: 'italic', fontWeight: 400, color: '#27272a' }}>ship.</em></>}
+          lede="Calls, cost monitoring, hosting, fulfillment, and RustyBuns, the open-source runtime that ships a web app as a native binary."
+          linkHref="/apps"
+          linkLabel="Open App Center"
+        />
+        <PortalGrid entries={apps.slice(0, 4)} request={request} />
+      </section>
+
       {/* ── About ── */}
       <section style={{
         padding: 'clamp(3rem, 8vw, 5.5rem) clamp(1.5rem, 4vw, 3rem)',
@@ -565,30 +496,7 @@ export default function LandingPage({ ctx }: RequestInfo) {
         </p>
       </section>
 
-      {/* ── Footer ── */}
-      <footer style={{
-        padding: '1.5rem clamp(1.5rem, 4vw, 3rem)',
-        borderTop: '1px solid #0f0f12',
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '1rem',
-      }}>
-        <span style={{
-          fontFamily: "'Geist Mono', monospace",
-          fontSize: '0.62rem',
-          color: '#3f3f46',
-          letterSpacing: '0.15em',
-        }}>
-          © {new Date().getFullYear()} QNTBR LLC
-        </span>
-        <div style={{ display: 'flex', gap: '1.5rem' }}>
-          <a href="/blog" className="footer-link">Blog</a>
-          <a href="/privacy" className="footer-link">Privacy</a>
-          <a href="/terms" className="footer-link">Terms</a>
-        </div>
-      </footer>
+      <PortalFooter />
     </div>
   );
 }

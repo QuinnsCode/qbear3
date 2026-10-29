@@ -18,7 +18,11 @@ export default defineConfig({
     command: 'pnpm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    // rwsdk scans directives + boots workerd on first request; ~1 min warm locally,
+    // several minutes on a cold CI runner.
+    timeout: 300000,
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 
   projects: [
