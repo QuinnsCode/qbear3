@@ -164,3 +164,83 @@ any conflicting styles from Tailwind's utility classes.
   }
 }
 
+
+/* ───────────────────────────── Draft arena ───────────────────────────── */
+.draft-arena {
+  background-color: #070b16;
+  background-image:
+    radial-gradient(900px 500px at 10% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
+    radial-gradient(800px 500px at 100% 0%, rgba(217, 119, 6, 0.12), transparent 60%),
+    radial-gradient(700px 600px at 50% 120%, rgba(14, 116, 144, 0.14), transparent 60%);
+}
+
+.draft-grain {
+  position: relative;
+}
+.draft-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes draft-card-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.draft-card-in {
+  animation: draft-card-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+@keyframes draft-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.draft-shimmer {
+  background: linear-gradient(100deg, #1e293b 30%, #334155 50%, #1e293b 70%);
+  background-size: 200% 100%;
+  animation: draft-shimmer 1.4s linear infinite;
+}
+
+@keyframes draft-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.55); }
+  70%  { box-shadow: 0 0 0 12px rgba(251, 191, 36, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+}
+.draft-pulse-ring {
+  animation: draft-pulse-ring 1.6s ease-out infinite;
+}
+
+@keyframes draft-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.draft-float { animation: draft-float 3.2s ease-in-out infinite; }
+
+/* Mana pips (WUBRG + colorless/multi) */
+.mana-pip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #0b0f19;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.mana-pip-W { background: #f3e9c9; }
+.mana-pip-U { background: #7fb6e8; }
+.mana-pip-B { background: #8a8794; color: #f8fafc; }
+.mana-pip-R { background: #ef8a6b; }
+.mana-pip-G { background: #7cc08a; }
+.mana-pip-C { background: #c7c7cf; }
+.mana-pip-M { background: linear-gradient(135deg, #f6d365, #c084fc); }
+
+.thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.thin-scroll::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 9999px; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }

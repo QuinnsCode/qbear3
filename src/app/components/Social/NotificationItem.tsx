@@ -62,7 +62,7 @@ export function NotificationItem({ event, onDismiss, onRead }: NotificationItemP
     if (!event.read) {
       await onRead();
     }
-    
+
     const url = getActionUrl();
     if (url) {
       window.location.href = url;
@@ -80,12 +80,18 @@ export function NotificationItem({ event, onDismiss, onRead }: NotificationItemP
     return `${days}d ago`;
   };
 
+  const iconTone =
+    event.category === 'game'
+      ? 'bg-violet-500/15 text-violet-300'
+      : event.category === 'system'
+      ? 'bg-slate-500/15 text-slate-300'
+      : 'bg-sky-500/15 text-sky-300';
+
   return (
     <div
-      className={`
-        p-4 hover:bg-slate-800 transition-colors cursor-pointer relative
-        ${!event.read ? 'bg-slate-800/50' : ''}
-      `}
+      className={`group p-4 hover:bg-slate-800 transition-colors cursor-pointer relative ${
+        !event.read ? 'bg-slate-800/50' : ''
+      }`}
       onClick={handleClick}
       style={{
         WebkitTapHighlightColor: 'transparent',
@@ -99,18 +105,13 @@ export function NotificationItem({ event, onDismiss, onRead }: NotificationItemP
 
       <div className="flex items-start gap-3 ml-3">
         {/* Icon */}
-        <div className={`
-          p-2 rounded-lg
-          ${event.category === 'social' ? 'bg-blue-500/20 text-blue-400' : ''}
-          ${event.category === 'game' ? 'bg-purple-500/20 text-purple-400' : ''}
-          ${event.category === 'system' ? 'bg-slate-500/20 text-slate-400' : ''}
-        `}>
+        <div className={`p-2 rounded-lg shrink-0 ${iconTone}`}>
           {getIcon()}
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-slate-200 leading-relaxed">
+          <p className={`text-sm leading-relaxed ${event.read ? 'text-slate-300' : 'text-white'}`}>
             {getMessage()}
           </p>
           <p className="text-xs text-slate-500 mt-1">
@@ -118,19 +119,20 @@ export function NotificationItem({ event, onDismiss, onRead }: NotificationItemP
           </p>
         </div>
 
-        {/* Dismiss Button */}
+        {/* Dismiss Button - always visible on touch, hover-revealed on desktop */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onDismiss();
           }}
-          className="p-1 hover:bg-slate-700 rounded transition-colors opacity-0 group-hover:opacity-100"
+          aria-label="Dismiss notification"
+          className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
           style={{
             WebkitTapHighlightColor: 'transparent',
             touchAction: 'manipulation',
           }}
         >
-          <X className="w-4 h-4 text-slate-400" />
+          <X className="w-4 h-4" />
         </button>
       </div>
     </div>

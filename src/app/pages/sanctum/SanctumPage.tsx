@@ -9,6 +9,7 @@ import { getEffectiveTier, getTierConfig } from "@/app/lib/subscriptions/tiers";
 import { db } from "@/db";
 import { getFriends, getFriendRequests } from "@/app/serverActions/social/friends";
 import { getGameInvites } from "@/app/serverActions/social/gameInvites";
+import { getPresenceForUsers, type UserPresence } from "@/app/serverActions/social/presence";
 import { SanctumClient } from "./SanctumClient";
 import { LogoutButton } from "@/app/pages/user/LoginButton";
 import {
@@ -202,6 +203,17 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
 
   const userDecks = userDecksResult.decks || [];
 
+  // Live presence for the friends list (never cached: it changes by the minute)
+  let friendPresence: Record<string, UserPresence> = {};
+  const presenceSource = needsSocialData && ctx.user?.id ? freshFriends : friends;
+  if (presenceSource.length > 0) {
+    try {
+      friendPresence = await getPresenceForUsers(presenceSource.map((f: any) => f.friendId));
+    } catch (e) {
+      console.warn('[SanctumPage] presence lookup failed:', e);
+    }
+  }
+
   // Use fresh data if we fetched it, otherwise keep cached
   if (needsSocialData && ctx.user?.id) {
     friends = freshFriends;
@@ -229,6 +241,7 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
           friends={friends}
           friendRequests={friendRequests}
           gameInvites={gameInvites}
+          friendPresence={friendPresence}
           currentTier={currentTier}
           tierLimits={tierLimits}
           userId={ctx.user!.id}

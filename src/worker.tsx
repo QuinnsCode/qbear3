@@ -221,7 +221,7 @@ export default defineApp([
         if (ctx.orgError === 'ORG_NOT_FOUND') {
           // Redirect to main domain with org creation option
           const mainDomain = url.hostname.includes('localhost') 
-            ? 'localhost:5173' 
+            ? `localhost:${url.port || '5173'}`
             : 'qntbr.com';
           
           const orgSlug = extractOrgFromSubdomain(request);
