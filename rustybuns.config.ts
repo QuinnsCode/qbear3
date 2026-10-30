@@ -63,6 +63,8 @@ export default defineConfig({
 
     WEBAUTHN_APP_NAME: { type: "var", value: "qntbr" },
     BETTER_AUTH_URL: { type: "var", value: "https://qntbr.com" },
+    // eqosys, the account shared by every Q app: "Sign in with eqosys" (src/lib/auth.ts). Unset, the button says eqosys sign-in is not set up.
+    EQOSYS_URL: { type: "var", value: "https://eqosys.qntbr.com" },
 
     // Required: better-auth signs sessions with it (src/lib/auth.ts).
     BETTER_AUTH_SECRET: { type: "secret" },

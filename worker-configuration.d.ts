@@ -13,6 +13,7 @@ interface __BaseEnv_Env {
 	ASSETS: Fetcher;
 	WEBAUTHN_APP_NAME: "qntbr";
 	BETTER_AUTH_URL: "https://qntbr.com";
+	EQOSYS_URL: "https://eqosys.qntbr.com";
 	WEBAUTHN_RP_ID: string;
 	AUTH_SECRET_KEY: string;
 	BETTER_AUTH_SECRET: string;

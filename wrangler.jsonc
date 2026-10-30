@@ -67,7 +67,8 @@
 	},
 	"vars": {
 		"WEBAUTHN_APP_NAME": "qntbr",
-		"BETTER_AUTH_URL": "https://qntbr.com"
+		"BETTER_AUTH_URL": "https://qntbr.com",
+		"EQOSYS_URL": "https://eqosys.qntbr.com"
 	},
 	"migrations": [
 		{
