@@ -27,6 +27,16 @@ test("game center lists games and marks itself active", async () => {
   expect(links(page.body, { class: "q-active" }).map((l) => l.text)).toEqual(["Games"]);
 });
 
+test("game and app centers link the deployed Rusty Buns apps, not their repo", async () => {
+  const b = (await app()).browser();
+  const games = await b.get("/games");
+  for (const host of ["park-hide-seek", "skatetechpark", "druids-curse-votv", "splat-spray", "two-fronts", "git-recon", "excalibrawl"]) {
+    expect(links(games.body, { href: `https://${host}.notryanquinn.workers.dev`, class: "q-tile" })).toHaveLength(1);
+  }
+  const apps = await b.get("/apps");
+  expect(links(apps.body, { href: "https://codesplitter.notryanquinn.workers.dev", class: "q-tile" })).toHaveLength(1);
+});
+
 test("app center lists apps including RustyBuns on GitHub", async () => {
   const b = (await app()).browser();
   const page = await b.get("/apps");
