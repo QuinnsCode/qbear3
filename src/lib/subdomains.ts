@@ -43,6 +43,8 @@ export const SANDBOX_SUBDOMAINS = [
     
     // Auth & security
     'auth',
+    'eqosys',   // the account shared by every Q app, its own Worker on eqosys.qntbr.com
+    'qcrm',     // qCRM, its own Worker on qcrm.qntbr.com
     'login',
     'logout',
     'signup',

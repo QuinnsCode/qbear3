@@ -12,7 +12,7 @@ import {
   CaveEntrance,
   WizardStudy
 } from "@/app/components/theme/FantasyTheme";
-import { Castle } from "lucide-react";
+import { Castle, KeyRound } from "lucide-react";
 
 interface FantasyLoginProps {
   organizationName?: string;
@@ -39,7 +39,7 @@ export function FantasyLogin({
   const [password, setPassword] = useState("");
   const [result, setResult] = useState("");
   const [isPending, startTransition] = useTransition();
-  const [isGooglePending, setIsGooglePending] = useState(false);
+  const [pendingProvider, setPendingProvider] = useState<"google" | "eqosys" | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -84,20 +84,20 @@ export function FantasyLogin({
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  // Google, or eqosys (the one account across every Q app, see src/lib/auth.ts)
+  const handleSocialSignIn = async (provider: "google" | "eqosys", label: string) => {
     try {
       setResult("");
-      setIsGooglePending(true);
-      console.log('[Google Sign-In] Starting OAuth flow...');
-      await authClient.signIn.social({
-        provider: "google",
+      setPendingProvider(provider);
+      const { error } = await authClient.signIn.social({
+        provider,
         callbackURL: redirectPath,
       });
-      console.log('[Google Sign-In] OAuth flow initiated');
+      if (error) throw new Error(error.message);
     } catch (err) {
-      console.error('[Google Sign-In] Error:', err);
-      setResult(`Google sign-in failed: ${err instanceof Error ? err.message : "Unknown error"}`);
-      setIsGooglePending(false);
+      console.error(`[${label} Sign-In] Error:`, err);
+      setResult(`${label} sign-in failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setPendingProvider(null);
     }
   };
 
@@ -283,15 +283,28 @@ export function FantasyLogin({
 
               {/* Google SSO Button */}
               <FantasyButton
-                onClick={handleGoogleSignIn}
+                onClick={() => handleSocialSignIn("google", "Google")}
                 variant="secondary"
                 size="lg"
-                disabled={isGooglePending}
+                disabled={pendingProvider !== null}
                 className="w-full"
                 type="button"
               >
                 <Castle className="w-5 h-5" />
-                {isGooglePending ? 'Redirecting to Google...' : 'Sign in with Google'}
+                {pendingProvider === "google" ? 'Redirecting to Google...' : 'Sign in with Google'}
+              </FantasyButton>
+
+              {/* eqosys: the same account as every Q game and app */}
+              <FantasyButton
+                onClick={() => handleSocialSignIn("eqosys", "eqosys")}
+                variant="secondary"
+                size="lg"
+                disabled={pendingProvider !== null}
+                className="w-full mt-3"
+                type="button"
+              >
+                <KeyRound className="w-5 h-5" />
+                {pendingProvider === "eqosys" ? 'Redirecting to eqosys...' : 'Sign in with eqosys'}
               </FantasyButton>
 
 
