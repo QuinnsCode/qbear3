@@ -1,0 +1,30 @@
+name: Typecheck
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+jobs:
+  typecheck:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+      # Version comes from the packageManager field in package.json
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+        cache: pnpm
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: 1.4.4
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+    - name: Generate Prisma client and wrangler types
+      run: pnpm run generate
+    - name: Typecheck tests/
+      # `tsc` over src/ still has ~500 errors (#32), so only tests/ is gated until that is zero.
+      run: pnpm exec tsc -p tests
+    - name: Test the agent guard hook
+      run: bun test ./.claude/hooks
