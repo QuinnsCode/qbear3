@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Badge, StatusPill, type Status } from './Badge';
 import { cx } from './cx';
 
@@ -14,8 +14,6 @@ export interface TileProps {
   image?: string;
   /** Fallback preview when there is no icon or image: an emoji or character. Defaults to the name's first letter. */
   glyph?: ReactNode;
-  /** Per-tile accent that tints the preview window. Defaults to the theme accent. */
-  accent?: string;
   status?: Status;
   /** Extra badges, e.g. "Q auth". */
   badges?: ReactNode[];
@@ -32,14 +30,13 @@ export interface TileProps {
   className?: string;
 }
 
-/** The card: a paper tile around a tinted preview window (status pills ride on it). A link when it has an href and is not "soon". */
+/** The card: a paper tile around a preview window (status pills ride on it). A link when it has an href and is not "soon". */
 export function Tile({
-  name, tag, tagline, description, icon, image, glyph, accent, status, badges, href, cta, external,
+  name, tag, tagline, description, icon, image, glyph, status, badges, href, cta, external,
   compact, wide, aside, nameAs: Name = 'h3', className,
 }: TileProps) {
   const soon = status === 'soon';
   const linked = !!href && !soon;
-  const style = accent ? ({ '--q-tile-accent': accent } as CSSProperties) : undefined;
   const cls = cx('q-tile', wide && 'q-wide', compact && 'q-compact', soon && 'q-soon', className);
 
   const preview = (
@@ -77,11 +74,11 @@ export function Tile({
   );
 
   return linked ? (
-    <a className={cls} style={style} href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined}>
+    <a className={cls} href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined}>
       {body}
     </a>
   ) : (
-    <div className={cls} style={style}>{body}</div>
+    <div className={cls}>{body}</div>
   );
 }
 
@@ -97,7 +94,7 @@ export interface TileGroupProps {
   children: ReactNode;
 }
 
-/** A card that holds cards: rises out of the page on a fading dot grid and groups the tiles inside it. */
+/** A card that holds cards: rises out of the page and groups the tiles inside it. */
 export function TileGroup({ title, meta, lede, as: Heading = 'h2', dense, children }: TileGroupProps) {
   return (
     <section className={cx('q-group', dense && 'q-dense')}>

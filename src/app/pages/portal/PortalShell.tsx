@@ -1,11 +1,11 @@
 // @/app/pages/portal/PortalShell.tsx
 // Shared chrome for the QNTBR portal, built on @qntbr/ui: page surface, top bar,
 // footer, and the group cards of tiles used by the Game Center / App Center sections and hubs.
-// Server components only (the theme toggle and craft canvas are client components inside the package).
+// Server components only (the theme toggle is a client component inside the package).
 
 import type { ReactNode } from 'react';
-import { AppRow, Button, Footer, Page, SectionHead, ThemeScript, ThemeToggle, TopBar, Tile, TileGroup, Wrap, type NavItem } from '@qntbr/ui';
-import { GITHUB_ORG_URL, RUSTY_BUNS_URL, isExternal, appTags, groupEntries, playgroundDownloadUrl, playgroundSourceUrl, resolveHref, type PlaygroundApp, type PortalEntry, type PortalGroup } from './portalData';
+import { Footer, Page, SectionHead, ThemeScript, ThemeToggle, TopBar, Tile, TileGroup, Wrap, type NavItem } from '@qntbr/ui';
+import { GITHUB_ORG_URL, RUSTY_BUNS_URL, isExternal, groupEntries, resolveHref, type PortalEntry, type PortalGroup } from './portalData';
 
 interface PageProps {
   isLoggedIn: boolean;
@@ -94,40 +94,12 @@ export function PortalTile({ entry: e, request, compact }: { entry: PortalEntry;
       description={e.description}
       icon={<Icon strokeWidth={1.5} />}
       image={e.image}
-      accent={e.accent}
       status={e.status}
       badges={e.requiresAuth ? ['Q auth'] : undefined}
       href={href}
       cta={e.cta}
       external={isExternal(href)}
       compact={compact}
-    />
-  );
-}
-
-/** One full-width card per Rusty Buns Playground app, with its tags and the playground's three links. */
-export function PlaygroundRow({ app }: { app: PlaygroundApp }) {
-  const Icon = app.icon;
-  const download = playgroundDownloadUrl(app);
-  const source = playgroundSourceUrl(app);
-  return (
-    <AppRow
-      name={app.name}
-      line={app.line}
-      icon={<Icon strokeWidth={1.5} />}
-      accent={app.accent}
-      tags={app.tags.map((key) => {
-        const { label, icon: TagIcon, color } = appTags[key];
-        return { label, color, icon: <TagIcon strokeWidth={2} /> };
-      })}
-      note={app.play ? undefined : download ? 'Browser version soon' : 'Coming soon'}
-      actions={
-        <>
-          {app.play && <Button variant="primary" href={app.play} target="_blank">Play ↗</Button>}
-          {download && <Button href={download} target="_blank">Download</Button>}
-          {source && <Button variant="ghost" href={source} target="_blank">Source</Button>}
-        </>
-      }
     />
   );
 }

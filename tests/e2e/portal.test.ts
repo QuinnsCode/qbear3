@@ -1,16 +1,21 @@
 // tests/e2e/portal.test.ts
 // Main-domain portal: the landing page sections and the /games and /apps hubs.
 import { expect, test } from "bun:test";
-import { app, hasSection, headings, links } from "./kit.ts";
+import { app, hasSection, headings, links, tags } from "./kit.ts";
 
 const RUSTY_BUNS = "https://github.com/QuinnsCode/RustyBuns";
 
-test("landing page has products, game center and app center sections", async () => {
+test("landing page has the lab, then products, game center and app center sections", async () => {
   const b = (await app()).browser();
   const page = await b.get("/");
   expect(page.status).toBe(200);
   expect(page.hops).toEqual([]);
   for (const id of ["products", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
+  // The lab's bag is server-rendered: words to combine and every app already in it.
+  const bag = tags(page.body, "button").map((t) => t.text);
+  for (const name of ["Draft", "Cards", "Draft Lobby", "codeSplitter", "Hippo Tycoon"]) {
+    expect(bag.some((t) => t === name || t.endsWith(name))).toBe(true); // app tiles lead with an emoji
+  }
   // Section links into the hubs, and RustyBuns from the nav.
   expect(links(page.body, { href: "/games", class: "q-section-link" })).toHaveLength(1);
   expect(links(page.body, { href: "/apps", class: "q-section-link" })).toHaveLength(1);

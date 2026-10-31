@@ -1,14 +1,15 @@
 /*
  * @qntbr/ui: the QNTBR design system.
  *
- * Hairlines, lots of white, one accent. Buttons and cards are small paper tiles
- * (Infinite Craft's shape): a faint grain, a thin grey edge, 5px corners, a warm
- * wash from the bottom on hover, a 1px press. Light by default, dark when the OS
- * asks or when <html data-theme="dark"> says so.
+ * Hairlines, lots of white, one accent, in roughly a 90/7/3 split: paper and ink
+ * almost everywhere, a little dark panel work (the top bar's ink buttons, the
+ * terminal), and the orange only where something is live or just happened.
+ * Buttons and cards are small paper tiles (Infinite Craft's shape): a faint grain,
+ * a thin grey edge, 5px corners, a warm wash from the bottom on hover, a 1px press.
+ * Light by default, dark when the OS asks or when <html data-theme="dark"> says so.
  *
  * Everything is prefixed (--q-*, .q-*) so it can sit next to Tailwind and other CSS.
- * Retheme by overriding --q-accent / --q-accent-ink / --q-accent-soft on :root or
- * on any element (a card tints its preview window with --q-tile-accent).
+ * Retheme by overriding --q-accent / --q-accent-ink / --q-accent-soft on :root.
  */
 
 :root {
@@ -32,8 +33,6 @@
   --q-ink-fg: #ffffff;
   --q-ink-hover: #2a2a2a;
   --q-shadow: 0 1px 0 rgba(10, 10, 10, 0.04), 0 6px 18px -8px rgba(10, 10, 10, 0.18);
-  --q-live: #16a34a;
-  --q-beta: #d97706;
   --q-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .32 0 0 0 0 .28 0 0 0 0 .2 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   --q-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --q-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -49,7 +48,6 @@
   --q-tint: rgba(255, 255, 255, 0.1); --q-top-bg: rgba(14, 14, 14, 0.86);
   --q-ink-bg: #f2f2f2; --q-ink-fg: #0a0a0a; --q-ink-hover: #d8d8d8;
   --q-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 8px 22px -8px rgba(0, 0, 0, 0.7);
-  --q-live: #4ade80; --q-beta: #fbbf24;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -61,7 +59,6 @@
     --q-tint: rgba(255, 255, 255, 0.1); --q-top-bg: rgba(14, 14, 14, 0.86);
     --q-ink-bg: #f2f2f2; --q-ink-fg: #0a0a0a; --q-ink-hover: #d8d8d8;
     --q-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 8px 22px -8px rgba(0, 0, 0, 0.7);
-    --q-live: #4ade80; --q-beta: #fbbf24;
   }
 }
 
@@ -130,8 +127,8 @@
   white-space: nowrap;
 }
 .q-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--q-edge-hi); }
-.q-pill[data-status="live"]::before { background: var(--q-live); }
-.q-pill[data-status="beta"]::before { background: var(--q-beta); }
+.q-pill[data-status="live"]::before { background: var(--q-fg); }
+.q-pill[data-status="beta"]::before { background: var(--q-accent); }
 .q-pill[data-status="soon"]::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--q-edge-hi); }
 
 .q-kbd { font: 500 11px var(--q-mono); border: 1px solid var(--q-border-2); border-radius: 4px; padding: 0 5px; color: var(--q-muted); background: var(--q-bg); }
@@ -179,8 +176,8 @@
 .q-lede { color: var(--q-muted); font-size: clamp(15px, 1.7vw, 17px); line-height: 1.6; margin: 0; max-width: 54ch; }
 
 /* ── Groups: a card that holds cards ─────────────────────── */
-/* No outline at the top: the group rises out of the page. Its edge and the
-   craft canvas's dot grid fade in toward the bottom, where the paper settles. */
+/* No outline at the top: the group rises out of the page. Its edge fades in
+   toward the bottom, where the paper settles. */
 .q-groups { display: grid; gap: clamp(16px, 2.4vw, 24px); }
 .q-group {
   position: relative; isolation: isolate;
@@ -190,13 +187,6 @@
   background:
     linear-gradient(180deg, var(--q-bg) 0%, var(--q-canvas) 70%) padding-box,
     linear-gradient(180deg, transparent 0%, var(--q-border) 45%, var(--q-border-2) 100%) border-box;
-}
-.q-group::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
-  background: radial-gradient(circle at 1px 1px, var(--q-border-2) 1px, transparent 0) 0 0 / 22px 22px;
-  -webkit-mask-image: linear-gradient(180deg, transparent 10%, #000 100%);
-  mask-image: linear-gradient(180deg, transparent 10%, #000 100%);
-  opacity: 0.55;
 }
 .q-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 .q-group-title { margin: 0; font: 600 20px/1.2 var(--q-sans); letter-spacing: -0.025em; color: var(--q-fg); }
@@ -208,10 +198,9 @@
 .q-groups.q-dense { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items: start; }
 
 /* ── Tiles: the card ──────────────────────────────────────── */
-/* A paper tile around a preview window: the app's image, or its icon on a wash of its accent. */
+/* A paper tile around a preview window: the app's image, or its icon on plain canvas. */
 .q-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 14px; }
 .q-tile {
-  --q-tile-a: var(--q-tile-accent, var(--q-accent));
   position: relative;
   display: flex; flex-direction: column;
   padding: 5px;
@@ -229,17 +218,15 @@ a.q-tile:active { transform: translateY(0); }
   position: relative; overflow: hidden; flex: none;
   display: grid; place-items: center;
   height: 112px; border-radius: 6px;
-  background:
-    radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--q-tile-a) 22%, transparent), transparent 75%),
-    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--q-tile-a) 30%, transparent) 1px, transparent 0) 0 0 / 14px 14px,
-    var(--q-canvas);
+  background: var(--q-canvas);
+  border: 1px solid var(--q-border);
 }
 .q-tile-preview img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .q-tile-pills { position: absolute; top: 7px; left: 7px; z-index: 1; display: flex; flex-wrap: wrap; gap: 5px; }
 .q-tile-pills .q-pill, .q-tile-pills .q-badge { background: var(--q-top-bg); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
 .q-tile-icon {
   display: grid; place-items: center;
-  color: color-mix(in srgb, var(--q-tile-a) 82%, var(--q-fg));
+  color: var(--q-fg); opacity: 0.78;
   font: 600 30px/1 var(--q-sans);
   transition: transform 0.2s;
 }
@@ -273,111 +260,12 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
   .q-tile.q-wide .q-tile-preview { width: auto; min-height: 96px; }
 }
 
-/* ── Feature: the full-width card ─────────────────────────── */
-.q-feature {
-  --q-tile-a: var(--q-tile-accent, var(--q-accent));
-  display: grid; gap: 0;
-  padding: 6px;
-  background: var(--q-grain), var(--q-paper);
-  border: 1px solid var(--q-border-2); border-radius: 14px;
-}
-.q-feature-main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(16px, 3vw, 40px); align-items: stretch; }
-.q-feature-preview { height: auto; min-height: 220px; border-radius: 10px; }
-.q-feature-preview .q-tile-icon svg { width: 64px; height: 64px; }
-.q-feature.q-hero .q-feature-preview { min-height: 300px; }
-.q-feature.q-hero .q-feature-preview .q-tile-icon svg { width: 88px; height: 88px; }
-.q-feature-body { display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: clamp(14px, 2.4vw, 28px) clamp(10px, 2vw, 24px) clamp(14px, 2.4vw, 28px) 0; }
-.q-feature-name { margin: 0; font: 600 clamp(28px, 3.6vw, 40px)/1.05 var(--q-sans); letter-spacing: -0.04em; color: var(--q-fg); }
-.q-feature.q-hero .q-feature-name { font-size: clamp(34px, 5vw, 56px); }
-.q-feature-tagline { font: 500 clamp(15px, 1.6vw, 18px)/1.35 var(--q-sans); color: var(--q-fg); opacity: 0.85; }
-.q-feature-desc { margin: 0; color: var(--q-muted); font-size: 15px; line-height: 1.6; max-width: 56ch; }
-.q-feature-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 6px; }
-
-/* The drawer: closed it's a strip with a peek of what's inside; open it's a grid of tiles. */
-.q-feature-drawer { margin-top: 6px; border-top: 1px solid var(--q-border); }
-.q-feature-drawer > summary {
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  padding: 12px 14px 8px; cursor: pointer; list-style: none;
-  font: 500 13px var(--q-sans); color: var(--q-fg);
-}
-.q-feature-drawer > summary::-webkit-details-marker { display: none; }
-.q-feature-drawer-label::before { content: "+"; display: inline-block; width: 1.2em; font-family: var(--q-mono); color: var(--q-accent-ink); }
-.q-feature-drawer[open] .q-feature-drawer-label::before { content: "−"; }
-.q-feature-drawer > summary:hover .q-feature-drawer-label { color: var(--q-accent-ink); }
-.q-feature-peek { display: inline-flex; gap: 6px; margin-left: auto; color: var(--q-muted); }
-.q-feature-peek svg { width: 18px; height: 18px; }
-.q-feature-drawer[open] .q-feature-peek { display: none; }
-.q-feature-drawer > .q-group-grid { padding: 8px 8px 8px; }
-@media (max-width: 720px) {
-  .q-feature-main { grid-template-columns: 1fr; }
-  .q-feature-preview, .q-feature.q-hero .q-feature-preview { min-height: 160px; }
-  .q-feature-body { padding: 8px 10px 14px; }
-}
-
-/* ── App rows: one full-width card per app ────────────────── */
-.q-rows { display: grid; gap: 8px; padding: 8px; }
-.q-row {
-  --q-tile-a: var(--q-tile-accent, var(--q-accent));
-  display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; align-items: center; gap: clamp(12px, 2vw, 22px);
-  padding: 5px; padding-right: clamp(10px, 1.6vw, 18px);
-  background: var(--q-grain), var(--q-paper);
-  border: 1px solid var(--q-border-2); border-radius: 10px;
-  transition: border-color 0.14s, box-shadow 0.14s;
-}
-.q-row:hover { border-color: var(--q-edge-hi); box-shadow: var(--q-shadow); }
-.q-row-preview { height: 100%; min-height: 92px; }
-.q-row-preview .q-tile-icon svg { width: 34px; height: 34px; }
-.q-row:hover .q-tile-icon { transform: scale(1.08); }
-.q-row-body { display: grid; gap: 5px; padding: 8px 0; min-width: 0; }
-.q-row-name { margin: 0; font: 600 18px/1.2 var(--q-sans); letter-spacing: -0.025em; color: var(--q-fg); }
-.q-row-line { margin: 0; color: var(--q-muted); font-size: 13.5px; line-height: 1.5; }
-.q-row-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
-.q-row-note { font: 500 12px var(--q-sans); color: var(--q-faint); margin-right: 4px; white-space: nowrap; }
-
-/* Tags: a small icon in the tag's own color, and a word. */
-.q-tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 0; padding: 0; list-style: none; }
-.q-tag {
-  display: inline-flex; align-items: center; gap: 5px;
-  padding: 2px 8px 2px 6px; border-radius: 999px;
-  font: 500 11.5px/18px var(--q-sans); color: var(--q-muted);
-  background: color-mix(in srgb, var(--q-tag) 9%, transparent);
-  border: 1px solid color-mix(in srgb, var(--q-tag) 22%, transparent);
-}
-.q-tag svg { width: 13px; height: 13px; color: var(--q-tag); display: block; }
-@media (max-width: 720px) {
-  .q-row { grid-template-columns: 72px minmax(0, 1fr); padding-right: 5px; }
-  .q-row-preview { min-height: 72px; }
-  .q-row-actions { grid-column: 1 / -1; justify-content: flex-start; padding: 0 6px 6px; }
-}
-
 /* A muted line for things on the back burner. */
 .q-aside-line { margin: 0; padding-top: 18px; color: var(--q-faint); font-size: 13px; }
 .q-aside-line a { color: var(--q-muted); }
 .q-aside-line a:hover { color: var(--q-fg); }
 
-/* ── Craft canvas: drag tiles out of the bag ──────────────── */
-.q-craft {
-  position: relative; display: flex; height: clamp(360px, 52vh, 480px);
-  overflow: hidden; user-select: none; touch-action: none;
-  background:
-    radial-gradient(circle at 1px 1px, var(--q-border) 1px, transparent 0) 0 0 / 22px 22px,
-    var(--q-canvas);
-  border: 1px solid var(--q-border-2); border-radius: 10px;
-}
-.q-craft-hint {
-  position: absolute; left: 18px; bottom: 14px; margin: 0;
-  font: 500 11px var(--q-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--q-faint);
-  pointer-events: none;
-}
-.q-craft-bar {
-  position: relative; z-index: 3; margin-left: auto; width: 230px; flex: none;
-  display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px;
-  padding: 12px; overflow-y: auto;
-  background: var(--q-bg); border-left: 1px solid var(--q-border);
-  transition: background 0.12s;
-}
-.q-craft-bar[data-over="true"] { background: var(--q-accent-soft); }
-.q-craft-bar-title { width: 100%; margin: 0 0 2px; }
+/* ── Items: the pill on the craft workspace ───────────── */
 /* An item: Infinite Craft's pill. A glyph, a name, nothing else. */
 .q-item {
   display: inline-flex; align-items: center; gap: 7px;
@@ -403,17 +291,13 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 .q-prose { max-width: 62ch; color: var(--q-muted); font-size: clamp(15px, 1.7vw, 17px); line-height: 1.75; margin: 0; }
 .q-prose b, .q-prose strong { color: var(--q-fg); font-weight: 500; }
 
-@media (max-width: 720px) {
-  .q-craft { flex-direction: column; height: 460px; }
-  .q-craft-bar { margin: auto 0 0; width: 100%; border-left: 0; border-top: 1px solid var(--q-border); max-height: 40%; }
-}
 @media (prefers-reduced-motion: reduce) {
   .q-btn, .q-tile, .q-item { transition: none; }
   a.q-tile:hover, a.q-tile:hover .q-tile-icon { transform: none; }
 }
 
 /* ── Craft workspace: Infinite Craft as a whole page ──────── */
-/* The canvas fills the window; the bag runs down the right with its search pinned to the bottom. */
+/* The canvas fills the window (or, as .q-inset, a box in the page); the bag runs down the right with its search pinned to the bottom. */
 .q-ws {
   position: fixed; inset: 0; display: flex;
   background: var(--q-bg); color: var(--q-fg);
@@ -421,12 +305,14 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 }
 .q-ws *, .q-ws *::before, .q-ws *::after { box-sizing: border-box; }
 .q-ws :focus-visible { outline: 2px solid var(--q-accent); outline-offset: 2px; }
+.q-ws.q-inset {
+  position: relative; inset: auto; height: var(--q-ws-h, clamp(420px, 60vh, 560px));
+  border: 1px solid var(--q-border-2); border-radius: 12px; overflow: hidden;
+}
 .q-ws-canvas {
   position: relative; flex: 1; min-width: 0; overflow: hidden;
   user-select: none; touch-action: none;
-  background:
-    radial-gradient(circle at 1px 1px, var(--q-border) 1px, transparent 0) 0 0 / 24px 24px,
-    var(--q-bg);
+  background: var(--q-canvas);
 }
 .q-ws-corner { position: absolute; top: 16px; left: 18px; right: 18px; z-index: 5; display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; pointer-events: none; }
 .q-ws-corner > * { pointer-events: auto; }
@@ -514,20 +400,57 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 
 @media (max-width: 760px) {
   .q-ws { flex-direction: column; }
+  .q-ws.q-inset { height: var(--q-ws-h, 620px); }
   .q-ws-bag { width: 100%; height: 42%; border-left: 0; border-top: 1px solid var(--q-border); }
 }
 @media (prefers-reduced-motion: reduce) {
   .q-item.q-fresh, .q-item.q-shake, .q-ws-toast { animation: none; }
 }
 
-/* A shut door: one paper card in the middle of the dotted canvas. */
+/* A shut door: one paper card in the middle of the canvas. */
 .q-gate {
   min-height: 100vh; display: grid; place-items: center; padding: 16px;
   color: var(--q-fg); font: 400 14px/1.55 var(--q-sans); -webkit-font-smoothing: antialiased;
-  background: radial-gradient(circle at 1px 1px, var(--q-border) 1px, transparent 0) 0 0 / 24px 24px, var(--q-bg);
+  background: var(--q-canvas);
 }
 .q-gate .q-sheet { text-align: center; }
 .q-gate .q-brand { margin: 0; justify-content: center; }
 .q-gate h1 { margin: 18px 0 8px; font: 600 28px/1.1 var(--q-sans); letter-spacing: -0.04em; }
 .q-gate .q-muted { margin-bottom: 18px; }
 .q-gate-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+/* ── Lab: a workspace with a terminal under it ────────────── */
+.q-lab { display: grid; gap: 10px; padding-bottom: 8px; }
+.q-lab .q-term { height: 152px; }
+.q-lab .q-ws-corner .q-brand-mark { opacity: 0.9; }
+
+/* ── Terminal: the control-room readout ───────────────────── */
+/* Ink panel, mono lines, a prompt on each, a blinking cursor on the last. The 7%. */
+.q-term {
+  display: flex; flex-direction: column; min-height: 0;
+  color: var(--q-ink-fg); background: var(--q-grain), var(--q-ink-bg);
+  border: 1px solid var(--q-ink-bg); border-radius: 10px; overflow: hidden;
+  font: 400 12.5px/1.6 var(--q-mono);
+}
+.q-term-bar {
+  display: flex; justify-content: space-between; gap: 12px; flex: none;
+  padding: 7px 14px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  font: 500 11px/1.4 var(--q-mono); letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85;
+}
+:root[data-theme="dark"] .q-term-bar { border-bottom-color: rgba(0, 0, 0, 0.18); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .q-term-bar { border-bottom-color: rgba(0, 0, 0, 0.18); } }
+.q-term-status { color: var(--q-accent); }
+.q-term-status::before { content: "\25CF "; animation: q-blink 1.4s steps(1) infinite; }
+.q-term-lines {
+  flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: 10px 14px 12px; list-style: none;
+  display: flex; flex-direction: column-reverse; justify-content: flex-start;
+  scrollbar-width: thin; overflow-wrap: anywhere;
+}
+.q-term-lines li { padding-left: 1.6em; text-indent: -1.6em; }
+.q-term-lines li::before { content: "> "; opacity: 0.5; }
+.q-term-lines li[data-tone="ok"] { color: var(--q-accent); }
+.q-term-lines li[data-tone="meh"] { opacity: 0.6; }
+.q-term-cursor::before { content: "> "; opacity: 0.5; }
+.q-term-cursor::after { content: ""; display: inline-block; width: 0.6em; height: 1.05em; vertical-align: -0.2em; background: var(--q-ink-fg); animation: q-blink 1s steps(1) infinite; }
+@keyframes q-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .q-term-cursor::after, .q-term-status::before { animation: none; } }

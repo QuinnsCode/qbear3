@@ -1,139 +1,65 @@
 // @/app/pages/landing/LandingPage.tsx
-// The QNTBR front door, newest first: codeSplitter, then Rusty Buns and the apps built on it,
-// then the original QNTBR tables, then Qlave, with the back-burner projects in one muted line.
+// The QNTBR front door, shaped like the Game Center page: a head, the thing itself, then the
+// shelves. The thing itself is the lab: every game and app is a verb and a noun, drop one on
+// the other and the app appears. The shelves below are the same compact groups the hubs use.
 import { type RequestInfo } from "rwsdk/worker";
-import { Button, CraftCanvas, Feature, Tile, type CraftItem } from "@qntbr/ui";
-import { apps, gameGroups, games, isExternal, PLAYGROUND_URL, playgroundApps, resolveHref } from "@/app/pages/portal/portalData";
-import { PortalGroups, PortalPage, PortalSection, PortalSectionHead, PlaygroundRow } from "@/app/pages/portal/PortalShell";
-
-const byKey = (key: string) => [...apps, ...games].find((e) => e.key === key)!;
+import { apps, appGroups, gameGroups, games } from "@/app/pages/portal/portalData";
+import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from "@/app/pages/portal/PortalShell";
+import LandingLab from "./LandingLab";
+import { labItems } from "./lab";
 
 export default function LandingPage({ ctx, request }: RequestInfo) {
   const isLoggedIn = !!ctx.user;
-  const codeSplitter = byKey('codesplitter');
-  const rustyBuns = byKey('rustybuns');
-  const qlave = byKey('qlave');
-  const CodeSplitterIcon = codeSplitter.icon;
-  const RustyBunsIcon = rustyBuns.icon;
-  const QlaveIcon = qlave.icon;
-
-  // Every game and app becomes a tile in the bag.
-  const craftItems: CraftItem[] = [...games, ...apps].map((e) => {
-    const href = resolveHref(e, request);
-    return { id: e.key, label: e.name, glyph: e.glyph, accent: e.accent, href: e.status === 'soon' ? undefined : href, external: isExternal(href) };
-  });
+  const items = labItems(request);
 
   return (
     <PortalPage isLoggedIn={isLoggedIn} current="home">
-      {/* ── Hero ── */}
+      {/* ── Hero: the lab ── */}
       <PortalSection>
         <PortalSectionHead
           as="h1"
-          eyebrow="Solutions Architect · Web Apps & Web Solutions"
-          title={<>Software that makes things <em>work.</em></>}
+          eyebrow="QNTBR · Solutions architecture · Web apps & web solutions"
+          title={<>Combine words. <em>Get software.</em></>}
+          lede="Every game and app we ship is a verb and a noun. Drop one on the other and it appears; click it to go. The whole shelf is in the bag if you would rather just pick."
+        />
+        <LandingLab items={items} seed={['verb:draft', 'noun:cards', 'verb:split', 'noun:code']} />
+      </PortalSection>
+
+      {/* ── Products: the code host and the runtime it ships on ── */}
+      <PortalSection id="products">
+        <PortalSectionHead
+          small
+          eyebrow="Products"
+          title={<>What we <em>build.</em></>}
           lede="A code host for agents, the runtime it ships on, and everything we've built with them."
         />
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingBottom: 28 }}>
-          <Button href="#products">codeSplitter</Button>
-          <Button href="#rustybuns">Rusty Buns</Button>
-          <Button href="#games">Game Center</Button>
-          <Button href="#apps">App Center</Button>
-        </div>
+        <PortalGroups compact entries={apps} groups={appGroups.filter((g) => g.key === 'dev')} request={request} />
       </PortalSection>
 
-      {/* ── Products: codeSplitter first, then Rusty Buns and everything shipped on it ── */}
-      <PortalSection id="products">
-        <div style={{ display: 'grid', gap: 18 }}>
-          <Feature
-            hero
-            name={codeSplitter.name}
-            tag={codeSplitter.tag}
-            tagline={codeSplitter.tagline}
-            description={codeSplitter.description}
-            bullets={['Every line a record', 'Real git on Cloudflare Artifacts', 'Built for agents to read and write', 'Ships on Rusty Buns']}
-            icon={<CodeSplitterIcon strokeWidth={1.25} />}
-            image={codeSplitter.image}
-            accent={codeSplitter.accent}
-            status={codeSplitter.status}
-            actions={
-              <>
-                <Button variant="primary" href={codeSplitter.href} target="_blank">{codeSplitter.cta} ↗</Button>
-                <Button href="#rustybuns">Built on Rusty Buns ↓</Button>
-              </>
-            }
-          />
-
-          <Feature
-            id="rustybuns"
-            name={rustyBuns.name}
-            tag={rustyBuns.tag}
-            tagline={rustyBuns.tagline}
-            description={rustyBuns.description}
-            bullets={['One double-clickable desktop binary', 'Local Bun host behind D1, KV, R2 and Durable Objects', 'Typed Cloudflare deploy', 'Never touches your src/']}
-            icon={<RustyBunsIcon strokeWidth={1.25} />}
-            image={rustyBuns.image}
-            accent={rustyBuns.accent}
-            status={rustyBuns.status}
-            actions={
-              <>
-                <Button variant="primary" href={PLAYGROUND_URL} target="_blank">Open the Playground ↗</Button>
-                <Button href={rustyBuns.href} target="_blank">{rustyBuns.cta} ↗</Button>
-              </>
-            }
-            drawer={{
-              label: `All ${playgroundApps.length} apps in the Rusty Buns Playground`,
-              peek: playgroundApps.map((a) => <a.icon key={a.key} strokeWidth={1.5} />),
-              rows: true,
-              children: playgroundApps.map((a) => <PlaygroundRow key={a.key} app={a} />),
-            }}
-          />
-
-          <CraftCanvas items={craftItems} seed={['codesplitter', 'rustybuns', 'park-hide-seek', 'excalibrawl']} title="Everything" />
-        </div>
-      </PortalSection>
-
-      {/* ── Game Center: the original QNTBR tables ── */}
+      {/* ── Game Center ── */}
       <PortalSection id="games">
         <PortalSectionHead
           small
           eyebrow="Game Center"
-          title={<>The original <em>tables.</em></>}
-          lede="Where QNTBR started: Commander tables, drafts, a sandbox that never closes, and a strategy map. One Q auth account, every game."
+          title={<>The <em>tables.</em></>}
+          lede="Where QNTBR started: Commander tables, drafts, a sandbox that never closes, a strategy map, and the games shipped on Rusty Buns."
           linkHref="/games"
           linkLabel="Open Game Center"
         />
-        <PortalGroups compact entries={games} groups={gameGroups.filter((g) => g.key !== 'rustybuns')} request={request} />
+        <PortalGroups compact entries={games} groups={gameGroups} request={request} />
       </PortalSection>
 
-      {/* ── App Center: Qlave, and the rest in a line ── */}
+      {/* ── App Center ── */}
       <PortalSection id="apps">
         <PortalSectionHead
           small
           eyebrow="App Center"
-          title={<>Calls, and the <em>rest.</em></>}
+          title={<>The <em>rest.</em></>}
+          lede="Calls, fulfillment, one login for everything, and the projects on the back burner."
           linkHref="/apps"
           linkLabel="Open App Center"
         />
-        <Tile
-          wide
-          name={qlave.name}
-          tag={qlave.tag}
-          tagline={qlave.tagline}
-          description={qlave.description}
-          icon={<QlaveIcon strokeWidth={1.5} />}
-          accent={qlave.accent}
-          status={qlave.status}
-          href={qlave.href}
-          cta={qlave.cta}
-          external
-          aside={<ul className="q-list">{['WebRTC audio & video', 'Live collaboration tools', 'One link, any device', 'Integrated into QVTT'].map((b) => <li key={b}>{b}</li>)}</ul>}
-        />
-        <p className="q-aside-line">
-          On the back burner, now that Rusty Buns covers most of it:{' '}
-          <a href={byKey('flareup').href} target="_blank" rel="noreferrer">Flareup</a>, and{' '}
-          <a href={byKey('staticflare').href} target="_blank" rel="noreferrer">Staticflare</a>, which we're rebuilding
-          as a shaved-down EmDash on Rusty Buns.
-        </p>
+        <PortalGroups compact entries={apps} groups={appGroups.filter((g) => g.key !== 'dev')} request={request} />
       </PortalSection>
 
       {/* ── About ── */}
