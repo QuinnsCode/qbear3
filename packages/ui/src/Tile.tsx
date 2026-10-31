@@ -8,9 +8,13 @@ export interface TileProps {
   tag?: string;
   tagline?: string;
   description?: string;
-  /** A single character or emoji shown in the glyph square. Defaults to the name's first letter. */
+  /** What the preview window shows: an icon element (e.g. a lucide icon). Ignored when `image` is set. */
+  icon?: ReactNode;
+  /** A screenshot or app image that fills the preview window. */
+  image?: string;
+  /** Fallback preview when there is no icon or image: an emoji or character. Defaults to the name's first letter. */
   glyph?: ReactNode;
-  /** Per-tile accent for the top stripe and glyph. Defaults to the theme accent. */
+  /** Per-tile accent that tints the preview window. Defaults to the theme accent. */
   accent?: string;
   status?: Status;
   /** Extra badges, e.g. "Q auth". */
@@ -18,41 +22,57 @@ export interface TileProps {
   href?: string;
   cta?: string;
   external?: boolean;
-  /** Two-column layout with `aside` on the right. */
+  /** Preview and name only: for overview grids. */
+  compact?: boolean;
+  /** Preview on the left, copy in the middle, `aside` on the right. */
   wide?: boolean;
   aside?: ReactNode;
+  /** Heading level for the name, so tiles nest under whatever heads them. */
+  nameAs?: 'h2' | 'h3' | 'h4';
   className?: string;
 }
 
-/** The card: a paper tile with an accent stripe. A link when it has an href and is not "soon". */
+/** The card: a paper tile around a tinted preview window (status pills ride on it). A link when it has an href and is not "soon". */
 export function Tile({
-  name, tag, tagline, description, glyph, accent, status, badges, href, cta, external, wide, aside, className,
+  name, tag, tagline, description, icon, image, glyph, accent, status, badges, href, cta, external,
+  compact, wide, aside, nameAs: Name = 'h3', className,
 }: TileProps) {
   const soon = status === 'soon';
   const linked = !!href && !soon;
   const style = accent ? ({ '--q-tile-accent': accent } as CSSProperties) : undefined;
-  const cls = cx('q-tile', wide && 'q-wide', soon && 'q-soon', className);
+  const cls = cx('q-tile', wide && 'q-wide', compact && 'q-compact', soon && 'q-soon', className);
+
+  const preview = (
+    <div className="q-tile-preview">
+      {image
+        ? <img src={image} alt="" loading="lazy" />
+        : <span className="q-tile-icon" aria-hidden="true">{icon ?? glyph ?? name.charAt(0)}</span>}
+      {!compact && (!!status || !!badges?.length) && (
+        <div className="q-tile-pills">
+          {status && <StatusPill status={status} />}
+          {badges?.map((b, i) => <Badge key={i}>{b}</Badge>)}
+        </div>
+      )}
+    </div>
+  );
+
+  const foot = compact || !cta ? null : (
+    <div className="q-tile-foot">
+      <span className="q-tile-cta">{cta}{linked ? (external ? ' ↗' : ' →') : ''}</span>
+    </div>
+  );
 
   const body = (
     <>
-      <div className="q-col" style={wide ? undefined : { display: 'contents' }}>
-        <div className="q-tile-head">
-          <div style={{ display: 'grid', gap: 4 }}>
-            {tag && <span className="q-tile-tag">{tag}</span>}
-            <h3 className="q-tile-name">{name}</h3>
-          </div>
-          <span className="q-glyph" aria-hidden="true">{glyph ?? name.charAt(0)}</span>
-        </div>
-        {tagline && <span className="q-tile-tagline">{tagline}</span>}
-        {description && <p className="q-tile-desc">{description}</p>}
-        {!wide && <TileFoot status={status} badges={badges} cta={cta} linked={linked} external={external} />}
+      {preview}
+      <div className="q-tile-body">
+        {!compact && tag && <span className="q-tile-tag">{tag}</span>}
+        <Name className="q-tile-name">{name}</Name>
+        {!compact && tagline && <span className="q-tile-tagline">{tagline}</span>}
+        {!compact && description && <p className="q-tile-desc">{description}</p>}
+        {!wide && foot}
       </div>
-      {wide && (
-        <div className="q-col">
-          {aside}
-          <TileFoot status={status} badges={badges} cta={cta} linked={linked} external={external} />
-        </div>
-      )}
+      {wide && <div className="q-tile-body">{aside}{foot}</div>}
     </>
   );
 
@@ -65,12 +85,28 @@ export function Tile({
   );
 }
 
-function TileFoot({ status, badges, cta, linked, external }: Pick<TileProps, 'status' | 'badges' | 'cta' | 'external'> & { linked: boolean }) {
+export interface TileGroupProps {
+  title: string;
+  /** Short mono line beside the title, e.g. "7 games". */
+  meta?: string;
+  lede?: string;
+  /** Heading level for the title. */
+  as?: 'h2' | 'h3';
+  /** Smaller tiles in a denser grid, for the compact overview. */
+  dense?: boolean;
+  children: ReactNode;
+}
+
+/** A card that holds cards: rises out of the page on a fading dot grid and groups the tiles inside it. */
+export function TileGroup({ title, meta, lede, as: Heading = 'h2', dense, children }: TileGroupProps) {
   return (
-    <div className="q-tile-foot">
-      {status && <StatusPill status={status} />}
-      {badges?.map((b, i) => <Badge key={i}>{b}</Badge>)}
-      {cta && <span className="q-tile-cta">{cta}{linked ? (external ? ' ↗' : ' →') : ''}</span>}
-    </div>
+    <section className={cx('q-group', dense && 'q-dense')}>
+      <header className="q-group-head">
+        <Heading className="q-group-title">{title}</Heading>
+        {meta && <span className="q-label">{meta}</span>}
+        {lede && <p className="q-group-lede">{lede}</p>}
+      </header>
+      <div className="q-group-grid">{children}</div>
+    </section>
   );
 }

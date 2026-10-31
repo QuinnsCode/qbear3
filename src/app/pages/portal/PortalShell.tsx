@@ -1,11 +1,11 @@
 // @/app/pages/portal/PortalShell.tsx
 // Shared chrome for the QNTBR portal, built on @qntbr/ui: page surface, top bar,
-// footer, and the tile grid used by the Game Center / App Center sections and hubs.
+// footer, and the group cards of tiles used by the Game Center / App Center sections and hubs.
 // Server components only (the theme toggle and craft canvas are client components inside the package).
 
 import type { ReactNode } from 'react';
-import { Footer, Page, SectionHead, ThemeScript, ThemeToggle, TopBar, Tile, Wrap, type NavItem } from '@qntbr/ui';
-import { GITHUB_ORG_URL, RUSTY_BUNS_URL, isExternal, resolveHref, type PortalEntry } from './portalData';
+import { AppRow, Button, Footer, Page, SectionHead, ThemeScript, ThemeToggle, TopBar, Tile, TileGroup, Wrap, type NavItem } from '@qntbr/ui';
+import { GITHUB_ORG_URL, RUSTY_BUNS_URL, isExternal, appTags, groupEntries, playgroundDownloadUrl, playgroundSourceUrl, resolveHref, type PlaygroundApp, type PortalEntry, type PortalGroup } from './portalData';
 
 interface PageProps {
   isLoggedIn: boolean;
@@ -52,35 +52,83 @@ export function PortalPage({ isLoggedIn, current = 'home', children }: PageProps
   );
 }
 
-interface GridProps {
+interface GroupsProps {
   entries: PortalEntry[];
+  groups: PortalGroup[];
   request: Request;
+  /** Preview and name only, smaller tiles: the landing page overview. */
+  compact?: boolean;
 }
 
-export function PortalGrid({ entries, request }: GridProps) {
+/** One group card per group, each holding the tiles of its entries. */
+export function PortalGroups({ entries, groups, request, compact }: GroupsProps) {
   return (
-    <div className="q-grid">
-      {entries.map((e) => {
-        const href = resolveHref(e, request);
-        // Auth-gated routes already redirect logged-out visitors to /user/login
-        // via middleware, so link straight through; the "Q auth" badge sets expectations.
-        return (
-          <Tile
-            key={e.key}
-            name={e.name}
-            tag={e.tag}
-            tagline={e.tagline}
-            description={e.description}
-            accent={e.accent}
-            status={e.status}
-            badges={e.requiresAuth ? ['Q auth'] : undefined}
-            href={href}
-            cta={e.cta}
-            external={isExternal(href)}
-          />
-        );
-      })}
+    <div className={compact ? 'q-groups q-dense' : 'q-groups'}>
+      {groupEntries(entries, groups).map(({ group, entries }) => (
+        <TileGroup
+          key={group.key}
+          as={compact ? 'h3' : 'h2'}
+          title={group.title}
+          meta={`${entries.length} ${group.noun}${entries.length === 1 ? '' : 's'}`}
+          lede={compact ? undefined : group.lede}
+          dense={compact}
+        >
+          {entries.map((e) => <PortalTile key={e.key} entry={e} request={request} compact={compact} />)}
+        </TileGroup>
+      ))}
     </div>
+  );
+}
+
+export function PortalTile({ entry: e, request, compact }: { entry: PortalEntry; request: Request; compact?: boolean }) {
+  const href = resolveHref(e, request);
+  const Icon = e.icon;
+  // Auth-gated routes already redirect logged-out visitors to /user/login
+  // via middleware, so link straight through; the "Q auth" badge sets expectations.
+  return (
+    <Tile
+      name={e.name}
+      nameAs={compact ? 'h4' : 'h3'}
+      tag={e.tag}
+      tagline={e.tagline}
+      description={e.description}
+      icon={<Icon strokeWidth={1.5} />}
+      image={e.image}
+      accent={e.accent}
+      status={e.status}
+      badges={e.requiresAuth ? ['Q auth'] : undefined}
+      href={href}
+      cta={e.cta}
+      external={isExternal(href)}
+      compact={compact}
+    />
+  );
+}
+
+/** One full-width card per Rusty Buns Playground app, with its tags and the playground's three links. */
+export function PlaygroundRow({ app }: { app: PlaygroundApp }) {
+  const Icon = app.icon;
+  const download = playgroundDownloadUrl(app);
+  const source = playgroundSourceUrl(app);
+  return (
+    <AppRow
+      name={app.name}
+      line={app.line}
+      icon={<Icon strokeWidth={1.5} />}
+      accent={app.accent}
+      tags={app.tags.map((key) => {
+        const { label, icon: TagIcon, color } = appTags[key];
+        return { label, color, icon: <TagIcon strokeWidth={2} /> };
+      })}
+      note={app.play ? undefined : download ? 'Browser version soon' : 'Coming soon'}
+      actions={
+        <>
+          {app.play && <Button variant="primary" href={app.play} target="_blank">Play ↗</Button>}
+          {download && <Button href={download} target="_blank">Download</Button>}
+          {source && <Button variant="ghost" href={source} target="_blank">Source</Button>}
+        </>
+      }
+    />
   );
 }
 
