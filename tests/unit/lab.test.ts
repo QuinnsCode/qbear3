@@ -1,20 +1,21 @@
 // tests/unit/lab.test.ts
-// The landing lab's table: every verb + noun pair makes exactly one thing, and a thing
-// dropped on itself walks the shelf and wraps around.
+// The landing lab's table: every verb + noun pair makes its own thing, and every other drop
+// still lands on some app.
 import { expect, test } from "bun:test";
-import { combineLab, labItems, nothingLine, NOTHING_LINES, recipes } from "../../src/app/pages/landing/lab.ts";
+import { combineLab, labItems, recipes } from "../../src/app/pages/landing/lab.ts";
 
 const request = new Request("https://qntbr.com/");
 const bag = labItems(request);
 const word = (id: string) => bag.find((i) => i.id === id)!;
 const things = bag.filter((i) => i.group === "game" || i.group === "app");
+const words = bag.filter((i) => i.group === "verb" || i.group === "noun");
+const isThing = (id: string | undefined) => things.some((t) => t.id === id);
 
 test("every thing in the bag has a verb + noun recipe that makes it, and no two share one", () => {
   const made = new Set<string>();
   for (const [pair, key] of recipes) {
     const [verb, noun] = pair.split("+").map(word);
-    const out = combineLab(verb!, noun!, bag);
-    expect(out?.item?.id).toBe(key);
+    expect(combineLab(verb!, noun!, bag)?.item?.id).toBe(key);
     // Order does not matter: the noun can be dropped on the verb.
     expect(combineLab(noun!, verb!, bag)?.item?.id).toBe(key);
     made.add(key);
@@ -29,24 +30,35 @@ test("the sandbox link is built for the host it is asked from", () => {
   expect(word("sandbox").href).toBe("https://sandbox.qntbr.com/");
 });
 
-test("a verb on the wrong noun, two different apps, or an app on a word is nothing", () => {
-  expect(combineLab(word("verb:skate"), word("noun:cards"), bag)).toBeNull();
-  expect(combineLab(word("sanctum"), word("sandbox"), bag)).toBeNull();
-  expect(combineLab(word("sandbox"), word("noun:cards"), bag)).toBeNull();
-  expect(combineLab(word("noun:cards"), word("noun:park"), bag)).toBeNull();
-  expect(nothingLine(NOTHING_LINES.length + 2)).toBe(NOTHING_LINES[2]);
+test("any two words make an app, and the same two always make the same one", () => {
+  for (const a of words) {
+    for (const b of words) {
+      const out = combineLab(a, b, bag);
+      expect(isThing(out?.item?.id)).toBe(true);
+      expect(combineLab(b, a, bag)?.item?.id).toBe(out!.item!.id);
+    }
+  }
 });
 
-test("an app dropped on itself becomes the next one, and the last wraps to the first", () => {
-  const first = things[0]!;
-  const last = things[things.length - 1]!;
-  expect(combineLab(first, first, bag)?.item?.id).toBe(things[1]!.id);
-  expect(combineLab(last, last, bag)?.item?.id).toBe(first.id);
+test("a word on itself makes an app that word is in", () => {
+  for (const w of words) {
+    const key = combineLab(w, w, bag)?.item?.id;
+    expect([...recipes].some(([pair, k]) => k === key && pair.split("+").includes(w.id))).toBe(true);
+  }
 });
 
-test("a word on itself just talks: nothing is made and nothing is consumed", () => {
-  const twice = combineLab(word("verb:skate"), word("verb:skate"), bag);
-  expect(twice?.item).toBeUndefined();
-  expect(twice?.message).toContain("Skate");
-  expect(combineLab(word("noun:oil"), word("noun:oil"), bag)?.item).toBeUndefined();
+test("two apps, or one on itself, make some other app; an app on a word makes another app", () => {
+  const [first, second] = things;
+  for (const roll of [0, 0.5, 0.999]) {
+    const dice = () => roll;
+    for (const [a, b] of [[first!, second!], [first!, first!]] as const) {
+      const out = combineLab(a, b, bag, dice)?.item?.id;
+      expect(isThing(out)).toBe(true);
+      expect(out).not.toBe(a.id);
+      expect(out).not.toBe(b.id);
+    }
+    const out = combineLab(first!, word("noun:cards"), bag, dice)?.item?.id;
+    expect(isThing(out)).toBe(true);
+    expect(out).not.toBe(first!.id);
+  }
 });

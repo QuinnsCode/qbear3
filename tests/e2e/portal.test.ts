@@ -14,7 +14,7 @@ test("landing page has the lab, then products, game center and app center sectio
   // The lab's bag is server-rendered: words to combine and every app already in it.
   const bag = tags(page.body, "button").map((t) => t.text);
   for (const name of ["Draft", "Cards", "Draft Lobby", "codeSplitter", "Hippo Tycoon"]) {
-    expect(bag.some((t) => t === name || t.endsWith(name))).toBe(true); // app tiles lead with an emoji
+    expect(bag.some((t) => t === name || t.includes(name))).toBe(true); // app tiles carry an emoji and an arrow
   }
   // Section links into the hubs, and RustyBuns from the nav.
   expect(links(page.body, { href: "/games", class: "q-section-link" })).toHaveLength(1);
