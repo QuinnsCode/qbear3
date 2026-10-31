@@ -8,7 +8,7 @@
  *
  * Everything is prefixed (--q-*, .q-*) so it can sit next to Tailwind and other CSS.
  * Retheme by overriding --q-accent / --q-accent-ink / --q-accent-soft on :root or
- * on any element (a card can carry its own accent through --q-tile-accent).
+ * on any element (a card tints its preview window with --q-tile-accent).
  */
 
 :root {
@@ -178,51 +178,182 @@
 .q-title em { font-style: normal; color: var(--q-accent); }
 .q-lede { color: var(--q-muted); font-size: clamp(15px, 1.7vw, 17px); line-height: 1.6; margin: 0; max-width: 54ch; }
 
+/* ── Groups: a card that holds cards ─────────────────────── */
+/* No outline at the top: the group rises out of the page. Its edge and the
+   craft canvas's dot grid fade in toward the bottom, where the paper settles. */
+.q-groups { display: grid; gap: clamp(16px, 2.4vw, 24px); }
+.q-group {
+  position: relative; isolation: isolate;
+  display: grid; gap: clamp(14px, 2vw, 20px);
+  padding: clamp(18px, 2.6vw, 26px);
+  border: 1px solid transparent; border-radius: 14px;
+  background:
+    linear-gradient(180deg, var(--q-bg) 0%, var(--q-canvas) 70%) padding-box,
+    linear-gradient(180deg, transparent 0%, var(--q-border) 45%, var(--q-border-2) 100%) border-box;
+}
+.q-group::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at 1px 1px, var(--q-border-2) 1px, transparent 0) 0 0 / 22px 22px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 10%, #000 100%);
+  mask-image: linear-gradient(180deg, transparent 10%, #000 100%);
+  opacity: 0.55;
+}
+.q-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.q-group-title { margin: 0; font: 600 20px/1.2 var(--q-sans); letter-spacing: -0.025em; color: var(--q-fg); }
+.q-group-lede { flex-basis: 100%; margin: 0; color: var(--q-muted); font-size: 14px; max-width: 60ch; }
+.q-group-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 12px; }
+.q-group.q-dense .q-group-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 92px), 1fr)); gap: 8px; }
+.q-group.q-dense .q-group-title { font-size: 17px; }
+/* Compact groups sit side by side; each one's grid holds as many mini tiles as fit. */
+.q-groups.q-dense { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items: start; }
+
 /* ── Tiles: the card ──────────────────────────────────────── */
+/* A paper tile around a preview window: the app's image, or its icon on a wash of its accent. */
 .q-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 14px; }
 .q-tile {
+  --q-tile-a: var(--q-tile-accent, var(--q-accent));
   position: relative;
-  display: flex; flex-direction: column; gap: 10px;
-  min-height: 220px;
-  padding: 18px 18px 16px;
+  display: flex; flex-direction: column;
+  padding: 5px;
   color: inherit; text-decoration: none;
   background: var(--q-grain), var(--q-paper);
   border: 1px solid var(--q-border-2);
-  border-top: 3px solid var(--q-tile-accent, var(--q-accent));
-  border-radius: 8px;
-  transition: border-color 0.12s, background 0.12s, transform 0.12s, box-shadow 0.12s;
+  border-radius: 10px;
+  transition: border-color 0.14s, transform 0.14s, box-shadow 0.14s;
 }
-a.q-tile:hover {
-  background: var(--q-grain), linear-gradient(0deg, var(--q-accent-soft), var(--q-paper) 80%);
-  border-color: var(--q-edge-hi);
-  border-top-color: var(--q-tile-accent, var(--q-accent));
-  box-shadow: var(--q-shadow);
-  transform: translateY(-2px);
-}
+a.q-tile:hover { border-color: var(--q-edge-hi); box-shadow: var(--q-shadow); transform: translateY(-2px); }
 a.q-tile:active { transform: translateY(0); }
 .q-tile.q-soon { opacity: 0.6; }
-.q-tile-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.q-glyph {
-  display: grid; place-items: center; flex: none;
-  width: 34px; height: 34px;
-  border: 1px solid var(--q-border-2); border-radius: 6px;
-  background: var(--q-grain), var(--q-bg);
-  color: var(--q-tile-accent, var(--q-accent-ink));
-  font: 600 16px/1 var(--q-sans);
+
+.q-tile-preview {
+  position: relative; overflow: hidden; flex: none;
+  display: grid; place-items: center;
+  height: 112px; border-radius: 6px;
+  background:
+    radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--q-tile-a) 22%, transparent), transparent 75%),
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--q-tile-a) 30%, transparent) 1px, transparent 0) 0 0 / 14px 14px,
+    var(--q-canvas);
 }
-.q-tile-name { font: 600 22px/1.15 var(--q-sans); letter-spacing: -0.03em; margin: 0; color: var(--q-fg); }
-.q-tile-tag { font: 500 11px/1.4 var(--q-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--q-faint); }
+.q-tile-preview img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.q-tile-pills { position: absolute; top: 7px; left: 7px; z-index: 1; display: flex; flex-wrap: wrap; gap: 5px; }
+.q-tile-pills .q-pill, .q-tile-pills .q-badge { background: var(--q-top-bg); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.q-tile-icon {
+  display: grid; place-items: center;
+  color: color-mix(in srgb, var(--q-tile-a) 82%, var(--q-fg));
+  font: 600 30px/1 var(--q-sans);
+  transition: transform 0.2s;
+}
+.q-tile-icon svg { width: 36px; height: 36px; }
+a.q-tile:hover .q-tile-icon { transform: scale(1.08) translateY(-1px); }
+
+.q-tile-body { display: flex; flex-direction: column; gap: 6px; flex: 1; padding: 12px 10px 8px; }
+.q-tile-name { font: 600 18px/1.2 var(--q-sans); letter-spacing: -0.025em; margin: 0; color: var(--q-fg); }
+.q-tile-tag { font: 500 10.5px/1.4 var(--q-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--q-faint); }
 .q-tile-tagline { font: 500 13px var(--q-sans); color: var(--q-fg); opacity: 0.8; }
-.q-tile-desc { margin: 0; color: var(--q-muted); font-size: 13.5px; line-height: 1.6; flex: 1; }
-.q-tile-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; }
-.q-tile-cta { margin-left: auto; font: 500 13px var(--q-sans); color: var(--q-fg); }
+.q-tile-desc { margin: 0; color: var(--q-muted); font-size: 13px; line-height: 1.55; flex: 1; }
+.q-tile-foot { display: flex; justify-content: flex-end; margin-top: auto; padding-top: 8px; }
+.q-tile-cta { font: 500 13px var(--q-sans); color: var(--q-fg); white-space: nowrap; }
 a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
-/* A wide tile for the corporate section: copy on the left, bullets on the right. */
-.q-tile.q-wide { flex-direction: row; gap: clamp(20px, 4vw, 48px); min-height: 0; padding: clamp(20px, 3vw, 28px); }
-.q-tile.q-wide > .q-col { display: flex; flex-direction: column; gap: 10px; flex: 1 1 0; min-width: 0; }
+
+/* Compact: preview and name, like a craft tile. The overview grids on the landing page. */
+.q-tile.q-compact { padding: 4px; }
+.q-tile.q-compact .q-tile-preview { height: 58px; }
+.q-tile.q-compact .q-tile-icon svg { width: 24px; height: 24px; }
+.q-tile.q-compact .q-tile-body { padding: 7px 5px 4px; }
+.q-tile.q-compact .q-tile-name { font-size: 13px; line-height: 1.25; }
+
+/* Wide: preview on the left, copy in the middle, bullets on the right. */
+.q-tile.q-wide { flex-direction: row; align-items: stretch; gap: clamp(12px, 3vw, 36px); }
+.q-tile.q-wide .q-tile-preview { width: clamp(120px, 18vw, 180px); height: auto; min-height: 140px; }
+.q-tile.q-wide .q-tile-body { flex: 1 1 0; min-width: 0; padding: clamp(12px, 2vw, 20px) clamp(8px, 1.5vw, 16px); }
 .q-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font: 13px var(--q-mono); color: var(--q-muted); }
 .q-list li::before { content: "› "; color: var(--q-accent-ink); }
-@media (max-width: 720px) { .q-tile.q-wide { flex-direction: column; } }
+@media (max-width: 720px) {
+  .q-tile.q-wide { flex-direction: column; }
+  .q-tile.q-wide .q-tile-preview { width: auto; min-height: 96px; }
+}
+
+/* ── Feature: the full-width card ─────────────────────────── */
+.q-feature {
+  --q-tile-a: var(--q-tile-accent, var(--q-accent));
+  display: grid; gap: 0;
+  padding: 6px;
+  background: var(--q-grain), var(--q-paper);
+  border: 1px solid var(--q-border-2); border-radius: 14px;
+}
+.q-feature-main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(16px, 3vw, 40px); align-items: stretch; }
+.q-feature-preview { height: auto; min-height: 220px; border-radius: 10px; }
+.q-feature-preview .q-tile-icon svg { width: 64px; height: 64px; }
+.q-feature.q-hero .q-feature-preview { min-height: 300px; }
+.q-feature.q-hero .q-feature-preview .q-tile-icon svg { width: 88px; height: 88px; }
+.q-feature-body { display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: clamp(14px, 2.4vw, 28px) clamp(10px, 2vw, 24px) clamp(14px, 2.4vw, 28px) 0; }
+.q-feature-name { margin: 0; font: 600 clamp(28px, 3.6vw, 40px)/1.05 var(--q-sans); letter-spacing: -0.04em; color: var(--q-fg); }
+.q-feature.q-hero .q-feature-name { font-size: clamp(34px, 5vw, 56px); }
+.q-feature-tagline { font: 500 clamp(15px, 1.6vw, 18px)/1.35 var(--q-sans); color: var(--q-fg); opacity: 0.85; }
+.q-feature-desc { margin: 0; color: var(--q-muted); font-size: 15px; line-height: 1.6; max-width: 56ch; }
+.q-feature-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 6px; }
+
+/* The drawer: closed it's a strip with a peek of what's inside; open it's a grid of tiles. */
+.q-feature-drawer { margin-top: 6px; border-top: 1px solid var(--q-border); }
+.q-feature-drawer > summary {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 12px 14px 8px; cursor: pointer; list-style: none;
+  font: 500 13px var(--q-sans); color: var(--q-fg);
+}
+.q-feature-drawer > summary::-webkit-details-marker { display: none; }
+.q-feature-drawer-label::before { content: "+"; display: inline-block; width: 1.2em; font-family: var(--q-mono); color: var(--q-accent-ink); }
+.q-feature-drawer[open] .q-feature-drawer-label::before { content: "−"; }
+.q-feature-drawer > summary:hover .q-feature-drawer-label { color: var(--q-accent-ink); }
+.q-feature-peek { display: inline-flex; gap: 6px; margin-left: auto; color: var(--q-muted); }
+.q-feature-peek svg { width: 18px; height: 18px; }
+.q-feature-drawer[open] .q-feature-peek { display: none; }
+.q-feature-drawer > .q-group-grid { padding: 8px 8px 8px; }
+@media (max-width: 720px) {
+  .q-feature-main { grid-template-columns: 1fr; }
+  .q-feature-preview, .q-feature.q-hero .q-feature-preview { min-height: 160px; }
+  .q-feature-body { padding: 8px 10px 14px; }
+}
+
+/* ── App rows: one full-width card per app ────────────────── */
+.q-rows { display: grid; gap: 8px; padding: 8px; }
+.q-row {
+  --q-tile-a: var(--q-tile-accent, var(--q-accent));
+  display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; align-items: center; gap: clamp(12px, 2vw, 22px);
+  padding: 5px; padding-right: clamp(10px, 1.6vw, 18px);
+  background: var(--q-grain), var(--q-paper);
+  border: 1px solid var(--q-border-2); border-radius: 10px;
+  transition: border-color 0.14s, box-shadow 0.14s;
+}
+.q-row:hover { border-color: var(--q-edge-hi); box-shadow: var(--q-shadow); }
+.q-row-preview { height: 100%; min-height: 92px; }
+.q-row-preview .q-tile-icon svg { width: 34px; height: 34px; }
+.q-row:hover .q-tile-icon { transform: scale(1.08); }
+.q-row-body { display: grid; gap: 5px; padding: 8px 0; min-width: 0; }
+.q-row-name { margin: 0; font: 600 18px/1.2 var(--q-sans); letter-spacing: -0.025em; color: var(--q-fg); }
+.q-row-line { margin: 0; color: var(--q-muted); font-size: 13.5px; line-height: 1.5; }
+.q-row-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+.q-row-note { font: 500 12px var(--q-sans); color: var(--q-faint); margin-right: 4px; white-space: nowrap; }
+
+/* Tags: a small icon in the tag's own color, and a word. */
+.q-tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 2px 0 0; padding: 0; list-style: none; }
+.q-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px 2px 6px; border-radius: 999px;
+  font: 500 11.5px/18px var(--q-sans); color: var(--q-muted);
+  background: color-mix(in srgb, var(--q-tag) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--q-tag) 22%, transparent);
+}
+.q-tag svg { width: 13px; height: 13px; color: var(--q-tag); display: block; }
+@media (max-width: 720px) {
+  .q-row { grid-template-columns: 72px minmax(0, 1fr); padding-right: 5px; }
+  .q-row-preview { min-height: 72px; }
+  .q-row-actions { grid-column: 1 / -1; justify-content: flex-start; padding: 0 6px 6px; }
+}
+
+/* A muted line for things on the back burner. */
+.q-aside-line { margin: 0; padding-top: 18px; color: var(--q-faint); font-size: 13px; }
+.q-aside-line a { color: var(--q-muted); }
+.q-aside-line a:hover { color: var(--q-fg); }
 
 /* ── Craft canvas: drag tiles out of the bag ──────────────── */
 .q-craft {
@@ -278,11 +409,8 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 }
 @media (prefers-reduced-motion: reduce) {
   .q-btn, .q-tile, .q-item { transition: none; }
-  a.q-tile:hover { transform: none; }
+  a.q-tile:hover, a.q-tile:hover .q-tile-icon { transform: none; }
 }
-
-/* Wide tiles keep the glyph beside the name instead of floating mid-card. */
-.q-tile.q-wide .q-tile-head { flex-direction: row-reverse; justify-content: flex-end; align-items: center; gap: 12px; }
 
 /* ── Craft workspace: Infinite Craft as a whole page ──────── */
 /* The canvas fills the window; the bag runs down the right with its search pinned to the bottom. */

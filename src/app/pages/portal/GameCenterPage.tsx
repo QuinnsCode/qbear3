@@ -1,8 +1,8 @@
 // @/app/pages/portal/GameCenterPage.tsx
 // /games — the Game Center hub: everything playable on QNTBR in one place.
 import { type RequestInfo } from "rwsdk/worker";
-import { games } from './portalData';
-import { PortalGrid, PortalPage, PortalSection, PortalSectionHead } from './PortalShell';
+import { games, gameGroups } from './portalData';
+import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from './PortalShell';
 
 export default function GameCenterPage({ ctx, request }: RequestInfo) {
   const isLoggedIn = !!ctx.user;
@@ -18,7 +18,7 @@ export default function GameCenterPage({ ctx, request }: RequestInfo) {
           linkHref={isLoggedIn ? '/sanctum' : '/user/signup'}
           linkLabel={isLoggedIn ? 'Go to Sanctum' : 'Create an account'}
         />
-        <PortalGrid entries={games} request={request} />
+        <PortalGroups entries={games} groups={gameGroups} request={request} />
 
         <div style={{ paddingTop: 'clamp(40px, 7vw, 72px)' }}>
           <span className="q-label">How it works</span>

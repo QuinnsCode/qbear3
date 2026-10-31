@@ -2,6 +2,8 @@
 // Single source of truth for the QNTBR portal: the three sections on the
 // landing page (Products, Game Center, App Center) and the /games + /apps hubs.
 
+import { AudioWaveform, Bot, Box, Brush, Cog, Crosshair, Droplet, Earth, FileText, Flame, GitBranch, Globe, Hand, KeyRound, Landmark, Layers, MessagesSquare, MonitorDown, Music, Package, PersonStanding, Rocket, Sandwich, Sparkles, SprayCan, Sprout, Swords, TreePalm, Trees, Truck, Users, Video, Wifi, Wind, Zap, type LucideIcon } from 'lucide-react';
+
 export type PortalStatus = 'live' | 'beta' | 'soon';
 
 export interface PortalEntry {
@@ -14,7 +16,13 @@ export interface PortalEntry {
   status: PortalStatus;
   /** Requires a QNTBR account (Q auth) to use. */
   requiresAuth?: boolean;
-  /** Accent used for the card bevel / glow. */
+  /** Which group card this entry sits in on its hub (see gameGroups / appGroups). */
+  group: string;
+  /** Icon shown in the card's preview window. */
+  icon: LucideIcon;
+  /** Screenshot that replaces the icon in the preview window, when there is one. */
+  image?: string;
+  /** Tints the card's preview window. */
   accent: string;
   /** Emoji shown on the craft canvas tile. */
   glyph?: string;
@@ -44,6 +52,8 @@ export function getSandboxUrl(request: Request): string {
 export const games: PortalEntry[] = [
   {
     key: 'sanctum',
+    group: 'mtg',
+    icon: Landmark,
     glyph: '🏛️',
     name: 'Sanctum',
     tag: 'MTG · Commander',
@@ -57,6 +67,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'sandbox',
+    group: 'mtg',
+    icon: TreePalm,
     glyph: '🏖️',
     name: 'Sandbox',
     tag: 'MTG · No account',
@@ -69,6 +81,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'pvp',
+    group: 'mtg',
+    icon: Swords,
     glyph: '⚔️',
     name: 'PVP Draft Arena',
     tag: 'MTG · Draft',
@@ -82,6 +96,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'draft',
+    group: 'mtg',
+    icon: Package,
     glyph: '📦',
     name: 'Draft Lobby',
     tag: 'MTG · Draft',
@@ -95,6 +111,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'deckbuilder',
+    group: 'mtg',
+    icon: Layers,
     glyph: '🃏',
     name: 'Deck Builder',
     tag: 'MTG · Tools',
@@ -108,6 +126,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'strategy',
+    group: 'tables',
+    icon: Earth,
     glyph: '🌍',
     name: 'World Conquest',
     tag: 'Strategy · Multiplayer',
@@ -121,6 +141,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'community',
+    group: 'tables',
+    icon: MessagesSquare,
     glyph: '💬',
     name: 'Community',
     tag: 'Social',
@@ -133,6 +155,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'park-hide-seek',
+    group: 'rustybuns',
+    icon: Trees,
     glyph: '🌲',
     name: 'Park Hide & Seek',
     tag: 'Rusty Buns · 3D',
@@ -145,6 +169,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'skate-tech-park',
+    group: 'rustybuns',
+    icon: Wind,
     glyph: '🛹',
     name: 'Skate Tech Park',
     tag: 'Rusty Buns · Multiplayer',
@@ -157,6 +183,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'druids-curse',
+    group: 'rustybuns',
+    icon: Sprout,
     glyph: '🌿',
     name: 'Druids Curse',
     tag: 'Rusty Buns · Multiplayer',
@@ -169,6 +197,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'splat-spray',
+    group: 'rustybuns',
+    icon: SprayCan,
     glyph: '🎨',
     name: 'Splat Spray',
     tag: 'Rusty Buns · Puzzle',
@@ -181,6 +211,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'two-fronts',
+    group: 'rustybuns',
+    icon: Rocket,
     glyph: '🚀',
     name: 'Two Fronts',
     tag: 'Rusty Buns · Strategy',
@@ -193,6 +225,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'git-recon',
+    group: 'rustybuns',
+    icon: Crosshair,
     glyph: '🔫',
     name: 'git-recon',
     tag: 'Rusty Buns · Shooter',
@@ -205,6 +239,8 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'excalibrawl',
+    group: 'rustybuns',
+    icon: Brush,
     glyph: '🖍️',
     name: 'Excalibrawl',
     tag: 'Rusty Buns · AI',
@@ -222,7 +258,23 @@ export const games: PortalEntry[] = [
 // ──────────────────────────────────────────────────────────────
 export const apps: PortalEntry[] = [
   {
+    key: 'codesplitter',
+    group: 'dev',
+    icon: GitBranch,
+    glyph: '🧩',
+    name: 'codeSplitter',
+    tag: 'Rusty Buns · Code host',
+    tagline: 'Git for the agentic era',
+    description: 'A code host for agents: every line a record, real git on Cloudflare Artifacts.',
+    href: 'https://codesplitter.notryanquinn.workers.dev',
+    cta: 'Open codeSplitter',
+    status: 'live',
+    accent: '#0891b2',
+  },
+  {
     key: 'qlave',
+    group: 'products',
+    icon: Video,
     glyph: '📞',
     name: 'Qlave',
     tag: 'Calls · WebRTC',
@@ -235,6 +287,8 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'flareup',
+    group: 'backburner',
+    icon: Flame,
     glyph: '🔥',
     name: 'Flareup',
     tag: 'Cloudflare · Cost',
@@ -247,6 +301,8 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'rustybuns',
+    group: 'dev',
+    icon: Sandwich,
     glyph: '🍔',
     name: 'RustyBuns',
     tag: 'GitHub · Open source',
@@ -259,11 +315,13 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'staticflare',
+    group: 'backburner',
+    icon: Zap,
     glyph: '⚡',
     name: 'Staticflare',
     tag: 'Hosting · Edge',
     tagline: 'Static hosting',
-    description: 'Deploy static sites to the edge in one command. Any TypeScript app with a build step can ship.',
+    description: 'Being rebuilt as a shaved-down EmDash on Rusty Buns: a static site in, an edge deploy out.',
     href: 'https://staticflare.dev',
     cta: 'Coming soon',
     status: 'soon',
@@ -271,6 +329,8 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'shippycloud',
+    group: 'products',
+    icon: Truck,
     glyph: '🚚',
     name: 'Shippycloud',
     tag: 'GitHub · Fulfillment',
@@ -283,6 +343,8 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'qauth',
+    group: 'account',
+    icon: KeyRound,
     glyph: '🔑',
     name: 'Q Auth',
     tag: 'Account · SSO',
@@ -291,21 +353,98 @@ export const apps: PortalEntry[] = [
     href: '/user/login',
     cta: 'Sign in',
     status: 'beta',
-    accent: '#fafafa',
-  },
-  {
-    key: 'codesplitter',
-    glyph: '🧩',
-    name: 'codeSplitter',
-    tag: 'Rusty Buns · Code host',
-    tagline: 'Git for the agentic era',
-    description: 'A code host for agents: every line a record, real git on Cloudflare Artifacts.',
-    href: 'https://codesplitter.notryanquinn.workers.dev',
-    cta: 'Open codeSplitter',
-    status: 'live',
-    accent: '#0891b2',
+    accent: '#71717a',
   },
 ];
+
+// ──────────────────────────────────────────────────────────────
+// Groups — each one is a card holding the cards of the entries inside it
+// ──────────────────────────────────────────────────────────────
+export interface PortalGroup {
+  key: string;
+  title: string;
+  lede: string;
+  /** What to call one entry in the count, e.g. "game". */
+  noun: string;
+}
+
+export const gameGroups: PortalGroup[] = [
+  { key: 'rustybuns', title: 'Built with Rusty Buns', lede: 'Games shipped on Rusty Buns, each running on its own Worker.', noun: 'game' },
+  { key: 'mtg', title: 'Magic: The Gathering', lede: 'The original QNTBR tables: Commander, drafts, decks, and a sandbox that never closes.', noun: 'table' },
+  { key: 'tables', title: 'Strategy & social', lede: 'A territory map on the same engine, and a place to find your pod.', noun: 'space' },
+];
+
+export const appGroups: PortalGroup[] = [
+  { key: 'dev', title: 'Developer tools', lede: 'The code host for agents, and the open-source runtime it ships on.', noun: 'tool' },
+  { key: 'products', title: 'Products', lede: 'Calls and fulfillment.', noun: 'product' },
+  { key: 'account', title: 'Account', lede: 'One login for every game and app.', noun: 'service' },
+  { key: 'backburner', title: 'Back burner', lede: 'Rusty Buns now covers most of what these set out to do.', noun: 'project' },
+];
+
+// ──────────────────────────────────────────────────────────────
+// Rusty Buns Playground — every app in the RustyBuns repo's apps/playground/public/apps.json,
+// one full-width row each in the Rusty Buns drawer. Keep it in step with that file.
+// ──────────────────────────────────────────────────────────────
+export const PLAYGROUND_URL = 'https://rustybuns-playground.notryanquinn.workers.dev';
+
+export type AppTagKey = 'eqosys' | 'browser' | 'desktop' | 'multiplayer' | 'lan' | '3d' | 'ai' | 'agents' | 'rust' | 'audio' | 'static';
+
+/** What an app is, shown as a small colored icon and a word. */
+export const appTags: Record<AppTagKey, { label: string; icon: LucideIcon; color: string }> = {
+  eqosys: { label: 'eqosys account', icon: KeyRound, color: '#e8590c' },
+  browser: { label: 'Plays in the browser', icon: Globe, color: '#2563eb' },
+  desktop: { label: 'Desktop download', icon: MonitorDown, color: '#64748b' },
+  multiplayer: { label: 'Multiplayer', icon: Users, color: '#16a34a' },
+  lan: { label: 'LAN', icon: Wifi, color: '#0891b2' },
+  '3d': { label: '3D', icon: Box, color: '#a855f7' },
+  ai: { label: 'AI models', icon: Sparkles, color: '#ec4899' },
+  agents: { label: 'For agents', icon: Bot, color: '#0ea5e9' },
+  rust: { label: 'Rust inside', icon: Cog, color: '#c2410c' },
+  audio: { label: 'Audio', icon: Music, color: '#eab308' },
+  static: { label: 'Static only', icon: FileText, color: '#78716c' },
+};
+
+export interface PlaygroundApp {
+  key: string;
+  name: string;
+  line: string;
+  /** Live browser build. */
+  play?: string;
+  /** Release tag prefix for the desktop download. */
+  download?: string;
+  /** Folder under apps/ in the RustyBuns repo. */
+  source?: string;
+  icon: LucideIcon;
+  accent: string;
+  /** Each one read off the app's README ("What it proves") or apps.json, plus eqosys's apps.ts. */
+  tags: AppTagKey[];
+}
+
+export const playgroundApps: PlaygroundApp[] = [
+  { key: 'park-hide-seek', name: 'Park Hide & Seek', line: '3D hide and seek on real Yosemite terrain; each player is sent only what they can see.', play: 'https://park-hide-seek.notryanquinn.workers.dev', download: 'park-hide-seek-v', source: 'park-hide-seek', icon: Trees, accent: '#16a34a', tags: ['eqosys', 'browser', 'desktop', 'multiplayer', 'lan', '3d'] },
+  { key: 'skate-tech-park', name: 'Skate Tech Park', line: 'A giant riderless fingerboard on park terrain, up to four riders.', play: 'https://skatetechpark.notryanquinn.workers.dev', source: 'skate-tech-park', icon: Wind, accent: '#eab308', tags: ['browser', 'multiplayer', '3d'] },
+  { key: 'druids-curse', name: 'Druids Curse', line: 'The live multiplayer game Rusty Buns was first built for.', play: 'https://druids-curse-votv.notryanquinn.workers.dev', icon: Sprout, accent: '#15803d', tags: ['browser', 'multiplayer'] },
+  { key: 'codesplitter', name: 'codeSplitter', line: 'A code host for agents: every line a record, real git on Cloudflare Artifacts.', play: 'https://codesplitter.notryanquinn.workers.dev', source: 'codesplitter', icon: GitBranch, accent: '#0891b2', tags: ['browser', 'agents'] },
+  { key: 'excalibrawl', name: 'Excalibrawl', line: 'An hourly drawing fight between two models, refereed by a third.', play: 'https://excalibrawl.notryanquinn.workers.dev', source: 'excalibrawl', icon: Brush, accent: '#8b5cf6', tags: ['browser', 'ai'] },
+  { key: 'hippo-tycoon', name: 'Hippo Tycoon', line: 'Four greedy oil-baron hippos race to chomp the most oil from a jungle geyser; solo, couch, LAN or online.', download: 'hippo-tycoon-v', source: 'hippo-tycoon', icon: Droplet, accent: '#a16207', tags: ['desktop', 'multiplayer', 'lan'] },
+  { key: 'fm-daw', name: 'FM Groovebox', line: 'A twelve-track FM groovebox with a drum machine, step sequencer, piano roll and reverb.', download: 'fm-daw-v', source: 'fm-daw', icon: AudioWaveform, accent: '#d946ef', tags: ['desktop', 'audio', 'rust'] },
+  { key: 'splat-spray', name: 'Splat Spray', line: 'An I-spy game in the dark: scan a Gaussian-splat room and find 100 things in the fewest shots.', play: 'https://splat-spray.notryanquinn.workers.dev', download: 'splat-spray-v', source: 'splat-spray', icon: SprayCan, accent: '#ec4899', tags: ['browser', 'desktop', '3d'] },
+  { key: 'two-fronts', name: 'Two Fronts', line: 'Turn-based strategy on a forest moon, with three.js battles on the ground and in orbit.', play: 'https://two-fronts.notryanquinn.workers.dev', source: 'two-fronts', icon: Rocket, accent: '#2563eb', tags: ['browser', 'multiplayer', '3d'] },
+  { key: 'git-recon', name: 'git-recon', line: 'A toy-soldier shooter fought in a codebase: the repo is the level.', play: 'https://git-recon.notryanquinn.workers.dev', source: 'git-recon', icon: Crosshair, accent: '#78716c', tags: ['browser', 'multiplayer', 'lan', '3d'] },
+  { key: 'auto-rig', name: 'Auto Rig', line: 'Drop in a 3D model, get a skeleton, skin weights and inverse kinematics you can drag around.', source: 'auto-rig', icon: PersonStanding, accent: '#64748b', tags: ['3d', 'rust'] },
+  { key: 'hello-world', name: 'Hello World', line: 'The smallest Rusty Buns app: one page, static assets only.', play: 'https://hello-world.notryanquinn.workers.dev', source: 'hello-world', icon: Hand, accent: '#f97316', tags: ['browser', 'static'] },
+];
+
+/** The playground's own links: live build, desktop release, source folder. */
+export const playgroundDownloadUrl = (a: PlaygroundApp) => a.download && `${RUSTY_BUNS_URL}/releases?q=${a.download}&expanded=true`;
+export const playgroundSourceUrl = (a: PlaygroundApp) => a.source && `${RUSTY_BUNS_URL}/tree/main/apps/${a.source}`;
+
+/** Each group with its entries, in group order; empty groups are dropped. */
+export function groupEntries(entries: PortalEntry[], groups: PortalGroup[]) {
+  return groups
+    .map((group) => ({ group, entries: entries.filter((e) => e.group === group.key) }))
+    .filter((g) => g.entries.length > 0);
+}
 
 /** Resolve placeholder hrefs (currently just the sandbox) against the request. */
 export function resolveHref(entry: PortalEntry, request: Request): string {
