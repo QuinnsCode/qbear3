@@ -45,7 +45,9 @@ pnpm run desktop:dev      # vite build + run the Worker on a local Bun host (sql
 pnpm run desktop:build    # dist/qntbr-<os>-<arch>: one double-clickable file
 pnpm run rb:plan          # typecheck the generated Alchemy stack; list what a deploy would create (creates nothing)
 pnpm run rb:deploy        # alchemy deploy; refuses without a matching plan, then asks
-                          # (plan/deploy need `pnpm exec rustybuns add deploy` once: pinned Alchemy + Effect, and `rustybuns login cloudflare`)
+                          # (pinned Alchemy + Effect are installed; their overrides live in pnpm-workspace.yaml because pnpm 12
+                          #  ignores package.json "pnpm". Plan/deploy still need `rustybuns login cloudflare`, and a first plan
+                          #  creates a separate stack: `adopt` is off, so it never touches the live Worker)
 pnpm exec rustybuns generate   # regenerate .rustybuns/ and wrangler.generated.jsonc from the config
 ```
 

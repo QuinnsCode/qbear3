@@ -7,6 +7,16 @@ allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true
   esbuild: true
+  msgpackr-extract: false
   prisma: true
   sharp: true
   workerd: true
+
+# Rusty Buns' pinned deploy set (`rustybuns add deploy` writes these to package.json,
+# which pnpm 12 ignores).
+overrides:
+  'effect': 4.0.0-rc.112
+  '@effect/platform-bun': 4.0.0-rc.112
+  '@effect/platform-node': 4.0.0-rc.112
+  '@effect/platform-node-shared': 4.0.0-rc.112
+  '@effect/vitest': 4.0.0-rc.112
