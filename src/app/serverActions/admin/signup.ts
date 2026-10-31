@@ -5,6 +5,7 @@ import { requestInfo } from "rwsdk/worker";
 import { db } from "@/db";
 import { initializeServices } from "@/lib/middlewareFunctions";
 import { initAuth } from "@/lib/auth";
+import { isReservedSubdomain } from "@/lib/subdomains";
 
 function getRedirectUrl(slug: string, request: Request): string {
   const url = new URL(request.url);
@@ -48,14 +49,7 @@ export async function checkUsernameAvailability(username: string) {
         }
 
         // Check reserved words
-        const reserved = [
-        'www', 'api', 'admin', 'app', 'mail', 'ftp', 'localhost', 
-        'staging', 'dev', 'test', 'demo', 'blog', 'docs', 'support',
-        'help', 'status', 'about', 'contact', 'legal', 'privacy',
-        'terms', 'signup', 'signin', 'login', 'logout', 'register'
-        ];
-
-        if (reserved.includes(username)) {
+        if (isReservedSubdomain(username) || ['localhost', 'staging'].includes(username)) {
         return {
             available: false,
             error: 'Reserved username'
@@ -106,6 +100,10 @@ export async function signupWithOrg(formData: FormData) {
 
     if (username.length < 3) {
       throw new Error('Username must be at least 3 characters');
+    }
+
+    if (isReservedSubdomain(username)) {
+      throw new Error('This username is reserved');
     }
 
     // Validate password

@@ -4,6 +4,7 @@
 import { requestInfo } from "rwsdk/worker";
 import { db } from "@/db";
 import { initializeServices } from "@/lib/middlewareFunctions";
+import { isReservedSubdomain } from "@/lib/subdomains";
 
 function getRedirectUrl(slug: string, request: Request): string {
   const url = new URL(request.url);
@@ -49,6 +50,10 @@ export async function createOrgForExistingUser({
     // Validate slug format
     if (!/^[a-z0-9][a-z0-9\-]*[a-z0-9]$/.test(lairSlug)) {
       throw new Error('Lair subdomain can only contain lowercase letters, numbers, and hyphens (not at start/end)');
+    }
+
+    if (isReservedSubdomain(lairSlug)) {
+      throw new Error('This subdomain is not available');
     }
 
     if (lairSlug.length < 6) {

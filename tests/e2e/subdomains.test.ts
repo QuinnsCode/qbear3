@@ -36,3 +36,13 @@ test("the sandbox is public: the root lands in the one shared card game, never o
   expect(page.url.pathname).toBe("/cardGame/regal-gray-wolf");
   expect(page.status).toBe(200);
 });
+
+test("a reserved name is never offered as an org to create, and can't be claimed", async () => {
+  const a = await app();
+  const b = a.browser();
+  // eqosys.qntbr.com is its own Worker; if a request lands here anyway, don't suggest creating it.
+  const eqosys = await b.get("/health", { host: a.lair("eqosys"), follow: false });
+  expect(eqosys.status).toBe(404);
+  expect(eqosys.headers.get("location")).toBeNull();
+
+});
