@@ -15,6 +15,11 @@ export function ThemeToggle() {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
+    // Hydrating <html> can drop the attribute ThemeScript set, so put the saved choice back.
+    try {
+      const saved = localStorage.getItem(KEY);
+      if (saved === 'dark' || saved === 'light') document.documentElement.dataset.theme = saved;
+    } catch { /* private mode */ }
     const attr = document.documentElement.dataset.theme;
     setDark(attr ? attr === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
   }, []);

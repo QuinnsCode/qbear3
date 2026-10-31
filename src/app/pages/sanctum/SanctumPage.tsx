@@ -10,6 +10,8 @@ import { db } from "@/db";
 import { getFriends, getFriendRequests } from "@/app/serverActions/social/friends";
 import { getGameInvites } from "@/app/serverActions/social/gameInvites";
 import { getPresenceForUsers, type UserPresence } from "@/app/serverActions/social/presence";
+import type { ReactNode } from "react";
+import { BrandMark } from "@qntbr/ui";
 import { SanctumClient } from "./SanctumClient";
 import { LogoutButton } from "@/app/pages/user/LoginButton";
 import {
@@ -48,15 +50,9 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   
   if (ctx.orgError === 'NO_ACCESS') {
     return (
-      <div className="min-h-screen bg-slate-700 flex items-center justify-center p-8">
-        <div className="bg-slate-800 rounded-lg border-2 border-red-500 p-8 text-center max-w-md shadow-xl">
-          <h1 className="text-3xl font-bold text-red-400 mb-4">🚫 No Access</h1>
-          <p className="text-gray-200 mb-6">You don't have permission to access this organization.</p>
-          <a href="/" className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors">
-            Return Home
-          </a>
-        </div>
-      </div>
+      <Gate title="🚫 No Access" body="You don't have permission to access this organization.">
+        <a href="/" className="q-btn q-primary">Return Home</a>
+      </Gate>
     );
   }
   
@@ -69,15 +65,9 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
   
   if (orgSlug && !ctx.userRole) {
     return (
-      <div className="min-h-screen bg-slate-700 flex items-center justify-center p-8">
-        <div className="bg-slate-800 rounded-lg border-2 border-yellow-500 p-8 text-center max-w-md shadow-xl">
-          <h1 className="text-3xl font-bold text-yellow-400 mb-4">🚫 Not a Member</h1>
-          <p className="text-gray-200 mb-6">You must be a member of {ctx.organization?.name} to access this page.</p>
-          <a href="/" className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors">
-            Return Home
-          </a>
-        </div>
-      </div>
+      <Gate title="🚫 Not a Member" body={`You must be a member of ${ctx.organization?.name ?? 'this lair'} to access this page.`}>
+        <a href="/" className="q-btn q-primary">Return Home</a>
+      </Gate>
     );
   }
 
@@ -234,72 +224,58 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
     });
   }
 
+  if (!orgSlug) {
+    return <NoOrgSelected firstOrgSlug={usersFirstOrgSlugFound} isLoggedIn={!!ctx.user} />;
+  }
+
   return (
-    <div className="min-h-screen bg-slate-700">
-      {!orgSlug ? (
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <NoOrgSelected firstOrgSlug={usersFirstOrgSlugFound} isLoggedIn={!!ctx.user} />
-        </div>
-      ) : (
-        <SanctumClient
-          userDecks={userDecks}
-          activeGames={activeCardGames}
-          friends={friends}
-          friendRequests={friendRequests}
-          gameInvites={gameInvites}
-          friendPresence={friendPresence}
-          currentTier={currentTier}
-          tierLimits={tierLimits}
-          userId={ctx.user!.id}
-          userName={ctx.user?.name || undefined}
-          organizationName={ctx.organization?.name || undefined}
-          orgSlug={orgSlug}
-        />
-      )}
+    <SanctumClient
+      userDecks={userDecks}
+      activeGames={activeCardGames}
+      friends={friends}
+      friendRequests={friendRequests}
+      gameInvites={gameInvites}
+      friendPresence={friendPresence}
+      currentTier={currentTier}
+      tierLimits={tierLimits}
+      userId={ctx.user!.id}
+      userName={ctx.user?.name || undefined}
+      organizationName={ctx.organization?.name || undefined}
+      orgSlug={orgSlug}
+    />
+  );
+}
+
+/** A single paper card in the middle of the dotted canvas: the Sanctum's doors that stay shut. */
+function Gate({ title, body, children }: { title: string; body: ReactNode; children: ReactNode }) {
+  return (
+    <div className="q-gate">
+      <div className="q-sheet">
+        <a href="/" className="q-brand"><BrandMark /> Sanctum</a>
+        <h1>{title}</h1>
+        <div className="q-muted">{body}</div>
+        <div className="q-gate-actions">{children}</div>
+      </div>
     </div>
   );
 }
 
 function NoOrgSelected({ firstOrgSlug, isLoggedIn }: { firstOrgSlug: string | null; isLoggedIn: boolean }) {
   return (
-    <div className="bg-slate-800 rounded-lg border-2 border-slate-600 p-8 text-center shadow-lg">
-      <h2 className="text-2xl font-bold text-white mb-4">No Organization Selected</h2>
-      <p className="text-gray-300 mb-6">
-        Please select an organization or add your subdomain.
-      </p>
-      {firstOrgSlug && (
-        <div className="mb-6 p-4 bg-slate-700/70 rounded-lg border border-slate-600">
-          <p className="text-gray-200">
-            Your org: <strong className="text-blue-400">{firstOrgSlug}</strong>
-          </p>
-        </div>
+    <Gate
+      title="No Organization Selected"
+      body={<>
+        <p style={{ margin: 0 }}>Please select an organization or add your subdomain.</p>
+        {firstOrgSlug && <p style={{ margin: '10px 0 0' }}>Your org: <span className="q-badge">{firstOrgSlug}</span></p>}
+      </>}
+    >
+      {!isLoggedIn && <a href="/user/login" className="q-btn q-primary">Login</a>}
+      {isLoggedIn && (
+        <LogoutButton className="q-btn" redirectTo="/user/login">
+          Logout
+        </LogoutButton>
       )}
-      <div className="flex flex-wrap justify-center gap-4">
-        {!isLoggedIn && (
-          <a
-            href="/user/login"
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-semibold transition-colors"
-          >
-            Login
-          </a>
-        )}
-        {isLoggedIn && (
-          <LogoutButton
-            className="px-6 py-3 bg-red-700 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors"
-            redirectTo="/user/login"
-          >
-            Logout
-          </LogoutButton>
-        )}
-        <a
-          href="/"
-          className="px-6 py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-semibold transition-colors"
-        >
-          Return Home
-        </a>
-      </div>
-    </div>
+      <a href="/" className="q-btn">Return Home</a>
+    </Gate>
   );
 }
-
-// Old components removed - now using SanctumClient
