@@ -1,5 +1,6 @@
 // lib/auth/autoCreateOrgForOAuthUser.ts
 import { db } from "@/db";
+import { isReservedSubdomain } from "@/lib/subdomains";
 
 /**
  * Automatically creates an organization for OAuth users on first sign-in.
@@ -35,15 +36,15 @@ export async function autoCreateOrgForOAuthUser(
       baseSlug = `user-${baseSlug}`;
     }
 
-    // Ensure slug is unique
+    // Ensure slug is unique and not a reserved name
     let slug = baseSlug;
     let counter = 1;
-    let slugExists = await db.organization.findUnique({ where: { slug } });
+    let slugExists = isReservedSubdomain(slug) || await db.organization.findUnique({ where: { slug } });
 
     while (slugExists) {
       slug = `${baseSlug}-${counter}`;
       counter++;
-      slugExists = await db.organization.findUnique({ where: { slug } });
+      slugExists = isReservedSubdomain(slug) || await db.organization.findUnique({ where: { slug } });
     }
 
     // Create organization

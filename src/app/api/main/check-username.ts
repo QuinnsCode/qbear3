@@ -1,5 +1,6 @@
 // @/app/api/main/check-username.ts
 import { db } from "@/db";
+import { isReservedSubdomain } from "@/lib/subdomains";
 
 export default async function handler({ request }: { request: Request }) {
   if (request.method !== 'GET') {
@@ -51,14 +52,7 @@ export default async function handler({ request }: { request: Request }) {
   }
 
   // Check if username is reserved
-  const reserved = [
-    'www', 'api', 'admin', 'app', 'mail', 'ftp', 'localhost', 
-    'staging', 'dev', 'test', 'demo', 'blog', 'docs', 'support',
-    'help', 'status', 'about', 'contact', 'legal', 'privacy',
-    'terms', 'signup', 'signin', 'login', 'logout', 'register'
-  ];
-
-  if (reserved.includes(username)) {
+  if (isReservedSubdomain(username) || ['localhost', 'staging'].includes(username)) {
     return new Response(JSON.stringify({ 
       available: false, 
       error: 'This username is reserved' 

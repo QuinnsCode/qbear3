@@ -1,5 +1,6 @@
 import { defineApp, ErrorResponse, requestInfo } from "rwsdk/worker";
 import { isLoopbackHost } from "@/lib/loopback";
+import { isReservedSubdomain } from "@/lib/subdomains";
 // import { realtimeRoute } from "rwsdk/realtime/worker";
 // import { syncOrderNotes } from "./lib/syncedState";
 import { route, render, prefix } from "rwsdk/router";
@@ -223,6 +224,12 @@ export default defineApp([
         const url = new URL(request.url);
         
         if (ctx.orgError === 'ORG_NOT_FOUND') {
+          // A reserved name is never an unclaimed org: don't offer to create it
+          const reservedSlug = extractOrgFromSubdomain(request);
+          if (reservedSlug && isReservedSubdomain(reservedSlug)) {
+            return new Response('Not found', { status: 404 });
+          }
+
           // Redirect to main domain with org creation option
           const mainDomain = url.hostname.includes('localhost') 
             ? `localhost:${url.port || '5173'}`

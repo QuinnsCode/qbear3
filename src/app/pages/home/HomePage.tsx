@@ -5,6 +5,7 @@ import { LogoutButton } from "@/app/pages/user/LoginButton";
 import { FantasyLogin } from "@/app/pages/user/FantasyLogin";
 import { RoleToggleButton } from "@/app/pages/user/RoleToggleButton";
 import { extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
+import { isReservedSubdomain } from "@/lib/subdomains";
 import { OrganizationSelector } from "@/app/components/Organizations/OrganizationSelector";
 
 export default function HomePage({ ctx, request }: RequestInfo) {
@@ -597,12 +598,14 @@ export default function HomePage({ ctx, request }: RequestInfo) {
               The lair "{attemptedLairSlug}" lies in ruins or never existed.
             </p>
             <div className="space-y-4">
+              {!(attemptedLairSlug && isReservedSubdomain(attemptedLairSlug)) && (
               <a 
                 href={`/orgs/new?slug=${attemptedLairSlug}`}
                 className="block bg-amber-600 text-white px-6 py-3 rounded-lg hover:bg-amber-700 transition-colors font-medium"
               >
                 🏗️ Establish "{attemptedLairSlug}" Lair
               </a>
+              )}
               <a 
                 href="/"
                 className="block text-slate-400 hover:text-slate-200"

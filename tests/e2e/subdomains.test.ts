@@ -2,6 +2,7 @@
 // Lair subdomains and the public sandbox, as the middleware sees them from the Host header.
 import { expect, test } from "bun:test";
 import { app } from "./kit.ts";
+import { isReservedSubdomain, isSubdomainAvailable, validateSubdomainForOrg } from "../../src/lib/subdomains.ts";
 
 test("an unknown lair is sent to the main domain to create it, one suggestion per subdomain", async () => {
   const a = await app();
@@ -35,4 +36,26 @@ test("the sandbox is public: the root lands in the one shared card game, never o
   expect(page.url.hostname).toBe("sandbox.localhost");
   expect(page.url.pathname).toBe("/cardGame/regal-gray-wolf");
   expect(page.status).toBe(200);
+});
+
+test("a reserved name is never offered as an org to create, and can't be claimed", async () => {
+  const a = await app();
+  const b = a.browser();
+  // eqosys.qntbr.com is its own Worker; if a request lands here anyway, don't suggest creating it.
+  const eqosys = await b.get("/health", { host: a.lair("eqosys"), follow: false });
+  expect(eqosys.status).toBe(404);
+  expect(eqosys.headers.get("location")).toBeNull();
+});
+
+test("system and sibling-app names can't be claimed as an org", () => {
+  for (const name of ["eqosys", "qcrm", "www", "api", "auth", "admin", "app", "mail", "sandbox", "EQOSYS"]) {
+    expect(isReservedSubdomain(name)).toBe(true);
+  }
+  expect(isSubdomainAvailable("eqosys").available).toBe(false);
+  expect(() => validateSubdomainForOrg("eqosys")).toThrow();
+});
+
+test("an ordinary name is still available", () => {
+  expect(isReservedSubdomain("mylairname")).toBe(false);
+  expect(isSubdomainAvailable("mylairname")).toEqual({ available: true });
 });

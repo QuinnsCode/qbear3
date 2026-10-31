@@ -156,6 +156,14 @@ export const SANDBOX_SUBDOMAINS = [
   }
   
   /**
+   * True for any name that can never be an org slug: sandbox and banned names.
+   * Some of these (eqosys, qcrm) are served by other Workers on their own domains.
+   */
+  export function isReservedSubdomain(subdomain: string): boolean {
+    return isSandboxSubdomain(subdomain) || isBannedSubdomain(subdomain);
+  }
+  
+  /**
    * Check if a subdomain is available for registration
    * Returns { available: boolean, reason?: string }
    */
