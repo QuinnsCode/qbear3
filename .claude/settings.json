@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/.env.development)",
+      "Read(**/.env.production)",
+      "Read(**/.env.staging)",
+      "Read(**/.env.test)",
+      "Read(**/.dev.vars*)",
+      "Read(**/.alchemy/state/**)",
+      "Read(~/agent-office/.agent-office/**)",
+      "Read(**/.agent-office/*.json)",
+      "Read(~/.config/gh/hosts.yml)",
+      "Read(~/.npmrc)",
+      "Read(~/.ssh/id_*)",
+      "Read(~/.aws/credentials)",
+      "Read(~/.netrc)",
+      "Read(~/.codex/auth.json)",
+      "Read(~/.claude/.credentials.json)",
+      "Read(~/Library/Preferences/.wrangler/**)",
+      "Read(~/.config/.wrangler/**)",
+      "Bash(gh auth token*)",
+      "Bash(git push --force)",
+      "Bash(git push --force *)",
+      "Bash(git push -f*)",
+      "Bash(git push * main)",
+      "Bash(git push * HEAD:main)",
+      "Bash(git push --tags*)",
+      "Bash(wrangler secret *)",
+      "Bash(bunx wrangler secret *)",
+      "Bash(printenv*)",
+      "Bash(/usr/bin/env)",
+      "Bash(/usr/bin/printenv*)",
+      "Bash(set)",
+      "Bash(declare -x)",
+      "Bash(declare -p)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Grep|Write|Edit",
+        "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.ts\"" }]
+      }
+    ]
+  }
+}
