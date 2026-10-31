@@ -41,10 +41,12 @@ test("the sandbox is public: the root lands in the one shared card game, never o
 test("a reserved name is never offered as an org to create, and can't be claimed", async () => {
   const a = await app();
   const b = a.browser();
-  // eqosys.qntbr.com is its own Worker; if a request lands here anyway, don't suggest creating it.
-  const eqosys = await b.get("/health", { host: a.lair("eqosys"), follow: false });
-  expect(eqosys.status).toBe(404);
-  expect(eqosys.headers.get("location")).toBeNull();
+  // eqosys and qcrm are their own Workers; if a request lands here anyway, don't suggest creating them.
+  for (const name of ["eqosys", "qcrm"]) {
+    const page = await b.get("/health", { host: a.lair(name), follow: false });
+    expect(page.status).toBe(404);
+    expect(page.headers.get("location")).toBeNull();
+  }
 });
 
 test("system and sibling-app names can't be claimed as an org", () => {
