@@ -4,7 +4,7 @@
 // control-room terminal under it that narrates what each drop did.
 import { useCallback, useRef, useState } from 'react';
 import { BrandMark, CraftWorkspace, Terminal, type TerminalLine, type WorkspaceItem } from '@qntbr/ui';
-import { combineLab, labGroups, nothingLine } from './lab';
+import { combineLab, labGroups } from './lab';
 
 interface Props {
   items: WorkspaceItem[];
@@ -18,9 +18,8 @@ export default function LandingLab({ items, seed }: Props) {
     { key: 'verbs', text: `loading verbs ........ ${count('verb')}` },
     { key: 'nouns', text: `loading nouns ........ ${count('noun')}` },
     { key: 'apps', text: `loading apps ......... ${count('game') + count('app')}` },
-    { key: 'hint', text: 'drag a verb onto a noun. drag an app onto itself to see the next one.', tone: 'meh' },
+    { key: 'hint', text: 'drop anything on anything: it all makes an app. the right verb + noun makes its own. click an app → to open it.', tone: 'meh' },
   ]);
-  const duds = useRef(0);
   const n = useRef(0);
 
   const say = useCallback((text: string, tone?: 'new' | 'meh') => {
@@ -28,7 +27,6 @@ export default function LandingLab({ items, seed }: Props) {
   }, []);
 
   const combine = useCallback((a: WorkspaceItem, b: WorkspaceItem) => combineLab(a, b, items), [items]);
-  const nothing = useCallback((a: WorkspaceItem, b: WorkspaceItem) => `${a.label} + ${b.label}: ${nothingLine(duds.current++)}`, []);
 
   return (
     <div className="q-lab">
@@ -38,10 +36,9 @@ export default function LandingLab({ items, seed }: Props) {
         groups={labGroups}
         seed={seed}
         combine={combine}
-        nothing={nothing}
         onSay={say}
         corner={<BrandMark />}
-        hint="Pull a verb and a noun out of the bag. Drop one on the other."
+        hint="Pull anything out of the bag and drop it on anything else. Every drop makes an app."
       />
       <Terminal title="QNTBR lab · systems" status="online" lines={lines} />
     </div>

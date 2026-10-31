@@ -277,6 +277,7 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 }
 .q-item:hover { border-color: var(--q-edge-hi); box-shadow: var(--q-shadow); }
 .q-item .q-item-glyph { color: var(--q-tile-accent, var(--q-accent-ink)); font-weight: 600; }
+.q-item .q-item-go { color: var(--q-accent-ink); font-weight: 600; margin-left: 1px; }
 .q-item.q-placed { position: absolute; z-index: 2; transform: translate(-50%, -50%); }
 .q-item.q-placed[data-drag="true"] { z-index: 4; cursor: grabbing; box-shadow: var(--q-shadow); }
 
@@ -423,6 +424,12 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 .q-lab { display: grid; gap: 10px; padding-bottom: 8px; }
 .q-lab .q-term { height: 152px; }
 .q-lab .q-ws-corner .q-brand-mark { opacity: 0.9; }
+/* Words are paper; anything that goes somewhere is ink, with the accent arrow, so a link never reads as a word. */
+.q-lab .q-item.q-link { color: var(--q-ink-fg); background: var(--q-ink-bg); border-color: var(--q-ink-bg); }
+.q-lab .q-item.q-link:hover { background: var(--q-ink-hover); border-color: var(--q-ink-hover); }
+.q-lab .q-item.q-link .q-item-glyph, .q-lab .q-item.q-link .q-item-go { color: var(--q-accent); }
+.q-lab .q-ws .q-item.q-link.q-placed { cursor: pointer; }
+.q-lab .q-ws .q-item.q-link[data-target="true"], .q-lab .q-ws .q-item.q-link.q-held { color: var(--q-fg); }
 
 /* ── Terminal: the control-room readout ───────────────────── */
 /* Ink panel, mono lines, a prompt on each, a blinking cursor on the last. The 7%. */

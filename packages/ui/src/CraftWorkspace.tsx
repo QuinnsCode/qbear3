@@ -366,8 +366,8 @@ export function CraftWorkspace({
               role="button"
               tabIndex={0}
               title={item.hint}
-              aria-label={item.label}
-              className={cx('q-item', 'q-placed', fresh === q.uid && 'q-fresh', shake === q.uid && 'q-shake', held === q.uid && 'q-held')}
+              aria-label={item.href ? `${item.label}, opens ${item.href}` : item.label}
+              className={cx('q-item', 'q-placed', item.href && 'q-link', fresh === q.uid && 'q-fresh', shake === q.uid && 'q-shake', held === q.uid && 'q-held')}
               data-drag={dragging === q.uid}
               data-target={target === q.uid}
               style={{ left: q.x, top: q.y, ...(item.accent ? { '--q-tile-accent': item.accent } : {}) } as CSSProperties}
@@ -401,7 +401,7 @@ export function CraftWorkspace({
                     key={item.id}
                     type="button"
                     title={item.hint}
-                    className="q-item"
+                    className={cx('q-item', item.href && 'q-link')}
                     style={item.accent ? ({ '--q-tile-accent': item.accent } as CSSProperties) : undefined}
                     onPointerDown={(e) => pullFromBag(item, e)}
                     onClick={(e) => { if (e.detail === 0) dropFromKeyboard(item); }}
@@ -442,6 +442,7 @@ function ItemFace({ item }: { item: WorkspaceItem }) {
       {item.glyph && <span className="q-item-glyph" aria-hidden="true">{item.glyph}</span>}
       {item.label}
       {item.badge !== undefined && item.badge !== '' && item.badge !== 0 && <span className={cx('q-item-badge', item.alert && 'q-alert')}>{item.badge}</span>}
+      {item.href && <span className="q-item-go" aria-hidden="true">{item.external ? '↗' : '→'}</span>}
     </>
   );
 }
