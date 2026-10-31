@@ -11,3 +11,5 @@ export { SectionHead, type SectionHeadProps } from './SectionHead';
 export { Footer } from './Footer';
 export { ThemeScript, ThemeToggle } from './Theme';
 export { CraftCanvas, type CraftItem, type CraftCanvasProps } from './CraftCanvas';
+export { CraftWorkspace, type WorkspaceItem, type WorkspaceGroup, type CraftResult, type CraftWorkspaceProps } from './CraftWorkspace';
+export { Sheet, type SheetProps } from './Sheet';

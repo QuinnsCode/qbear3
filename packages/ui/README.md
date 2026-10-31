@@ -35,6 +35,8 @@ import { Page, TopBar, SectionHead, Tile, Button, CraftCanvas } from "@qntbr/ui"
 | `Button`, `Badge`, `StatusPill` | paper-tile controls and labels |
 | `ThemeScript`, `ThemeToggle` | no-flash light/dark with a remembered choice (client) |
 | `CraftCanvas` | Infinite Craft style bag + dotted canvas: drag tiles out, drop them back to put away (client) |
+| `CraftWorkspace` | Infinite Craft as a whole page: full-window canvas, a searchable, sortable bag down the right, drop one tile on another to combine (`combine(a, b)` returns a new tile, a toast, a side effect or a link), double-click to copy, layout and discoveries saved under `storageKey` (client) |
+| `Sheet` | a paper panel over the page; Escape or the scrim closes it (client) |
 
 Everything is prefixed `q-` / `--q-` so it coexists with Tailwind. Retheme by overriding
 `--q-accent`, `--q-accent-ink`, `--q-accent-soft`; a single tile can carry its own accent via `accent`.

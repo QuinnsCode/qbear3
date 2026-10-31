@@ -283,3 +283,123 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 
 /* Wide tiles keep the glyph beside the name instead of floating mid-card. */
 .q-tile.q-wide .q-tile-head { flex-direction: row-reverse; justify-content: flex-end; align-items: center; gap: 12px; }
+
+/* ── Craft workspace: Infinite Craft as a whole page ──────── */
+/* The canvas fills the window; the bag runs down the right with its search pinned to the bottom. */
+.q-ws {
+  position: fixed; inset: 0; display: flex;
+  background: var(--q-bg); color: var(--q-fg);
+  font: 400 14px/1.55 var(--q-sans); -webkit-font-smoothing: antialiased;
+}
+.q-ws *, .q-ws *::before, .q-ws *::after { box-sizing: border-box; }
+.q-ws :focus-visible { outline: 2px solid var(--q-accent); outline-offset: 2px; }
+.q-ws-canvas {
+  position: relative; flex: 1; min-width: 0; overflow: hidden;
+  user-select: none; touch-action: none;
+  background:
+    radial-gradient(circle at 1px 1px, var(--q-border) 1px, transparent 0) 0 0 / 24px 24px,
+    var(--q-bg);
+}
+.q-ws-corner { position: absolute; top: 16px; left: 18px; right: 18px; z-index: 5; display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; pointer-events: none; }
+.q-ws-corner > * { pointer-events: auto; }
+.q-ws-empty {
+  position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 24px; text-align: center;
+  font: 500 12px var(--q-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--q-faint);
+  pointer-events: none;
+}
+.q-ws-tools { position: absolute; left: 12px; bottom: 12px; z-index: 5; display: flex; gap: 4px; align-items: center; }
+.q-ws-toasts { position: absolute; left: 50%; bottom: 18px; z-index: 6; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; width: min(520px, calc(100% - 32px)); }
+.q-ws-toast {
+  padding: 8px 14px 7px; border-radius: 6px; text-align: center;
+  font: 500 13px/1.35 var(--q-sans); color: var(--q-ink-fg); background: var(--q-ink-bg);
+  box-shadow: var(--q-shadow); animation: q-rise 0.18s ease-out;
+}
+.q-ws-toast[data-tone="new"] { background: var(--q-grain), var(--q-accent); color: #fff; }
+.q-ws-toast[data-tone="meh"] { color: var(--q-fg); background: var(--q-grain), var(--q-paper); border: 1px solid var(--q-border-2); }
+
+/* Placed tiles: the pill from the bag, lifted onto the canvas. */
+.q-ws .q-item { font-size: 14px; padding: 9px 11px 8px; }
+.q-ws .q-item.q-placed { cursor: grab; box-shadow: 0 1px 0 rgba(10, 10, 10, 0.04); }
+.q-ws .q-item.q-placed[data-drag="true"] { cursor: grabbing; transform: translate(-50%, -50%) scale(1.04); }
+.q-ws .q-item.q-placed[data-target="true"],
+.q-ws .q-item.q-held {
+  border-color: var(--q-tile-accent, var(--q-accent));
+  background: var(--q-grain), linear-gradient(0deg, var(--q-accent-soft), var(--q-paper) 80%);
+  box-shadow: 0 0 0 3px var(--q-accent-soft), var(--q-shadow);
+}
+.q-item-badge {
+  min-width: 18px; padding: 1px 5px; border-radius: 999px; text-align: center;
+  font: 600 11px/16px var(--q-sans); color: var(--q-muted); background: var(--q-tint);
+}
+.q-item-badge.q-alert { color: #fff; background: var(--q-accent); }
+.q-item.q-fresh { animation: q-pop 0.5s cubic-bezier(.2, 1.6, .4, 1); }
+.q-item.q-shake { animation: q-shake 0.35s; }
+@keyframes q-pop { 0% { transform: translate(-50%, -50%) scale(0.4); } 100% { transform: translate(-50%, -50%) scale(1); } }
+@keyframes q-shake { 25% { transform: translate(calc(-50% - 5px), -50%); } 75% { transform: translate(calc(-50% + 5px), -50%); } }
+@keyframes q-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* The bag. */
+.q-ws-bag {
+  position: relative; z-index: 7; display: flex; flex-direction: column;
+  width: clamp(280px, 28vw, 380px); flex: none;
+  background: var(--q-bg); border-left: 1px solid var(--q-border);
+  transition: background 0.12s;
+}
+.q-ws-bag[data-over="true"] { background: var(--q-accent-soft); }
+.q-ws-bag-items { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 8px; display: grid; align-content: start; gap: 14px; }
+.q-ws-bag-sec { display: grid; gap: 7px; }
+.q-ws-bag-sec h2 { margin: 0; }
+.q-ws-bag-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.q-ws-none { margin: 8px 2px; font-size: 13px; }
+.q-ws-search { border-top: 1px solid var(--q-border); padding: 8px 10px 10px; display: grid; gap: 7px; background: var(--q-bg); }
+.q-ws-search input {
+  width: 100%; font: 400 14px/20px var(--q-sans); color: var(--q-fg);
+  background: var(--q-canvas); border: 1px solid var(--q-border-2); border-radius: 6px; padding: 8px 11px;
+}
+.q-ws-search input:focus { outline: 0; border-color: var(--q-fg); box-shadow: 0 0 0 3px var(--q-tint); }
+.q-ws-sort { display: flex; gap: 4px; }
+.q-ws-sort-btn {
+  font: 500 11px/1 var(--q-mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--q-muted);
+  background: none; border: 1px solid transparent; border-radius: 4px; padding: 5px 7px; cursor: pointer;
+}
+.q-ws-sort-btn:hover { color: var(--q-fg); }
+.q-ws-sort-btn.q-on { color: var(--q-fg); border-color: var(--q-border-2); background: var(--q-grain), var(--q-paper); }
+
+/* A panel over the canvas: inbox, settings, a confirm. */
+.q-sheet-scrim { position: fixed; inset: 0; z-index: 60; display: flex; padding: 16px; overflow-y: auto; background: rgba(250, 250, 250, 0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+:root[data-theme="dark"] .q-sheet-scrim { background: rgba(0, 0, 0, 0.6); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .q-sheet-scrim { background: rgba(0, 0, 0, 0.6); } }
+.q-sheet {
+  margin: auto; width: min(560px, 100%); max-height: none;
+  color: var(--q-fg); background: var(--q-bg); border: 1px solid var(--q-border); border-radius: 10px;
+  padding: 22px 24px; box-shadow: 0 24px 64px -16px rgba(0, 0, 0, 0.22);
+  font: 400 14px/1.55 var(--q-sans);
+}
+.q-sheet.q-wide { width: min(860px, 100%); }
+.q-sheet-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.q-sheet-head h2 { margin: 2px 0 0; font: 600 24px/1.1 var(--q-sans); letter-spacing: -0.035em; }
+.q-sheet-head .q-btn { margin-left: auto; }
+.q-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--q-border); }
+.q-rows li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--q-border); }
+.q-rows li > .q-grow { flex: 1; min-width: 0; }
+.q-rows li .q-btn { padding: 6px 10px 5px; }
+
+@media (max-width: 760px) {
+  .q-ws { flex-direction: column; }
+  .q-ws-bag { width: 100%; height: 42%; border-left: 0; border-top: 1px solid var(--q-border); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .q-item.q-fresh, .q-item.q-shake, .q-ws-toast { animation: none; }
+}
+
+/* A shut door: one paper card in the middle of the dotted canvas. */
+.q-gate {
+  min-height: 100vh; display: grid; place-items: center; padding: 16px;
+  color: var(--q-fg); font: 400 14px/1.55 var(--q-sans); -webkit-font-smoothing: antialiased;
+  background: radial-gradient(circle at 1px 1px, var(--q-border) 1px, transparent 0) 0 0 / 24px 24px, var(--q-bg);
+}
+.q-gate .q-sheet { text-align: center; }
+.q-gate .q-brand { margin: 0; justify-content: center; }
+.q-gate h1 { margin: 18px 0 8px; font: 600 28px/1.1 var(--q-sans); letter-spacing: -0.04em; }
+.q-gate .q-muted { margin-bottom: 18px; }
+.q-gate-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
