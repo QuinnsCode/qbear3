@@ -2,7 +2,7 @@
 // Single source of truth for the QNTBR portal: the three sections on the
 // landing page (Products, Game Center, App Center) and the /games + /apps hubs.
 
-import { AudioWaveform, Bot, Box, Brush, Cog, Crosshair, Droplet, Earth, FileText, Flame, GitBranch, Globe, Hand, KeyRound, Landmark, Layers, MessagesSquare, MonitorDown, Music, Package, PersonStanding, Rocket, Sandwich, Sparkles, SprayCan, Sprout, Swords, TreePalm, Trees, Truck, Users, Video, Wifi, Wind, Zap, type LucideIcon } from 'lucide-react';
+import { AudioWaveform, Brush, Crosshair, Droplet, Earth, Flame, GitBranch, Hand, KeyRound, Landmark, Layers, MessagesSquare, Package, PersonStanding, Rocket, Sandwich, SprayCan, Sprout, Swords, TreePalm, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
 
 export type PortalStatus = 'live' | 'beta' | 'soon';
 
@@ -22,10 +22,11 @@ export interface PortalEntry {
   icon: LucideIcon;
   /** Screenshot that replaces the icon in the preview window, when there is one. */
   image?: string;
-  /** Tints the card's preview window. */
-  accent: string;
-  /** Emoji shown on the craft canvas tile. */
+  /** Emoji shown on the lab tile. */
   glyph?: string;
+  /** The two words that make this entry on the landing lab: drop the verb on the noun. */
+  verb: string;
+  noun: string;
   /** Short mono tag shown above the name, e.g. "MTG" or "GitHub". */
   tag?: string;
 }
@@ -63,7 +64,8 @@ export const games: PortalEntry[] = [
     cta: 'Enter the Sanctum',
     status: 'live',
     requiresAuth: true,
-    accent: '#22c55e',
+    verb: 'Gather',
+    noun: 'Pod',
   },
   {
     key: 'sandbox',
@@ -77,7 +79,8 @@ export const games: PortalEntry[] = [
     href: '__SANDBOX__',
     cta: 'Jump in',
     status: 'live',
-    accent: '#f59e0b',
+    verb: 'Play',
+    noun: 'Cards',
   },
   {
     key: 'pvp',
@@ -92,7 +95,8 @@ export const games: PortalEntry[] = [
     cta: 'Enter the Arena',
     status: 'beta',
     requiresAuth: true,
-    accent: '#ef4444',
+    verb: 'Duel',
+    noun: 'Cards',
   },
   {
     key: 'draft',
@@ -107,7 +111,8 @@ export const games: PortalEntry[] = [
     cta: 'Start a draft',
     status: 'live',
     requiresAuth: true,
-    accent: '#a855f7',
+    verb: 'Draft',
+    noun: 'Cards',
   },
   {
     key: 'deckbuilder',
@@ -122,7 +127,8 @@ export const games: PortalEntry[] = [
     cta: 'Open the builder',
     status: 'live',
     requiresAuth: true,
-    accent: '#3b82f6',
+    verb: 'Build',
+    noun: 'Cards',
   },
   {
     key: 'strategy',
@@ -137,7 +143,8 @@ export const games: PortalEntry[] = [
     cta: 'New game',
     status: 'beta',
     requiresAuth: true,
-    accent: '#c2410c',
+    verb: 'Conquer',
+    noun: 'World',
   },
   {
     key: 'community',
@@ -151,7 +158,8 @@ export const games: PortalEntry[] = [
     href: '/community',
     cta: 'Say hello',
     status: 'live',
-    accent: '#14b8a6',
+    verb: 'Find',
+    noun: 'Pod',
   },
   {
     key: 'park-hide-seek',
@@ -165,7 +173,8 @@ export const games: PortalEntry[] = [
     href: 'https://park-hide-seek.notryanquinn.workers.dev',
     cta: 'Play now',
     status: 'live',
-    accent: '#16a34a',
+    verb: 'Hide',
+    noun: 'Park',
   },
   {
     key: 'skate-tech-park',
@@ -179,7 +188,8 @@ export const games: PortalEntry[] = [
     href: 'https://skatetechpark.notryanquinn.workers.dev',
     cta: 'Play now',
     status: 'live',
-    accent: '#eab308',
+    verb: 'Skate',
+    noun: 'Park',
   },
   {
     key: 'git-recon',
@@ -193,7 +203,8 @@ export const games: PortalEntry[] = [
     href: 'https://git-recon.notryanquinn.workers.dev',
     cta: 'Play now',
     status: 'live',
-    accent: '#78716c',
+    verb: 'Shoot',
+    noun: 'Repo',
   },
   {
     key: 'two-fronts',
@@ -207,7 +218,8 @@ export const games: PortalEntry[] = [
     href: 'https://two-fronts.notryanquinn.workers.dev',
     cta: 'Play now',
     status: 'live',
-    accent: '#2563eb',
+    verb: 'Conquer',
+    noun: 'Moon',
   },
   {
     key: 'druids-curse',
@@ -221,7 +233,8 @@ export const games: PortalEntry[] = [
     href: 'https://druids-curse-votv.notryanquinn.workers.dev',
     cta: 'Play now',
     status: 'live',
-    accent: '#15803d',
+    verb: 'Curse',
+    noun: 'Druid',
   },
   {
     key: 'splat-spray',
@@ -235,7 +248,8 @@ export const games: PortalEntry[] = [
     href: 'https://splat-spray.notryanquinn.workers.dev',
     cta: 'Play now',
     status: 'live',
-    accent: '#ec4899',
+    verb: 'Spray',
+    noun: 'Dark',
   },
   {
     key: 'excalibrawl',
@@ -249,7 +263,8 @@ export const games: PortalEntry[] = [
     href: 'https://excalibrawl.notryanquinn.workers.dev',
     cta: 'Watch a fight',
     status: 'live',
-    accent: '#8b5cf6',
+    verb: 'Draw',
+    noun: 'Robots',
   },
 ];
 
@@ -269,7 +284,8 @@ export const apps: PortalEntry[] = [
     href: 'https://codesplitter.notryanquinn.workers.dev',
     cta: 'Open codeSplitter',
     status: 'live',
-    accent: '#0891b2',
+    verb: 'Split',
+    noun: 'Code',
   },
   {
     key: 'qlave',
@@ -283,7 +299,8 @@ export const apps: PortalEntry[] = [
     href: 'https://qlave.dev',
     cta: 'Open Qlave',
     status: 'live',
-    accent: '#7c3aed',
+    verb: 'Call',
+    noun: 'Friends',
   },
   {
     key: 'flareup',
@@ -297,7 +314,8 @@ export const apps: PortalEntry[] = [
     href: 'https://flareup.dev',
     cta: 'Check the burn',
     status: 'live',
-    accent: '#dc2626',
+    verb: 'Burn',
+    noun: 'Money',
   },
   {
     key: 'rustybuns',
@@ -311,7 +329,8 @@ export const apps: PortalEntry[] = [
     href: RUSTY_BUNS_URL,
     cta: 'View on GitHub',
     status: 'live',
-    accent: '#f97316',
+    verb: 'Ship',
+    noun: 'Binary',
   },
   {
     key: 'staticflare',
@@ -325,7 +344,8 @@ export const apps: PortalEntry[] = [
     href: 'https://staticflare.dev',
     cta: 'Coming soon',
     status: 'soon',
-    accent: '#52525b',
+    verb: 'Host',
+    noun: 'Site',
   },
   {
     key: 'shippycloud',
@@ -339,7 +359,8 @@ export const apps: PortalEntry[] = [
     href: 'https://github.com/QuinnsCode/shippycloud',
     cta: 'View on GitHub',
     status: 'beta',
-    accent: '#0ea5e9',
+    verb: 'Ship',
+    noun: 'Orders',
   },
   {
     key: 'qauth',
@@ -353,7 +374,8 @@ export const apps: PortalEntry[] = [
     href: '/user/login',
     cta: 'Sign in',
     status: 'beta',
-    accent: '#71717a',
+    verb: 'Unlock',
+    noun: 'Account',
   },
 ];
 
@@ -383,26 +405,9 @@ export const appGroups: PortalGroup[] = [
 
 // ──────────────────────────────────────────────────────────────
 // Rusty Buns Playground — every app in the RustyBuns repo's apps/playground/public/apps.json,
-// one full-width row each in the Rusty Buns drawer. Keep it in step with that file.
+// the ones not already in the Game or App Center join the landing lab. Keep it in step with that file.
 // ──────────────────────────────────────────────────────────────
 export const PLAYGROUND_URL = 'https://rustybuns-playground.notryanquinn.workers.dev';
-
-export type AppTagKey = 'eqosys' | 'browser' | 'desktop' | 'multiplayer' | 'lan' | '3d' | 'ai' | 'agents' | 'rust' | 'audio' | 'static';
-
-/** What an app is, shown as a small colored icon and a word. */
-export const appTags: Record<AppTagKey, { label: string; icon: LucideIcon; color: string }> = {
-  eqosys: { label: 'eqosys account', icon: KeyRound, color: '#e8590c' },
-  browser: { label: 'Plays in the browser', icon: Globe, color: '#2563eb' },
-  desktop: { label: 'Desktop download', icon: MonitorDown, color: '#64748b' },
-  multiplayer: { label: 'Multiplayer', icon: Users, color: '#16a34a' },
-  lan: { label: 'LAN', icon: Wifi, color: '#0891b2' },
-  '3d': { label: '3D', icon: Box, color: '#a855f7' },
-  ai: { label: 'AI models', icon: Sparkles, color: '#ec4899' },
-  agents: { label: 'For agents', icon: Bot, color: '#0ea5e9' },
-  rust: { label: 'Rust inside', icon: Cog, color: '#c2410c' },
-  audio: { label: 'Audio', icon: Music, color: '#eab308' },
-  static: { label: 'Static only', icon: FileText, color: '#78716c' },
-};
 
 export interface PlaygroundApp {
   key: string;
@@ -415,24 +420,25 @@ export interface PlaygroundApp {
   /** Folder under apps/ in the RustyBuns repo. */
   source?: string;
   icon: LucideIcon;
-  accent: string;
-  /** Each one read off the app's README ("What it proves") or apps.json, plus eqosys's apps.ts. */
-  tags: AppTagKey[];
+  glyph: string;
+  /** The two words that make this app on the landing lab. */
+  verb: string;
+  noun: string;
 }
 
 export const playgroundApps: PlaygroundApp[] = [
-  { key: 'park-hide-seek', name: 'Park Hide & Seek', line: '3D hide and seek on real Yosemite terrain; each player is sent only what they can see.', play: 'https://park-hide-seek.notryanquinn.workers.dev', download: 'park-hide-seek-v', source: 'park-hide-seek', icon: Trees, accent: '#16a34a', tags: ['eqosys', 'browser', 'desktop', 'multiplayer', 'lan', '3d'] },
-  { key: 'skate-tech-park', name: 'Skate Tech Park', line: 'A giant riderless fingerboard on park terrain, up to four riders.', play: 'https://skatetechpark.notryanquinn.workers.dev', source: 'skate-tech-park', icon: Wind, accent: '#eab308', tags: ['browser', 'multiplayer', '3d'] },
-  { key: 'git-recon', name: 'git-recon', line: 'A toy-soldier shooter fought in a codebase: the repo is the level.', play: 'https://git-recon.notryanquinn.workers.dev', source: 'git-recon', icon: Crosshair, accent: '#78716c', tags: ['browser', 'multiplayer', 'lan', '3d'] },
-  { key: 'two-fronts', name: 'Two Fronts', line: 'Turn-based strategy on a forest moon, with three.js battles on the ground and in orbit.', play: 'https://two-fronts.notryanquinn.workers.dev', source: 'two-fronts', icon: Rocket, accent: '#2563eb', tags: ['browser', 'multiplayer', '3d'] },
-  { key: 'druids-curse', name: 'Druids Curse', line: 'The live multiplayer game Rusty Buns was first built for.', play: 'https://druids-curse-votv.notryanquinn.workers.dev', icon: Sprout, accent: '#15803d', tags: ['browser', 'multiplayer'] },
-  { key: 'codesplitter', name: 'codeSplitter', line: 'A code host for agents: every line a record, real git on Cloudflare Artifacts.', play: 'https://codesplitter.notryanquinn.workers.dev', source: 'codesplitter', icon: GitBranch, accent: '#0891b2', tags: ['browser', 'agents'] },
-  { key: 'excalibrawl', name: 'Excalibrawl', line: 'An hourly drawing fight between two models, refereed by a third.', play: 'https://excalibrawl.notryanquinn.workers.dev', source: 'excalibrawl', icon: Brush, accent: '#8b5cf6', tags: ['browser', 'ai'] },
-  { key: 'fm-daw', name: 'FM Groovebox', line: 'A twelve-track FM groovebox with a drum machine, step sequencer, piano roll and reverb.', download: 'fm-daw-v', source: 'fm-daw', icon: AudioWaveform, accent: '#d946ef', tags: ['desktop', 'audio', 'rust'] },
-  { key: 'splat-spray', name: 'Splat Spray', line: 'An I-spy game in the dark: scan a Gaussian-splat room and find 100 things in the fewest shots.', play: 'https://splat-spray.notryanquinn.workers.dev', download: 'splat-spray-v', source: 'splat-spray', icon: SprayCan, accent: '#ec4899', tags: ['browser', 'desktop', '3d'] },
-  { key: 'auto-rig', name: 'Auto Rig', line: 'Drop in a 3D model, get a skeleton, skin weights and inverse kinematics you can drag around.', source: 'auto-rig', icon: PersonStanding, accent: '#64748b', tags: ['3d', 'rust'] },
-  { key: 'hello-world', name: 'Hello World', line: 'The smallest Rusty Buns app: one page, static assets only.', play: 'https://hello-world.notryanquinn.workers.dev', source: 'hello-world', icon: Hand, accent: '#f97316', tags: ['browser', 'static'] },
-  { key: 'hippo-tycoon', name: 'Hippo Tycoon', line: 'Four greedy oil-baron hippos race to chomp the most oil from a jungle geyser; solo, couch, LAN or online.', download: 'hippo-tycoon-v', source: 'hippo-tycoon', icon: Droplet, accent: '#a16207', tags: ['desktop', 'multiplayer', 'lan'] },
+  { key: 'park-hide-seek', name: 'Park Hide & Seek', line: '3D hide and seek on real Yosemite terrain; each player is sent only what they can see.', play: 'https://park-hide-seek.notryanquinn.workers.dev', download: 'park-hide-seek-v', source: 'park-hide-seek', icon: Trees, glyph: '🌲', verb: 'Hide', noun: 'Park' },
+  { key: 'skate-tech-park', name: 'Skate Tech Park', line: 'A giant riderless fingerboard on park terrain, up to four riders.', play: 'https://skatetechpark.notryanquinn.workers.dev', source: 'skate-tech-park', icon: Wind, glyph: '🛹', verb: 'Skate', noun: 'Park' },
+  { key: 'git-recon', name: 'git-recon', line: 'A toy-soldier shooter fought in a codebase: the repo is the level.', play: 'https://git-recon.notryanquinn.workers.dev', source: 'git-recon', icon: Crosshair, glyph: '🔫', verb: 'Shoot', noun: 'Repo' },
+  { key: 'two-fronts', name: 'Two Fronts', line: 'Turn-based strategy on a forest moon, with three.js battles on the ground and in orbit.', play: 'https://two-fronts.notryanquinn.workers.dev', source: 'two-fronts', icon: Rocket, glyph: '🚀', verb: 'Conquer', noun: 'Moon' },
+  { key: 'druids-curse', name: 'Druids Curse', line: 'The live multiplayer game Rusty Buns was first built for.', play: 'https://druids-curse-votv.notryanquinn.workers.dev', icon: Sprout, glyph: '🌿', verb: 'Curse', noun: 'Druid' },
+  { key: 'codesplitter', name: 'codeSplitter', line: 'A code host for agents: every line a record, real git on Cloudflare Artifacts.', play: 'https://codesplitter.notryanquinn.workers.dev', source: 'codesplitter', icon: GitBranch, glyph: '🧩', verb: 'Split', noun: 'Code' },
+  { key: 'excalibrawl', name: 'Excalibrawl', line: 'An hourly drawing fight between two models, refereed by a third.', play: 'https://excalibrawl.notryanquinn.workers.dev', source: 'excalibrawl', icon: Brush, glyph: '🖍️', verb: 'Draw', noun: 'Robots' },
+  { key: 'fm-daw', name: 'FM Groovebox', line: 'A twelve-track FM groovebox with a drum machine, step sequencer, piano roll and reverb.', download: 'fm-daw-v', source: 'fm-daw', icon: AudioWaveform, glyph: '🎛️', verb: 'Jam', noun: 'Beats' },
+  { key: 'splat-spray', name: 'Splat Spray', line: 'An I-spy game in the dark: scan a Gaussian-splat room and find 100 things in the fewest shots.', play: 'https://splat-spray.notryanquinn.workers.dev', download: 'splat-spray-v', source: 'splat-spray', icon: SprayCan, glyph: '🎨', verb: 'Spray', noun: 'Dark' },
+  { key: 'auto-rig', name: 'Auto Rig', line: 'Drop in a 3D model, get a skeleton, skin weights and inverse kinematics you can drag around.', source: 'auto-rig', icon: PersonStanding, glyph: '🦴', verb: 'Rig', noun: 'Model' },
+  { key: 'hello-world', name: 'Hello World', line: 'The smallest Rusty Buns app: one page, static assets only.', play: 'https://hello-world.notryanquinn.workers.dev', source: 'hello-world', icon: Hand, glyph: '👋', verb: 'Say', noun: 'Hello' },
+  { key: 'hippo-tycoon', name: 'Hippo Tycoon', line: 'Four greedy oil-baron hippos race to chomp the most oil from a jungle geyser; solo, couch, LAN or online.', download: 'hippo-tycoon-v', source: 'hippo-tycoon', icon: Droplet, glyph: '🦛', verb: 'Chomp', noun: 'Oil' },
 ];
 
 /** The playground's own links: live build, desktop release, source folder. */

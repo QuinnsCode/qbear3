@@ -10,7 +10,7 @@ export function Badge({ className, ...rest }: HTMLAttributes<HTMLSpanElement>) {
   return <span className={cx('q-badge', className)} {...rest} />;
 }
 
-/** A rounded status pill with a dot: green for live, amber for beta, hollow for soon. */
+/** A rounded status pill with a dot: solid for live, the accent for beta, hollow for soon. */
 export function StatusPill({ status, className }: { status: Status; className?: string }) {
   return (
     <span className={cx('q-pill', className)} data-status={status}>

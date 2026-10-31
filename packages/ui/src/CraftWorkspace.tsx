@@ -9,7 +9,7 @@ import { cx } from './cx';
 export interface WorkspaceItem {
   id: string;
   label: string;
-  /** Emoji or a single character shown before the label. */
+  /** Emoji or a single character shown before the label. Plain words go without. */
   glyph?: string;
   accent?: string;
   /** Bag section this item belongs to (see `groups`). */
@@ -55,6 +55,12 @@ export interface CraftWorkspaceProps {
   storageKey?: string;
   /** Dropping `a` (dragged) onto `b`. Return null when nothing happens. */
   combine?: (a: WorkspaceItem, b: WorkspaceItem) => CraftResult | null;
+  /** The line said when `combine` returns null. */
+  nothing?: (a: WorkspaceItem, b: WorkspaceItem) => string;
+  /** Hear every line instead of showing it as a toast: for a page with its own readout. */
+  onSay?: (text: string, tone?: 'new' | 'meh') => void;
+  /** Extra classes on the root, e.g. `q-inset` to sit inside a page instead of filling the window. */
+  className?: string;
   /** Clicking a placed tile that has no href. Return true when handled; otherwise its hint shows. */
   onOpen?: (item: WorkspaceItem) => boolean | void;
   /** Top-left of the canvas: the wordmark and whatever the page says about itself. */
@@ -110,8 +116,9 @@ function save(key: string | undefined, s: Saved) {
  * and C picks it up to combine with the next tile you press C on.
  */
 export function CraftWorkspace({
-  items, groups = [], seed = [], storageKey, combine, onOpen, corner, tools, bagFoot,
+  items, groups = [], seed = [], storageKey, combine, nothing, onSay, corner, tools, bagFoot, className,
   hint = 'Drag tiles out of the bag. Drop one on another to combine.',
+  onOpen,
 }: CraftWorkspaceProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLElement>(null);
@@ -164,10 +171,11 @@ export function CraftWorkspace({
   }, [ready, dragging, placed, found, storageKey]);
 
   const say = useCallback((text: string, tone?: Toast['tone']) => {
+    if (onSay) { onSay(text, tone); return; }
     const key = ++toastKey.current;
     setToasts((ts) => [...ts.slice(-2), { key, text, tone }]);
     setTimeout(() => setToasts((ts) => ts.filter((t) => t.key !== key)), 4200);
-  }, []);
+  }, [onSay]);
 
   const local = useCallback((clientX: number, clientY: number) => {
     const r = canvasRef.current!.getBoundingClientRect();
@@ -208,7 +216,7 @@ export function CraftWorkspace({
     if (!res) {
       setShake(bUid);
       setTimeout(() => setShake(null), 400);
-      say(`${ai.label} + ${bi.label}: nothing happens.`, 'meh');
+      say(nothing?.(ai, bi) ?? `${ai.label} + ${bi.label}: nothing happens.`, 'meh');
       return;
     }
     const out = res.item;
@@ -229,7 +237,7 @@ export function CraftWorkspace({
         say(e instanceof Error ? e.message : 'That did not work.', 'meh');
       }
     })();
-  }, [byId, combine, say]);
+  }, [byId, combine, nothing, say]);
 
   // One set of window listeners per gesture, so a fast drag cannot outrun the tile.
   useEffect(() => {
@@ -345,7 +353,7 @@ export function CraftWorkspace({
   }, [shown, groups, sort]);
 
   return (
-    <div className="q-ws">
+    <div className={cx('q-ws', className)}>
       <div className="q-ws-canvas" ref={canvasRef} role="group" aria-label="Canvas">
         {corner && <div className="q-ws-corner">{corner}</div>}
         {placed.map((q) => {
@@ -431,7 +439,7 @@ export function CraftWorkspace({
 function ItemFace({ item }: { item: WorkspaceItem }) {
   return (
     <>
-      <span className="q-item-glyph" aria-hidden="true">{item.glyph ?? item.label.charAt(0)}</span>
+      {item.glyph && <span className="q-item-glyph" aria-hidden="true">{item.glyph}</span>}
       {item.label}
       {item.badge !== undefined && item.badge !== '' && item.badge !== 0 && <span className={cx('q-item-badge', item.alert && 'q-alert')}>{item.badge}</span>}
     </>
