@@ -391,6 +391,16 @@ export default defineApp([
       return handler({ request });
     }),
 
+    route("/main/check-username", async ({ request }) => {
+      const { default: handler } = await import('@/app/api/main/check-username');
+      return handler({ request });
+    }),
+
+    route("/vtt/upload-model", async (info) => {
+      const { default: handler } = await import('@/app/api/vtt/upload-model');
+      return handler(info);
+    }),
+
     route("/pvp/initialize", async ({ request }) => {
       const { default: handler } = await import('@/app/api/pvp/initialize');
       return handler({ request });
@@ -567,54 +577,11 @@ export default defineApp([
     }),
 
     // CATCH-ALL API ROUTE - MUST BE LAST
-    route("*", async ({ request, params, ctx }) => {  // Changed from "/*"
-      const apiPath = params.$0;  // Changed from params["*"]
-      
-      if (!apiPath) {
-        return new Response(
-          JSON.stringify({ error: "API endpoint not specified" }), 
-          { 
-            status: 400,
-            headers: { "Content-Type": "application/json" }
-          }
-        );
-      }
-
-      try {
-        const handler = await import(/* @vite-ignore */ `@/app/api/${apiPath}`);
-        
-        return await handler.default({ 
-          request, 
-          ctx,
-          params: params,
-          method: request.method 
-        });
-      } catch (error) {
-        if (error.message?.includes('Cannot resolve module')) {
-          return new Response(
-            JSON.stringify({ 
-              error: "API endpoint not found",
-              path: `/api/${apiPath}`
-            }), 
-            { 
-              status: 404,
-              headers: { "Content-Type": "application/json" }
-            }
-          );
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            error: "Internal server error",
-            message: error.message 
-          }), 
-          { 
-            status: 500,
-            headers: { "Content-Type": "application/json" }
-          }
-        );
-      }
-    })
+    // Handlers are imported statically above: the bundler can't resolve a
+    // template-string import, so a dynamic catch-all 500s on every nested path.
+    route("*", () =>
+      Response.json({ error: "API endpoint not found" }, { status: 404 })
+    ),
   ]),
 
   // DIRECT WEBHOOK ROUTES
