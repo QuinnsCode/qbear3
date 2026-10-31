@@ -154,3 +154,7 @@ Game state types are defined in `src/app/services/cardGame/CardGameState.ts`.
 - Server function context: `import { requestInfo } from "rwsdk/worker"` then `const { ctx } = requestInfo`
 - DO communication: `env.{BINDING}.idFromName(id)` → `.get(id)` → `.fetch(new Request('https://fake-host/', ...))`
 - Prefer Web APIs over external dependencies (fetch over axios, native WebSocket over ws)
+
+## How to work here
+
+@AGENTS.md
