@@ -21,6 +21,16 @@ const byKey = (key: string): PortalEntry => {
   return entry;
 };
 
+/** Magic: The Gathering on the front door is one app: a draft of the cube. The hub keeps the rest. */
+const CUBE: PortalEntry = {
+  ...byKey('draft'),
+  name: 'Draft my cube',
+  tagline: 'Booster draft from the vintage cube',
+  description: 'Open a draft room on the cube, share the link, and pick packs together in real time. The deck you draft saves straight to your list.',
+  cta: 'Draft the cube',
+};
+const landingGames = games.flatMap((e) => (e.group !== 'mtg' ? [e] : e.key === CUBE.key ? [CUBE] : []));
+
 function EntryPost({ entry, request, first }: { entry: PortalEntry; request: Request; first?: boolean }) {
   const href = resolveHref(entry, request);
   const external = isExternal(href);
@@ -81,7 +91,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           title={<>What we <em>build.</em></>}
           lede="A code host for agents, the runtime it ships on, and everything we've built with them."
         />
-        <PortalGroups compact entries={apps} groups={appGroups.filter((g) => g.key === 'dev')} request={request} />
+        <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key === 'dev')} request={request} />
       </PortalSection>
 
       {/* ── Game Center ── */}
@@ -90,11 +100,11 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           small
           eyebrow="Game Center"
           title={<>The <em>tables.</em></>}
-          lede="Where QNTBR started: Commander tables, drafts, a sandbox that never closes, a strategy map, and the games shipped on Rusty Buns."
+          lede="The games shipped on Rusty Buns, a draft of the cube where QNTBR started, a strategy map and a place to find your pod. Every Commander table is in the Game Center."
           linkHref="/games"
           linkLabel="Open Game Center"
         />
-        <PortalGroups compact entries={games} groups={gameGroups} request={request} />
+        <PortalGroups bars entries={landingGames} groups={gameGroups} request={request} />
       </PortalSection>
 
       {/* ── App Center ── */}
@@ -107,7 +117,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           linkHref="/apps"
           linkLabel="Open App Center"
         />
-        <PortalGroups compact entries={apps} groups={appGroups.filter((g) => g.key !== 'dev')} request={request} />
+        <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key !== 'dev')} request={request} />
       </PortalSection>
 
       {/* ── About ── */}

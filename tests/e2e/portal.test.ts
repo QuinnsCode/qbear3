@@ -20,6 +20,9 @@ test("landing page is a feed of the featured apps, then the lab and the shelves"
     const shot = await b.get(`/landing/${key}.jpg`);
     expect(shot.status).toBe(200);
   }
+  // Magic: The Gathering on the front door is one bar, a draft of the cube; the other tables live on /games.
+  expect(links(page.body, { href: "/draft/new", class: "q-tile" }).map((l) => l.attrs.class)).toEqual([expect.stringContaining("q-wide")]);
+  expect(links(page.body, { href: "/sanctum", class: "q-tile" })).toHaveLength(0);
   expect(page.body).toContain("Git the main HEAD merged before the Conflict takes over");
   // The lab's bag is server-rendered: words to combine and every app already in it.
   const bag = tags(page.body, "button").map((t) => t.text);

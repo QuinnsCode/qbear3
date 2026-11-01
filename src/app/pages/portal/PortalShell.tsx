@@ -57,12 +57,14 @@ interface GroupsProps {
   entries: PortalEntry[];
   groups: PortalGroup[];
   request: Request;
-  /** Preview and name only, smaller tiles: the landing page overview. */
+  /** Preview and name only, smaller tiles. */
   compact?: boolean;
+  /** One wide bar per entry, groups stacked full width: the landing page shelves. */
+  bars?: boolean;
 }
 
 /** One group card per group, each holding the tiles of its entries. */
-export function PortalGroups({ entries, groups, request, compact }: GroupsProps) {
+export function PortalGroups({ entries, groups, request, compact, bars }: GroupsProps) {
   return (
     <div className={compact ? 'q-groups q-dense' : 'q-groups'}>
       {groupEntries(entries, groups).map(({ group, entries }) => (
@@ -73,15 +75,16 @@ export function PortalGroups({ entries, groups, request, compact }: GroupsProps)
           meta={`${entries.length} ${group.noun}${entries.length === 1 ? '' : 's'}`}
           lede={compact ? undefined : group.lede}
           dense={compact}
+          bars={bars}
         >
-          {entries.map((e) => <PortalTile key={e.key} entry={e} request={request} compact={compact} />)}
+          {entries.map((e) => <PortalTile key={e.key} entry={e} request={request} compact={compact} wide={bars} />)}
         </TileGroup>
       ))}
     </div>
   );
 }
 
-export function PortalTile({ entry: e, request, compact }: { entry: PortalEntry; request: Request; compact?: boolean }) {
+export function PortalTile({ entry: e, request, compact, wide }: { entry: PortalEntry; request: Request; compact?: boolean; wide?: boolean }) {
   const href = resolveHref(e, request);
   const Icon = e.icon;
   // Auth-gated routes already redirect logged-out visitors to /user/login
@@ -102,6 +105,7 @@ export function PortalTile({ entry: e, request, compact }: { entry: PortalEntry;
       cta={e.cta}
       external={isExternal(href)}
       compact={compact}
+      wide={wide}
     />
   );
 }

@@ -259,7 +259,13 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 .q-tile.q-wide .q-tile-body { flex: 1 1 0; min-width: 0; padding: clamp(12px, 2vw, 20px) clamp(8px, 1.5vw, 16px); }
 .q-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font: 13px var(--q-mono); color: var(--q-muted); }
 .q-list li::before { content: "› "; color: var(--q-accent-ink); }
+/* Bars: a group of wide tiles, one full-width row per app, preview big enough to read. */
+.q-group.q-bars .q-group-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.q-group.q-bars .q-tile.q-wide { align-items: center; }
+.q-group.q-bars .q-tile.q-wide .q-tile-preview { width: clamp(150px, 30%, 340px); aspect-ratio: 16 / 7; min-height: 0; height: auto; align-self: stretch; }
+.q-group.q-bars .q-tile.q-wide .q-tile-body + .q-tile-body { flex: none; padding-left: 0; }
 @media (max-width: 720px) {
+  .q-group.q-bars .q-tile.q-wide .q-tile-preview { width: auto; }
   .q-tile.q-wide { flex-direction: column; }
   .q-tile.q-wide .q-tile-preview { width: auto; min-height: 96px; }
 }

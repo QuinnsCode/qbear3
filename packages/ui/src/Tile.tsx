@@ -93,13 +93,15 @@ export interface TileGroupProps {
   as?: 'h2' | 'h3';
   /** Smaller tiles in a denser grid, for the compact overview. */
   dense?: boolean;
+  /** One full-width row per tile (give the tiles `wide`). */
+  bars?: boolean;
   children: ReactNode;
 }
 
 /** A card that holds cards: rises out of the page and groups the tiles inside it. */
-export function TileGroup({ title, meta, lede, as: Heading = 'h2', dense, children }: TileGroupProps) {
+export function TileGroup({ title, meta, lede, as: Heading = 'h2', dense, bars, children }: TileGroupProps) {
   return (
-    <section className={cx('q-group', dense && 'q-dense')}>
+    <section className={cx('q-group', dense && 'q-dense', bars && 'q-bars')}>
       <header className="q-group-head">
         <Heading className="q-group-title">{title}</Heading>
         {meta && <span className="q-label">{meta}</span>}
