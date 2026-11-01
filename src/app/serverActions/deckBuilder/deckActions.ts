@@ -2,6 +2,7 @@
 'use server'
 
 import { env } from "cloudflare:workers"
+import { requestInfo } from 'rwsdk/worker'
 import { parseDeckList } from '@/app/lib/cardGame/deckListParser'
 import { getCardsByIdentifiers } from '@/app/serverActions/cardData/cardDataActions'
 import { answersName, cardNames } from '@/app/services/cardData/CardDataService'
@@ -12,6 +13,14 @@ import { ScryfallCard } from "@/app/services/cardGame/CardGameState"
 import { db, setupDb } from '@/db' // ✅ Import setupDb
 import { listDeckIds, readDeck, removeDeck, writeDeck, type StoredDeck } from '@/lib/decks/deckStore'
 import { getTierConfig, getEffectiveTier } from '@/app/lib/subscriptions/tiers' // ✅ ADDED
+
+// Every export here is callable from the browser with any arguments, so whose decks these are
+// always comes from the session. The userId parameters stay for callers that still pass one and are ignored.
+function sessionUserId(): string {
+  const id = requestInfo.ctx.user?.id
+  if (!id) throw new Error('Sign in to use decks')
+  return id
+}
 
 /**
  * Where decks are stored (eqosys cloud saves, or DECKS_KV for older decks and people
@@ -212,10 +221,11 @@ export async function parseDeckAndFetchCards(deckListText: string) {
  * ✅ Enforces subscription tier limits (2 decks for all tiers)
  */
 export async function createDeck(
-  userId: string,
+  _userId: string,
   deckName: string,
   deckListText: string
 ) {
+  const userId = sessionUserId()
   try {
     const startTime = Date.now()
 
@@ -418,11 +428,12 @@ function parseDraftExport(text: string): { draftId?: string; deckList: string } 
  * 2. Full text export (parses text, extracts draft ID)
  */
 export async function createDraftDeck(
-  userId: string,
+  _userId: string,
   deckName: string,
   deckListText: string,
   draftId?: string
 ) {
+  const userId = sessionUserId()
   try {
     const startTime = Date.now()
 
@@ -657,7 +668,8 @@ export async function createDraftDeck(
 /**
  * Get all decks for a user from KV
  */
-export async function getUserDecks(userId: string) {
+export async function getUserDecks(_userId: string) {
+  const userId = sessionUserId()
   try {
     const deckIds = await listDeckIds(userId)
     const loaded = await Promise.all(deckIds.map(async (deckId) => {
@@ -699,7 +711,8 @@ async function upgradeDeck(userId: string, stored: StoredDeck): Promise<Deck> {
 /**
  * Delete a deck from KV
  */
-export async function deleteDeck(userId: string, deckId: string) {
+export async function deleteDeck(_userId: string, deckId: string) {
+  const userId = sessionUserId()
   try {
     await removeDeck(userId, deckId)
     console.log(`[DeckBuilder] Deleted deck ${deckId} for user ${userId}`)
@@ -717,10 +730,11 @@ export async function deleteDeck(userId: string, deckId: string) {
  * Update a deck in KV
  */
 export async function updateDeck(
-  userId: string,
+  _userId: string,
   deckId: string,
   updates: Partial<Deck>
 ) {
+  const userId = sessionUserId()
   try {
     const existing = await readDeck(userId, deckId)
     if (!existing) {
@@ -773,11 +787,12 @@ export async function updateDeck(
  * Update deck from editor
  */
 export async function updateDeckFromEditor(
-  userId: string,
+  _userId: string,
   deckId: string,
   deckName: string,
   cards: DeckCard[]
 ) {
+  const userId = sessionUserId()
   // Validate card data before saving
   const incompleteCards: { name: string; missingFields: string[] }[] = []
 
@@ -840,7 +855,8 @@ export async function updateDeckFromEditor(
 /**
  * Get a single deck by ID
  */
-export async function getDeck(userId: string, deckId: string) {
+export async function getDeck(_userId: string, deckId: string) {
+  const userId = sessionUserId()
   try {
     const stored = await readDeck(userId, deckId)
     if (!stored) {
