@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { cx } from './cx';
+import { Platform } from './Platform';
+import type { PlatformHint } from './Platform';
 
 export interface FeedPostProps {
   name: string;
@@ -17,6 +19,8 @@ export interface FeedPostProps {
   shot: ReactNode;
   /** The rest of the message: a few short sentences, each its own line. */
   pitch?: readonly string[];
+  /** Where it plays best: a lucide icon and a short label. */
+  platform?: PlatformHint;
   href: string;
   cta: string;
   external?: boolean;
@@ -31,7 +35,7 @@ export interface FeedPostProps {
  * One post in a full-width feed: an avatar, a name line, and a message bubble that holds a capture of
  * the running app, the pitch and one button. The whole post is a link. Stack them in a `.q-feed`.
  */
-export function FeedPost({ name, tag, source, avatar, tone, tagline, shot, pitch, href, cta, external, nameAs: Name = 'h3', eager, className }: FeedPostProps) {
+export function FeedPost({ name, tag, source, avatar, tone, tagline, shot, pitch, platform, href, cta, external, nameAs: Name = 'h3', eager, className }: FeedPostProps) {
   return (
     <a
       className={cx('q-post', className)}
@@ -39,16 +43,17 @@ export function FeedPost({ name, tag, source, avatar, tone, tagline, shot, pitch
       target={external ? '_blank' : undefined}
       rel={external ? 'noreferrer' : undefined}
     >
-      <span className="q-post-avatar" aria-hidden="true" style={tone ? { background: tone } : undefined}>{avatar}</span>
+      <span className={cx('q-post-avatar', tone && 'q-lava')} aria-hidden="true" style={tone ? { background: tone } : undefined}>{avatar}</span>
       <div className="q-post-main">
         <div className="q-post-meta">
           <Name className="q-post-name">{name}</Name>
           {tag && <span className="q-tile-tag">{tag}</span>}
+          {platform && <Platform {...platform} />}
           {source && <span className="q-post-source">{source}</span>}
         </div>
         <div className="q-post-bubble">
           {tagline && <p className="q-post-lead">{tagline}</p>}
-          <div className="q-post-shot" style={tone ? { background: tone } : undefined}>
+          <div className={cx('q-post-shot', tone && typeof shot !== 'string' && 'q-lava')} style={tone ? { background: tone } : undefined}>
             {typeof shot === 'string' ? <img src={shot} alt={`${name}, running`} loading={eager ? 'eager' : 'lazy'} /> : shot}
           </div>
           {pitch && pitch.length > 0 && (

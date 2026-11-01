@@ -5,7 +5,7 @@
 
 import type { ReactNode } from 'react';
 import { Footer, Page, SectionHead, ThemeScript, ThemeToggle, TopBar, Tile, TileGroup, Wrap, type NavItem } from '@qntbr/ui';
-import { GITHUB_ORG_URL, RUSTY_BUNS_URL, isExternal, groupEntries, resolveHref, type PortalEntry, type PortalGroup } from './portalData';
+import { GITHUB_ORG_URL, RUSTY_BUNS_URL, isExternal, platformOf, groupEntries, resolveHref, type PortalEntry, type PortalGroup } from './portalData';
 import { toneOf } from './tones';
 
 interface PageProps {
@@ -84,6 +84,13 @@ export function PortalGroups({ entries, groups, request, compact, bars }: Groups
   );
 }
 
+const hint = (key: string) => {
+  const p = platformOf(key);
+  if (!p) return undefined;
+  const Icon = p.icon;
+  return { icon: <Icon strokeWidth={1.75} />, label: p.label };
+};
+
 export function PortalTile({ entry: e, request, compact, wide }: { entry: PortalEntry; request: Request; compact?: boolean; wide?: boolean }) {
   const href = resolveHref(e, request);
   const Icon = e.icon;
@@ -99,6 +106,7 @@ export function PortalTile({ entry: e, request, compact, wide }: { entry: Portal
       icon={<Icon strokeWidth={1.5} />}
       image={e.image}
       tone={toneOf(e.key, e.group)}
+      platform={hint(e.key)}
       status={e.status}
       badges={e.requiresAuth ? ['Q auth'] : undefined}
       href={href}
