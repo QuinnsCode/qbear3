@@ -18,8 +18,6 @@ const byKey: Record<string, string> = {
   pvp: 'linear-gradient(180deg, #5a1a1a 0%, #c43a2a 100%)',
   draft: 'linear-gradient(180deg, #1d2a6a 0%, #3b5fd0 100%)',
   deckbuilder: 'linear-gradient(180deg, #0f4a4a 0%, #1f8a7a 100%)',
-  strategy: 'linear-gradient(180deg, #0e1f3a 0%, #2a4a7a 100%)',
-  community: 'linear-gradient(180deg, #6a1f5a 0%, #d05a8a 100%)',
   // apps
   codesplitter: 'linear-gradient(180deg, #0c1f3d 0%, #1b5f9a 100%)',
   qlave: 'linear-gradient(180deg, #0a3a4a 0%, #1fa0b8 100%)',

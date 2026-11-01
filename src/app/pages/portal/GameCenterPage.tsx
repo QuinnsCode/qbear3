@@ -14,7 +14,7 @@ export default function GameCenterPage({ ctx, request }: RequestInfo) {
           as="h1"
           eyebrow="Game Center"
           title={<>Pick a table. <em>Play.</em></>}
-          lede="Commander tables, drafts, a sandbox that never closes, and a strategy map for when you want to conquer something. One account, every game."
+          lede="Commander tables, drafts and a sandbox that never closes. One account, every game."
           linkHref={isLoggedIn ? '/sanctum' : '/user/signup'}
           linkLabel={isLoggedIn ? 'Go to Sanctum' : 'Create an account'}
         />
