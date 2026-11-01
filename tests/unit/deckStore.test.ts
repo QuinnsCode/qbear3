@@ -66,3 +66,12 @@ test("someone without an eqosys account keeps using KV", async () => {
   expect(slots.size).toBe(0)
   expect(await listDeckIds("u")).toEqual(["x"])
 })
+
+test("listing a signed-in person's decks moves their KV decks to eqosys, newest first", async () => {
+  signedIn = false
+  for (const id of ["a", "b", "c"]) await writeDeck("u", { deck: deck(id) })
+  signedIn = true
+  expect(await listDeckIds("u")).toEqual(["c", "b", "a"])
+  expect([...kv.keys()].filter(k => k.startsWith("deck:u:") && !k.endsWith(":list"))).toEqual([])
+  expect(await listDeckIds("u")).toEqual(["c", "b", "a"])
+})
