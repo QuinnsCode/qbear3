@@ -18,7 +18,7 @@ export default function AppCenterPage({ ctx, request }: RequestInfo) {
           linkHref={RUSTY_BUNS_URL}
           linkLabel="RustyBuns on GitHub"
         />
-        <PortalGroups entries={apps} groups={appGroups} request={request} />
+        <PortalGroups bars entries={apps} groups={appGroups} request={request} />
 
         <div style={{ paddingTop: 'clamp(40px, 7vw, 72px)' }}>
           <span className="q-label">One login</span>
