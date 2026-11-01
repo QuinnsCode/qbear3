@@ -142,28 +142,6 @@ export class DraftManager {
     }
   }
   
-  static exportDeck(state: DraftState, playerId: string, cubeCards: CubeCard[]): any {
-    const player = state.players.find(p => p.id === playerId)
-    if (!player) {
-      throw new Error('Player not found')
-    }
-    
-    const cards = player.draftPool.map(scryfallId => {
-      const card = cubeCards.find(c => c.scryfallId === scryfallId)
-      return {
-        id: scryfallId,
-        name: card?.name || 'Unknown',
-        quantity: 1
-      }
-    })
-    
-    return {
-      deckName: `${player.name}'s Draft Deck`,
-      cards,
-      commanders: []
-    }
-  }
-  
   private static shuffle<T>(array: T[]): T[] {
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));

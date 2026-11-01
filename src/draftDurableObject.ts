@@ -32,27 +32,25 @@ export class DraftDO extends DurableObject {
         return this.handleWebSocketUpgrade(request)
       }
 
-      if (method === 'GET' && url.pathname.startsWith('/export/')) {
-        const playerId = url.pathname.split('/').pop()
-        if (!playerId) {
-          return Response.json({ error: 'Invalid player ID' }, { status: 400 })
-        }
-        
-        const state = await this.getState()
-        const player = state.players.find(p => p.id === playerId)
-        
-        if (!player) {
-          return Response.json({ error: 'Player not found' }, { status: 404 })
-        }
-        
-        const deck = {
-          playerName: player.name,
-          cards: player.draftPool,
-          totalPicks: player.draftPool.length,
-          draftComplete: state.status === 'complete'
-        }
-        
-        return Response.json({ deck })
+      // One drafter's seat: their pack, their pool, whether they owe a pick. Nobody else's packs.
+      if (method === 'GET' && url.pathname.startsWith('/view/')) {
+        const playerId = decodeURIComponent(url.pathname.slice('/view/'.length))
+        const state = await this.getState().catch(() => null)
+        if (!state) return Response.json({ error: 'No such draft' }, { status: 404 })
+        const player = state.players.find(p => p.id === playerId && !p.isAI)
+        if (!player) return Response.json({ error: 'Not a drafter in this draft' }, { status: 403 })
+        const card = (id: string) => this.cubeCards.find(c => c.scryfallId === id)
+        return Response.json({
+          status: state.status,
+          round: state.currentRound,
+          pick: state.currentPick,
+          config: state.config,
+          me: { id: player.id, name: player.name },
+          pack: (player.currentPack?.cards ?? []).map(card).filter(Boolean),
+          hasPicked: state.playersWhoPickedThisRound?.includes(player.id) ?? false,
+          pool: player.draftPool.map(card).filter(Boolean),
+          deckId: player.deckConfiguration?.exportedDeckId ?? null,
+        })
       }
       
       if (method === 'GET') {
@@ -105,8 +103,12 @@ export class DraftDO extends DurableObject {
 
       if (method === 'POST') {
         const action = await request.json() as any
-        const result = await this.applyAction(action)
-        return Response.json(result)
+        try {
+          return Response.json(await this.applyAction(action))
+        } catch (e) {
+          // A pick that breaks a rule (wrong count, not in your pack, already picked) is the caller's mistake
+          return Response.json({ error: e instanceof Error ? e.message : 'Invalid action' }, { status: 400 })
+        }
       }
 
       if (method === 'DELETE') {
@@ -342,7 +344,15 @@ export class DraftDO extends DurableObject {
   async applyAction(action: Omit<DraftAction, 'id' | 'timestamp'>): Promise<{ success: boolean }> {
     if (!this.draftState) await this.getState()
     if (!this.draftState) throw new Error('Draft not initialized')
-    
+
+    if (action.type === 'make_pick') {
+      if (this.draftState.status !== 'drafting') throw new Error('The draft is over')
+      // Between a pick and the pass the same pack is still in hand: a second pick would take two turns
+      if (this.draftState.playersWhoPickedThisRound?.includes(action.playerId)) {
+        throw new Error('Already picked from this pack; wait for it to pass')
+      }
+    }
+
     const draftAction: DraftAction = {
       ...action,
       id: crypto.randomUUID(),

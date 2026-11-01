@@ -2,6 +2,7 @@
 'use server';
 
 import { env } from "cloudflare:workers";
+import { requestInfo } from "rwsdk/worker";
 import type { Region } from "@/app/lib/constants/regions";
 import { exportDraftDeck } from "./exportDraftDeck";
 import { getUserDecks, deleteDeck } from "../deckBuilder/deckActions";
@@ -14,14 +15,14 @@ interface PvpDeckMetadata {
 
 export async function exportPvpDeck(
   draftId: string,
-  playerId: string,
-  deckConfig: {
-    mainDeck: Array<{ scryfallId: string; quantity: number }>;
-    sideboard: Array<{ scryfallId: string; quantity: number }>;
-    basics: Record<string, number>;
-  },
+  _playerId: string,
+  deckConfig: unknown,
   pvpRegion: Region
 ) {
+  // The decks touched are the session user's; the id the caller passes is ignored.
+  const playerId = requestInfo.ctx.user?.id;
+  if (!playerId) return { success: false as const, error: 'Sign in to save a PvP deck' };
+
   // Auto-cleanup: Delete oldest PVP deck if at limit
   try {
     const { decks } = await getUserDecks(playerId);
