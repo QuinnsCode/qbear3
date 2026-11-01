@@ -410,6 +410,29 @@ export function getDecksByFormat(decks: DeckV4[], format: DeckFormat): DeckV4[] 
 }
 
 /**
+ * The cards a deck brings to a table, as `import_deck_direct` takes them: commander and main
+ * deck only (sideboard and contemplating stay home); everything but the commander starts in the library.
+ */
+export function deckGameCards(deck: DeckV4) {
+  return deck.cards
+    .filter(c => {
+      const zone = c.zone || (c.isCommander ? 'commander' : 'main')
+      return zone === 'commander' || zone === 'main'
+    })
+    .map(c => ({
+      scryfallId: c.scryfallId || c.id,
+      id: c.scryfallId || c.id,
+      name: c.name,
+      quantity: c.quantity || 1,
+      zone: (c.zone === 'commander' || c.isCommander) ? 'commander' as const : 'main' as const,
+      imageUrl: c.imageUrl || '',
+      type: c.type || '',
+      manaCost: c.manaCost || '',
+      colors: c.colors || [],
+    }))
+}
+
+/**
  * Helper function to ensure deck cards have zones assigned
  */
 export function ensureCardZones(deck: DeckV4): DeckV4 {

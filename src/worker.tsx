@@ -400,6 +400,12 @@ export default defineApp([
       return handler(info);
     }),
 
+    route("/draft", async (info) => (await import('@/app/api/draft/draft')).startHandler(info)),
+    route("/draft/:draftId", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info)),
+    route("/draft/:draftId/pick", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info, 'pick')),
+    route("/draft/:draftId/deck", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info, 'deck')),
+    route("/cardGame/:gameId/deck", async (info) => (await import('@/app/api/cardGame/deck')).default(info)),
+
     route("/pvp/initialize", async ({ request }) => {
       const { default: handler } = await import('@/app/api/pvp/initialize');
       return handler({ request });

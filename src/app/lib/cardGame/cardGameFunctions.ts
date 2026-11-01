@@ -3,6 +3,7 @@
 
 import { env } from "cloudflare:workers"
 import type { CardGameState, MTGPlayer } from "@/app/services/cardGame/CardGameState"
+import { deckGameCards, migrateDeck } from "@/app/types/Deck"
 
 export async function getCardGameState(cardGameId: string): Promise<CardGameState> {
   if (!env?.CARD_GAME_STATE_DO) {
@@ -81,4 +82,42 @@ export async function restartCardGame(cardGameId: string): Promise<CardGameState
   }))
   
   return await response.json()
+}
+
+/** Apply one action at a table as `playerId`. Callers decide who that is; this trusts them. */
+export async function applyCardGameActionAs(cardGameId: string, playerId: string, type: string, data: unknown): Promise<CardGameState> {
+  const stub = env.CARD_GAME_STATE_DO.get(env.CARD_GAME_STATE_DO.idFromName(cardGameId))
+  const response = await stub.fetch(new Request('https://fake-host/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, playerId, data }),
+  }))
+  if (!response.ok) throw new Error(`Failed to apply action: ${await response.text()}`)
+  return await response.json() as CardGameState
+}
+
+/**
+ * Put one of `playerId`'s saved decks (deck builder or draft) into their seat at a table and
+ * shuffle it. Their cards already at the table are replaced. 403 when they aren't seated there.
+ */
+export async function sitWithSavedDeck(cardGameId: string, playerId: string, deckId: string): Promise<
+  { ok: true; libraryCount: number } | { ok: false; status: number; error: string }
+> {
+  const game = await getCardGameState(cardGameId)
+  if (!game.players.some(p => p.id === playerId)) return { ok: false, status: 403, error: 'Sit at this table first' }
+
+  const raw = await env.DECKS_KV.get(`deck:${playerId}:${deckId}`)
+  if (!raw) return { ok: false, status: 404, error: 'No such deck' }
+  const stored: unknown = JSON.parse(raw)
+  if (typeof stored !== 'object' || stored === null || !('cards' in stored) || !Array.isArray(stored.cards)) {
+    return { ok: false, status: 422, error: 'That deck has no cards' }
+  }
+  const deck = migrateDeck(stored) // a no-op for current decks
+  const deckCards = deckGameCards(deck)
+  if (deckCards.length === 0) return { ok: false, status: 422, error: 'That deck has no cards' }
+
+  await applyCardGameActionAs(cardGameId, playerId, 'import_deck_direct', { deckName: deck.name, deckCards })
+  const after = await applyCardGameActionAs(cardGameId, playerId, 'shuffle_library', {})
+  const libraryCount = after.players.find(p => p.id === playerId)?.zones.library.length ?? 0
+  return libraryCount > 0 ? { ok: true, libraryCount } : { ok: false, status: 422, error: 'The deck brought no cards to the table' }
 }
