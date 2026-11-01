@@ -7,6 +7,7 @@ import { type RequestInfo } from "rwsdk/worker";
 import { Capsule } from "@qntbr/ui";
 import { apps, appGroups, gameGroups, games, isExternal, resolveHref, type PortalEntry } from "@/app/pages/portal/portalData";
 import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from "@/app/pages/portal/PortalShell";
+import { toneOf } from "@/app/pages/portal/tones";
 import { KeyArt } from "./KeyArt";
 import LandingLab from "./LandingLab";
 import { labItems } from "./lab";
@@ -32,6 +33,7 @@ function EntryCapsule({ entry, request, hero }: { entry: PortalEntry; request: R
       tagline={entry.tagline}
       pitch={entry.pitch}
       art={entry.image ?? <KeyArt entryKey={entry.key} glyph={entry.glyph} />}
+      tone={toneOf(entry.key, entry.group)}
       href={href}
       cta={entry.cta}
       external={isExternal(href)}

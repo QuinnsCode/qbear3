@@ -11,6 +11,8 @@ export interface CapsuleProps {
   pitch?: readonly string[];
   /** The art bar: an image URL, or anything that draws itself (an SVG). */
   art: ReactNode;
+  /** A CSS background behind the art: the app's colour world. */
+  tone?: string;
   href: string;
   cta: string;
   external?: boolean;
@@ -25,7 +27,7 @@ export interface CapsuleProps {
  * The Steam capsule: a wide art bar with the copy under it, the whole card a link.
  * `hero` makes the full-width feature card; otherwise it is a shelf capsule, three to a row.
  */
-export function Capsule({ name, tag, tagline, pitch, art, href, cta, external, hero, nameAs: Name = 'h3', className }: CapsuleProps) {
+export function Capsule({ name, tag, tagline, pitch, art, tone, href, cta, external, hero, nameAs: Name = 'h3', className }: CapsuleProps) {
   return (
     <a
       className={cx('q-capsule', hero && 'q-hero', className)}
@@ -33,7 +35,7 @@ export function Capsule({ name, tag, tagline, pitch, art, href, cta, external, h
       target={external ? '_blank' : undefined}
       rel={external ? 'noreferrer' : undefined}
     >
-      <div className="q-capsule-art" aria-hidden="true">
+      <div className="q-capsule-art" aria-hidden="true" style={tone ? { background: tone } : undefined}>
         {typeof art === 'string' ? <img src={art} alt="" loading={hero ? 'eager' : 'lazy'} /> : art}
       </div>
       <div className="q-capsule-body">

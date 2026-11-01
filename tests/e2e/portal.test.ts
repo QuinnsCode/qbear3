@@ -56,6 +56,9 @@ test("app center lists apps including RustyBuns on GitHub", async () => {
   expect(headings(page.body)).toContain("RustyBuns");
   expect(links(page.body, { href: RUSTY_BUNS, class: "q-tile" })).toHaveLength(1);
   expect(links(page.body, { href: "https://qlave.dev", class: "q-tile" })).toHaveLength(1);
+  // Shippycloud is on ice: shown, not linked.
+  expect(headings(page.body)).toContain("Shippycloud");
+  expect(links(page.body, { href: "https://github.com/QuinnsCode/shippycloud" })).toHaveLength(0);
   expect(links(page.body, { class: "q-active" }).map((l) => l.text)).toEqual(["Apps"]);
 });
 

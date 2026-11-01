@@ -231,6 +231,10 @@ a.q-tile:active { transform: translateY(0); }
   transition: transform 0.2s;
 }
 .q-tile-icon svg { width: 36px; height: 36px; }
+/* Toned: the app's colour world behind a white icon, so a shelf of tiles reads like a game library. */
+.q-tile-preview.q-toned { border-color: transparent; }
+.q-tile-preview.q-toned .q-tile-icon { color: #fff; opacity: 0.96; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35)); }
+.q-tile-preview.q-toned::after { content: ""; position: absolute; inset: 0; background: var(--q-grain); pointer-events: none; }
 a.q-tile:hover .q-tile-icon { transform: scale(1.08) translateY(-1px); }
 
 .q-tile-body { display: flex; flex-direction: column; gap: 6px; flex: 1; padding: 12px 10px 8px; }
@@ -276,9 +280,10 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 .q-capsule-art {
   position: relative; overflow: hidden; flex: none;
   aspect-ratio: 16 / 7; border-radius: 8px;
-  color: var(--q-ink-fg); background: var(--q-grain), var(--q-ink-bg);
-  border: 1px solid var(--q-ink-bg);
+  color: #fff; background: var(--q-ink-bg);
+  border: 1px solid rgba(0, 0, 0, 0.25);
 }
+.q-capsule-art::after { content: ""; position: absolute; inset: 0; background: var(--q-grain); pointer-events: none; }
 .q-capsule-art > img, .q-capsule-art > svg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s ease-out; }
 .q-capsule:hover .q-capsule-art > img, .q-capsule:hover .q-capsule-art > svg { transform: scale(1.03); }
 .q-capsule-body { display: flex; flex-direction: column; gap: 14px; flex: 1; padding: 14px 12px 10px; }

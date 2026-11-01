@@ -6,6 +6,7 @@
 import type { ReactNode } from 'react';
 import { Footer, Page, SectionHead, ThemeScript, ThemeToggle, TopBar, Tile, TileGroup, Wrap, type NavItem } from '@qntbr/ui';
 import { GITHUB_ORG_URL, RUSTY_BUNS_URL, isExternal, groupEntries, resolveHref, type PortalEntry, type PortalGroup } from './portalData';
+import { toneOf } from './tones';
 
 interface PageProps {
   isLoggedIn: boolean;
@@ -94,6 +95,7 @@ export function PortalTile({ entry: e, request, compact }: { entry: PortalEntry;
       description={e.description}
       icon={<Icon strokeWidth={1.5} />}
       image={e.image}
+      tone={toneOf(e.key, e.group)}
       status={e.status}
       badges={e.requiresAuth ? ['Q auth'] : undefined}
       href={href}
