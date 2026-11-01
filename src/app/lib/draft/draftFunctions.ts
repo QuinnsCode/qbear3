@@ -55,7 +55,7 @@ function intIn(v: unknown, min: number, max: number, fallback: number): number |
   return Number.isInteger(v) && (v as number) >= min && (v as number) <= max ? (v as number) : null
 }
 
-export interface DraftOptions { config: DraftConfig; aiCount: number }
+export interface DraftOptions { config: DraftConfig; aiCount: number; humanSeats: number }
 
 /** Pack shape and table size, from a form or a JSON body. Missing fields take the defaults. */
 export function parseDraftOptions(input: unknown): Result<{ options: DraftOptions }> {
@@ -64,16 +64,23 @@ export function parseDraftOptions(input: unknown): Result<{ options: DraftOption
   const packSize = intIn(c.packSize, 2, 20, DEFAULT_DRAFT_CONFIG.packSize)
   const packsPerPlayer = intIn(c.packsPerPlayer, 1, 5, DEFAULT_DRAFT_CONFIG.packsPerPlayer)
   const pickCount = intIn(c.pickCount, 1, 3, DEFAULT_DRAFT_CONFIG.pickCount)
-  const aiCount = intIn(o.aiCount ?? c.aiCount, 1, 7, DEFAULT_DRAFT_CONFIG.playerCount - 1)
-  if (packSize === null || packsPerPlayer === null || pickCount === null || aiCount === null) {
-    return fail(400, 'packSize 2-20, packsPerPlayer 1-5, pickCount 1-3 and aiCount 1-7 must be whole numbers')
+  // humanSeats counts you; the others are open until someone joins from the draft link
+  const humanSeats = intIn(o.humanSeats ?? c.humanSeats, 1, 8, 1)
+  const aiCount = intIn(o.aiCount ?? c.aiCount, humanSeats === null || humanSeats > 1 ? 0 : 1, 7, humanSeats !== null && humanSeats > 1 ? 0 : DEFAULT_DRAFT_CONFIG.playerCount - 1)
+  const pickTimerSeconds = intIn(c.pickTimerSeconds, 1, 600, 0)
+  if (packSize === null || packsPerPlayer === null || pickCount === null || aiCount === null || humanSeats === null || pickTimerSeconds === null) {
+    return fail(400, 'packSize 2-20, packsPerPlayer 1-5, pickCount 1-3, humanSeats 1-8, aiCount 0-7 and pickTimerSeconds 1-600 must be whole numbers')
   }
+  if (humanSeats + aiCount < 2 || humanSeats + aiCount > 8) return fail(400, 'A draft seats 2 to 8 drafters, humans and AI together')
   if (pickCount > packSize) return fail(400, 'pickCount cannot be more than packSize')
-  const players = aiCount + 1
+  const players = aiCount + humanSeats
   if (players * packsPerPlayer * packSize > VINTAGE_CUBE.length) return fail(400, `That draft needs more than the cube's ${VINTAGE_CUBE.length} cards`)
   return {
     ok: true,
-    options: { aiCount, config: { ...DEFAULT_DRAFT_CONFIG, packSize, packsPerPlayer, pickCount, playerCount: players } },
+    options: {
+      aiCount, humanSeats,
+      config: { ...DEFAULT_DRAFT_CONFIG, packSize, packsPerPlayer, pickCount, playerCount: players, ...(pickTimerSeconds ? { pickTimerSeconds } : {}) },
+    },
   }
 }
 
@@ -116,13 +123,14 @@ function isSeat(v: unknown): v is DraftSeat {
 }
 
 /** Start a draft with `me` in seat one and AI drafters after. */
-export async function startDraft(me: Drafter, { config, aiCount }: DraftOptions): Promise<Result<{ draftId: string }>> {
+export async function startDraft(me: Drafter, { config, aiCount, humanSeats }: DraftOptions): Promise<Result<{ draftId: string }>> {
   const limit = await canCreateDraft(me.id)
   if (!limit.canCreate) return fail(429, limit.reason ?? 'Too many drafts in progress')
 
   const draftId = `draft-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
   const players: DraftPlayer[] = [
     { id: me.id, name: me.name, isAI: false, draftPool: [] },
+    ...Array.from({ length: humanSeats - 1 }, (_, i) => ({ id: `open-${i + 1}`, name: 'Open seat', isAI: false, open: true, draftPool: [] })),
     ...Array.from({ length: aiCount }, (_, i) => ({ id: `ai-${i}`, name: `AI ${i + 1}`, isAI: true, draftPool: [] })),
   ]
   const res = await draftStub(draftId).fetch(new Request('https://fake-host/start', {
@@ -139,6 +147,17 @@ export async function startDraft(me: Drafter, { config, aiCount }: DraftOptions)
     packNumber: 1, pickNumber: 0, totalPacks: config.packsPerPlayer, totalPicks: config.packSize, playerCount: players.length,
   })
   return { ok: true, draftId }
+}
+
+/** Take an open seat in `draftId` as `me`; taking the last one starts the draft. Joining twice keeps the one seat. */
+export async function joinDraft(draftId: string, me: Drafter): Promise<Result<{ status: string }>> {
+  const res = await draftStub(draftId).fetch(new Request('https://fake-host/join', {
+    method: 'POST',
+    headers: { 'X-Auth-User-Id': me.id, 'X-Auth-User-Name': me.name },
+  }))
+  if (!res.ok) return fail(res.status, await errorOf(res))
+  const body: unknown = await res.json()
+  return { ok: true, status: isRecord(body) && typeof body.status === 'string' ? body.status : 'waiting' }
 }
 
 /** `playerId`'s seat in a draft: 404 for no such draft, 403 for someone who isn't drafting in it. */

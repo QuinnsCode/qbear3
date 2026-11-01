@@ -15,6 +15,8 @@ declare namespace Cloudflare {
     LEMON_SQUEEZY_STARTER_VARIANT_ID?: string;
     LEMON_SQUEEZY_WEBHOOK_SECRET?: string;
     NODE_ENV?: string;
+    QLAVE_API_KEY?: string;
+    QLAVE_URL?: string;
     RESEND_API_KEY?: string;
     STRIPE_PRO_PRICE_ID?: string;
     STRIPE_SECRET_KEY?: string;

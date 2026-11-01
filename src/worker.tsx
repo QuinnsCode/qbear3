@@ -21,6 +21,7 @@ import {
   shouldSkipMiddleware
 } from "@/lib/middlewareFunctions";
 import { env } from "cloudflare:workers";
+import { startEqosys, finishEqosys } from "@/lib/eqosysAuth";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import GamePage from "@/app/pages/game/GamePage";
 import CardGamePage from "@/app/pages/cardGame/CardGamePage";
@@ -297,6 +298,8 @@ export default defineApp([
     route("/draft/:draftId", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info)),
     route("/draft/:draftId/pick", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info, 'pick')),
     route("/draft/:draftId/deck", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info, 'deck')),
+    route("/call/:kind/:id", async (info) => (await import('@/app/api/call/call')).default(info)),
+    route("/draft/:draftId/join", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info, 'join')),
     route("/cardGame/:gameId/deck", async (info) => (await import('@/app/api/cardGame/deck')).default(info)),
 
     route("/pvp/initialize", async ({ request }) => {
@@ -372,6 +375,10 @@ export default defineApp([
         });
       }
     }),
+
+    // Sign in with eqosys: our own OIDC flow (src/lib/eqosysAuth.ts); the callback keeps the URI registered at eqosys.
+    route("/auth/eqosys/start", ({ request }) => startEqosys(request)),
+    route("/auth/oauth2/callback/eqosys", ({ request }) => finishEqosys(request)),
 
     route("/auth/*", async ({ request }) => {
       try {
@@ -633,6 +640,18 @@ export default defineApp([
 
     route("/draft/new", NewDraftPage),
     route("/draft/deck/:deckId", DraftDeckEditorPage),
+    route("/draft/:draftId/join", async (info) => {
+      // The link people share. Opening it only shows a button, so a link preview can't take the seat.
+      const { request, params } = info
+      if (request.method === 'POST') return (await import('@/app/api/draft/draft')).joinHandler(info, true)
+      const action = `/draft/${encodeURIComponent(params.draftId)}/join`
+      return new Response(
+        `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Join draft</title>` +
+        `<body style="font-family:system-ui;background:#0f172a;color:#e2e8f0;display:grid;place-items:center;min-height:100vh;margin:0">` +
+        `<form method="post" action="${action}" style="text-align:center"><h1>You're invited to a draft</h1>` +
+        `<button style="font-size:1.1rem;padding:.7rem 1.4rem;border-radius:.6rem;border:0;background:#fbbf24;color:#0f172a;cursor:pointer">Take a seat</button></form>`,
+        { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+    }),
     route("/draft/:draftId", DraftPage),
 
 

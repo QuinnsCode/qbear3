@@ -1,4 +1,5 @@
 // @/lib/middlewareFunctions.ts
+import { getSessionFromHeaders } from '@/lib/session'
 import { errorMessage } from '@/lib/errorMessage'
 import { setupDb } from "@/db";
 import { isLoopbackIp } from "@/lib/loopback";
@@ -68,6 +69,7 @@ const FORCE_MIDDLEWARE_ROUTES = [
   '/__draftsync',    // Draft sync needs user/org context
   '/api/draft',      // Drafting over JSON acts as the session's user (src/app/api/draft/draft.ts)
   '/api/cardGame/',  // Loading a saved deck at a table, likewise
+  '/api/call/',      // A table's video call is for people who sit there (src/app/api/call/call.ts)
 ] as const;
 
 /**
@@ -120,18 +122,11 @@ export async function setupSessionContext(ctx: AppContext, request: Request) {
 
     console.log('🔍 Setting up session context for:', url.pathname);
     
-    // Import auth using the new pattern
-    const { initAuth } = await import("@/lib/auth");
-    
     try {
-      const authInstance = initAuth();
-      console.log('🔍 Request cookies:', request.headers.get('cookie')?.substring(0, 100))
-      const session = await authInstance.api.getSession({
-        headers: request.headers
-      });
-      
+      const session = await getSessionFromHeaders(request.headers);
+
       ctx.session = session;
-      ctx.user = session?.user as any; // Cast to any to handle type differences
+      ctx.user = session?.user ?? null;
       console.log('✅ Session context set:', !!ctx.user ? `User: ${ctx.user?.email}` : 'No user');
     } catch (authError) {
       console.warn('⚠️ Auth session failed, continuing without session:', errorMessage(authError));

@@ -92,7 +92,6 @@ export default async function LoginPage({ ctx, request }: RequestInfo) {
   // If not logged in, show fantasy login form
   return (
     <FantasyLogin
-      variant="adventure"
       redirectPath="/"
       showDevTools={false}
     />

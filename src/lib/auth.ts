@@ -5,7 +5,6 @@ import { admin } from "better-auth/plugins";
 import { organization } from "better-auth/plugins";
 import { apiKey } from "@better-auth/api-key"
 import { multiSession } from "better-auth/plugins"
-import { genericOAuth } from "better-auth/plugins";
 import { env } from "cloudflare:workers";
 import { db } from "@/db";
 import { Resend } from "resend";
@@ -116,22 +115,7 @@ export const createAuth = () => {
       multiSession({
         maximumSessions: 3
       }),
-      // eqosys, the one account across every Q app (RustyBuns apps/eqosys), as an OpenID provider: PKCE, no
-      // client secret, "qntbr" is this site's id in its APPS. Its id_token says email_verified: false for an
-      // email-and-password sign-up there, so it is left out of accountLinking.trustedProviders on purpose:
-      // someone who signs up at eqosys with your email doesn't get into your account here.
-      ...(env.EQOSYS_URL ? [genericOAuth({
-        config: [{
-          providerId: "eqosys",
-          name: "eqosys",
-          clientId: "qntbr",
-          discoveryUrl: `${env.EQOSYS_URL}/.well-known/openid-configuration`,
-          pkce: true,
-          // offline_access: a refresh token, so the saved-decks bearer (good ten minutes) can be renewed server-side.
-          scopes: ["openid", "email", "profile", "offline_access"],
-          tokenEndpointAuth: { method: "none" },
-        }],
-      })] : []),
+      // Sign-in with eqosys no longer goes through better-auth: see src/lib/eqosysAuth.ts and src/lib/session.ts.
     ],
     session: {
       expiresIn: 60 * 60 * 24 * 7,

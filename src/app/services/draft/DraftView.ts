@@ -28,7 +28,7 @@ export function viewFor(state: DraftState, cube: CubeCard[], viewerId: string | 
         currentPack: p.currentPack ? { ...p.currentPack, cards: pack as unknown as string[] } : undefined,
       }
     }
-    return { id: p.id, name: p.name, isAI: p.isAI, draftPool: [], poolSize: p.draftPool.length, hasPicked }
+    return { id: p.id, name: p.name, isAI: p.isAI, open: p.open, draftPool: [], poolSize: p.draftPool.length, hasPicked }
   })
 
   const { remainingPacks: _packs, cubeCards: _cube, ...rest } = state

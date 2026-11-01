@@ -76,6 +76,9 @@ export default defineConfig({
     WEBAUTHN_RP_ID: { type: "secret", optional: true },      // falls back to the request hostname
     WORKER_HOST: { type: "secret", optional: true },         // MatchmakingDO calls back to this host; defaults to qntbr.com
     TURNSTILE_SECRET_KEY: { type: "secret", optional: true },
+    // qlave (qlave.dev) video rooms, one per table: the key createRoom needs. QLAVE_URL overrides https://qlave.dev.
+    QLAVE_API_KEY: { type: "secret", optional: true },
+    QLAVE_URL: { type: "secret", optional: true },
     RESEND_API_KEY: { type: "secret", optional: true },
     GOOGLE_CLIENT_ID: { type: "secret", optional: true },
     GOOGLE_CLIENT_SECRET: { type: "secret", optional: true },

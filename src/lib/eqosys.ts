@@ -1,22 +1,14 @@
 // eqosys cloud saves (apps/eqosys/src/saves.ts in RustyBuns): PUT/GET /q/save/<slot> with the person's eqosys access token as a bearer.
-// The token is the one Better Auth stored when they signed in with eqosys (src/lib/auth.ts); it hands out a fresh one when it has
+// The token is the one stored when they signed in with eqosys (src/lib/eqosysAuth.ts), refreshed there when it has
 // expired, which needs the offline_access scope.
 import { env } from "cloudflare:workers"
-import { requestInfo } from "rwsdk/worker"
-import { auth } from "@/lib/auth"
-import { db } from "@/db"
+import { eqosysAccessToken } from "@/lib/eqosysAuth"
 
 /** The bearer for the signed-in person, or null when they never signed in with eqosys (or eqosys isn't set up). */
 export async function eqosysToken(userId: string): Promise<string | null> {
   if (!env.EQOSYS_URL) return null
   try {
-    const link = await db.account.findFirst({ where: { userId, providerId: "eqosys" }, select: { id: true } })
-    if (!link) return null
-    const { accessToken } = await auth.api.getAccessToken({
-      body: { accountId: link.id },
-      headers: requestInfo.request.headers,
-    })
-    return accessToken || null
+    return await eqosysAccessToken(userId)
   } catch (error) {
     console.error("[eqosys] no access token:", error)
     return null

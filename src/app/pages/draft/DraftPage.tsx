@@ -2,6 +2,7 @@
 import { type RequestInfo } from "rwsdk/worker"
 import { env } from "cloudflare:workers"
 import DraftContent from '@/app/components/Draft/DraftContent'
+import JoinCallButton from '@/app/components/JoinCallButton'
 import { getOrCreateDraftGuestId } from '@/lib/userIdentity'
 import type { DraftState } from '@/app/types/Draft'
 import type { Region } from '@/app/lib/constants/regions'
@@ -81,14 +82,17 @@ export default async function DraftPage({ params, ctx, request }: RequestInfo) {
   }
 
   return (
-    <DraftContent
-      draftId={draftId}
-      initialState={initialState}
-      userId={userId}
-      userName={userName}
-      isLoggedIn={isLoggedIn}
-      pvpRegion={pvpRegion}
-      returnTo={returnTo}
-    />
+    <>
+      <DraftContent
+        draftId={draftId}
+        initialState={initialState}
+        userId={userId}
+        userName={userName}
+        isLoggedIn={isLoggedIn}
+        pvpRegion={pvpRegion}
+        returnTo={returnTo}
+      />
+      <JoinCallButton kind="draft" id={draftId} />
+    </>
   )
 }

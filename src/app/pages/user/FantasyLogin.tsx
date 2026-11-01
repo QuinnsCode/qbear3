@@ -3,15 +3,7 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
-import {
-  FantasyBackground,
-  FantasyCard,
-  FantasyTitle,
-  FantasyText,
-  FantasyButton,
-  CaveEntrance,
-  WizardStudy
-} from "@/app/components/theme/FantasyTheme";
+import { Page, Button } from "@qntbr/ui";
 import { Castle, KeyRound } from "lucide-react";
 
 interface FantasyLoginProps {
@@ -22,7 +14,6 @@ interface FantasyLoginProps {
   redirectOnSuccess?: boolean;
   redirectPath?: string;
   showDevTools?: boolean;
-  variant?: 'cave' | 'study' | 'adventure';
 }
 
 export function FantasyLogin({ 
@@ -32,8 +23,7 @@ export function FantasyLogin({
   onAuthSuccess,
   redirectOnSuccess = true,
   redirectPath = "/",
-  showDevTools = false,
-  variant = 'adventure'
+  showDevTools = false
 }: FantasyLoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -84,11 +74,16 @@ export function FantasyLogin({
     }
   };
 
-  // Google, or eqosys (the one account across every Q app, see src/lib/auth.ts)
+  // Google, or eqosys (the one account across every Q app, see src/lib/eqosysAuth.ts)
   const handleSocialSignIn = async (provider: "google" | "eqosys", label: string) => {
     try {
       setResult("");
       setPendingProvider(provider);
+      if (provider === "eqosys") {
+        // our own OIDC flow (src/lib/eqosysAuth.ts): a full-page redirect to eqosys and back
+        window.location.href = `/api/auth/eqosys/start?callbackURL=${encodeURIComponent(redirectPath)}`;
+        return;
+      }
       const { error } = await authClient.signIn.social({
         provider,
         callbackURL: redirectPath,
@@ -160,237 +155,101 @@ export function FantasyLogin({
     return "info";
   };
 
-  // Show loading while redirecting to signup
-  if (forceSignUp) {
-    return (
-      <FantasyBackground variant={variant}>
-        <div className="min-h-screen flex items-center justify-center px-4">
-          <FantasyCard className="p-8 text-center max-w-md" glowing={true}>
-            <div className="mb-6 text-6xl">🏰</div>
-            <FantasyTitle size="lg" className="mb-4">
-              Redirecting to Signup...
-            </FantasyTitle>
-          </FantasyCard>
-        </div>
-      </FantasyBackground>
-    );
-  }
+  const kind = getResultVariant();
 
   return (
-    <FantasyBackground variant={variant}>
-      <div className="flex flex-col lg:grid lg:grid-cols-12 min-h-screen relative">
-        
-        {/* Left side - Cave or decorative element */}
-        <div className="hidden lg:flex lg:col-span-3 xl:col-span-4 relative items-end justify-center pb-8">
-          {variant === 'cave' ? (
-            <CaveEntrance showFlag={true} />
+    <Page>
+      <main className="q-auth">
+        <div className="q-auth-card">
+          {forceSignUp ? (
+            <h1>Redirecting to signup...</h1>
           ) : (
-            <WizardStudy complexity="detailed" />
-          )}
-        </div>
-        
-        {/* Center - Login Form */}
-        <div className="flex-1 lg:col-span-6 xl:col-span-4 flex items-center justify-center px-4 py-8 lg:py-0">
-          <div className="w-full max-w-md">
-            
-            {/* Organization warning */}
-            {showOrgWarning && organizationName && (
-              <FantasyCard className="mb-6 p-4 border-yellow-700/60 bg-yellow-900/20">
-                <div className="flex items-start space-x-3">
-                  <div className="text-yellow-400 text-xl">⚠️</div>
-                  <div>
-                    <h3 className="text-yellow-200 font-medium mb-1">Unclaimed Territory</h3>
-                    <FantasyText variant="secondary" className="text-sm">
-                      The "{organizationName}" lair awaits a master. Sign in or register to claim this domain!
-                    </FantasyText>
-                  </div>
-                </div>
-              </FantasyCard>
-            )}
+            <>
+              {showOrgWarning && organizationName && (
+                <p className="q-note" role="status">
+                  The "{organizationName}" lair awaits a master. Sign in or register to claim this domain.
+                </p>
+              )}
 
-            {/* Title Section */}
-            <div className="text-center mb-8">
-              <FantasyTitle size="lg" className="mb-3">
-                {getTitle()}
-              </FantasyTitle>
-              <FantasyText variant="primary" className="text-base lg:text-lg">
-                {getSubtitle()}
-              </FantasyText>
-            </div>
+              <div>
+                <h1>{getTitle()}</h1>
+                <p>{getSubtitle()}</p>
+              </div>
 
-            {/* Main Form Card */}
-            <FantasyCard className="p-6 mb-6" glowing={true}>
-              <form onSubmit={handleSubmit} className="space-y-5">
-                
-                {/* Email field */}
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-amber-200 mb-2">
-                    Email Address
-                  </label>
+              <form onSubmit={handleSubmit}>
+                <label className="q-field" htmlFor="email">
+                  Email address
                   <input
                     id="email"
                     type="email"
+                    className="q-input"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="your@email.com"
+                    autoComplete="email"
                     required
-                    className="w-full px-4 py-3 bg-black/50 border border-amber-700/50 rounded-lg text-amber-100 placeholder-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent backdrop-blur-sm"
                     suppressHydrationWarning
                   />
-                </div>
-
-                {/* Password field */}
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-amber-200 mb-2">
-                    Secret Passphrase
-                  </label>
+                </label>
+                <label className="q-field" htmlFor="password">
+                  Password
                   <input
                     id="password"
                     type="password"
+                    className="q-input"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Your secret passphrase"
+                    placeholder="Your password"
+                    autoComplete="current-password"
                     required
-                    className="w-full px-4 py-3 bg-black/50 border border-amber-700/50 rounded-lg text-amber-100 placeholder-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent backdrop-blur-sm"
                     suppressHydrationWarning
                   />
-                </div>
-
-                {/* Submit button */}
-                <FantasyButton 
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  disabled={isPending}
-                  className="w-full"
-                >
-                  {isPending ? "..." : "🗝️ Enter Lair"}
-                </FantasyButton>
+                </label>
+                <Button type="submit" variant="primary" className="q-block" disabled={isPending}>
+                  {isPending ? "..." : "Enter lair"}
+                </Button>
               </form>
 
-              {/* Divider */}
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-amber-700/30"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-linear-to-b from-slate-900/90 to-slate-800/90 text-amber-400/70">
-                    or continue with
-                  </span>
-                </div>
-              </div>
+              <div className="q-or">or continue with</div>
 
-              {/* Google SSO Button */}
-              <FantasyButton
-                onClick={() => handleSocialSignIn("google", "Google")}
-                variant="secondary"
-                size="lg"
-                disabled={pendingProvider !== null}
-                className="w-full"
-                type="button"
-              >
-                <Castle className="w-5 h-5" />
-                {pendingProvider === "google" ? 'Redirecting to Google...' : 'Sign in with Google'}
-              </FantasyButton>
-
-              {/* eqosys: the same account as every Q game and app */}
-              <FantasyButton
-                onClick={() => handleSocialSignIn("eqosys", "eqosys")}
-                variant="secondary"
-                size="lg"
-                disabled={pendingProvider !== null}
-                className="w-full mt-3"
-                type="button"
-              >
-                <KeyRound className="w-5 h-5" />
-                {pendingProvider === "eqosys" ? 'Redirecting to eqosys...' : 'Sign in with eqosys'}
-              </FantasyButton>
-
-
-              {/* Link to signup */}
-              <div className="mt-6 text-center">
-                <a
-                  href="/user/signup"
-                  className="text-amber-300 hover:text-amber-100 text-sm font-medium underline decoration-amber-700 underline-offset-2 hover:decoration-amber-500 transition-colors"
+              <div style={{ display: "grid", gap: 10 }}>
+                <Button
+                  onClick={() => handleSocialSignIn("google", "Google")}
+                  className="q-block"
+                  disabled={pendingProvider !== null}
                 >
-                  Need to establish a new lair? Register here
-                </a>
+                  <Castle size={18} />
+                  {pendingProvider === "google" ? "Redirecting to Google..." : "Sign in with Google"}
+                </Button>
+                {/* eqosys: the same account as every Q game and app */}
+                <Button
+                  onClick={() => handleSocialSignIn("eqosys", "eqosys")}
+                  className="q-block"
+                  disabled={pendingProvider !== null}
+                >
+                  <KeyRound size={18} />
+                  {pendingProvider === "eqosys" ? "Redirecting to eqosys..." : "Sign in with eqosys"}
+                </Button>
               </div>
-            </FantasyCard>
 
-            {/* Result message */}
-            {result && (
-              <FantasyCard className={`p-4 text-sm ${
-                getResultVariant() === "success" 
-                  ? "bg-green-900/30 border-green-700/50 text-green-200" 
-                  : getResultVariant() === "error"
-                  ? "bg-red-900/30 border-red-700/50 text-red-200"
-                  : "bg-blue-900/30 border-blue-700/50 text-blue-200"
-              }`}>
-                <div className="flex items-start space-x-2">
-                  <span className="text-lg">
-                    {getResultVariant() === "success" ? "✨" : getResultVariant() === "error" ? "⚠️" : "ℹ️"}
-                  </span>
-                  <div className="flex-1">{result}</div>
+              {result && (
+                <p className="q-note" role="status" data-kind={kind}>{result}</p>
+              )}
+
+              {showDevTools && (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Button onClick={getCurrentUser}>Check session</Button>
+                  <Button onClick={handleSignOut}>Sign out</Button>
                 </div>
-              </FantasyCard>
-            )}
+              )}
 
-            {/* Dev tools - only show if explicitly enabled */}
-            {showDevTools && (
-              <FantasyCard className="mt-6 p-4 bg-slate-900/60 border-slate-700/50">
-                <h3 className="text-slate-300 font-medium mb-3 text-sm">Developer Tools</h3>
-                <div className="flex flex-col gap-2">
-                  <FantasyButton
-                    onClick={getCurrentUser}
-                    variant="secondary"
-                    size="sm"
-                    className="text-xs"
-                  >
-                    Check Session
-                  </FantasyButton>
-                  <FantasyButton
-                    onClick={handleSignOut}
-                    variant="danger"
-                    size="sm"
-                    className="text-xs"
-                  >
-                    Sign Out
-                  </FantasyButton>
-                </div>
-              </FantasyCard>
-            )}
-
-            {/* Footer link */}
-            <div className="mt-6 text-center">
-              <FantasyText variant="secondary" className="text-sm">
-                Lost? Return to the{" "}
-                <a href="/" className="text-amber-300 hover:text-amber-100 underline decoration-amber-700 underline-offset-2 hover:decoration-amber-500 transition-colors">
-                  crossroads
-                </a>
-              </FantasyText>
-            </div>
-          </div>
+              <p>
+                New here? <a href="/user/signup">Register</a> · <a href="/">Back to the crossroads</a>
+              </p>
+            </>
+          )}
         </div>
-        
-        {/* Right side - Study or decorative element */}
-        <div className="lg:col-span-3 xl:col-span-4 relative flex items-end justify-center pb-4 lg:pb-8">
-          
-          {/* Mobile: Simple minimal study */}
-          <div className="lg:hidden relative w-full max-w-xs h-32">
-            <WizardStudy complexity="simple" />
-          </div>
-          
-          {/* Desktop: Full study */}
-          <div className="hidden lg:block relative w-full">
-            {variant === 'study' ? (
-              <CaveEntrance showFlag={false} />
-            ) : (
-              <WizardStudy complexity="full" />
-            )}
-          </div>
-        </div>
-      </div>
-    </FantasyBackground>
+      </main>
+    </Page>
   );
 }

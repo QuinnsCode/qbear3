@@ -21,3 +21,13 @@ test("sign up gives a session; sign out, sign in again; a wrong password is refu
   expect((await b.signIn(email, "not-the-password")).status).toBe(401);
   expect((await b.signIn(email)).status).toBe(200);
 });
+
+test("an eqosys callback with no sign-in in flight lands on the login page with an error, signed out", async () => {
+  const a = await app();
+  const b = a.browser();
+  const res = await b.get("/api/auth/oauth2/callback/eqosys?code=abc&state=forged");
+  expect(res.url.pathname).toBe("/user/login");
+  expect(res.url.searchParams.get("error")).toBe("eqosys_state");
+  expect(b.cookie).not.toContain("session_token");
+  expect((await b.get("/")).hops).toEqual([]);
+});

@@ -400,6 +400,21 @@ export default function DraftContent({
   }
 
   /* ───────────────────────── Starting ───────────────────────── */
+  if (draftState?.status === 'waiting') {
+    const open = draftState.players.filter(p => p.open).length
+    const joinUrl = `${typeof window === 'undefined' ? '' : window.location.origin}/draft/${draftId}/join`
+    return (
+      <div className="draft-arena flex min-h-screen items-center justify-center p-6 text-slate-100">
+        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950/70 p-8 shadow-2xl backdrop-blur">
+          <h1 className="text-xl font-bold">Waiting for {open} more drafter{open === 1 ? '' : 's'}</h1>
+          <p className="mt-2 text-sm text-slate-400">Send them this link. The draft starts when the last seat is taken.</p>
+          <input readOnly value={joinUrl} onFocus={e => e.currentTarget.select()} className="mt-4 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm" />
+          <a href={`/draft/${draftId}/join`} className="mt-4 inline-block text-sm text-amber-300 hover:underline">Take a seat yourself</a>
+        </div>
+      </div>
+    )
+  }
+
   if (!currentPlayer) {
     return (
       <div className="draft-arena flex min-h-screen items-center justify-center p-6 text-slate-100">
