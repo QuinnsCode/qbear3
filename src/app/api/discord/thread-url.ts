@@ -1,7 +1,8 @@
 // app/api/discord/thread-url.ts
 import { env } from "cloudflare:workers";
+import type { RequestInfo } from "rwsdk/worker";
 
-export default async ({ request, ctx }) => {
+export default async ({ request, ctx }: RequestInfo) => {
   if (!ctx.user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -23,7 +24,7 @@ export default async ({ request, ctx }) => {
       return Response.json({ error: "KV not available" }, { status: 500 });
     }
 
-    const discordData = await kvNamespace.get(`discord:${gameId}`, "json") as any;
+    const discordData = await kvNamespace.get<{ threadUrl?: string; threadId?: string; createdAt?: number }>(`discord:${gameId}`, "json");
 
     if (!discordData) {
       return Response.json({ 

@@ -2,6 +2,7 @@
 'use server'
 
 import { env } from "cloudflare:workers"
+import { errorMessage } from "@/lib/errorMessage"
 
 export async function updateDraftPermissions(
   draftId: string,
@@ -26,14 +27,16 @@ export async function updateDraftPermissions(
     }))
 
     if (!response.ok) {
-      const error = await response.json()
-      return { success: false, error: error.error || 'Failed to update permissions' }
+      const body: unknown = await response.json()
+      const message = body && typeof body === 'object' && 'error' in body && typeof body.error === 'string' ? body.error : ''
+      return { success: false, error: message || 'Failed to update permissions' }
     }
 
-    const result = await response.json()
-    return { success: true, permissions: result.permissions }
-  } catch (error: any) {
+    const result: unknown = await response.json()
+    const updated = result && typeof result === 'object' && 'permissions' in result ? result.permissions : undefined
+    return { success: true, permissions: updated }
+  } catch (error) {
     console.error('Failed to update draft permissions:', error)
-    return { success: false, error: error.message }
+    return { success: false, error: errorMessage(error) }
   }
 }

@@ -1,7 +1,18 @@
 // app/components/Game/GameActionButton.tsx
 'use client'
 
-export const GameActionButton = ({ icon: Icon, label, active, disabled, onClick, color = 'blue' }) => {
+import type { ComponentType } from 'react'
+
+interface GameActionButtonProps {
+  icon: ComponentType<{ size?: number }>
+  label: string
+  active?: boolean
+  disabled?: boolean
+  onClick?: () => void
+  color?: 'blue' | 'red' | 'green' | 'yellow' | 'amber' | 'purple' | 'gray' | 'indigo'
+}
+
+export const GameActionButton = ({ icon: Icon, label, active, disabled, onClick, color = 'blue' }: GameActionButtonProps) => {
   const colorClasses = {
     blue: active ? 'bg-blue-500 text-white' : 'bg-white text-blue-500 border-blue-200',
     red: active ? 'bg-red-500 text-white' : 'bg-white text-red-500 border-red-200',

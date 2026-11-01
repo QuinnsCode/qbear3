@@ -82,7 +82,7 @@ function getActiveSubscription(user: {
 }
 
 // ✅ User-specific overrides for testing accounts
-export function getUserTierOverride(userEmail?: string): Partial<typeof SQUEEZE_TIERS['free']['features']> | null {
+export function getUserTierOverride(userEmail?: string): Partial<Record<'maxGamesPerOrg' | 'maxPlayersPerGame' | 'maxCommanderDecks' | 'maxDraftDecks', number>> | null {
   const TESTING_EMAILS = [
     'notryanquinn@gmail.com',  // Ryan's testing account
   ]

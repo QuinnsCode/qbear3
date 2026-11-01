@@ -1,4 +1,5 @@
 // app/routes/gameRoutes.ts - FIXED VERSION
+import { errorMessage } from '@/lib/errorMessage'
 import { route } from "rwsdk/router";
 import { env } from "cloudflare:workers";
 
@@ -38,7 +39,7 @@ export const gameRoutes = [
       console.error(`Game ${request.method} error:`, error);
       return new Response(JSON.stringify({ 
         error: 'Game service error', 
-        message: error?.message || String(error)
+        message: errorMessage(error)
       }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }

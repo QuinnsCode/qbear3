@@ -1,6 +1,7 @@
 // app/components/Game/Combat/MoveInSelectionOverlay.tsx
 'use client'
 
+import { errorMessage } from '@/lib/errorMessage'
 import React, { useState, useEffect } from 'react';
 import { 
   Crown, 
@@ -29,7 +30,7 @@ interface MoveInSelectionOverlayProps {
   onCancel: () => void;
 }
 
-const COMMANDER_ICONS = {
+const COMMANDER_ICONS: Record<string, { icon: import('lucide-react').LucideIcon; label: string; shortLabel?: string; dice?: string; color: string; bg?: string }> = {
   land: { icon: Mountain, label: 'Land Commander', color: 'text-amber-600' },
   diplomat: { icon: User, label: 'Diplomat', color: 'text-blue-600' },
   nuclear: { icon: Zap, label: 'Nuclear Commander', color: 'text-red-600' },
@@ -70,7 +71,7 @@ const MoveInSelectionOverlay = ({
       await onConfirmMoveIn(additionalUnits);
     } catch (error) {
       console.error('Move-in confirmation failed:', error);
-      alert(`Failed to move additional units: ${error.message}`);
+      alert(`Failed to move additional units: ${errorMessage(error)}`);
     } finally {
       setIsProcessing(false);
     }

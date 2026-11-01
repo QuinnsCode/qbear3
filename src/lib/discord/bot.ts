@@ -1,4 +1,5 @@
 // lib/discord/bot.ts
+import { errorMessage } from '@/lib/errorMessage'
 import { env } from "cloudflare:workers";
 
 const DISCORD_API = "https://discord.com/api/v10";
@@ -9,9 +10,9 @@ export class DiscordBot {
   private gameChannelId: string;
 
   constructor() {
-    this.token = env.DISCORD_BOT_TOKEN;
-    this.guildId = env.DISCORD_GUILD_ID;
-    this.gameChannelId = env.DISCORD_GAME_CHANNEL_ID;
+    this.token = env.DISCORD_BOT_TOKEN ?? '';
+    this.guildId = env.DISCORD_GUILD_ID ?? '';
+    this.gameChannelId = env.DISCORD_GAME_CHANNEL_ID ?? '';
   }
 
   private async discordRequest(endpoint: string, options: RequestInit = {}) {
@@ -29,7 +30,7 @@ export class DiscordBot {
       throw new Error(`Discord API error: ${response.status} - ${error}`);
     }
 
-    return response.json();
+    return response.json() as Promise<unknown>;
   }
 
   async createGameThread(gameName: string, playerDiscordIds: string[]) {
@@ -46,10 +47,15 @@ export class DiscordBot {
         }
       );
 
+      if (typeof thread !== 'object' || thread === null || !('id' in thread) || typeof thread.id !== 'string') {
+        throw new Error('Discord returned a thread without an id');
+      }
+      const threadId = thread.id;
+
       for (const discordId of playerDiscordIds) {
         try {
           await this.discordRequest(
-            `/channels/${thread.id}/thread-members/${discordId}`,
+            `/channels/${threadId}/thread-members/${discordId}`,
             { method: "PUT" }
           );
         } catch (err) {
@@ -59,14 +65,14 @@ export class DiscordBot {
 
       return {
         success: true,
-        threadId: thread.id,
-        threadUrl: `https://discord.com/channels/${this.guildId}/${thread.id}`,
+        threadId,
+        threadUrl: `https://discord.com/channels/${this.guildId}/${threadId}`,
       };
     } catch (error) {
       console.error("Failed to create thread:", error);
       return {
         success: false,
-        error: error.message,
+        error: errorMessage(error),
       };
     }
   }
@@ -79,7 +85,7 @@ export class DiscordBot {
       return { success: true };
     } catch (error) {
       console.error("Failed to delete thread:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage(error) };
     }
   }
 
@@ -92,7 +98,7 @@ export class DiscordBot {
       return { success: true };
     } catch (error) {
       console.error("Failed to send message:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage(error) };
     }
   }
 }

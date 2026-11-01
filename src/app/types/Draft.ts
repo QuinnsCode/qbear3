@@ -116,3 +116,14 @@ export interface CubeCard {
     }
     timestamp: Date
   }
+
+/** Checks the fields every consumer of a draft state reads; a body that fails is not a draft. */
+export function isDraftState(v: unknown): v is DraftState {
+  return (
+    typeof v === 'object' && v !== null &&
+    'id' in v && typeof v.id === 'string' &&
+    'config' in v && typeof v.config === 'object' && v.config !== null &&
+    'status' in v && typeof v.status === 'string' &&
+    'players' in v && Array.isArray(v.players)
+  )
+}

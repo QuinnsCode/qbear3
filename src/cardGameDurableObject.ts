@@ -751,6 +751,10 @@ export class CardGameDO extends DurableObject {
       return this.gameState;
     }
   
+    if (!this.gameState) {
+      throw new Error('Game state is null');
+    }
+
     // Check if sandbox mode
     const isSandbox = await this.ctx.storage.get('isSandbox');
     const sandboxConfig = await this.ctx.storage.get('sandboxConfig');
@@ -925,8 +929,9 @@ export class CardGameDO extends DurableObject {
       const sandboxConfig = await this.ctx.storage.get('sandboxConfig');
       const { updates } = action.data as { updates: Array<{ cardId: string, position: { x: number, y: number } }> };
 
+      const currentState = this.gameState;
       const allAllowed = updates.every(({ cardId }) =>
-        SandboxManager.canPlayerInteractWithCard(action.playerId, cardId, this.gameState, isSandbox, sandboxConfig)
+        SandboxManager.canPlayerInteractWithCard(action.playerId, cardId, currentState, isSandbox, sandboxConfig)
       );
 
       if (!allAllowed) {
@@ -1076,7 +1081,7 @@ export class CardGameDO extends DurableObject {
         return CardManager.rotateCard(gameState, action);
         
       case 'rotate_cards_batch': {
-        const { cardIds, rotation } = action.data
+        const { cardIds, rotation }: { cardIds: string[]; rotation: 0 | 90 | 180 | 270 } = action.data
 
         const updatedCards = { ...gameState.cards }
         cardIds.forEach(cardId => {

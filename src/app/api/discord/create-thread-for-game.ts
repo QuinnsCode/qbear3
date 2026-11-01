@@ -2,14 +2,24 @@
 import { DiscordBot } from "@/lib/discord/bot";
 import { db } from "@/db";
 import { env } from "cloudflare:workers";
+import type { RequestInfo } from "rwsdk/worker";
 
-export default async ({ request, ctx }) => {
+function stringField(body: unknown, key: string): string | undefined {
+  if (typeof body !== 'object' || body === null) return undefined;
+  const value = Object.entries(body).find(([k]) => k === key)?.[1];
+  return typeof value === 'string' ? value : undefined;
+}
+
+export default async ({ request, ctx }: RequestInfo) => {
   if (!ctx.user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { gameId, gameName, gameType } = await request.json();
-  
+  const body: unknown = await request.json();
+  const gameId = stringField(body, 'gameId');
+  const gameName = stringField(body, 'gameName');
+  const gameType = stringField(body, 'gameType');
+
   if (!gameId || !gameName) {
     return Response.json({ error: "gameId and gameName required" }, { status: 400 });
   }
@@ -24,7 +34,7 @@ export default async ({ request, ctx }) => {
     }
 
     // Check if thread already exists
-    const existingThread = await kvNamespace.get(`discord:${gameId}`, "json") as any;
+    const existingThread = await kvNamespace.get<{ threadId?: string; threadUrl?: string }>(`discord:${gameId}`, "json");
     if (existingThread?.threadId) {
       return Response.json({ 
         success: true,

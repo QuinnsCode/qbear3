@@ -220,7 +220,6 @@ export default function BattlefieldSection({
           onHover={onHoverCard}
           getCardData={getCardData}
           onDropCard={onDropCard}
-          onBattlefieldScroll={onBattlefieldScroll}
           isSandbox={isSandbox}
         />
       </div>

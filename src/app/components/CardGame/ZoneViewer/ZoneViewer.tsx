@@ -58,7 +58,7 @@ export function ZoneViewer({
   
   // Get zone cards - MEMOIZE THIS!
   const zoneCards = useMemo(() => {
-    return player.zones[zone as keyof typeof player.zones]
+    return (player.zones[zone as keyof typeof player.zones] ?? [])
       .map(id => gameState.cards[id])
       .filter((card): card is Card => card !== undefined)
   }, [player.zones, zone, gameState.cards])

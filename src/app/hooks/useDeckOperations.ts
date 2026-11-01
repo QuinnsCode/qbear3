@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
-import { deckGameCards, type Deck } from '@/app/types/Deck'
+import { deckGameCards, type Deck, type DeckCard } from '@/app/types/Deck'
 
 interface UseDeckOperationsProps {
   currentPlayerId: string
@@ -125,7 +125,7 @@ export function useDeckOperations({
 
   const handleEditDeck = async (
     deckId: string,
-    updatedCards: Array<{name: string, quantity: number}>,
+    updatedCards: DeckCard[],
     deckName: string
   ) => {
     if (spectatorMode || !currentPlayerId) return

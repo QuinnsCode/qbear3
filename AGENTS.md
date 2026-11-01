@@ -17,9 +17,9 @@ both after pulling when the lockfile or `prisma/schema.prisma` moved. Other setu
 
 ## Tests
 
-CI runs the e2e suite (`.github/workflows/e2e.yml`) and a typecheck of `tests/` plus the guard hook tests
-(`.github/workflows/typecheck.yml`). `tsc` over `src/` still has hundreds of errors (#32), so CI doesn't gate it yet:
-run `pnpm run check` yourself before you push and don't add to the count.
+CI runs the e2e suite (`.github/workflows/e2e.yml`) and `pnpm run types` over `src/` and `tests/` plus the guard hook
+tests (`.github/workflows/typecheck.yml`). The typecheck is at zero errors and gated: run `pnpm run check` yourself before you
+push.
 
 - Run only the test file you changed: `bun test tests/e2e/portal.test.ts`. Don't run the whole suite "to be
   safe"; push and let CI do it.

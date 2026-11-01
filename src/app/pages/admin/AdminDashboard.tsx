@@ -30,6 +30,29 @@ interface WarmingStats {
   nextScheduledRun: number | null
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null
+}
+
+function isCacheStats(v: unknown): v is CacheStats {
+  return isRecord(v) && typeof v.totalKeys === 'number' && isRecord(v.breakdown) && Array.isArray(v.recentCards)
+}
+
+function isWarmingStats(v: unknown): v is WarmingStats {
+  return isRecord(v) && typeof v.totalCardsWarmed === 'number' && typeof v.successCount === 'number' && typeof v.errorCount === 'number'
+}
+
+/** The `{ success, error, stats }` envelope the admin cache endpoints reply with. */
+async function readReply(res: Response): Promise<{ success: boolean; error?: string; stats?: unknown }> {
+  const body: unknown = await res.json()
+  if (!isRecord(body)) return { success: false }
+  return {
+    success: body.success === true,
+    error: typeof body.error === 'string' ? body.error : undefined,
+    stats: body.stats,
+  }
+}
+
 export default function AdminDashboard() {
   const [cacheStats, setCacheStats] = useState<CacheStats | null>(null)
   const [warmingStats, setWarmingStats] = useState<WarmingStats | null>(null)
@@ -43,17 +66,17 @@ export default function AdminDashboard() {
     try {
       // Fetch cache stats
       const cacheRes = await fetch('/api/admin/cache-stats')
-      const cacheData = await cacheRes.json()
+      const cacheData = await readReply(cacheRes)
 
-      if (cacheData.success) {
+      if (cacheData.success && isCacheStats(cacheData.stats)) {
         setCacheStats(cacheData.stats)
       }
 
       // Fetch warming stats
       const warmingRes = await fetch('/api/admin/cache-warming')
-      const warmingData = await warmingRes.json()
+      const warmingData = await readReply(warmingRes)
 
-      if (warmingData.success) {
+      if (warmingData.success && isWarmingStats(warmingData.stats)) {
         setWarmingStats(warmingData.stats)
       }
 
@@ -67,7 +90,7 @@ export default function AdminDashboard() {
   const triggerWarming = async () => {
     try {
       const res = await fetch('/api/admin/cache-warming/warm', { method: 'POST' })
-      const data = await res.json()
+      const data = await readReply(res)
 
       if (data.success) {
         alert('Cache warming started in background!')
@@ -83,7 +106,7 @@ export default function AdminDashboard() {
   const scheduleWarming = async () => {
     try {
       const res = await fetch('/api/admin/cache-warming/schedule', { method: 'POST' })
-      const data = await res.json()
+      const data = await readReply(res)
 
       if (data.success) {
         alert('Weekly warming scheduled!')

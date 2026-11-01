@@ -98,7 +98,7 @@ export class CardRefreshService {
         try {
           const rulingsResponse = await fetch(scryfallCard.rulings_uri)
           if (rulingsResponse.ok) {
-            const rulingsData = await rulingsResponse.json()
+            const rulingsData = await rulingsResponse.json<{ data?: DeckCard['rulings'] }>()
             rulings = rulingsData.data || []
           }
         } catch (error) {
@@ -112,7 +112,7 @@ export class CardRefreshService {
         ...card,
         oracle_text: scryfallCard.oracle_text,
         rulings: rulings,
-        legalities: scryfallCard.legalities,
+        legalities: { ...scryfallCard.legalities },
         rarity: scryfallCard.rarity,
         cmc: scryfallCard.cmc,
         type: scryfallCard.type_line,

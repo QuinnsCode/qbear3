@@ -3,7 +3,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { VTTAction } from '@/app/services/vtt/VTTGameState'
+import type { VTTActionInput } from '@/app/hooks/vtt/useVTTSync'
 import { AssetBrowser } from './AssetBrowser'
 import type { VTTAsset } from '@/app/lib/vtt/defaultAssets'
 
@@ -18,7 +18,7 @@ import type { VTTAsset } from '@/app/lib/vtt/defaultAssets'
  */
 
 interface GMToolbarProps {
-  sendAction: (action: Omit<VTTAction, 'playerId'>) => void
+  sendAction: (action: VTTActionInput) => void
   activeSceneId: string
   cameraPosition: { x: number; y: number; z: number }
 }

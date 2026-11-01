@@ -7,6 +7,10 @@ import { LinkedAccountCard } from './LinkedAccountCard'
 import { LinkAccountButton } from './LinkAccountButton'
 import type { LinkedAccount, ProviderType } from './types'
 
+function isProviderType(id: string): id is ProviderType {
+  return id === 'credential' || id === 'google' || id === 'discord'
+}
+
 export function AccountLinkingSection() {
   const [accounts, setAccounts] = useState<LinkedAccount[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -20,23 +24,30 @@ export function AccountLinkingSection() {
     try {
       setIsLoading(true)
       const session = await authClient.getSession()
+      const user = session.data?.user
 
-      if (!session.data?.user) {
+      if (!user) {
         setError('Not logged in')
         return
       }
 
-      // Get user's linked accounts from session
-      // better-auth includes accounts in the session data
-      const userAccounts = session.data.user.accounts || []
+      const linked = await authClient.listAccounts()
+      if (linked.error || !linked.data) {
+        setError(linked.error?.message ?? 'Failed to load accounts')
+        return
+      }
 
-      setAccounts(userAccounts.map((account: any) => ({
-        id: account.id,
-        providerId: account.providerId as ProviderType,
-        accountId: account.accountId,
-        email: session.data.user.email,
-        createdAt: new Date(account.createdAt)
-      })))
+      setAccounts(linked.data.flatMap((account) =>
+        isProviderType(account.providerId)
+          ? [{
+              id: account.id,
+              providerId: account.providerId,
+              accountId: account.accountId,
+              email: user.email,
+              createdAt: new Date(account.createdAt),
+            }]
+          : []
+      ))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load accounts')
     } finally {
@@ -67,7 +78,13 @@ export function AccountLinkingSection() {
   const handleUnlinkAccount = async (providerId: ProviderType) => {
     try {
       setError(null)
-      await authClient.unlinkAccount({ providerId })
+      const account = accounts.find(a => a.providerId === providerId)
+      if (!account) return
+      const res = await authClient.unlinkAccount({ accountId: account.id })
+      if (res.error) {
+        setError(res.error.message ?? 'Failed to unlink account')
+        return
+      }
 
       // Reload accounts after unlinking
       await loadAccounts()

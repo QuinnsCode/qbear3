@@ -13,7 +13,16 @@ import {
 } from "@/app/components/theme/FantasyTheme";
 
 // Tier configuration (same as BetterAuthSignup)
-const TIERS = {
+interface Tier {
+  name: string
+  icon: string
+  price: number
+  features: string[]
+  color: string
+  popular?: boolean
+}
+
+const TIERS: Record<'free' | 'starter' | 'pro', Tier> = {
   free: {
     name: 'Free',
     icon: '🏕️',
@@ -108,8 +117,8 @@ export default function CreateLairClient({ userId, userName, userEmail }: Create
       setCheckingSlug(true);
       try {
         const response = await fetch(`/api/main/check-username?username=${lairSlug}`);
-        const { available } = await response.json();
-        setSlugAvailable(available);
+        const body: unknown = await response.json();
+        setSlugAvailable(typeof body === 'object' && body !== null && 'available' in body && typeof body.available === 'boolean' ? body.available : null);
       } catch (error) {
         console.error('Error checking slug:', error);
         setSlugAvailable(null);

@@ -6,14 +6,14 @@ import { ShipStationProductsResponse } from "@/app/types/Shipstation/product";
 
 export class ShipStationAPI {
   private apiKey: string;
-  private baseUrl: string;
+  readonly baseUrl: string;
 
   constructor(apiKey: string, baseUrl: string = 'https://ssapi.shipstation.com/') {
     this.apiKey = apiKey;
     this.baseUrl = baseUrl;
   }
 
-  private getAuthHeader(): string {
+  getAuthHeader(): string {
     return `${this.apiKey}`;
   }
 

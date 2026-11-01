@@ -13,7 +13,22 @@ import {
 } from "@/app/components/theme/FantasyTheme";
 
 // Tier configuration
-const TIERS = {
+function readAvailable(body: unknown): boolean | null {
+  return typeof body === 'object' && body !== null && 'available' in body && typeof body.available === 'boolean'
+    ? body.available
+    : null;
+}
+
+interface Tier {
+  name: string
+  icon: string
+  price: number
+  features: string[]
+  color: string
+  popular?: boolean
+}
+
+const TIERS: Record<'free' | 'starter' | 'pro', Tier> = {
   free: {
     name: 'Free',
     icon: '🏕️',
@@ -147,8 +162,8 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
 
         // Only update state if not aborted
         if (!controller.signal.aborted) {
-          const { available } = await response.json();
-          setSlugAvailable(available);
+          const body: unknown = await response.json();
+          setSlugAvailable(readAvailable(body));
         }
       } catch (error) {
         // Ignore abort errors
@@ -249,7 +264,7 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
       console.log('✅ Signup successful:', result);
       
       // ✅ If paid tier selected, redirect to Lemon Squeezy checkout
-      if (selectedTier !== 'free' && result.userId) {
+      if (selectedTier !== 'free' && result.user.id) {
         setResult("Account created! Redirecting to checkout...");
         
         // Get variant ID based on tier
@@ -257,7 +272,7 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
           ? process.env.NEXT_PUBLIC_LEMON_SQUEEZY_STARTER_VARIANT_ID
           : process.env.NEXT_PUBLIC_LEMON_SQUEEZY_PRO_VARIANT_ID;
         
-        const checkoutUrl = `https://qntbr.lemonsqueezy.com/checkout/buy/${variantId}?checkout[email]=${encodeURIComponent(email)}&checkout[custom][user_id]=${result.userId}`;
+        const checkoutUrl = `https://qntbr.lemonsqueezy.com/checkout/buy/${variantId}?checkout[email]=${encodeURIComponent(email)}&checkout[custom][user_id]=${result.user.id}`;
         
         setTimeout(() => {
           window.location.href = checkoutUrl;
@@ -646,7 +661,6 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
                     !agreedToTerms
                   }
                   className="w-full"
-                  suppressHydrationWarning
                 >
                   {isPending 
                     ? "Creating your account..." 

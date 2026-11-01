@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers"
 // src/app/api/vtt/upload-model.ts
 
 import type { RequestInfo } from 'rwsdk/worker'
@@ -19,7 +20,7 @@ import type { RequestInfo } from 'rwsdk/worker'
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const GLB_MAGIC_NUMBER = 0x46546C67 // "glTF" in little-endian
 
-export default async function uploadModel({ ctx, request, env }: RequestInfo) {
+export default async function uploadModel({ ctx, request }: RequestInfo) {
   // Check authentication
   if (!ctx.user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {

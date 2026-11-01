@@ -2,7 +2,7 @@
 import { Order } from "./shipstationTypes"; 
 import { ShipStationResponse } from "@/app/types/Shipstation/shipment";
 import { getOrgShipStationCredentials } from "@/lib/middleware/shipstationMiddleware";
-
+import type { RequestInfo } from "rwsdk/worker";
 // ShipStation API utilities
 const SHIPSTATION_API_BASE = "https://ssapi.shipstation.com";
 
@@ -121,7 +121,7 @@ export async function createOrder(
 export { ShipStationClient };
 
 // Main handler for /api/shipstation/*
-export default async function handler({ request, params, ctx }) {
+export default async function handler({ request, params, ctx }: RequestInfo) {
   try {
     // Require organization context
     if (!ctx.organization?.id) {
@@ -188,8 +188,11 @@ export default async function handler({ request, params, ctx }) {
             return Response.json(orders);
 
           case 'POST':
-            const orderData = await request.json();
-            const newOrder = await client.createOrder(orderData);
+            const orderData: unknown = await request.json();
+            if (typeof orderData !== 'object' || orderData === null || Array.isArray(orderData)) {
+              return Response.json({ error: "Order body must be an object" }, { status: 400 });
+            }
+            const newOrder = await client.createOrder(Object.fromEntries(Object.entries(orderData)));
             return Response.json(newOrder);
 
           default:

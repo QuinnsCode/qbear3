@@ -1,6 +1,8 @@
 // this is new broken code to remind you
 // app/components/Game/MobileGameUI.tsx
 'use client'
+import type { Card, GameState, Player } from '@/app/lib/GameState';
+import { errorMessage } from '@/lib/errorMessage'
 import BuildHireOverlay from '@/app/components/Game/GamePhases/BuildHireOverlay';
 import GameRules from '@/app/components/Game/GameRules/GameRules';
 import {
@@ -48,7 +50,8 @@ import {
   Rocket,
   Crown,
   BookOpen,
-  Scroll
+  Scroll,
+  type LucideIcon,
 } from 'lucide-react';
 import { 
   restartGameWithNuking, 
@@ -143,7 +146,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
   // ✅ All your UI state
   const [cardSelectedTerritories, setCardSelectedTerritories] = useState<string[]>([]);
-  const [selectedTerritory, setSelectedTerritory] = useState(null);
+  const [selectedTerritory, setSelectedTerritory] = useState<string | null>(null);
   const [interactionMode, setInteractionMode] = useState('info');
   const [showStats, setShowStats] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -535,7 +538,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       }
     } catch (error) {
       console.error(`❌ ${action} action failed:`, error)
-      alert(`${action} failed: ${error.message}`)
+      alert(`${action} failed: ${errorMessage(error)}`)
     } finally {
       setTerritoryActionInProgress(false)
     }
@@ -644,7 +647,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
 
       // For commanders - check if territory already has this commander type
       if (buildHirePlacementMode.itemType !== 'space_base') {
-        const commanderField = `${buildHirePlacementMode.itemType}Commander`;
+        const commanderField = `${buildHirePlacementMode.itemType}Commander` as 'landCommander' | 'diplomatCommander' | 'navalCommander' | 'nuclearCommander';
         if (territory[commanderField] === currentUserId) {
           alert(`This territory already has a ${buildHirePlacementMode.itemType} commander`);
           return;
@@ -729,7 +732,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       console.log('✅ Conquest confirmed - useGameSync will handle the update');
     } catch (error) {
       console.error('❌ Conquest confirmation failed:', error);
-      alert(`Conquest confirmation failed: ${error.message}`);
+      alert(`Conquest confirmation failed: ${errorMessage(error)}`);
     }
   };
 
@@ -815,7 +818,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   };
 
-  const handlePurchaseCards = async (selectedCards) => {
+  const handlePurchaseCards = async (selectedCards: Array<{ commanderType: string; quantity: number }>) => {
     try {
       console.log('🛒 Purchasing cards:', selectedCards);
       await purchaseCards(gameId, currentUserId, selectedCards);
@@ -911,7 +914,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       
     } catch (error) {
       console.error('❌ Combat resolution failed:', error);
-      alert(`Combat failed: ${error.message}`);
+      alert(`Combat failed: ${errorMessage(error)}`);
       // Only reset on error
       setInvasionState(null);
     }
@@ -934,7 +937,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       setInvasionState(null);
     } catch (error) {
       console.error('❌ Movement failed:', error);
-      alert(`Movement failed: ${error.message}`);
+      alert(`Movement failed: ${errorMessage(error)}`);
     }
   };
 
@@ -1018,7 +1021,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
     }
   }
 
-  const getCurrentSetupButton = () => {
+  const getCurrentSetupButton = (): { icon: LucideIcon; label: string; color: 'green' | 'amber' | 'blue' | 'purple' } => {
     switch (gameState.setupPhase) {
       case 'units':
         return { icon: Plus, label: "Deploy Unit", color: "green" }
@@ -1082,7 +1085,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       
     } catch (error) {
       console.error('Failed to save game state:', error);
-      alert('Failed to save game state: ' + error.message);
+      alert('Failed to save game state: ' + errorMessage(error));
     }
   };
 
@@ -1113,7 +1116,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       
     } catch (error) {
       console.error('Failed to save compact game state:', error);
-      alert('Failed to save game state: ' + error.message);
+      alert('Failed to save game state: ' + errorMessage(error));
     }
   };
 
@@ -1123,8 +1126,8 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       input.type = 'file';
       input.accept = '.json';
       
-      input.onchange = async (event) => {
-        const file = event.target.files[0];
+      input.onchange = async () => {
+        const file = input.files?.[0];
         if (!file) return;
         
         // ✅ IMPROVED: Show file size
@@ -1132,9 +1135,9 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
         console.log(`Loading game state file: ${file.name} (${fileSizeKB}KB)`);
         
         const reader = new FileReader();
-        reader.onload = async (e) => {
+        reader.onload = async () => {
           try {
-            const loadedState = JSON.parse(e.target.result);
+            const loadedState = JSON.parse(String(reader.result));
             
             // ✅ ENHANCED: Better validation
             if (!loadedState.players || !loadedState.territories || !loadedState.status) {
@@ -1158,7 +1161,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
               `Load this saved game?\n\n` +
               `📅 Saved: ${saveDate}\n` +
               `🎮 Status: ${loadedState.status}\n` +
-              `👥 Players: ${loadedState.players.map(p => p.name).join(', ')}\n` +
+              `👥 Players: ${loadedState.players.map((p: Player) => p.name).join(', ')}\n` +
               `🎯 Phase: ${loadedState.currentPhase || 'unknown'}\n` +
               `📊 Year: ${loadedState.currentYear || 'unknown'}\n\n` +
               `⚠️ This will overwrite the current game!`
@@ -1187,7 +1190,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
                 throw new Error(`Server error ${response.status}: ${errorText}`);
               }
               
-              const result = await response.json();
+              const result: GameState = await response.json();
               console.log('Game state loaded successfully from:', saveDate);
               
               // ✅ IMPROVED: Better success message
@@ -1200,12 +1203,12 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
               
             } catch (serverError) {
               console.error('Server error loading game state:', serverError);
-              alert(`Failed to load game state on server: ${serverError.message}`);
+              alert(`Failed to load game state on server: ${errorMessage(serverError)}`);
             }
             
           } catch (parseError) {
             console.error('Failed to parse game state file:', parseError);
-            alert(`Invalid game state file: ${parseError.message}`);
+            alert(`Invalid game state file: ${errorMessage(parseError)}`);
           } finally {
             setIsUpdating(false);
           }
@@ -1224,13 +1227,13 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       input.click();
     } catch (error) {
       console.error('Failed to initiate file load:', error);
-      alert('Failed to open file selector: ' + error.message);
+      alert('Failed to open file selector: ' + errorMessage(error));
     }
   };
 
   // ✅ BONUS: Add a function to validate current game state before saving
-  const validateGameStateForSave = (gameState) => {
-    const issues = [];
+  const validateGameStateForSave = (gameState: GameState) => {
+    const issues: string[] = [];
     
     if (!gameState.players || gameState.players.length === 0) {
       issues.push('No players found');

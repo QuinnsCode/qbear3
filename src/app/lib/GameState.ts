@@ -55,6 +55,7 @@
     navalCommander?: string     // playerId who owns the naval commander here  
     nuclearCommander?: string   // playerId who owns the nuclear commander here
     spaceBase?: string         // playerId who owns the space base here
+    isNuked?: boolean
   }
 
   export interface Card {

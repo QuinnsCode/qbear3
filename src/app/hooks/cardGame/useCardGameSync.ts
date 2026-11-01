@@ -1,6 +1,6 @@
 // src/app/hooks/useCardGameSync.ts
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { CardGameState } from '@/app/services/cardGame/CardGameState';
+import { isCardGameState, type CardGameState } from '@/app/services/cardGame/CardGameState';
 import { DeltaApplicator } from '@/app/services/cardGame/DeltaApplicator';
 import type { Delta } from '@/app/services/cardGame/DeltaManager';
 
@@ -80,10 +80,12 @@ export function useCardGameSync({
       // Get initial state via HTTP
       const response = await fetch(`/__cgsync/cardGame/${cardGameId}`);
       if (response.ok) {
-        const initialState = await response.json();
-        setGameState(initialState);
-        setIsLoading(false);
-        callbacksRef.current.onStateUpdate?.(initialState);
+        const initialState: unknown = await response.json();
+        if (isCardGameState(initialState)) {
+          setGameState(initialState);
+          setIsLoading(false);
+          callbacksRef.current.onStateUpdate?.(initialState);
+        }
       }
 
       // Setup WebSocket

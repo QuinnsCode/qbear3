@@ -17,6 +17,7 @@
     "types": [
       "./worker-configuration.d.ts",
       "./types/rw.d.ts",
+      "./types/secrets.d.ts",
       "./types/vite.d.ts"
     ],
     "paths": {

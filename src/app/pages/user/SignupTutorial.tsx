@@ -1,5 +1,6 @@
 "use client";
 
+import { errorMessage } from '@/lib/errorMessage'
 import { useState, useTransition } from "react";
 import { startRegistration } from "@simplewebauthn/browser";
 import {
@@ -38,7 +39,7 @@ export default function Signup() {
       }
     } catch (error) {
       console.error('Registration error:', error);
-      setResult(`Registration failed: ${error.message}`);
+      setResult(`Registration failed: ${errorMessage(error)}`);
     }
   };
 

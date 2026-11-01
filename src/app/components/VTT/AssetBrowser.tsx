@@ -55,14 +55,16 @@ export function AssetBrowser({ isOpen, onClose, onSelectAsset }: AssetBrowserPro
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Upload failed')
+        const error: unknown = await response.json()
+        throw new Error(errorField(error) || 'Upload failed')
       }
 
-      const result = await response.json()
+      const result: unknown = await response.json()
+      const url = result && typeof result === 'object' && 'url' in result && typeof result.url === 'string' ? result.url : undefined
+      if (!url) throw new Error('Upload failed')
 
       // Use the uploaded model
-      onSelectAsset(null, result.url)
+      onSelectAsset(null, url)
       onClose()
     } catch (error) {
       console.error('[AssetBrowser] Upload error:', error)
@@ -200,4 +202,9 @@ export function AssetBrowser({ isOpen, onClose, onSelectAsset }: AssetBrowserPro
       </div>
     </>
   )
+}
+
+function errorField(body: unknown): string | undefined {
+  if (body && typeof body === 'object' && 'error' in body && typeof body.error === 'string') return body.error
+  return undefined
 }

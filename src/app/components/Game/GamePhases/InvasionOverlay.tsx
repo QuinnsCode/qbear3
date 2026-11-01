@@ -1,6 +1,7 @@
 // app/components/Game/GamePhases/InvasionOverlay.tsx
 'use client'
 
+import { errorMessage } from '@/lib/errorMessage'
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
@@ -38,7 +39,7 @@ interface InvasionOverlayProps {
   onAdvanceToFortify: () => Promise<void>
 }
 
-const COMMANDER_ICONS = {
+const COMMANDER_ICONS: Record<string, { icon: import('lucide-react').LucideIcon; label: string; shortLabel?: string; dice?: string; color: string; bg?: string }> = {
   land: { icon: Mountain, label: 'Land', shortLabel: 'L', dice: '8', color: 'text-amber-600', bg: 'bg-amber-100' },
   diplomat: { icon: User, label: 'Diplomat', shortLabel: 'D', dice: '6', color: 'text-blue-600', bg: 'bg-blue-100' },
   nuclear: { icon: Zap, label: 'Nuclear', shortLabel: 'N', dice: '8', color: 'text-red-600', bg: 'bg-red-100' },
@@ -217,7 +218,7 @@ const InvasionOverlay = ({
       }
     } catch (error) {
       console.error('Action failed:', error);
-      alert(`${isTargetEmpty ? 'Movement' : 'Combat'} failed: ${error.message}`);
+      alert(`${isTargetEmpty ? 'Movement' : 'Combat'} failed: ${errorMessage(error)}`);
       
       setAttackInProgress(false);
       setOverlayState('selecting');
@@ -260,7 +261,7 @@ const InvasionOverlay = ({
       onCancel();
     } catch (error) {
       console.error('Move-in confirmation failed:', error);
-      alert(`Failed to confirm conquest: ${error.message}`);
+      alert(`Failed to confirm conquest: ${errorMessage(error)}`);
     }
   };
 

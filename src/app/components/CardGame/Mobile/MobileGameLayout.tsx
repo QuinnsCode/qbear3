@@ -8,7 +8,7 @@ import MobileZoneDrawer from './MobileZoneDrawer'
 import MobileOpponentBubble from './MobileOpponentBubble'
 import MobileFloatingButtons from './MobileFloatingButtons'
 import TokenCreationModal from '../TokenCreationModal'
-import { Deck } from '@/app/types/Deck'
+import type { Deck, DeckCard } from '@/app/types/Deck'
 import { GameSocialPanel } from '@/app/components/Social/GameSocialPanel'
 import SpectatorBanner from './SpectatorBanner'
 
@@ -22,8 +22,8 @@ interface Props {
   userId?: string,
   onCreateDeck?: (deckList: string, deckName: string) => Promise<void>
   onDeleteDeck?: (deckId: string) => Promise<void>
-  onSelectDeck?: (deckId: string) => void
-  onEditDeck?: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
+  onSelectDeck?: (deckId: string) => Promise<unknown>
+  onEditDeck?: (deckId: string, cards: DeckCard[], deckName: string) => Promise<void>
   isSandbox?: boolean
 }
 

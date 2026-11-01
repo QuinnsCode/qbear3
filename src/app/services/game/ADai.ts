@@ -154,7 +154,9 @@ class AIController {
     const difficulty = this.aiPlayers.get(player.id) || 'medium'
     
     // Handle different game phases
-    switch (gameState.currentPhase) {
+    // This switch still uses an older phase numbering (7 phases) than GameState's 1-6,
+    // so widen to number rather than change what the AI does here. See PHASE_NAMES.
+    switch (gameState.currentPhase as number) {
       case 1: // Bidding
         return this.getBiddingAction(gameState, player, difficulty)
       

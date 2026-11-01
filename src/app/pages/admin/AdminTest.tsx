@@ -17,6 +17,8 @@ import {
   type User,
   type CreateUserData,
   type ListUsersResponse,
+  type AdminRole,
+  type UserSession,
 } from "./functions";
 import { forcePasswordReset } from "@/app/serverActions/admin/resetPassword";
 import { RoleToggleButton } from "@/app/pages/user/RoleToggleButton";
@@ -35,7 +37,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<UserSession[]>([]);
 
   // Password reset form
   const [resetPasswordForm, setResetPasswordForm] = useState({
@@ -112,7 +114,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
     }
   };
 
-  const handleSetRole = async (userId: string, role: string) => {
+  const handleSetRole = async (userId: string, role: AdminRole) => {
     setLoading(true);
     setError(null);
     try {
@@ -353,7 +355,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
           <select
             value={createUserForm.role}
             onChange={(e) =>
-              setCreateUserForm({ ...createUserForm, role: e.target.value })
+              setCreateUserForm({ ...createUserForm, role: e.target.value === "admin" ? "admin" : "user" })
             }
             className="border rounded px-3 py-2"
           >
@@ -374,7 +376,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
       <div className="bg-white border rounded-lg p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">
-            Users ({users?.data?.total || 0})
+            Users ({users?.total || 0})
           </h2>
           <button
             onClick={loadUsers}
@@ -385,7 +387,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
           </button>
         </div>
 
-        {users && users.data?.users?.length > 0 ? (
+        {users && users.users.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse border border-gray-300">
               <thead>
@@ -404,7 +406,7 @@ export default function AdminTest({ currentUser }: AdminTestProps) {
                 </tr>
               </thead>
               <tbody>
-                {users.data.users.map((user) => (
+                {users.users.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="border border-gray-300 px-4 py-2">
                       {user.name || "N/A"}

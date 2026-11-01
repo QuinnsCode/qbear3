@@ -329,7 +329,7 @@ export class VTTDO extends DurableObject {
     }
 
     if (!this.gameState) {
-      this.gameState = await this.createDefaultGame(this.gameId)
+      this.gameState = await this.createDefaultGame(this.gameId ?? undefined)
     }
 
     return this.gameState

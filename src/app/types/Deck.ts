@@ -69,7 +69,7 @@ export interface DeckCard {
   rarity?: string
   oracle_text?: string
   rulings?: Array<{
-    source: string
+    source: 'wotc' | 'scryfall'
     published_at: string
     comment: string
   }>
@@ -179,27 +179,7 @@ export interface DeckV4 {
   commanderImageUrls?: string[]
   
   colors: string[]
-  cards: Array<{
-    id: string
-    scryfallId: string
-    name: string
-    quantity: number
-    imageUrl: string
-    type: string
-    manaCost: string
-    colors: string[]
-    isCommander: boolean
-    zone?: DeckCardZone
-    cmc?: number
-    rarity?: string
-    oracle_text?: string
-    rulings?: Array<{
-      source: string
-      published_at: string
-      comment: string
-    }>
-    legalities?: Record<string, string>
-  }>
+  cards: DeckCard[]
   totalCards: number
   createdAt: number
   updatedAt: number
@@ -453,8 +433,8 @@ export function ensureCardZones(deck: DeckV4): DeckV4 {
  * OLD FORMAT: [{ name: "Swamp", quantity: 1 }, { name: "Swamp", quantity: 1 }, ...]
  * NEW FORMAT: [{ name: "Swamp", quantity: 6 }]
  */
-export function groupDuplicateCards(cards: DeckCard[]): DeckCard[] {
-  const cardMap = new Map<string, DeckCard>()
+export function groupDuplicateCards<T extends DeckCard>(cards: T[]): T[] {
+  const cardMap = new Map<string, T>()
 
   for (const card of cards) {
     // Use scryfallId as unique key (or id as fallback)

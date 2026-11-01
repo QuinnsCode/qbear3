@@ -269,7 +269,7 @@ export class GameStateDO extends DurableObject {
     }
   }
 
-  async loadGameStateFromFile(loadedState: any, requestingPlayerId: string): Promise<GameState> {
+  async loadGameStateFromFile(loadedState: GameState & { timestamp?: string }, requestingPlayerId: string): Promise<GameState> {
     console.log('🔄 Loading game state from file...', {
       timestamp: loadedState.timestamp,
       status: loadedState.status,

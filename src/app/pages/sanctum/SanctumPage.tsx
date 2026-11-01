@@ -112,7 +112,7 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
 
       if (user) {
         currentTier = getEffectiveTier(user);
-        const tierConfig = getTierConfig(currentTier as any, user.email);
+        const tierConfig = getTierConfig(currentTier as any, user.email ?? undefined);
 
         tierLimits = {
           maxGames: tierConfig.features.maxGamesPerOrg,
@@ -126,7 +126,7 @@ export default async function SanctumPage({ ctx, request }: RequestInfo) {
         await setCachedUserProfile({
           id: ctx.user.id,
           name: user.name,
-          email: user.email,
+          email: user.email ?? '',
           image: user.image,
           tier: currentTier,
           hasDiscord,

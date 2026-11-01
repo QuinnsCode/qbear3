@@ -50,7 +50,7 @@ export function decrypt(encryptedData: string): string {
   return decrypted;
 }
 
-export async function createThirdPartyApiKey(formData: FormData) {
+export async function createThirdPartyApiKey(formData: FormData): Promise<{ success: true } | { success: false; error: string }> {
   try {
     // Extract all form data including organization ID
     const name = formData.get('name') as string;

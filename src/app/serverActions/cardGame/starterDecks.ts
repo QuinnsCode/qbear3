@@ -2,7 +2,7 @@
 'use server'
 
 import { env } from "cloudflare:workers"
-import type { Deck } from '@/app/types/Deck'
+import { migrateDeck, type Deck } from '@/app/types/Deck'
 import starterDeckData from '@/heibaideck.json'
 
 // ============================================
@@ -13,7 +13,7 @@ const STARTER_DECK_KEY = 'deck:starter:hei-bai-test'
 // ============================================
 // SEED DATA - Imported from heibaideck.json
 // ============================================
-const STARTER_DECK_SEED: Deck = starterDeckData as Deck
+const STARTER_DECK_SEED: Deck = migrateDeck(starterDeckData)
 
 /**
  * Get the hardcoded starter deck
@@ -33,7 +33,7 @@ export async function getStarterDeck(): Promise<Deck> {
     
     if (deckJson) {
       console.log('✅ Starter deck found in KV')
-      return JSON.parse(deckJson) as Deck
+      return migrateDeck(JSON.parse(deckJson))
     }
     
     // Not found - seed it!
@@ -66,7 +66,7 @@ async function seedStarterDeck(): Promise<void> {
         metadata: {
           isStarterDeck: true,
           deckName: STARTER_DECK_SEED.name,
-          commander: STARTER_DECK_SEED.commander,
+          commander: STARTER_DECK_SEED.commanders?.join(', '),
           totalCards: STARTER_DECK_SEED.totalCards,
         }
       }

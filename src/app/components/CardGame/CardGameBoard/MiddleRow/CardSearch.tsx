@@ -22,7 +22,7 @@ export default function CardSearch({ hoveredCard, onCardSelect }: Props) {
   
   const searchTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const autocompleteTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
-  const searchContainerRef = useRef<HTMLDivElement>(null)
+  const searchContainerRef = useRef<HTMLFormElement>(null)
 
   // Debounced autocomplete
   useEffect(() => {

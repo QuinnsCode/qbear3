@@ -51,7 +51,8 @@ export function useGameActions({
           break;
 
         case 'invade_territory':
-          const { gameState, invasionResult } = await gameActions.invadeTerritory(
+          // invadeTerritory resolves to the new GameState itself, not { gameState, invasionResult }
+          result = await gameActions.invadeTerritory(
             gameId,
             action.playerId,
             action.data.fromTerritoryId,
@@ -59,13 +60,6 @@ export function useGameActions({
             action.data.attackingUnits,
             action.data.commanderTypes
           );
-
-          // Use `gameState` as the main result
-          result = gameState;
-
-          // Optionally, handle `invasionResult` if you need to do something with it
-          // For example, update state or log it
-          console.log('~~~Invasion result:', invasionResult);
           break;
           
         case 'fortify_territory':

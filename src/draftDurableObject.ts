@@ -367,7 +367,7 @@ export class DraftDO extends DurableObject {
             this.broadcastState('pick_confirmed', this.draftState)
 
             // ✅ Update draft tracking for human player
-            const draftId = (this.ctx.id as DurableObjectId).name
+            const draftId = this.ctx.id.name ?? ''
             updateDraftMetadata(action.playerId, draftId, {
               lastActivity: Date.now(),
               packNumber: this.draftState.currentRound + 1,
@@ -499,8 +499,9 @@ export class DraftDO extends DurableObject {
         this.draftState.playersWhoPickedThisRound = []
         
         // ✅ Check if ANY pack has enough cards for another full pick
+        const { pickCount } = this.draftState.config
         const canContinuePicking = this.draftState.players.some(p => 
-          p.currentPack && p.currentPack.cards.length >= this.draftState.config.pickCount
+          p.currentPack && p.currentPack.cards.length >= pickCount
         )
         
         if (canContinuePicking) {
@@ -542,7 +543,7 @@ export class DraftDO extends DurableObject {
             this.broadcast({ type: 'draft_complete' })
 
             // ✅ Mark draft as complete in KV for all human players
-            const draftId = (this.ctx.id as DurableObjectId).name
+            const draftId = this.ctx.id.name ?? ''
             const humanPlayers = this.draftState.players.filter(p => !p.isAI)
             humanPlayers.forEach(player => {
               completeDraft(player.id, draftId).catch(err => {

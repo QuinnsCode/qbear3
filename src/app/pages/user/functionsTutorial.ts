@@ -29,7 +29,7 @@ export async function startPasskeyRegistration(username: string) {
     console.log('Server: Starting passkey registration for:', username);
     
     const { rpName, rpID } = getWebAuthnConfig(requestInfo.request);
-    const { headers } = requestInfo;
+    const { headers } = requestInfo.response;
     console.log('WebAuthn config:', { rpName, rpID });
     
     const options = await generateRegistrationOptions({
@@ -56,7 +56,7 @@ export async function startPasskeyRegistration(username: string) {
 
 export async function startPasskeyLogin() {
   const { rpID } = getWebAuthnConfig(requestInfo.request);
-  const { headers } = requestInfo;
+  const { headers } = requestInfo.response;
 
   const options = await generateAuthenticationOptions({
     rpID,
@@ -73,7 +73,8 @@ export async function finishPasskeyRegistration(
   username: string,
   registration: RegistrationResponseJSON,
 ) {
-  const { request, headers } = requestInfo;
+  const { request } = requestInfo;
+  const { headers } = requestInfo.response;
   const { origin } = new URL(request.url);
 
   const session = await sessions.load(request);
@@ -116,7 +117,8 @@ export async function finishPasskeyRegistration(
 }
 
 export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
-  const { request, headers } = requestInfo;
+  const { request } = requestInfo;
+  const { headers } = requestInfo.response;
   const { origin } = new URL(request.url);
 
   const session = await sessions.load(request);
@@ -144,7 +146,7 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
     requireUserVerification: false,
     credential: {
       id: credential.credentialId,
-      publicKey: credential.publicKey,
+      publicKey: new Uint8Array(credential.publicKey),
       counter: credential.counter,
     },
   });

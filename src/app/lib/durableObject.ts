@@ -1,7 +1,8 @@
+import { errorMessage } from '@/lib/errorMessage'
 import type { GameState } from '@/app/lib/GameState'
 
 export async function callGameDO(
-  gameStateDO: DurableObjectNamespace<any>,
+  gameStateDO: DurableObjectNamespace,
   gameId: string, 
   method: string, 
   data?: any
@@ -48,7 +49,7 @@ export async function callGameDO(
     console.error('Durable Object call failed:', {
       gameId,
       method,
-      error: error.message,
+      error: errorMessage(error),
       hasBinding: !!gameStateDO
     })
     throw error

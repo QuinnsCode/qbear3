@@ -3,8 +3,9 @@
 
 'use server'
 
+import { errorMessage } from '@/lib/errorMessage'
 import { env } from "cloudflare:workers";
-import type { GameState, AttackResult, InvasionResult, MoveResult } from '@/app/lib/GameState'
+import type { Player, GameState, AttackResult, InvasionResult, MoveResult } from '@/app/lib/GameState'
 
 
 // Helper function to call the Durable Object - FIXED VERSION
@@ -56,7 +57,7 @@ async function callGameDO(
     console.error('Durable Object call failed:', {
       gameId,
       method,
-      error: error.message,
+      error: errorMessage(error),
       hasBinding: !!env.GAME_STATE_DO
     })
     throw error
@@ -303,7 +304,7 @@ export async function getCurrentPlayer(gameId: string) {
 export async function getPlayerDecision(gameId: string, playerId: string) {
   try {
     console.log('getPlayerDecision called:', { gameId, playerId })
-    const gameState = await callGameDO(gameId, 'getState')
+    const gameState: GameState = await callGameDO(gameId, 'getState')
     const player = gameState.players.find(p => p.id === playerId)
     return player?.pendingDecision || null
   } catch (error) {
@@ -489,7 +490,7 @@ export async function invadeTerritory(
     return result as GameState;
   } catch (error) {
     console.error('❌ Failed to resolve combat:', error);
-    throw new Error(`Failed to resolve combat: ${error.message}`);
+    throw new Error(`Failed to resolve combat: ${errorMessage(error)}`);
   }
 }
 
@@ -522,7 +523,7 @@ export async function confirmConquest(
     return result as GameState;
   } catch (error) {
     console.error('❌ Failed to confirm conquest:', error);
-    throw new Error(`Failed to confirm conquest: ${error.message}`);
+    throw new Error(`Failed to confirm conquest: ${errorMessage(error)}`);
   }
 }
 
@@ -554,7 +555,7 @@ export async function moveIntoEmptyTerritory(
     return result as GameState;
   } catch (error) {
     console.error('❌ Failed to move into empty territory:', error);
-    throw new Error(`Failed to move into empty territory: ${error.message}`);
+    throw new Error(`Failed to move into empty territory: ${errorMessage(error)}`);
   }
 }
 
@@ -578,7 +579,7 @@ export async function startInvasionPhase(
     return result as GameState;
   } catch (error) {
     console.error('❌ Failed to start invasion phase:', error);
-    throw new Error(`Failed to start invasion phase: ${error.message}`);
+    throw new Error(`Failed to start invasion phase: ${errorMessage(error)}`);
   }
 }
 
@@ -806,7 +807,7 @@ export async function collectAndStartDeploy(
     })
     
     // ✅ VERIFY the result has correct data
-    const updatedPlayer = result.players?.find(p => p.id === playerId)
+    const updatedPlayer = result.players?.find((p: Player) => p.id === playerId)
     console.log('🎯 SERVER ACTION: Result verification:', {
       playerId,
       playerName: updatedPlayer?.name,
@@ -830,7 +831,7 @@ export async function collectAndStartDeploy(
     return result as GameState
   } catch (error) {
     console.error('❌ SERVER ACTION: collectAndStartDeploy failed:', error)
-    throw new Error(`Failed to collect and start deploy: ${error.message}`)
+    throw new Error(`Failed to collect and start deploy: ${errorMessage(error)}`)
   }
 }
 
@@ -885,7 +886,7 @@ export async function advanceFromBuildHire(
     return result as GameState;
   } catch (error) {
     console.error('❌ Phase advance error:', error);
-    throw new Error(`Failed to advance phase: ${error.message}`);
+    throw new Error(`Failed to advance phase: ${errorMessage(error)}`);
   }
 }
 
@@ -916,7 +917,7 @@ export async function purchaseAndPlaceCommander(
     return result as GameState;
   } catch (error) {
     console.error('❌ Commander purchase and placement error:', error);
-    throw new Error(`Failed to purchase and place commander: ${error.message}`);
+    throw new Error(`Failed to purchase and place commander: ${errorMessage(error)}`);
   }
 }
 
@@ -946,7 +947,7 @@ export async function purchaseAndPlaceSpaceBase(
     return result as GameState;
   } catch (error) {
     console.error('❌ Space base purchase and placement error:', error);
-    throw new Error(`Failed to purchase and place space base: ${error.message}`);
+    throw new Error(`Failed to purchase and place space base: ${errorMessage(error)}`);
   }
 }
 
@@ -976,7 +977,7 @@ export async function purchaseCards(
     return result as GameState;
   } catch (error) {
     console.error('❌ Card purchase error:', error);
-    throw new Error(`Failed to purchase cards: ${error.message}`);
+    throw new Error(`Failed to purchase cards: ${errorMessage(error)}`);
   }
 }
 
@@ -1004,7 +1005,7 @@ export async function advanceFromBuyCards(
     return result as GameState;
   } catch (error) {
     console.error('❌ Phase advance error:', error);
-    throw new Error(`Failed to advance phase: ${error.message}`);
+    throw new Error(`Failed to advance phase: ${errorMessage(error)}`);
   }
 }
 
@@ -1026,7 +1027,7 @@ export async function advanceFromPlayCards(gameId: string, playerId: string): Pr
     return result as GameState;
   } catch (error) {
     console.error('❌ Phase advance error:', error);
-    throw new Error(`Failed to advance phase: ${error.message}`);
+    throw new Error(`Failed to advance phase: ${errorMessage(error)}`);
   }
 }
 
@@ -1106,7 +1107,7 @@ export async function advanceFromInvasion(
     return result as GameState;
   } catch (error) {
     console.error('❌ Phase advance error:', error);
-    throw new Error(`Failed to advance from invasion phase: ${error.message}`);
+    throw new Error(`Failed to advance from invasion phase: ${errorMessage(error)}`);
   }
 }
 
@@ -1127,6 +1128,6 @@ export async function advanceFromFortify(gameId: string, playerId: string): Prom
     return result as GameState;
   } catch (error) {
     console.error('Advance from fortify failed:', error);
-    throw new Error(`Failed to advance from fortify: ${error.message}`);
+    throw new Error(`Failed to advance from fortify: ${errorMessage(error)}`);
   }
 }

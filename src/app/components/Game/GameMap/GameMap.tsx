@@ -2,6 +2,7 @@
 'use client'
 
 import { useState } from 'react';
+import type { GameState, Territory } from '@/app/lib/GameState';
 import { TERRITORY_POSITIONS } from '@/app/components/Game/GameData/gameData';
 import { ConquestAnimation } from '@/app/components/Game/Animations/Invasion/ConquestAnimation';
 
@@ -15,8 +16,10 @@ const COMMANDER_SYMBOLS = {
 
 const BASE_SYMBOL = '🏰';
 
+type PointerEvt = React.MouseEvent<SVGSVGElement> | React.TouchEvent<SVGSVGElement>;
+
 interface GameMapProps {
-  gameState: any;
+  gameState: GameState;
   selectedTerritory: string | null;
   onTerritoryClick: (territoryId: string) => void;
   interactionMode: string;
@@ -34,40 +37,40 @@ export const GameMap = ({
   const [zoom, setZoom] = useState(1);
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
-  const [touches, setTouches] = useState([]);
+  const [touches, setTouches] = useState<{ clientX: number; clientY: number }[]>([]);
 
-  const isWaterTerritory = (territory) => territory?.type === 'water';
+  const isWaterTerritory = (territory: Territory) => territory?.type === 'water';
 
   // 🎨 FALLOUT COLORS - Rusty, weathered palette
-  const getNodeColor = (territory) => {
-    const owner = gameState.players.find(p => p.id === territory.ownerId);
-    const colorMap = {
+  const getNodeColor = (territory: Territory) => {
+    const owner = gameState.players.find((p) => p.id === territory.ownerId);
+    const colorMap: Record<string, string> = {
       'blue': '#4a7c9e',    // Steel blue (weathered metal)
       'red': '#a83832',     // Rust red
       'green': '#6b8e3f',   // Military olive
       'purple': '#7a5b87',  // Faded purple
       'yellow': '#c8a14d'   // Brass/gold
     };
-    return colorMap[owner?.color] || '#5a5a52'; // Weathered gray
+    return colorMap[owner?.color ?? ''] || '#5a5a52'; // Weathered gray
   };
 
-  const getTerritoryOpacity = (territory) => {
+  const getTerritoryOpacity = (territory: Territory) => {
     if (isWaterTerritory(territory)) {
       return selectedTerritory === territory.id ? 1.0 : 0.4;
     }
     return 1.0;
   };
 
-  const isCardSelectedTerritory = (territoryId) => {
+  const isCardSelectedTerritory = (territoryId: string) => {
     return cardSelectedTerritories.includes(territoryId);
   };
 
-  const isConnectionHighlighted = (territoryId1, territoryId2) => {
+  const isConnectionHighlighted = (territoryId1: string, territoryId2: string) => {
     return selectedTerritory === territoryId1 || selectedTerritory === territoryId2;
   };
 
   // 🎨 Enhanced connection styling based on territory relationship
-  const getConnectionStyle = (territory1Id, territory2Id) => {
+  const getConnectionStyle = (territory1Id: string, territory2Id: string) => {
     const territory1 = gameState.territories[territory1Id];
     const territory2 = gameState.territories[territory2Id];
     const isHighlighted = isConnectionHighlighted(territory1Id, territory2Id);
@@ -103,7 +106,7 @@ export const GameMap = ({
     }
   };
 
-  const getTerritoryExtras = (territory) => {
+  const getTerritoryExtras = (territory: Territory) => {
     const extras = [];
     if (territory.landCommander) extras.push({ type: 'land', symbol: COMMANDER_SYMBOLS.land, color: '#8b6f3e' });
     if (territory.diplomatCommander) extras.push({ type: 'diplomat', symbol: COMMANDER_SYMBOLS.diplomat, color: '#4a7c9e' });
@@ -113,20 +116,20 @@ export const GameMap = ({
     return extras;
   };
 
-  const getPointerPosition = (e) => {
+  const getPointerPosition = (e: PointerEvt) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const point = 'touches' in e ? e.touches[0] : e;
+    const { clientX, clientY } = point;
     return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
-  const handlePointerDown = (e) => {
+  const handlePointerDown = (e: React.MouseEvent<SVGSVGElement> | React.TouchEvent<SVGSVGElement>) => {
     setIsPanning(true);
     setLastPanPoint(getPointerPosition(e));
     e.preventDefault();
   };
 
-  const handlePointerMove = (e) => {
+  const handlePointerMove = (e: React.MouseEvent<SVGSVGElement> | React.TouchEvent<SVGSVGElement>) => {
     if (!isPanning) return;
     const point = getPointerPosition(e);
     const deltaX = (lastPanPoint.x - point.x) * (1 / zoom);
@@ -138,7 +141,7 @@ export const GameMap = ({
 
   const handlePointerUp = () => setIsPanning(false);
 
-  const handleWheel = (e) => {
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.92 : 1.08; // 8% per scroll
     const newZoom = clampZoom(zoom * delta);
@@ -158,13 +161,13 @@ export const GameMap = ({
     setZoom(newZoom);
   };
 
-  const handleTouchStart = (e) => {
+  const handleTouchStart = (e: React.TouchEvent<SVGSVGElement>) => {
     const touchArray = Array.from(e.touches);
     setTouches(touchArray);
     if (touchArray.length === 1) handlePointerDown(e);
   };
 
-  const handleTouchMove = (e) => {
+  const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
     const touchArray = Array.from(e.touches);
     if (touchArray.length === 2 && touches.length === 2) {
       const dist1 = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
@@ -198,12 +201,12 @@ export const GameMap = ({
     e.preventDefault();
   };
 
-  const handleTouchEnd = (e) => {
+  const handleTouchEnd = (e: React.TouchEvent<SVGSVGElement>) => {
     setTouches(Array.from(e.touches));
     if (e.touches.length === 0) handlePointerUp();
   };
 
-  const handleTerritoryClick = (territoryId, e) => {
+  const handleTerritoryClick = (territoryId: string, e: React.SyntheticEvent) => {
     if (isPanning) return;
     e.stopPropagation();
     onTerritoryClick(territoryId);
@@ -603,7 +606,7 @@ export const GameMap = ({
               <ConquestAnimation
                 territoryId={territory.id}
                 position={position}
-                ownerId={territory.ownerId}
+                ownerId={territory.ownerId ?? null}
                 onAnimationComplete={handleConquestAnimationComplete}
               />
               
@@ -721,7 +724,7 @@ export const GameMap = ({
               Units: {gameState.territories[selectedTerritory]?.machineCount}
             </p>
             <p className="text-amber-200">
-              Owner: {gameState.players.find(p => p.id === gameState.territories[selectedTerritory]?.ownerId)?.name || 'Neutral'}
+              Owner: {gameState.players.find((p) => p.id === gameState.territories[selectedTerritory]?.ownerId)?.name || 'Neutral'}
             </p>
             
             {(() => {

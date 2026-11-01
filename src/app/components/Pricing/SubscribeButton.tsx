@@ -15,6 +15,7 @@ export function SubscribeButton({
   isCurrent: boolean
   isLoggedIn: boolean
   userId?: string
+  userEmail?: string
   isPro: boolean
 }) {
   const [isLoading, setIsLoading] = useState(false)
@@ -37,12 +38,14 @@ export function SubscribeButton({
         }),
       })
       
-      const data = await response.json()
+      const data: unknown = await response.json()
+      const url = typeof data === 'object' && data !== null && 'url' in data && typeof data.url === 'string' ? data.url : null
       
-      if (data.url) {
-        window.location.href = data.url
+      if (url) {
+        window.location.href = url
       } else {
-        alert(data.error || 'Failed to create checkout session')
+        const error = typeof data === 'object' && data !== null && 'error' in data && typeof data.error === 'string' ? data.error : null
+        alert(error || 'Failed to create checkout session')
         setIsLoading(false)
       }
     } catch (error) {

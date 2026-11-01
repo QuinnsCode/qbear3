@@ -1,10 +1,11 @@
 // app/components/Game/GamePhases/FortifyOverlay.tsx
 'use client'
+import type { GameState } from '@/app/lib/GameState';
 import { useState, useEffect } from 'react';
 import { Shield, ArrowRight, Check, X, Users, Crown, Clock } from 'lucide-react';
 
 interface FortifyOverlayProps {
-  gameState: any;
+  gameState: GameState;
   currentUserId: string;
   onFortifyTerritory: (fromTerritoryId: string, toTerritoryId: string, unitCount: number) => Promise<void>;
   onAdvanceFromFortify: () => Promise<void>;
@@ -72,7 +73,7 @@ const FortifyOverlay = ({
       const current = gameState.territories[currentId];
       if (!current || current.ownerId !== currentUserId) continue;
       
-      const adjacents = current.adjacentTerritories || [];
+      const adjacents = current.connections;
       for (const adjId of adjacents) {
         if (!visited.has(adjId) && myTerritories.includes(adjId)) {
           queue.push(adjId);

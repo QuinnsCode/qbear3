@@ -32,7 +32,8 @@ const SANDBOX_STARTER_DECKS: Deck[] = EDH_SANDBOX_STARTER_DECK_DATA.map((deck, i
   );
   
   return {
-    version: 3, // ADD THIS
+    version: 4,
+    format: 'commander',
     id: `sandbox-${index}`,
     name: deck.name,
     commanders: [deck.commander], // CHANGE: single commander to array

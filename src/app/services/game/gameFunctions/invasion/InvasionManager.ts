@@ -1,5 +1,6 @@
 // src/app/services/game/gameFunctions/invasion/InvasionManager.ts
 
+import { errorMessage } from '@/lib/errorMessage'
 import type { 
   GameState, 
   GameAction, 
@@ -987,7 +988,7 @@ export class InvasionManager {
     try {
       this.validateTerritoryState(territory, 'attack validation');
     } catch (error) {
-      console.log(`Cannot attack: Territory state invalid - ${error.message}`);
+      console.log(`Cannot attack: Territory state invalid - ${errorMessage(error)}`);
       return false;
     }
     
@@ -1020,7 +1021,7 @@ export class InvasionManager {
       this.validateTerritoryState(fromTerritory, 'attack validation - source territory');
       this.validateTerritoryState(toTerritory, 'attack validation - target territory');
     } catch (error) {
-      console.log(`Cannot attack: Territory state invalid - ${error.message}`);
+      console.log(`Cannot attack: Territory state invalid - ${errorMessage(error)}`);
       return false;
     }
     
@@ -1181,7 +1182,7 @@ export class InvasionManager {
       try {
         return this.canAttackFromTerritory(gameState, playerId, territory.id);
       } catch (error) {
-        console.warn(`Territory ${territory.id} failed attack validation: ${error.message}`);
+        console.warn(`Territory ${territory.id} failed attack validation: ${errorMessage(error)}`);
         return false;
       }
     });
@@ -1206,7 +1207,7 @@ export class InvasionManager {
       try {
         this.validateTerritoryState(territory, `game state validation - ${territory.name}`);
       } catch (error) {
-        errors.push(`Territory ${territory.name}: ${error.message}`);
+        errors.push(`Territory ${territory.name}: ${errorMessage(error)}`);
       }
     });
     

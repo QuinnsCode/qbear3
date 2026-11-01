@@ -49,7 +49,7 @@ export default function QVTTPage({ ctx, request }: RequestInfo) {
   const orgUrl = userOrg ? getDomainUrl(userOrg, '/sanctum', request) : null;
 
   return (
-    <FantasyBackground variant="scroll">
+    <FantasyBackground variant="minimal">
       <div className="min-h-screen">
 
         {/* Header */}

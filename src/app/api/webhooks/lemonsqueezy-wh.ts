@@ -25,7 +25,7 @@ interface LemonSqueezyWebhookEvent {
   }
 }
 
-export default async function handler({ request, ctx }: { request: Request; ctx: any }) {
+export default async function handler({ request }: { request: Request }) {
   console.log('🍋 Lemon Squeezy webhook received')
 
   // 1. Verify webhook signature
@@ -38,7 +38,12 @@ export default async function handler({ request, ctx }: { request: Request; ctx:
   const body = await request.text()
   
   // Verify signature using HMAC
-  const isValid = await verifyWebhookSignature(body, signature, env.LEMON_SQUEEZY_WEBHOOK_SECRET)
+  const secret = env.LEMON_SQUEEZY_WEBHOOK_SECRET
+  if (!secret) {
+    console.error('❌ LEMON_SQUEEZY_WEBHOOK_SECRET is not set')
+    return new Response('Webhook not configured', { status: 500 })
+  }
+  const isValid = await verifyWebhookSignature(body, signature, secret)
   
   if (!isValid) {
     console.error('❌ Invalid webhook signature')
@@ -173,7 +178,6 @@ async function handleSubscriptionCreated(event: LemonSqueezyWebhookEvent) {
       userId,
       tier,
       status: 'active',
-      source: 'lemonsqueezy',
       lemonSqueezySubscriptionId: event.data.id,
       lemonSqueezyCustomerId: event.data.attributes.customer_id.toString(),
       lemonSqueezyVariantId: variantId,
@@ -186,7 +190,6 @@ async function handleSubscriptionCreated(event: LemonSqueezyWebhookEvent) {
     update: {
       tier,
       status: 'active',
-      source: 'lemonsqueezy',
       lemonSqueezySubscriptionId: event.data.id,
       currentPeriodEnd: event.data.attributes.renews_at
         ? new Date(event.data.attributes.renews_at)

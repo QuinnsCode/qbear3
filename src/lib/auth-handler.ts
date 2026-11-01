@@ -2,6 +2,7 @@
 // Top-level import of auth instance to avoid dynamic import issues in Cloudflare Workers
 
 import { auth } from "./auth";
+import { errorMessage } from '@/lib/errorMessage'
 
 /**
  * Handle all better-auth routes
@@ -15,8 +16,8 @@ export async function handleAuthRequest(request: Request): Promise<Response> {
     console.error('[Auth Handler] Error:', error);
     return new Response(JSON.stringify({
       error: 'Auth failed',
-      message: error?.message || String(error),
-      stack: error?.stack
+      message: errorMessage(error),
+      stack: error instanceof Error ? error.stack : undefined
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

@@ -197,7 +197,8 @@ function InteractiveMap({ gameState, currentUserId, selectedTerritory, onTerrito
   }
   
   // Generate connections for visualization
-  const connections = []
+  type Pt = { x: number; y: number }
+  const connections: { from: Pt; to: Pt }[] = []
   Object.values(gameState.territories).forEach(territory => {
     territory.connections.forEach(connectionId => {
       const fromPos = TERRITORY_POSITIONS[territory.id]

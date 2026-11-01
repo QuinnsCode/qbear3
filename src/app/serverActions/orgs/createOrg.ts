@@ -1,6 +1,7 @@
 // @/app/serverActions/orgs/createOrg.ts
 "use server";
 
+import { errorMessage } from '@/lib/errorMessage'
 import { requestInfo } from "rwsdk/worker";
 import { db, setupDb } from "@/db";
 import { initializeServices } from "@/lib/middlewareFunctions";
@@ -29,7 +30,10 @@ function getRedirectUrl(slug: string, request: Request): string {
   return `${protocol}//${slug}.qntbr.com/sanctum`;
 }
 
-export async function createOrganization(formData: FormData) {
+export async function createOrganization(formData: FormData): Promise<
+  | { success: true; redirectUrl: string; organization: { id: string; name: string; slug: string | null } }
+  | { success: false; error: string }
+> {
   try {
     // Initialize services first
     await initializeServices();
@@ -132,7 +136,7 @@ export async function createOrganization(formData: FormData) {
     console.error('Create organization error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to create organization'
+      error: errorMessage(error) || 'Failed to create organization'
     };
   }
 }

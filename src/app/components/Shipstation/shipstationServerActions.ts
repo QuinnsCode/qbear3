@@ -39,8 +39,6 @@ export async function fetchAwaitingShipments(organizationId: string): Promise<Sh
 
   } catch (error) {
     console.error('Error fetching awaiting shipments:', error);
-    
-    // Fall back to mock data for development
-    return fetchAwaitingShipmentsMock();
+    throw error;
   }
 }

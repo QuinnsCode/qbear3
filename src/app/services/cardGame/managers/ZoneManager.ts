@@ -1,6 +1,15 @@
 // src/app/services/cardGame/managers/ZoneManager.ts
-import type { CardGameState, CardGameAction } from '@/app/services/cardGame/CardGameState'
+import type { Card, CardGameState, CardGameAction, ZoneType } from '@/app/services/cardGame/CardGameState'
 import { TokenManager } from './TokenManager'
+
+/**
+ * A card leaving the battlefield loses its position (only battlefield cards have one).
+ * Card.position is typed as always present, so the stripped copy is cast back to Card.
+ */
+function offBattlefield(card: Card, zone: ZoneType, isFaceUp: boolean): Card {
+  const { position: _dropped, ...rest } = card
+  return { ...rest, zone, isFaceUp, rotation: 0 } as Card
+}
 
 /**
  * ZoneManager - ULTRA VERBOSE DEBUG VERSION
@@ -28,13 +37,7 @@ export class ZoneManager {
     const updatedCards = { ...gameState.cards }
     drawnCardIds.forEach(cardId => {
       if (updatedCards[cardId]) {
-        const { position, ...rest } = updatedCards[cardId]
-        updatedCards[cardId] = {
-          ...rest,
-          zone: 'hand',
-          isFaceUp: true,
-          rotation: 0
-        }
+        updatedCards[cardId] = offBattlefield(updatedCards[cardId], 'hand', true)
       }
     })
     
@@ -97,13 +100,7 @@ export class ZoneManager {
     const updatedCards = { ...gameState.cards }
     milledCardIds.forEach(cardId => {
       if (updatedCards[cardId]) {
-        const { position, ...rest } = updatedCards[cardId]
-        updatedCards[cardId] = {
-          ...rest,
-          zone: 'graveyard',
-          isFaceUp: true,
-          rotation: 0
-        }
+        updatedCards[cardId] = offBattlefield(updatedCards[cardId], 'graveyard', true)
       }
     })
   
@@ -218,6 +215,8 @@ export class ZoneManager {
     type ZoneType = keyof typeof player.zones
     const from = fromZone as ZoneType
     const to = toZone as ZoneType
+    const fromIds = player.zones[from] ?? []
+    const toIds = player.zones[to] ?? []
     
     console.log(`  Source zone (${from}):`, player.zones[from])
     console.log(`  Destination zone (${to}):`, player.zones[to])
@@ -269,27 +268,27 @@ export class ZoneManager {
     // Update zones
     console.log('\n🔨 Updating player zones...')
     
-    const newFromZone = player.zones[from].filter(id => id !== cardId)
-    console.log(`  Removed from ${from}: ${player.zones[from].length} → ${newFromZone.length}`)
+    const newFromZone = fromIds.filter(id => id !== cardId)
+    console.log(`  Removed from ${from}: ${fromIds.length} → ${newFromZone.length}`)
     
     let newToZone: string[]
     if (toZone === 'library' && action.data.toPosition) {
       if (action.data.toPosition === 'top') {
-        newToZone = [cardId, ...player.zones[to]]
+        newToZone = [cardId, ...toIds]
         console.log(`  Added to top of ${to}`)
       } else {
-        newToZone = [...player.zones[to], cardId]
+        newToZone = [...toIds, cardId]
         console.log(`  Added to bottom of ${to}`)
       }
     } else if (toZone === 'graveyard') {
-      newToZone = [cardId, ...player.zones[to]]
+      newToZone = [cardId, ...toIds]
       console.log(`  Added to top of ${to} (most recent)`)
     } else {
-      newToZone = [...player.zones[to], cardId]
+      newToZone = [...toIds, cardId]
       console.log(`  Added to end of ${to}`)
     }
     
-    console.log(`  Added to ${to}: ${player.zones[to].length} → ${newToZone.length}`)
+    console.log(`  Added to ${to}: ${toIds.length} → ${newToZone.length}`)
     
     const updatedPlayers = gameState.players.map(p => {
       if (p.id === action.playerId) {

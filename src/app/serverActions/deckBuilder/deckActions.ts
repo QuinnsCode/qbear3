@@ -249,7 +249,7 @@ export async function createDeck(
     }
 
     const tier = getEffectiveTier(user)
-    const tierConfig = getTierConfig(tier, user.email)  // ✅ Pass user.email for override
+    const tierConfig = getTierConfig(tier, user.email ?? undefined)  // ✅ Pass user.email for override
 
     // Count existing decks by format
     const { decks: existingDecks } = await getUserDecks(userId)
@@ -287,9 +287,10 @@ export async function createDeck(
     console.log(`[DeckBuilder] Creating deck "${deckName}" with ${deckCards.length} unique cards`)
 
     // Get commander card for deck metadata
-    const commanderCards = parseAndFetchResult.commanders?.map(cmdName => 
-      deckCards.find(c => c.name.toLowerCase() === cmdName.toLowerCase())
-    ).filter(Boolean) || []
+    const commanderCards = (parseAndFetchResult.commanders ?? []).flatMap(cmdName => {
+      const found = deckCards.find(c => c.name.toLowerCase() === cmdName.toLowerCase())
+      return found ? [found] : []
+    })
     
     const commanderImageUrls = commanderCards
       .map(c => c.imageUrl)
@@ -309,7 +310,7 @@ export async function createDeck(
       commanders: parseAndFetchResult.commanders || [], // Array of 1-2 commanders
       commanderImageUrls: commanderImageUrls.length > 0 ? commanderImageUrls : undefined,
       colors,
-      cards: deckCards,
+      cards: deckCards.map(c => ({ ...c, quantity: c.quantity ?? 1 })),
       totalCards,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -327,6 +328,7 @@ export async function createDeck(
     return {
       success: true,
       deck,
+      warnings: parseAndFetchResult.warnings,
       stats: {
         totalTime,
         cardsFound: deckCards.length,
@@ -457,7 +459,7 @@ export async function createDraftDeck(
     }
 
     const tier = getEffectiveTier(user)
-    const tierConfig = getTierConfig(tier, user.email)
+    const tierConfig = getTierConfig(tier, user.email ?? undefined)
 
     // Count existing decks by format
     const { decks: existingDecks } = await getUserDecks(userId)
@@ -562,15 +564,15 @@ export async function createDraftDeck(
         scryfallId: fetchedCard.id,
         name: fetchedCard.name,
         quantity: card.quantity,
-        imageUrl: fetchedCard.image_uris?.normal || fetchedCard.image_uris?.large || '',
-        type: fetchedCard.type_line || '',
-        manaCost: fetchedCard.mana_cost || '',
+        imageUrl: fetchedCard.imageUris?.normal || fetchedCard.imageUris?.large || '',
+        type: fetchedCard.typeLine || '',
+        manaCost: fetchedCard.manaCost || '',
         colors: fetchedCard.colors || [],
         isCommander: false, // Draft decks don't have commanders
         zone: 'main',
         cmc: fetchedCard.cmc,
         rarity: fetchedCard.rarity,
-        oracle_text: fetchedCard.oracle_text,
+        oracle_text: fetchedCard.oracleText,
       })
     }
 

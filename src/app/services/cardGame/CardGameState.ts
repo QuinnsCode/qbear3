@@ -180,10 +180,10 @@ export type ScryfallCard = {
   }>
 
   // Additional useful fields
-  set: string
-  set_name: string
-  collector_number: string
-  rarity: string
+  set?: string
+  set_name?: string
+  collector_number?: string
+  rarity?: string
   legalities?: Record<string, string>
 
   // Deck builder compatibility fields (flat structure)
@@ -192,6 +192,7 @@ export type ScryfallCard = {
   manaCost?: string      // Alias for mana_cost (camelCase)
   cmc?: number           // Converted mana cost
   quantity?: number      // Number of copies (for deck lists)
+  validatedImageUrl?: string | null // Set by image validation; null when no image resolves
 }
 
 // ============================================================================
@@ -425,4 +426,13 @@ export function getRelativePosition(
  */
 export function getCellForPosition(position: PlayerPosition): GridCell {
   return POSITION_TO_CELL[position]
+}
+
+/** Checks the fields every consumer of a game state reads; a body that fails is not a game. */
+export function isCardGameState(v: unknown): v is CardGameState {
+  return (
+    typeof v === 'object' && v !== null &&
+    'players' in v && Array.isArray(v.players) &&
+    'cards' in v && typeof v.cards === 'object' && v.cards !== null
+  )
 }

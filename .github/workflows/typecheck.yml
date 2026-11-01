@@ -23,8 +23,7 @@ jobs:
       run: pnpm install --frozen-lockfile
     - name: Generate Prisma client and wrangler types
       run: pnpm run generate
-    - name: Typecheck tests/
-      # `tsc` over src/ still has ~500 errors (#32), so only tests/ is gated until that is zero.
-      run: pnpm exec tsc -p tests
+    - name: Typecheck src/ and tests/
+      run: pnpm run types
     - name: Test the agent guard hook
       run: bun test ./.claude/hooks
