@@ -1,5 +1,5 @@
 // app/serverActions/cardGame/cardGameRegistry.ts
-'use server'
+// Server-only: not 'use server'. Its functions take org and user from their caller, so the browser must not reach them.
 
 import { env } from "cloudflare:workers";
 import { uniqueNamesGenerator, adjectives, colors, animals } from "unique-names-generator";

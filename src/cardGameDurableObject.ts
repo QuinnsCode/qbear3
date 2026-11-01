@@ -903,7 +903,12 @@ export class CardGameDO extends DurableObject {
     if (!this.gameState) {
       throw new Error('No game state found');
     }
-  
+
+    // Only a seated player acts. playerId is set by the Worker from the session.
+    if (!this.gameState.players.some(p => p.id === action.playerId)) {
+      throw new Error('Not a player in this game');
+    }
+
     // ✅ CHECK PERMISSIONS BEFORE PROCESSING (for sandbox shared battlefield)
     const actionsRequiringPermission = [
       'move_card',

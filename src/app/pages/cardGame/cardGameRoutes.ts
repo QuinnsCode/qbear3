@@ -2,14 +2,23 @@
 import { route } from "rwsdk/router";
 import { env } from "cloudflare:workers";
 
+// Identity headers are ours to set. Drop any the client sent before setting them.
+function withoutClientIdentity(source: Headers): Headers {
+  const headers = new Headers(source);
+  for (const name of [...headers.keys()]) {
+    if (name.startsWith('x-auth-') || name.startsWith('x-is-')) headers.delete(name);
+  }
+  return headers;
+}
+
 export const cardGameRoutes = [
   // WebSocket route - allow both players and spectators
   route("", async ({ request, ctx }) => {
     if (request.headers.get("Upgrade") === "websocket") {
       const url = new URL(request.url);
       const key = url.searchParams.get('key') || '/default';
-      const headers = new Headers(request.headers);
-      
+      const headers = withoutClientIdentity(request.headers);
+
       // Check if this is a sandbox game
       const gameId = key.replace(/^\//, '');
       const isSandbox = gameId.startsWith('sandbox-') || 
@@ -54,44 +63,15 @@ export const cardGameRoutes = [
     return new Response("WebSocket upgrade required", { status: 400 });
   }),
 
-  // HTTP route - allow GET for spectators, require auth for mutations
-  route("/cardGame/:cardGameId", async ({ request, params, ctx }) => {
-    const cardGameId = params.cardGameId;
-    
-    // Optionally inject auth headers if available
-    const headers = new Headers(request.headers);
-    
-    if (ctx.user) {
-      headers.set('X-Auth-User-Id', ctx.user.id);
-      headers.set('X-Auth-User-Name', ctx.user.name || ctx.user.email);
-      headers.set('X-Is-Authenticated', 'true');
-      
-      if (ctx.organization) {
-        headers.set('X-Auth-Org-Id', ctx.organization.id);
-      }
-    } else {
-      headers.set('X-Is-Authenticated', 'false');
-      
-      // Block mutations for non-authenticated users
-      if (request.method !== 'GET') {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
+  // HTTP route: read-only. Writes go through server actions, which take identity from the session.
+  route("/cardGame/:cardGameId", async ({ request, params }) => {
+    if (request.method !== 'GET') {
+      return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET' } });
     }
-    
-    const authedRequest = new Request(request.url, {
-      method: request.method,
-      headers,
-      body: request.body,
-      // @ts-ignore
-      duplex: request.body ? 'half' : undefined
-    });
-    
-    const durableObjectId = env.CARD_GAME_STATE_DO.idFromName(cardGameId);
+
+    const durableObjectId = env.CARD_GAME_STATE_DO.idFromName(params.cardGameId);
     const cardGameDO = env.CARD_GAME_STATE_DO.get(durableObjectId);
-    
-    return cardGameDO.fetch(authedRequest);
+
+    return cardGameDO.fetch(new Request(request.url, { method: 'GET' }));
   }),
 ];
