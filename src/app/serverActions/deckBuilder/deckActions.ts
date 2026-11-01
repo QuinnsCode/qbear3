@@ -4,6 +4,8 @@
 import { env } from "cloudflare:workers"
 import { parseDeckList } from '@/app/lib/cardGame/deckListParser'
 import { getCardsByIdentifiers } from '@/app/serverActions/cardData/cardDataActions'
+import { answersName, cardNames } from '@/app/services/cardData/CardDataService'
+import type { CardData } from '@/app/services/cardData/types'
 import type { Deck, DeckCard } from '@/app/types/Deck'
 import { migrateDeck, needsMigration, normalizeDeck, CURRENT_DECK_VERSION } from '@/app/types/Deck'
 import { ScryfallCard } from "@/app/services/cardGame/CardGameState"
@@ -19,6 +21,11 @@ import { getTierConfig, getEffectiveTier } from '@/app/lib/subscriptions/tiers' 
  */
 
 const DECK_CACHE_TTL = 60 * 60 * 24 * 90 // 90 days in seconds
+
+/** Lowercased name → card, under the full name and each face ("Delver of Secrets" too). */
+function cardsByName(cards: CardData[]): Map<string, CardData> {
+  return new Map(cards.flatMap(card => cardNames(card).map(name => [name.toLowerCase(), card] as const)))
+}
 
 
 /**
@@ -93,7 +100,7 @@ export async function parseDeckAndFetchCards(deckListText: string) {
     // 4. Retry failed cards (if any missing)
     let allCards = fetchResult.cards
     const initialMissing = uniqueCardNames.filter(name =>
-      !fetchResult.cards.some(card => card.name.toLowerCase() === name.toLowerCase())
+      !fetchResult.cards.some(card => answersName(card, name))
     )
 
     if (initialMissing.length > 0 && initialMissing.length < 10) {
@@ -112,9 +119,7 @@ export async function parseDeckAndFetchCards(deckListText: string) {
     const incompleteCards: { name: string; missingFields: string[] }[] = []
 
     // 6. Create lookup map from all fetched cards (initial + retry)
-    const cardLookup = new Map(
-      allCards.map(card => [card.name.toLowerCase(), card])
-    )
+    const cardLookup = cardsByName(allCards)
 
     // 6. Convert CardData to ScryfallCard format with quantities
     const scryfallCards: ScryfallCard[] = []
@@ -562,9 +567,7 @@ export async function createDraftDeck(
     }
 
     // Create lookup map
-    const cardLookup = new Map(
-      fetchResult.cards.map(card => [card.name.toLowerCase(), card])
-    )
+    const cardLookup = cardsByName(fetchResult.cards)
 
     // Convert to DeckCard format
     const deckCards: DeckCard[] = []

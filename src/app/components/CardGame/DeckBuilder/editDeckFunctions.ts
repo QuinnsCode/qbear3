@@ -258,20 +258,6 @@ export function changeCardImage(cards: DeckCard[], cardId: string, newImageUrl: 
   )
 }
 
-// Change card printing
-export function changeCardPrinting(cards: DeckCard[], cardId: string, newPrinting: ScryfallCard): DeckCard[] {
-  return cards.map(c => 
-    c.id === cardId ? {
-      ...c,
-      scryfallId: newPrinting.id,
-      imageUrl: newPrinting.image_uris?.normal || newPrinting.image_uris?.small || c.imageUrl,
-      manaCost: newPrinting.mana_cost || c.manaCost,
-      type: newPrinting.type_line || c.type,
-      cmc: parseManaValue(newPrinting.mana_cost || '')
-    } : c
-  )
-}
-
 // Calculate color counts
 export function calculateColorCounts(cards: DeckCard[]): Record<string, number> {
   const counts: Record<string, number> = {}
@@ -392,16 +378,4 @@ export function handleImageUpload(
     }
   }
   reader.readAsDataURL(file)
-}
-
-// Fetch card printings
-export async function fetchCardPrintings(cardName: string): Promise<ScryfallCard[]> {
-  try {
-    const response = await fetch(`/api/scryfall/search?query=${encodeURIComponent(`!"${cardName}"`)}`)
-    const data = await response.json()
-    return data.data || []
-  } catch (error) {
-    console.error('Failed to fetch printings:', error)
-    throw error
-  }
 }

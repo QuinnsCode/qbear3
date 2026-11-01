@@ -3,72 +3,55 @@
 
 import { env } from "cloudflare:workers";
 import { ScryfallProvider } from '@/app/services/cardData/providers/ScryfallProvider';
-import type { CardData } from '@/app/services/cardData/types';
+import { cardCache } from '@/app/services/cardData/fromEnv';
+import { cardImageUrl, cardKeyMetadata } from '@/app/services/cardData/KVCardCache';
+
+/** One page of card:id: keys with their metadata (name + image), so most listings read no values. */
+async function listCardKeys(kv: KVNamespace) {
+  const list = await kv.list({ prefix: 'card:id:', limit: 1000 });
+  return {
+    hasMore: !list.list_complete,
+    keys: list.keys.map(key => ({ id: key.name.slice('card:id:'.length), meta: cardKeyMetadata(key.metadata) })),
+  };
+}
 
 /**
  * Search cards in the cache
  */
 export async function searchCachedCards(query: string, limit: number = 50) {
   try {
-    if (!env?.CARDS_KV) {
-      throw new Error('CARDS_KV not configured');
-    }
+    const cache = cardCache();
+    const { keys, hasMore } = await listCardKeys(env.CARDS_KV);
+    const wanted = query.toLowerCase();
 
-    // List all card keys from KV
-    const list = await env.CARDS_KV.list({ prefix: 'card:id:', limit: 1000 });
+    // Filter on the name in metadata; keys written before metadata carried a name are kept as
+    // candidates and checked once their value is read.
+    const candidates = keys
+      .filter(k => !wanted || !k.meta || k.meta.name.toLowerCase().includes(wanted))
+      .slice(0, limit * 2);
+    const found = await cache.getCards(candidates.map(k => k.id));
 
-    const cards: Array<{
-      id: string;
-      name: string;
-      imageUrl?: string;
-      hasValidImage: boolean;
-      lastUpdated?: number;
-      cardData?: CardData;
-    }> = [];
+    const cards = candidates.flatMap(k => {
+      const cardData = found.get(k.id);
+      if (!cardData || (wanted && !cardData.name.toLowerCase().includes(wanted))) return [];
+      const imageUrl = cardImageUrl(cardData);
+      return [{
+        id: k.id,
+        name: cardData.name,
+        imageUrl,
+        hasValidImage: !!imageUrl && imageUrl.startsWith('http'),
+        lastUpdated: cardData.lastUpdated,
+        cardData,
+      }];
+    }).slice(0, limit);
 
-    // Fetch card data for matching keys
-    for (const key of list.keys) {
-      const cardId = key.name.replace('card:id:', '');
-      const cardDataStr = await env.CARDS_KV.get(key.name);
-
-      if (!cardDataStr) continue;
-
-      try {
-        const cardData = JSON.parse(cardDataStr) as CardData;
-
-        // Filter by query (case-insensitive)
-        const normalizedQuery = query.toLowerCase();
-        if (normalizedQuery && !cardData.name.toLowerCase().includes(normalizedQuery)) {
-          continue;
-        }
-
-        // Check if image URL is valid
-        const imageUrl = cardData.imageUris?.normal || cardData.imageUris?.large || cardData.imageUris?.small;
-        const hasValidImage = !!imageUrl && imageUrl.startsWith('http');
-
-        cards.push({
-          id: cardId,
-          name: cardData.name,
-          imageUrl,
-          hasValidImage,
-          lastUpdated: (key.metadata as any)?.lastUpdated,
-          cardData
-        });
-
-        if (cards.length >= limit) break;
-      } catch (err) {
-        console.warn(`Failed to parse card data for ${cardId}:`, err);
-      }
-    }
-
-    // Sort by name
     cards.sort((a, b) => a.name.localeCompare(b.name));
 
     return {
       success: true,
       cards,
       total: cards.length,
-      hasMore: list.keys.length >= 1000
+      hasMore
     };
   } catch (error) {
     console.error('[searchCachedCards] Error:', error);
@@ -139,32 +122,8 @@ export async function refreshCardData(cardId: string) {
 
     console.log(`[refreshCardData] Refreshing card ${cardId}...`);
 
-    // Fetch fresh data from Scryfall
-    const provider = new ScryfallProvider();
-    const cardData = await provider.getCard(cardId);
-
-    if (!cardData) {
-      return {
-        success: false,
-        error: 'Card not found on Scryfall'
-      };
-    }
-
-    // Update cache with fresh data
-    const cacheKey = `card:id:${cardId}`;
-    await env.CARDS_KV.put(cacheKey, JSON.stringify(cardData), {
-      expirationTtl: 60 * 60 * 24 * 365, // 1 year
-      metadata: {
-        lastUpdated: Date.now(),
-        refreshedManually: true
-      }
-    });
-
-    // Also update name mapping
-    const nameMappingKey = `card:name:${cardData.name.toLowerCase()}`;
-    await env.CARDS_KV.put(nameMappingKey, cardId, {
-      expirationTtl: 60 * 60 * 24 * 365
-    });
+    const cardData = await new ScryfallProvider().getCard(cardId);
+    await cardCache().setCard(cardData);
 
     console.log(`✅ Refreshed card: ${cardData.name}`);
 
@@ -192,35 +151,23 @@ export async function updateCardImage(cardId: string, imageUrl: string) {
 
     console.log(`[updateCardImage] Updating image for ${cardId}...`);
 
-    // Get existing card data
-    const cacheKey = `card:id:${cardId}`;
-    const existingDataStr = await env.CARDS_KV.get(cacheKey);
-
-    if (!existingDataStr) {
+    const cache = cardCache();
+    const cardData = await cache.getCard(cardId);
+    if (!cardData) {
       return {
         success: false,
         error: 'Card not found in cache'
       };
     }
 
-    const cardData = JSON.parse(existingDataStr) as CardData;
-
-    // Update image URLs
     cardData.imageUris = {
       ...cardData.imageUris,
       normal: imageUrl,
       large: imageUrl,
       small: imageUrl
     };
-
-    // Save updated data
-    await env.CARDS_KV.put(cacheKey, JSON.stringify(cardData), {
-      expirationTtl: 60 * 60 * 24 * 365, // 1 year
-      metadata: {
-        lastUpdated: Date.now(),
-        imageUpdatedManually: true
-      }
-    });
+    cardData.lastUpdated = Date.now();
+    await cache.setCard(cardData);
 
     console.log(`✅ Updated image for: ${cardData.name}`);
 
@@ -246,46 +193,24 @@ export async function getBrokenImageCards(limit: number = 100) {
       throw new Error('CARDS_KV not configured');
     }
 
-    const list = await env.CARDS_KV.list({ prefix: 'card:id:', limit: 1000 });
+    const { keys } = await listCardKeys(env.CARDS_KV);
+    const issueWith = (imageUrl: string | undefined) =>
+      !imageUrl ? 'No image URL' : !imageUrl.startsWith('http') ? 'Invalid image URL format' : null;
 
-    const brokenCards: Array<{
-      id: string;
-      name: string;
-      imageUrl?: string;
-      issue: string;
-    }> = [];
+    // A key whose metadata has an image is fine; read only the rest (no image, or written
+    // before metadata carried one).
+    const unknown = keys.filter(k => !k.meta?.image).map(k => k.id);
+    const read = await cardCache().getCards(unknown);
 
-    for (const key of list.keys) {
-      const cardId = key.name.replace('card:id:', '');
-      const cardDataStr = await env.CARDS_KV.get(key.name);
-
-      if (!cardDataStr) continue;
-
-      try {
-        const cardData = JSON.parse(cardDataStr) as CardData;
-        const imageUrl = cardData.imageUris?.normal || cardData.imageUris?.large || cardData.imageUris?.small;
-
-        let issue: string | null = null;
-
-        if (!imageUrl) {
-          issue = 'No image URL';
-        } else if (!imageUrl.startsWith('http')) {
-          issue = 'Invalid image URL format';
-        }
-
-        if (issue) {
-          brokenCards.push({
-            id: cardId,
-            name: cardData.name,
-            imageUrl,
-            issue
-          });
-
-          if (brokenCards.length >= limit) break;
-        }
-      } catch (err) {
-        console.warn(`Failed to parse card data for ${cardId}:`, err);
-      }
+    const brokenCards: Array<{ id: string; name: string; imageUrl?: string; issue: string }> = [];
+    for (const { id, meta } of keys) {
+      const card = read.get(id);
+      const name = card?.name ?? meta?.name;
+      const imageUrl = card ? cardImageUrl(card) : meta?.image;
+      const issue = issueWith(imageUrl);
+      if (!name || !issue) continue;
+      brokenCards.push({ id, name, imageUrl, issue });
+      if (brokenCards.length >= limit) break;
     }
 
     return {
