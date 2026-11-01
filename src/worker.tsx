@@ -22,6 +22,7 @@ import {
   shouldSkipMiddleware 
 } from "@/lib/middlewareFunctions";
 import { env } from "cloudflare:workers";
+import { startEqosys, finishEqosys } from "@/lib/eqosysAuth";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import GamePage from "@/app/pages/game/GamePage";
 import CardGamePage from "@/app/pages/cardGame/CardGamePage";
@@ -139,7 +140,7 @@ export default defineApp([
    * - ctx.userRole (from membership)
    *
    * THE LOGIN FLOW DEPENDS ON THIS EXACT ORDER:
-   * 1. setupSessionContext() - reads better-auth cookie, sets ctx.user
+   * 1. setupSessionContext() - reads the session cookie (src/lib/session.ts), sets ctx.user
    * 2. setupOrganizationContext() - extracts org from URL, sets ctx.organization
    * 3. autoCreateOrgMiddleware() - redirects main domain to org subdomain
    *
@@ -476,6 +477,10 @@ export default defineApp([
         });
       }
     }),
+
+    // Sign in with eqosys: our own OIDC flow (src/lib/eqosysAuth.ts); the callback keeps the URI registered at eqosys.
+    route("/auth/eqosys/start", ({ request }) => startEqosys(request)),
+    route("/auth/oauth2/callback/eqosys", ({ request }) => finishEqosys(request)),
 
     route("/auth/*", async ({ request }) => {
       try {
