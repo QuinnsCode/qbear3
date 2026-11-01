@@ -2,6 +2,7 @@
 import { Suspense } from 'react'
 import { type RequestInfo } from "rwsdk/worker"
 import { env } from "cloudflare:workers"
+import JoinCallButton from '@/app/components/JoinCallButton'
 import GameContent from '@/app/components/CardGame/GameContent'
 import { isSandboxEnvironment } from '@/lib/middleware/sandboxMiddleware'
 import { getOrCreateUserId } from '@/app/lib/auth/userIdentification'
@@ -34,12 +35,15 @@ export default async function CardGamePage({ params, ctx, request }: RequestInfo
   })
 
   return (
-    <GameContent 
-      cardGameId={cardGameId}
-      userId={userIdentity.userId}
-      userName={userIdentity.userName}
-      isLoggedIn={userIdentity.isLoggedIn}
-      isSandbox={isSandbox}
-    />
+    <>
+      <GameContent
+        cardGameId={cardGameId}
+        userId={userIdentity.userId}
+        userName={userIdentity.userName}
+        isLoggedIn={userIdentity.isLoggedIn}
+        isSandbox={isSandbox}
+      />
+      <JoinCallButton kind="cardGame" id={cardGameId} />
+    </>
   )
 }

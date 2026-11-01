@@ -78,6 +78,7 @@ const FORCE_MIDDLEWARE_ROUTES = [
   '/__draftsync',    // Draft sync needs user/org context
   '/api/draft',      // Drafting over JSON acts as the session's user (src/app/api/draft/draft.ts)
   '/api/cardGame/',  // Loading a saved deck at a table, likewise
+  '/api/call/',      // A table's video call is for people who sit there (src/app/api/call/call.ts)
 ] as const;
 
 /**

@@ -14,6 +14,7 @@
 // it; on localhost it cannot, so the jar does what the production cookie does. A test that
 // wants a second identity makes a second Browser.
 import { setDefaultTimeout } from "bun:test";
+import { appendFileSync, existsSync, rmSync, statSync, truncateSync } from "node:fs";
 import { join } from "node:path";
 
 // rwsdk scans directives and boots workerd on the first request: minutes on a cold machine.
@@ -32,6 +33,8 @@ export interface App {
   /** `slug.localhost:<port>`: the Host header of a lair. */
   lair(slug: string): string;
   browser(): Browser;
+  /** A stand-in for qlave's createRoom, when the kit started the server: the externalIds it was asked for. */
+  qlave?: { requests: string[] };
 }
 
 export interface Hop { status: number; location: string | null }
@@ -78,7 +81,40 @@ export function uniqueEmail(prefix: string): string {
 }
 
 let starting: Promise<App> | undefined;
-let server: { proc: ReturnType<typeof Bun.spawn>; log: string[] } | undefined;
+let server: { proc: ReturnType<typeof Bun.spawn>; log: string[]; qlave?: ReturnType<typeof Bun.serve>; restoreVars?: () => void } | undefined;
+
+/**
+ * The Worker reads QLAVE_URL and QLAVE_API_KEY from .dev.vars, which wins over the shell. Add the two lines
+ * the stub needs without reading the file (it may hold secrets), and cut the file back to its old size after.
+ */
+function pointWorkerAtQlave(url: string, key: string): () => void {
+  const path = join(ROOT, ".dev.vars");
+  const size = existsSync(path) ? statSync(path).size : undefined;
+  appendFileSync(path, `\nQLAVE_URL=${url}\nQLAVE_API_KEY=${key}\n`);
+  return () => { if (size === undefined) rmSync(path, { force: true }); else truncateSync(path, size); };
+}
+
+/** qlave's createRoom: the same externalId always gets the same room code. Records each ask. */
+function startQlaveStub(key: string): { server: ReturnType<typeof Bun.serve>; requests: string[] } {
+  const requests: string[] = [];
+  const rooms = new Map<string, string>();
+  const stub = Bun.serve({
+    port: 0,
+    hostname: "127.0.0.1",
+    async fetch(req) {
+      const url = new URL(req.url);
+      if (req.method !== "POST" || url.pathname !== "/api/qlave/createRoom") return new Response("not found", { status: 404 });
+      if (req.headers.get("authorization") !== `Bearer ${key}`) return new Response("unauthorized", { status: 401 });
+      const body: unknown = await req.json().catch(() => undefined);
+      const externalId = typeof body === "object" && body !== null && "externalId" in body ? body.externalId : undefined;
+      if (typeof externalId !== "string") return new Response("externalId", { status: 400 });
+      requests.push(externalId);
+      if (!rooms.has(externalId)) rooms.set(externalId, `room${rooms.size + 1}`);
+      return Response.json({ code: rooms.get(externalId) });
+    },
+  });
+  return { server: stub, requests };
+}
 
 /** The app, started on first use. Every test file shares one. */
 export function app(): Promise<App> {
@@ -93,13 +129,17 @@ async function boot(): Promise<App> {
   }
   const port = String(await freePort());
   const log: string[] = [];
+  const qlaveKey = "e2e-qlave-key";
+  const qlave = startQlaveStub(qlaveKey);
+  const restoreVars = pointWorkerAtQlave(`http://127.0.0.1:${qlave.server.port}`, qlaveKey);
+  process.on("exit", restoreVars);
   const proc = Bun.spawn([join(ROOT, "node_modules/.bin/vite"), "dev", "--port", port, "--strictPort"], {
     cwd: ROOT,
     env: { ...process.env, NODE_ENV: "development", FORCE_COLOR: "0" },
     stdout: "pipe",
     stderr: "pipe",
   });
-  server = { proc, log };
+  server = { proc, log, qlave: qlave.server, restoreVars };
   const tail = async (s: ReadableStream<Uint8Array>) => { for await (const chunk of s) { log.push(new TextDecoder().decode(chunk)); if (log.length > 200) log.shift(); } };
   void tail(proc.stdout as ReadableStream<Uint8Array>);
   void tail(proc.stderr as ReadableStream<Uint8Array>);
@@ -113,7 +153,7 @@ async function boot(): Promise<App> {
     for (const origin of [`http://[::1]:${port}`, `http://127.0.0.1:${port}`]) {
       try {
         const res = await fetch(`${origin}/`, { headers: { host }, redirect: "manual", signal: AbortSignal.timeout(deadline - Date.now()) });
-        if (res.status === 200) { console.log(`[e2e] up at ${origin} (Host ${host})`); return make(origin, host, port); }
+        if (res.status === 200) { console.log(`[e2e] up at ${origin} (Host ${host})`); return make(origin, host, port, qlave.requests); }
       } catch {}
     }
     await Bun.sleep(1000);
@@ -125,7 +165,8 @@ async function boot(): Promise<App> {
 /** Stop the server the kit started. A no-op for E2E_BASE_URL. Called from setup.ts. */
 export async function stopApp(): Promise<void> {
   if (!server) return;
-  const { proc } = server;
+  const { proc, qlave, restoreVars } = server;
+  qlave?.stop(true);
   server = undefined;
   if (proc.exitCode !== null) return;
   proc.kill("SIGTERM");
@@ -133,11 +174,12 @@ export async function stopApp(): Promise<void> {
   if (exited === "timeout") proc.kill("SIGKILL");
 }
 
-function make(origin: string, host: string, port: string): App {
+function make(origin: string, host: string, port: string, qlaveRequests?: string[]): App {
   const a: App = {
     origin, host, port,
     lair: (slug) => `${slug}.localhost:${port}`,
     browser: () => new Browser(a),
+    qlave: qlaveRequests && { requests: qlaveRequests },
   };
   return a;
 }

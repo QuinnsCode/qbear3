@@ -401,6 +401,7 @@ export default defineApp([
     route("/draft/:draftId", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info)),
     route("/draft/:draftId/pick", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info, 'pick')),
     route("/draft/:draftId/deck", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info, 'deck')),
+    route("/call/:kind/:id", async (info) => (await import('@/app/api/call/call')).default(info)),
     route("/cardGame/:gameId/deck", async (info) => (await import('@/app/api/cardGame/deck')).default(info)),
 
     route("/pvp/initialize", async ({ request }) => {
