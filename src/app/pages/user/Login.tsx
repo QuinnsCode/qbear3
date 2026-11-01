@@ -138,7 +138,6 @@ export default async function LoginPage({ ctx, request }: RequestInfo) {
   return (
     <FantasyLogin
       organizationName={ctx.organization?.name}
-      variant="adventure"
       redirectPath={redirectPath}
       showDevTools={false}
     />
