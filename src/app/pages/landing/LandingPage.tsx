@@ -1,12 +1,43 @@
 // @/app/pages/landing/LandingPage.tsx
-// The QNTBR front door, shaped like the Game Center page: a head, the thing itself, then the
-// shelves. The thing itself is the lab: every game and app is a verb and a noun, drop one on
-// the other and the app appears. The shelves below are the same compact groups the hubs use.
+// The QNTBR front door. The headline act first: codeSplitter on a full-width Steam-style capsule,
+// then the three games we are proudest of on their own capsules, then the lab (every game and app
+// is a verb and a noun; drop one on the other and the app appears), then the same compact shelves
+// the hubs use.
 import { type RequestInfo } from "rwsdk/worker";
-import { apps, appGroups, gameGroups, games } from "@/app/pages/portal/portalData";
+import { Capsule } from "@qntbr/ui";
+import { apps, appGroups, gameGroups, games, isExternal, resolveHref, type PortalEntry } from "@/app/pages/portal/portalData";
 import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from "@/app/pages/portal/PortalShell";
+import { KeyArt } from "./KeyArt";
 import LandingLab from "./LandingLab";
 import { labItems } from "./lab";
+
+/** The one app the page is about, and the games under it, in the order they are shown. */
+export const FEATURED_APP = 'codesplitter';
+export const FEATURED_GAMES = ['git-recon', 'skate-tech-park', 'park-hide-seek'] as const;
+
+const byKey = (key: string): PortalEntry => {
+  const entry = [...apps, ...games].find((e) => e.key === key);
+  if (!entry) throw new Error(`landing: no portal entry "${key}"`);
+  return entry;
+};
+
+function EntryCapsule({ entry, request, hero }: { entry: PortalEntry; request: Request; hero?: boolean }) {
+  const href = resolveHref(entry, request);
+  return (
+    <Capsule
+      hero={hero}
+      nameAs={hero ? 'h2' : 'h3'}
+      name={entry.name}
+      tag={entry.tag}
+      tagline={entry.tagline}
+      pitch={entry.pitch}
+      art={entry.image ?? <KeyArt entryKey={entry.key} glyph={entry.glyph} />}
+      href={href}
+      cta={entry.cta}
+      external={isExternal(href)}
+    />
+  );
+}
 
 export default function LandingPage({ ctx, request }: RequestInfo) {
   const isLoggedIn = !!ctx.user;
@@ -14,11 +45,35 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
 
   return (
     <PortalPage isLoggedIn={isLoggedIn} current="home">
-      {/* ── Hero: the lab ── */}
-      <PortalSection>
+      {/* ── Feature: codeSplitter ── */}
+      <PortalSection id="feature">
         <PortalSectionHead
           as="h1"
           eyebrow="QNTBR · Solutions architecture · Web apps & web solutions"
+          title={<>Built for the <em>fleet.</em></>}
+          lede="We build tools we actually use and ship them on the runtime we wrote for it. This is the one we would show you first."
+        />
+        <EntryCapsule entry={byKey(FEATURED_APP)} request={request} hero />
+      </PortalSection>
+
+      {/* ── Featured games ── */}
+      <PortalSection id="featured-games">
+        <PortalSectionHead
+          small
+          eyebrow="Game Center · Featured"
+          title={<>Then we <em>play.</em></>}
+          lede="Three games shipped on Rusty Buns, in the order we love them. Each one is a browser tab away; the whole Game Center is further down."
+        />
+        <div className="q-capsules">
+          {FEATURED_GAMES.map((key) => <EntryCapsule key={key} entry={byKey(key)} request={request} />)}
+        </div>
+      </PortalSection>
+
+      {/* ── The lab ── */}
+      <PortalSection id="lab">
+        <PortalSectionHead
+          small
+          eyebrow="The lab"
           title={<>Combine words. <em>Get software.</em></>}
           lede="Every game and app we ship is a verb and a noun. Drop one on the other and it appears; click it to go. The whole shelf is in the bag if you would rather just pick."
         />

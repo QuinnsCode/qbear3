@@ -34,6 +34,7 @@ import { Page, TopBar, SectionHead, Tile, Button, CraftWorkspace } from "@qntbr/
 | `TopBar`, `BrandMark`, `Footer` | chrome |
 | `SectionHead` | eyebrow + title + lede + optional link |
 | `Tile`, `TileGroup` | the card: paper, preview window, status pill, optional wide or compact layout; and the card that holds cards |
+| `Capsule` | the Steam card: a wide art bar (an image URL or an inline SVG) with tag, name, tagline and a numbered pitch under it, the whole card a link; `hero` makes it the full-width feature |
 | `Button`, `Badge`, `StatusPill` | paper-tile controls and labels |
 | `ThemeScript`, `ThemeToggle` | no-flash light/dark with a remembered choice (client) |
 | `CraftWorkspace` | Infinite Craft: a canvas (the whole window, or a box in the page with `className="q-inset"`), a searchable, sortable bag down the right, drop one tile on another to combine (`combine(a, b)` returns a new tile, a toast, a side effect or a link; `nothing(a, b)` words a dud), double-click to copy, layout and discoveries saved under `storageKey`; `onSay` hands every line to the page instead of toasting it (client) |

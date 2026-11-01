@@ -13,3 +13,4 @@ export { ThemeScript, ThemeToggle } from './Theme';
 export { CraftWorkspace, type WorkspaceItem, type WorkspaceGroup, type CraftResult, type CraftWorkspaceProps } from './CraftWorkspace';
 export { Sheet, type SheetProps } from './Sheet';
 export { Terminal, type TerminalLine, type TerminalProps } from './Terminal';
+export { Capsule, type CapsuleProps } from './Capsule';
