@@ -29,6 +29,8 @@ export interface PortalEntry {
   noun: string;
   /** Short mono tag shown above the name, e.g. "MTG" or "GitHub". */
   tag?: string;
+  /** The elevator pitch, three sentences, for the landing capsules. One shot; make it count. */
+  pitch?: readonly [string, string, string];
 }
 
 export const GITHUB_ORG_URL = 'https://github.com/QuinnsCode';
@@ -168,13 +170,18 @@ export const games: PortalEntry[] = [
     glyph: '🌲',
     name: 'Park Hide & Seek',
     tag: 'Rusty Buns · 3D',
-    tagline: 'Hide and seek on real terrain',
+    tagline: 'Drop into Yosemite and vanish',
     description: '3D hide and seek on real Yosemite terrain. Each player is sent only what they can see.',
     href: 'https://park-hide-seek.notryanquinn.workers.dev',
     cta: 'Play now',
     status: 'live',
     verb: 'Hide',
     noun: 'Park',
+    pitch: [
+      'Drop in from the sky onto real Yosemite terrain, pick a boulder, and disappear.',
+      'The server only sends you what you can actually see, so there is no wall peek and no map cheat. Just the woods, and whoever is in them.',
+      'Find everyone before the clock runs out, or be the last one nobody found.',
+    ],
   },
   {
     key: 'skate-tech-park',
@@ -183,13 +190,18 @@ export const games: PortalEntry[] = [
     glyph: '🛹',
     name: 'Skate Tech Park',
     tag: 'Rusty Buns · Multiplayer',
-    tagline: 'Giant fingerboard park',
+    tagline: 'A giant skateboard shredding America’s National Parks',
     description: 'A giant riderless fingerboard on park terrain, up to four riders.',
     href: 'https://skatetechpark.notryanquinn.workers.dev',
     cta: 'Play now',
     status: 'live',
     verb: 'Skate',
     noun: 'Park',
+    pitch: [
+      'A skateboard the size of a school bus, no rider, and a National Park for a skatepark.',
+      'Grind the granite, launch off the ridgeline, and bring three friends: four boards to a session.',
+      'It makes no sense at all. Shred it anyway.',
+    ],
   },
   {
     key: 'git-recon',
@@ -198,13 +210,18 @@ export const games: PortalEntry[] = [
     glyph: '🔫',
     name: 'git-recon',
     tag: 'Rusty Buns · Shooter',
-    tagline: 'Your repo is the level',
+    tagline: 'Git the main HEAD merged before the Conflict takes over',
     description: 'A toy-soldier shooter fought in a codebase: folders become compounds and files become buildings.',
     href: 'https://git-recon.notryanquinn.workers.dev',
     cta: 'Play now',
     status: 'live',
     verb: 'Shoot',
     noun: 'Repo',
+    pitch: [
+      'Your repo is the map. Folders are compounds, files are buildings, and the Conflict is spreading through main.',
+      'Drop in as a toy soldier, fight your way up the tree, and get HEAD merged before the whole branch goes red.',
+      'Point it at any codebase. Yours plays nothing like anyone else’s.',
+    ],
   },
   {
     key: 'two-fronts',
@@ -286,6 +303,11 @@ export const apps: PortalEntry[] = [
     status: 'live',
     verb: 'Split',
     noun: 'Code',
+    pitch: [
+      'Your agents write code faster than any human can read a diff. The code host they push to was built for people who type.',
+      'codeSplitter makes every line a record you can query, on real git, on Cloudflare Artifacts: no servers, no fleet to babysit, the edge the agents already run on.',
+      'Point one agent at it today. When the merge queue is the bottleneck for ten thousand, you will want the host that was built for the fleet.',
+    ],
   },
   {
     key: 'qlave',
@@ -357,8 +379,8 @@ export const apps: PortalEntry[] = [
     tagline: 'Business fulfillment software',
     description: 'Orders, shipments, and SKU analytics for small shops. ShipStation-backed, with real-time order notes for the whole team.',
     href: 'https://github.com/QuinnsCode/shippycloud',
-    cta: 'View on GitHub',
-    status: 'beta',
+    cta: 'On ice',
+    status: 'soon',
     verb: 'Ship',
     noun: 'Orders',
   },

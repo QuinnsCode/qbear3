@@ -18,7 +18,7 @@ export function labItems(request: Request): WorkspaceItem[] {
   const known = new Set([...games, ...apps].map((e) => e.key));
   const things: WorkspaceItem[] = [
     ...games.map((e) => ({ id: e.key, group: 'game', glyph: e.glyph, label: e.name, verb: e.verb, noun: e.noun, href: resolveHref(e, request), hint: e.tagline })),
-    ...apps.map((e) => ({ id: e.key, group: 'app', glyph: e.glyph, label: e.name, verb: e.verb, noun: e.noun, href: e.href, hint: e.tagline })),
+    ...apps.map((e) => ({ id: e.key, group: 'app', glyph: e.glyph, label: e.name, verb: e.verb, noun: e.noun, href: e.status === 'soon' ? undefined : e.href, hint: e.tagline })),
     ...playgroundApps.filter((a) => !known.has(a.key)).map((a) => ({
       id: a.key, group: 'app', glyph: a.glyph, label: a.name, verb: a.verb, noun: a.noun,
       href: a.play ?? playgroundDownloadUrl(a) ?? playgroundSourceUrl(a) ?? PLAYGROUND_URL, hint: a.line,

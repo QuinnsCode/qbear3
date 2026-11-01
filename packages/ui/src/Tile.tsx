@@ -12,6 +12,8 @@ export interface TileProps {
   icon?: ReactNode;
   /** A screenshot or app image that fills the preview window. */
   image?: string;
+  /** A CSS background painted behind the icon: the app's colour world. The icon turns white on it. */
+  tone?: string;
   /** Fallback preview when there is no icon or image: an emoji or character. Defaults to the name's first letter. */
   glyph?: ReactNode;
   status?: Status;
@@ -32,7 +34,7 @@ export interface TileProps {
 
 /** The card: a paper tile around a preview window (status pills ride on it). A link when it has an href and is not "soon". */
 export function Tile({
-  name, tag, tagline, description, icon, image, glyph, status, badges, href, cta, external,
+  name, tag, tagline, description, icon, image, tone, glyph, status, badges, href, cta, external,
   compact, wide, aside, nameAs: Name = 'h3', className,
 }: TileProps) {
   const soon = status === 'soon';
@@ -40,7 +42,7 @@ export function Tile({
   const cls = cx('q-tile', wide && 'q-wide', compact && 'q-compact', soon && 'q-soon', className);
 
   const preview = (
-    <div className="q-tile-preview">
+    <div className={cx('q-tile-preview', tone && !image && 'q-toned')} style={tone && !image ? { background: tone } : undefined}>
       {image
         ? <img src={image} alt="" loading="lazy" />
         : <span className="q-tile-icon" aria-hidden="true">{icon ?? glyph ?? name.charAt(0)}</span>}
