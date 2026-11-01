@@ -1,6 +1,7 @@
 // app/components/Game/Combat/MoveInSelectionOverlay.tsx
 'use client'
 
+import { errorMessage } from '@/lib/errorMessage'
 import React, { useState, useEffect } from 'react';
 import { 
   Crown, 
@@ -70,7 +71,7 @@ const MoveInSelectionOverlay = ({
       await onConfirmMoveIn(additionalUnits);
     } catch (error) {
       console.error('Move-in confirmation failed:', error);
-      alert(`Failed to move additional units: ${error.message}`);
+      alert(`Failed to move additional units: ${errorMessage(error)}`);
     } finally {
       setIsProcessing(false);
     }

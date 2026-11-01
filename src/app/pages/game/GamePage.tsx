@@ -1,4 +1,5 @@
 // app/pages/game/GamePage.tsx
+import { errorMessage } from '@/lib/errorMessage'
 import { getGameState, getCurrentPlayer } from '@/app/serverActions/gameActions'
 import ClientGameWrapper from '@/app/components/Game/GameUtils/ClientGameWrapper'
 import { env } from "cloudflare:workers"
@@ -69,7 +70,7 @@ export default async function GamePage({ params, ctx }) {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Game Error</h1>
-          <p className="text-gray-600 mb-4">Failed to load game: {error.message}</p>
+          <p className="text-gray-600 mb-4">Failed to load game: {errorMessage(error)}</p>
           <p className="text-sm text-gray-500 mb-6">Game ID: {gameId}</p>
           <div className="space-x-4">
             <a 

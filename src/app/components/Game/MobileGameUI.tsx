@@ -1,6 +1,7 @@
 // this is new broken code to remind you
 // app/components/Game/MobileGameUI.tsx
 'use client'
+import { errorMessage } from '@/lib/errorMessage'
 import BuildHireOverlay from '@/app/components/Game/GamePhases/BuildHireOverlay';
 import GameRules from '@/app/components/Game/GameRules/GameRules';
 import {
@@ -535,7 +536,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       }
     } catch (error) {
       console.error(`❌ ${action} action failed:`, error)
-      alert(`${action} failed: ${error.message}`)
+      alert(`${action} failed: ${errorMessage(error)}`)
     } finally {
       setTerritoryActionInProgress(false)
     }
@@ -729,7 +730,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       console.log('✅ Conquest confirmed - useGameSync will handle the update');
     } catch (error) {
       console.error('❌ Conquest confirmation failed:', error);
-      alert(`Conquest confirmation failed: ${error.message}`);
+      alert(`Conquest confirmation failed: ${errorMessage(error)}`);
     }
   };
 
@@ -911,7 +912,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       
     } catch (error) {
       console.error('❌ Combat resolution failed:', error);
-      alert(`Combat failed: ${error.message}`);
+      alert(`Combat failed: ${errorMessage(error)}`);
       // Only reset on error
       setInvasionState(null);
     }
@@ -934,7 +935,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       setInvasionState(null);
     } catch (error) {
       console.error('❌ Movement failed:', error);
-      alert(`Movement failed: ${error.message}`);
+      alert(`Movement failed: ${errorMessage(error)}`);
     }
   };
 
@@ -1082,7 +1083,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       
     } catch (error) {
       console.error('Failed to save game state:', error);
-      alert('Failed to save game state: ' + error.message);
+      alert('Failed to save game state: ' + errorMessage(error));
     }
   };
 
@@ -1113,7 +1114,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       
     } catch (error) {
       console.error('Failed to save compact game state:', error);
-      alert('Failed to save game state: ' + error.message);
+      alert('Failed to save game state: ' + errorMessage(error));
     }
   };
 
@@ -1200,12 +1201,12 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
               
             } catch (serverError) {
               console.error('Server error loading game state:', serverError);
-              alert(`Failed to load game state on server: ${serverError.message}`);
+              alert(`Failed to load game state on server: ${errorMessage(serverError)}`);
             }
             
           } catch (parseError) {
             console.error('Failed to parse game state file:', parseError);
-            alert(`Invalid game state file: ${parseError.message}`);
+            alert(`Invalid game state file: ${errorMessage(parseError)}`);
           } finally {
             setIsUpdating(false);
           }
@@ -1224,7 +1225,7 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
       input.click();
     } catch (error) {
       console.error('Failed to initiate file load:', error);
-      alert('Failed to open file selector: ' + error.message);
+      alert('Failed to open file selector: ' + errorMessage(error));
     }
   };
 

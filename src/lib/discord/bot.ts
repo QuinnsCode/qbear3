@@ -1,4 +1,5 @@
 // lib/discord/bot.ts
+import { errorMessage } from '@/lib/errorMessage'
 import { env } from "cloudflare:workers";
 
 const DISCORD_API = "https://discord.com/api/v10";
@@ -66,7 +67,7 @@ export class DiscordBot {
       console.error("Failed to create thread:", error);
       return {
         success: false,
-        error: error.message,
+        error: errorMessage(error),
       };
     }
   }
@@ -79,7 +80,7 @@ export class DiscordBot {
       return { success: true };
     } catch (error) {
       console.error("Failed to delete thread:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage(error) };
     }
   }
 
@@ -92,7 +93,7 @@ export class DiscordBot {
       return { success: true };
     } catch (error) {
       console.error("Failed to send message:", error);
-      return { success: false, error: error.message };
+      return { success: false, error: errorMessage(error) };
     }
   }
 }

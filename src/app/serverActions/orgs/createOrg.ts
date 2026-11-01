@@ -1,6 +1,7 @@
 // @/app/serverActions/orgs/createOrg.ts
 "use server";
 
+import { errorMessage } from '@/lib/errorMessage'
 import { requestInfo } from "rwsdk/worker";
 import { db, setupDb } from "@/db";
 import { initializeServices } from "@/lib/middlewareFunctions";
@@ -132,7 +133,7 @@ export async function createOrganization(formData: FormData) {
     console.error('Create organization error:', error);
     return {
       success: false,
-      error: error.message || 'Failed to create organization'
+      error: errorMessage(error) || 'Failed to create organization'
     };
   }
 }

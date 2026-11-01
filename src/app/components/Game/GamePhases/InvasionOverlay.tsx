@@ -1,6 +1,7 @@
 // app/components/Game/GamePhases/InvasionOverlay.tsx
 'use client'
 
+import { errorMessage } from '@/lib/errorMessage'
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
@@ -217,7 +218,7 @@ const InvasionOverlay = ({
       }
     } catch (error) {
       console.error('Action failed:', error);
-      alert(`${isTargetEmpty ? 'Movement' : 'Combat'} failed: ${error.message}`);
+      alert(`${isTargetEmpty ? 'Movement' : 'Combat'} failed: ${errorMessage(error)}`);
       
       setAttackInProgress(false);
       setOverlayState('selecting');
@@ -260,7 +261,7 @@ const InvasionOverlay = ({
       onCancel();
     } catch (error) {
       console.error('Move-in confirmation failed:', error);
-      alert(`Failed to confirm conquest: ${error.message}`);
+      alert(`Failed to confirm conquest: ${errorMessage(error)}`);
     }
   };
 
