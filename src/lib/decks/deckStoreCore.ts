@@ -64,7 +64,32 @@ export function makeDeckStore<D extends DeckFields>({ kv, token: tokenOf, getSav
     const token = await tokenOf(userId)
     const cloud = token ? parseIndex(await getSave(token, INDEX)).decks.map(d => d.id) : []
     const old = (await kvList(userId)).filter(id => !cloud.includes(id))
+    if (token && old.length) {
+      const moved = await migrateKvDecks(userId, old)
+      return [...moved, ...cloud, ...old.filter(id => !moved.includes(id))]
+    }
     return [...cloud, ...old]
+  }
+
+  /** Moves a signed-in person's KV decks into eqosys (oldest first, so the newest ends up first). Returns the ids that moved;
+   * the ones that didn't (eqosys full, or a hiccup) stay in KV and are tried again on the next list. */
+  async function migrateKvDecks(userId: string, ids: string[]): Promise<string[]> {
+    const moved: string[] = []
+    for (const id of [...ids].reverse()) {
+      try {
+        const found = await kv.getWithMetadata<{ normalizedAt?: number; version?: number }>(`deck:${userId}:${id}`)
+        if (!found.value) continue
+        const deck: D = JSON.parse(found.value)
+        const sameVersion = found.metadata?.version === deck.version
+        const saved = await writeDeck(userId, { deck, normalizedAt: sameVersion ? found.metadata?.normalizedAt : undefined })
+        if (!saved.ok) break
+        moved.unshift(id)
+      } catch (error) {
+        console.error(`[deckStore] couldn't migrate deck ${id}:`, error)
+        break
+      }
+    }
+    return moved
   }
 
   async function readDeck(userId: string, deckId: string): Promise<StoredDeck<D> | null> {
