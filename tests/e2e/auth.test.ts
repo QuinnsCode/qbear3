@@ -67,3 +67,13 @@ test("sign out, sign in again, same lair; a wrong password is refused", async ()
   expect(back.url.pathname).toBe("/sanctum");
   expect(back.status).toBe(200);
 });
+
+test("an eqosys callback with no sign-in in flight lands on the login page with an error, signed out", async () => {
+  const a = await app();
+  const b = a.browser();
+  const res = await b.get("/api/auth/oauth2/callback/eqosys?code=abc&state=forged");
+  expect(res.url.pathname).toBe("/user/login");
+  expect(res.url.searchParams.get("error")).toBe("eqosys_state");
+  expect(b.cookie).not.toContain("session_token");
+  expect((await b.get("/")).hops).toEqual([]);
+});

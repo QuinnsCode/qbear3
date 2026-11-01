@@ -5,7 +5,7 @@ import { errorMessage } from '@/lib/errorMessage'
 import { requestInfo } from "rwsdk/worker";
 import { db, setupDb } from "@/db";
 import { initializeServices } from "@/lib/middlewareFunctions";
-import { initAuth } from "@/lib/auth";
+import { getSessionFromHeaders } from "@/lib/session";
 import { env } from "cloudflare:workers";
 import { isSubdomainAvailable } from '@/lib/subdomains'; // ← Import your validation
 
@@ -53,10 +53,7 @@ export async function createOrganization(formData: FormData): Promise<
       userId = ctx.user.id;
     } else {
       try {
-        const authInstance = initAuth();
-        const session = await authInstance.api.getSession({
-          headers: request.headers
-        });
+        const session = await getSessionFromHeaders(request.headers);
         userId = session?.user?.id || null;
       } catch (authError) {
         console.error('Auth error in server action:', authError);
