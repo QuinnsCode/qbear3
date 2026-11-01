@@ -33,7 +33,7 @@ export default function TermsPage({ ctx, request }: RequestInfo) {
             <div className="space-y-6 text-amber-100/90">
               
               <p className="text-sm text-amber-400/80">
-                Last Updated: December 15, 2024
+                Last Updated: November 1, 2026
               </p>
 
               {/* 1. Agreement to Terms */}
@@ -60,7 +60,9 @@ export default function TermsPage({ ctx, request }: RequestInfo) {
                 <ul className="list-disc ml-6 space-y-2 text-white/90">
                   <li>Real-time game synchronization</li>
                   <li>Deck import and management</li>
-                  <li>Multiplayer game hosting</li>
+                  <li>Multiplayer game hosting and cube drafts</li>
+                  <li>Video calls for each game table or draft pod</li>
+                  <li>The Game Center, which links to games built with Rusty Buns (see section 7.2)</li>
                   <li>Card data retrieved from Scryfall API</li>
                   <li>Life tracking, commander damage, and game state management</li>
                 </ul>
@@ -233,11 +235,18 @@ export default function TermsPage({ ctx, request }: RequestInfo) {
                     <strong>7.1 Our Software</strong>
                   </FantasyText>
                   <FantasyText variant="primary" className="text-white/90 leading-relaxed">
-                    All software, design, text, graphics, and other content created by QNTBR (excluding third-party content) is proprietary and owned by Ryan Quinn. All rights reserved. You may not copy, modify, distribute, or reverse engineer our software.
+                    All software, design, text, graphics, and other content created by QNTBR (excluding third-party content) is proprietary and owned by Ryan Quinn. All rights reserved. You may not copy, modify, distribute, or reverse engineer our software, except where section 7.2 says otherwise.
+                  </FantasyText>
+
+                  <FantasyText variant="primary" className="text-white/90 leading-relaxed">
+                    <strong>7.2 Rusty Buns and Its Games</strong>
+                  </FantasyText>
+                  <FantasyText variant="primary" className="text-white/90 leading-relaxed">
+                    Rusty Buns, and the games built with it that the Game Center links to, are separate projects by Ryan Quinn. Their source code is published at <a href="https://github.com/QuinnsCode/RustyBuns" target="_blank" rel="noopener" className="text-amber-400 hover:underline">github.com/QuinnsCode/RustyBuns</a>, and what you may do with that code is set by the LICENSE files in that repository, not by these Terms. Playing those games is free. They run on their own sites, outside QNTBR accounts and subscriptions; sections 5, 6, 10 and 11 of these Terms also apply to your use of them.
                   </FantasyText>
                   
                   <FantasyText variant="primary" className="text-white/90 leading-relaxed">
-                    <strong>7.2 Magic: The Gathering Content</strong>
+                    <strong>7.3 Magic: The Gathering Content</strong>
                   </FantasyText>
                   <FantasyText variant="primary" className="text-white/90 leading-relaxed">
                     Magic: The Gathering, MTG, and all related card names, artwork, and game mechanics are owned by Wizards of the Coast LLC, a subsidiary of Hasbro, Inc.
@@ -251,14 +260,14 @@ export default function TermsPage({ ctx, request }: RequestInfo) {
                   </div>
                   
                   <FantasyText variant="primary" className="text-white/90 leading-relaxed">
-                    <strong>7.3 Scryfall Partnership</strong>
+                    <strong>7.4 Scryfall Partnership</strong>
                   </FantasyText>
                   <FantasyText variant="primary" className="text-white/90 leading-relaxed">
                     Card data and images are retrieved from Scryfall LLC's public API. QNTBR links directly to Scryfall for detailed card information, driving traffic to their excellent service. We do not claim ownership of any card data or images. Learn more at <a href="https://scryfall.com" target="_blank" rel="noopener" className="text-amber-400 hover:underline">scryfall.com</a>.
                   </FantasyText>
                   
                   <FantasyText variant="primary" className="text-white/90 leading-relaxed">
-                    <strong>7.4 User Content</strong>
+                    <strong>7.5 User Content</strong>
                   </FantasyText>
                   <FantasyText variant="primary" className="text-white/90 leading-relaxed">
                     You retain ownership of any content you create or upload (deck lists, game states, etc.). By using the Service, you grant us a non-exclusive, royalty-free, worldwide license to store, display, and transmit your content as necessary to provide the Service.

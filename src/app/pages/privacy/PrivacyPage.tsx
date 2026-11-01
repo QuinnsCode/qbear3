@@ -3,7 +3,7 @@ import { LegalLayout } from '@/app/components/theme/ContentPageLayout';
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Policy" lastUpdated="December 1, 2024">
+    <LegalLayout title="Privacy Policy" lastUpdated="November 1, 2026">
       <h2>1. Introduction</h2>
       <p>
         Welcome to QNTBR ("we," "our," or "us"). This Privacy Policy explains how we collect, 
@@ -11,9 +11,9 @@ export default function PrivacyPage() {
         Magic: The Gathering and other trading card games.
       </p>
       <p>
-        <strong>Educational & Non-Commercial Use:</strong> This platform is provided as a 
-        non-profit educational tool for learning game design, web development, and multiplayer 
-        systems. We do not sell cards, operate as a business, or generate revenue.
+        <strong>Independent Project:</strong> QNTBR is built and run by one independent developer. 
+        It is free to play, with optional paid tiers for larger games (see our <a href="/terms">Terms of Service</a>). 
+        We do not sell cards, and we do not sell your information.
       </p>
 
       <h2>2. Information We Collect</h2>
@@ -24,7 +24,6 @@ export default function PrivacyPage() {
         <li>Email address (for authentication)</li>
         <li>Username/display name</li>
         <li>Password (encrypted and never stored in plain text)</li>
-        <li>Organization/guild membership information</li>
       </ul>
 
       <h3>2.2 Game Data</h3>
@@ -43,6 +42,13 @@ export default function PrivacyPage() {
         <li>Performance metrics (for debugging and optimization)</li>
         <li>Cookie data (for authentication and preferences)</li>
       </ul>
+
+      <h3>2.4 Payment Information</h3>
+      <p>
+        If you buy a paid tier, Lemon Squeezy processes the payment as merchant of record. We never see or 
+        store your card details. We keep your tier, subscription status, billing dates and the Lemon Squeezy 
+        customer and subscription IDs so we can give you the features you paid for.
+      </p>
 
       <h2>3. How We Use Your Information</h2>
       <p>We use collected information for:</p>
@@ -90,7 +96,7 @@ export default function PrivacyPage() {
       </p>
       <blockquote>
         <strong>Fair Use & Fan Content:</strong> We operate under Wizards of the Coast's Fan Content Policy. 
-        This is an unofficial, non-commercial, educational project. We are not affiliated with, endorsed, 
+        This is an unofficial fan project. We are not affiliated with, endorsed, 
         sponsored, or approved by Wizards of the Coast. All card images and game content are property of 
         their respective owners.
       </blockquote>
