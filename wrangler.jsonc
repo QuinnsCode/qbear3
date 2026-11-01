@@ -36,10 +36,6 @@
 				"class_name": "CardGameDO"
 			},
 			{
-				"name": "CARD_CACHE_DO",
-				"class_name": "CardCacheDO"
-			},
-			{
 				"name": "CACHE_WARMING_DO",
 				"class_name": "CacheWarmingDO"
 			},
@@ -130,6 +126,12 @@
 			"tag": "v10",
 			"new_sqlite_classes": [
 				"VTTDO"
+			]
+		},
+		{
+			"tag": "v11",
+			"deleted_classes": [
+				"CardCacheDO"
 			]
 		}
 	],

@@ -75,7 +75,6 @@ Each game instance lives in its own Durable Object. The DO is the single source 
 | `CardGameDO` | `CARD_GAME_STATE_DO` | `src/cardGameDurableObject.ts` | MTG card game state |
 | `GameStateDO` | `GAME_STATE_DO` | `src/gameDurableObject.ts` | Risk-style strategy game |
 | `DraftDO` | `DRAFT_DO` | `src/draftDurableObject.ts` | MTG draft system |
-| `CardCacheDO` | `CARD_CACHE_DO` | `src/cardCacheDO.ts` | Scryfall card data cache |
 | `SyncedStateServer` | `SYNCED_STATE_SERVER` | rwsdk built-in | General state sync |
 | `SessionDurableObject` | `SESSION_DURABLE_OBJECT` | `src/session/durableObject.ts` | Session management |
 | `PresenceDurableObject` | `REALTIME_DURABLE_OBJECT` | `src/durableObjects/presenceDurableObject.ts` | User presence |
