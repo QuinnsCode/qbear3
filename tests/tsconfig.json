@@ -5,6 +5,6 @@
     "lib": ["ESNext", "DOM", "DOM.AsyncIterable"],
     "allowImportingTsExtensions": true
   },
-  "include": ["./**/*.ts"],
+  "include": ["./**/*.ts", "../scripts/cms.ts"],
   "exclude": ["../node_modules"]
 }

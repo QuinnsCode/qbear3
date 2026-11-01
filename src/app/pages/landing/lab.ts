@@ -1,8 +1,8 @@
 // @/app/pages/landing/lab.ts
 // The landing lab: every game and app is a verb and a noun. Drop the verb on the noun
-// and the app appears; drop anything else on anything and some other app does. Pure data and rules, so `bun test` can check the table without React.
+// and the app appears; drop anything else on anything and some other app does. Pure data and rules, so `bun test` can check the table without React. Free of content/*.json: LandingLab (client) imports this; the bag itself is built in labItems.ts.
 import type { CraftResult, WorkspaceGroup, WorkspaceItem } from '@qntbr/ui';
-import { apps, games, playgroundApps, playgroundDownloadUrl, playgroundSourceUrl, PLAYGROUND_URL, isExternal } from '@/app/pages/portal/portalData';
+import { apps, gameShells, playgroundApps } from '@/app/pages/portal/portalData';
 
 export const labGroups: WorkspaceGroup[] = [
   { id: 'verb', label: 'Verbs' },
@@ -11,36 +11,11 @@ export const labGroups: WorkspaceGroup[] = [
   { id: 'app', label: 'Apps · click to open' },
 ];
 
-const wordId = (kind: 'verb' | 'noun', word: string) => `${kind}:${word.toLowerCase()}`;
-
-/** The bag: words first, then every app link, in the order they loop. */
-export function labItems(): WorkspaceItem[] {
-  const known = new Set([...games, ...apps].map((e) => e.key));
-  const things: WorkspaceItem[] = [
-    ...games.map((e) => ({ id: e.key, group: 'game', glyph: e.glyph, label: e.name, verb: e.verb, noun: e.noun, href: e.href, hint: e.tagline })),
-    ...apps.map((e) => ({ id: e.key, group: 'app', glyph: e.glyph, label: e.name, verb: e.verb, noun: e.noun, href: e.status === 'soon' ? undefined : e.href, hint: e.tagline })),
-    ...playgroundApps.filter((a) => !known.has(a.key)).map((a) => ({
-      id: a.key, group: 'app', glyph: a.glyph, label: a.name, verb: a.verb, noun: a.noun,
-      href: a.play ?? playgroundDownloadUrl(a) ?? playgroundSourceUrl(a) ?? PLAYGROUND_URL, hint: a.line,
-    })),
-  ].map(({ verb, noun, ...item }) => ({ ...item, hint: `${verb} + ${noun}. ${item.hint ?? ''}`.trim(), external: !!item.href && isExternal(item.href) }));
-
-  const verbs = unique([...games, ...apps, ...playgroundApps].map((e) => e.verb));
-  const nouns = unique([...games, ...apps, ...playgroundApps].map((e) => e.noun));
-  return [
-    ...verbs.map((w) => ({ id: wordId('verb', w), group: 'verb', label: w })),
-    ...nouns.map((w) => ({ id: wordId('noun', w), group: 'noun', label: w })),
-    ...things,
-  ];
-}
-
-function unique(words: string[]): string[] {
-  return [...new Set(words)];
-}
+export const wordId = (kind: 'verb' | 'noun', word: string) => `${kind}:${word.toLowerCase()}`;
 
 /** Verb + noun → the key of the thing it makes. Each pair is unique across games, apps and the playground. */
 export const recipes: ReadonlyMap<string, string> = new Map(
-  [...games, ...apps, ...playgroundApps].map((e): [string, string] => [`${wordId('verb', e.verb)}+${wordId('noun', e.noun)}`, e.key]),
+  [...gameShells, ...apps, ...playgroundApps].map((e): [string, string] => [`${wordId('verb', e.verb)}+${wordId('noun', e.noun)}`, e.key]),
 );
 
 const kindOf = (item: WorkspaceItem) => (item.group === 'verb' || item.group === 'noun' ? item.group : 'thing');

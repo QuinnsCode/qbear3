@@ -25,6 +25,7 @@ pnpm run migrate:new       # Create new migration
 pnpm run seed              # Run seed script
 pnpm run release           # Full production deploy (generate + build + wrangler deploy)
 pnpm run test:e2e          # End-to-end suite under `bun test` (starts its own vite dev server)
+pnpm run cms               # Edit the landing page + Game Center words by hand: textarea forms at http://localhost:4700 (needs Bun)
 ```
 
 ### Tests (Bun, no browser)
@@ -35,6 +36,10 @@ need no DNS, follows redirects across `*.localhost`, and keeps one cookie jar pe
 Pages are asserted from their server-rendered HTML; auth goes through better-auth's endpoints.
 Run one file with `bun test tests/e2e/portal.test.ts`. `pnpm run types` typechecks `tests/` with
 Bun types (`tests/tsconfig.json`). CI runs the whole suite (`.github/workflows/e2e.yml`).
+
+### Page copy (`content/*.json`)
+
+The words on the landing page (`content/landing.json`) and the Game Center (`content/games.json`: page copy, group cards, each game's tagline, description, button and pitch) are JSON, edited with `pnpm run cms` (`scripts/cms.ts`, vendored from Rusty Buns' private `packages/cms`). The editor changes text only, never keys. `*starred*` text renders as emphasis. Read them through `src/app/content.ts`, and only from server components: a JSON module in a client component's import graph fails in rwsdk's SSR bridge, which is why `portalData.ts` (imported by the landing lab) holds no words for games and `portalGames.ts` joins them on.
 
 ### Rusty Buns (desktop binary, typed Cloudflare deploy)
 

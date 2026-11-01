@@ -1,0 +1,73 @@
+{
+  "page": {
+    "eyebrow": "Game Center",
+    "title": "Pick a table. *Play.*",
+    "lede": "The games shipped on Rusty Buns, and a draft of the cube where QNTBR started.",
+    "link": "Draft the cube"
+  },
+  "howItWorks": {
+    "label": "How it works",
+    "text": "Every table is a *Durable Object* at the edge. Actions go over a WebSocket, the room applies them, and everyone at the table sees the same board at the same time. Accounts are moving to *eqosys*, one login for every Q app."
+  },
+  "groups": {
+    "rustybuns": {
+      "title": "Built with Rusty Buns",
+      "lede": "Games shipped on Rusty Buns, each running on its own Worker."
+    },
+    "mtg": {
+      "title": "Magic: The Gathering",
+      "lede": "Where QNTBR started: one link to draft the cube."
+    }
+  },
+  "entries": {
+    "draft": {
+      "tagline": "Booster draft from the vintage cube",
+      "description": "Open a draft room on the cube, share the link, and pick packs together in real time. The deck you draft saves straight to your list.",
+      "cta": "Draft the cube"
+    },
+    "park-hide-seek": {
+      "tagline": "Drop into Yosemite and vanish",
+      "description": "3D hide and seek on real Yosemite terrain. Each player is sent only what they can see.",
+      "cta": "Play now",
+      "pitch1": "Drop in from the sky onto real Yosemite terrain, pick a boulder, and disappear.",
+      "pitch2": "The server only sends you what you can actually see, so there is no wall peek and no map cheat. Just the woods, and whoever is in them.",
+      "pitch3": "Find everyone before the clock runs out, or be the last one nobody found."
+    },
+    "skate-tech-park": {
+      "tagline": "A giant skateboard shredding America’s National Parks",
+      "description": "A giant riderless fingerboard on park terrain, up to four riders.",
+      "cta": "Play now",
+      "pitch1": "A skateboard the size of a school bus, no rider, and a National Park for a skatepark.",
+      "pitch2": "Grind the granite, launch off the ridgeline, and bring three friends: four boards to a session.",
+      "pitch3": "It makes no sense at all. Shred it anyway."
+    },
+    "git-recon": {
+      "tagline": "Git the main HEAD merged before the Conflict takes over",
+      "description": "A toy-soldier shooter fought in a codebase: folders become compounds and files become buildings.",
+      "cta": "Play now",
+      "pitch1": "Your repo is the map. Folders are compounds, files are buildings, and the Conflict is spreading through main.",
+      "pitch2": "Drop in as a toy soldier, fight your way up the tree, and get HEAD merged before the whole branch goes red.",
+      "pitch3": "Point it at any codebase. Yours plays nothing like anyone else’s."
+    },
+    "two-fronts": {
+      "tagline": "War on a forest moon",
+      "description": "Turn-based strategy on a forest moon, with three.js battles on the ground and in orbit.",
+      "cta": "Play now"
+    },
+    "druids-curse": {
+      "tagline": "The game Rusty Buns was built for",
+      "description": "The live multiplayer game Rusty Buns was first built for.",
+      "cta": "Play now"
+    },
+    "splat-spray": {
+      "tagline": "I-spy in the dark",
+      "description": "Scan a Gaussian-splat room and find 100 things in the fewest shots.",
+      "cta": "Play now"
+    },
+    "excalibrawl": {
+      "tagline": "Models draw, a third judges",
+      "description": "An hourly drawing fight between two models, refereed by a third.",
+      "cta": "Watch a fight"
+    }
+  }
+}
