@@ -345,6 +345,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'rustybuns',
+    image: '/landing/rustybuns.svg',
     group: 'dev',
     icon: Sandwich,
     glyph: '🍔',

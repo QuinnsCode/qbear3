@@ -51,8 +51,8 @@ export function Document({ children }: { children: React.ReactNode }) {
       <link rel="stylesheet" href={styles} />
       <link rel="stylesheet" href={uiStyles} />
       
-      {/* Geist + Geist Mono for @qntbr/ui */}
-      <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+      {/* @qntbr/ui type: Sansation (interface), Brawler (reading), Unbounded (titles), Geist Mono (tags) */}
+      <link href="https://fonts.googleapis.com/css2?family=Brawler:wght@400;700&family=Sansation:ital,wght@0,300;0,400;0,700;1,400&family=Unbounded:wght@500;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
       {/* Google Fonts - Arabian + Latin Fantasy */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
