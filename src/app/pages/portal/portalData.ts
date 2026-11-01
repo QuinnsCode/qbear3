@@ -223,6 +223,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'two-fronts',
+    image: '/landing/two-fronts.jpg',
     group: 'rustybuns',
     icon: Rocket,
     glyph: '🚀',
@@ -238,6 +239,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'druids-curse',
+    image: '/landing/druids-curse.jpg',
     group: 'rustybuns',
     icon: Sprout,
     glyph: '🌿',
@@ -268,6 +270,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'excalibrawl',
+    image: '/landing/excalibrawl.jpg',
     group: 'rustybuns',
     icon: Brush,
     glyph: '🖍️',
@@ -310,6 +313,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'qlave',
+    image: '/landing/qlave.jpg',
     group: 'products',
     icon: Video,
     glyph: '📞',
@@ -325,6 +329,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'flareup',
+    image: '/landing/flareup.jpg',
     group: 'backburner',
     icon: Flame,
     glyph: '🔥',
@@ -356,6 +361,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'staticflare',
+    image: '/landing/staticflare.jpg',
     group: 'backburner',
     icon: Zap,
     glyph: '⚡',
