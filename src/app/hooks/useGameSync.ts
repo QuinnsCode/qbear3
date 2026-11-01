@@ -66,7 +66,7 @@ export function useGameSync({
       // Get initial state
       const response = await fetch(`/__gsync/game/${gameId}`);
       if (response.ok) {
-        const initialState = await response.json();
+        const initialState = await response.json<GameState>();
         setGameState(initialState);
         setIsLoading(false);
         callbacksRef.current.onStateUpdate?.(initialState);

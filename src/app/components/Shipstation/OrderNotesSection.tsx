@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, type Dispatch, type SetStateAction } from 'react';
 import { MessageSquare, Plus, User, Clock, Lock, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -15,9 +15,17 @@ interface OrderNote {
   };
 }
 
+function isOrderNote(v: unknown): v is OrderNote {
+  return typeof v === 'object' && v !== null
+    && 'id' in v && typeof v.id === 'number'
+    && 'content' in v && typeof v.content === 'string'
+    && 'isInternal' in v && typeof v.isInternal === 'boolean'
+    && 'createdAt' in v && typeof v.createdAt === 'string';
+}
+
 interface OrderNotesSectionProps {
   notes: OrderNote[];
-  setNotes: (notes: OrderNote[]) => void;
+  setNotes: Dispatch<SetStateAction<OrderNote[]>>;
   orderDbId: number;
   currentUser?: {
     id: string;
@@ -75,7 +83,10 @@ export default function OrderNotesSection({
         throw new Error('Failed to save note');
       }
 
-      const savedNote = await response.json();
+      const savedNote: unknown = await response.json();
+      if (!isOrderNote(savedNote)) {
+        throw new Error('Unexpected note from server');
+      }
       
       // Replace optimistic note with real note from server
       setNotes(currentNotes => 

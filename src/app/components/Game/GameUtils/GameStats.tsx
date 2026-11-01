@@ -2,8 +2,9 @@
 'use client'
 
 import { Clock } from 'lucide-react';
+import type { GameState } from '@/app/lib/GameState';
 
-export const GameStats = ({ gameState, currentUserId }) => {
+export const GameStats = ({ gameState, currentUserId }: { gameState: GameState; currentUserId?: string }) => {
   const currentPlayer = gameState.players[gameState.currentPlayerIndex];
   const playerStats = gameState.players.map(player => ({
     ...player,

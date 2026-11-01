@@ -1,6 +1,7 @@
 // app/components/Game/GamePhases/PlayCardsOverlay.tsx
 'use client'
 
+import type { GameState } from '@/app/lib/GameState';
 import { useState, useMemo } from 'react';
 import { 
   X,
@@ -21,7 +22,7 @@ import {
 } from 'lucide-react';
 
 interface PlayCardsOverlayProps {
-  gameState: any;
+  gameState: GameState;
   currentUserId: string;
   onPlayCard: (cardId: string, targets?: string[]) => Promise<void>;
   onAdvanceToNextPhase: () => Promise<void>;
@@ -560,10 +561,10 @@ const PlayCardsOverlay = ({
                     
                     return (
                       <div className="space-y-2">
-                        <div className="font-medium text-sm">{selectedCard.cardTitle || selectedCard.name}</div>
-                        <div className="text-xs text-gray-600">{selectedCard.cardText}</div>
+                        <div className="font-medium text-sm">{selectedCard.data.cardTitle || selectedCard.name}</div>
+                        <div className="text-xs text-gray-600">{selectedCard.data.cardText}</div>
                         <div className="text-xs text-green-700">
-                          Cost: {selectedCard.cardCost || 0} Energy
+                          Cost: {selectedCard.data.cardCost || 0} Energy
                         </div>
                         {cardRequiresTargets(selectedCard) && (
                           <div className="text-xs text-blue-700">

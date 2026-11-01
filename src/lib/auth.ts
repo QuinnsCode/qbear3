@@ -52,7 +52,7 @@ export const createAuth = () => {
         console.log('📧 Sending password reset email to:', user.email);
   
         // Use void to prevent timing attacks (don't await)
-        void resend.emails.send({
+        void resend?.emails.send({
           from: "QNTBR <no-reply@doubledragonsupply.com>",
           to: [user.email],
           subject: "Reset Your Password - QNTBR",
@@ -69,7 +69,7 @@ export const createAuth = () => {
         console.log(`✅ Password reset completed for user: ${user.email}`);
         
         // Optional: Send confirmation email
-        void resend.emails.send({
+        void resend?.emails.send({
           from: "QNTBR <no-reply@doubledragonsupply.com>",
           to: [user.email],
           subject: "Password Changed - QNTBR",
@@ -86,17 +86,22 @@ export const createAuth = () => {
     },
     // ADD THIS:
     socialProviders: {
-      discord: {
-        clientId: env.DISCORD_CLIENT_ID,
-        clientSecret: env.DISCORD_CLIENT_SECRET,
-        // Optional: add scopes if you want guild/server access
-        // scopes: ["identify", "email", "guilds", "guilds.join"],
-      },
-      google: {
-        clientId: env.GOOGLE_CLIENT_ID,
-        clientSecret: env.GOOGLE_CLIENT_SECRET,
-        prompt: "select_account", // Forces Google account picker every time
-      }
+      // A provider with no credentials set is left out rather than configured with undefined
+      ...(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET ? {
+        discord: {
+          clientId: env.DISCORD_CLIENT_ID,
+          clientSecret: env.DISCORD_CLIENT_SECRET,
+          // Optional: add scopes if you want guild/server access
+          // scopes: ["identify", "email", "guilds", "guilds.join"],
+        },
+      } : {}),
+      ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET ? {
+        google: {
+          clientId: env.GOOGLE_CLIENT_ID,
+          clientSecret: env.GOOGLE_CLIENT_SECRET,
+          prompt: "select_account" as const, // Forces Google account picker every time
+        },
+      } : {}),
     },
     plugins: [
       admin({

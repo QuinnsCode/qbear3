@@ -3,7 +3,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { Token, VTTAction } from '@/app/services/vtt/VTTGameState'
+import type { VTTActionInput } from '@/app/hooks/vtt/useVTTSync'
+import type { Token } from '@/app/services/vtt/VTTGameState'
 
 /**
  * TokenControls - Context menu for token actions
@@ -26,7 +27,7 @@ interface TokenControlsProps {
   position: { x: number; y: number } | null
   isGM: boolean
   playerId: string
-  sendAction: (action: Omit<VTTAction, 'playerId'>) => void
+  sendAction: (action: VTTActionInput) => void
   onClose: () => void
 }
 

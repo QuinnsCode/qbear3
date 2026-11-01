@@ -28,6 +28,9 @@ type OtherPlayer = {
   camera: CameraPosition | null
 }
 
+/** What a caller hands to sendAction: the server fills in the rest. */
+export type VTTActionInput = Omit<VTTAction, 'playerId' | 'id' | 'timestamp'>
+
 export function useVTTSync({ gameId, playerId, isGM = false }: { gameId: string; playerId: string; isGM?: boolean }) {
   const [gameState, setGameState] = useState<VTTGameState | null>(null)
   const [isConnected, setIsConnected] = useState(false)
@@ -40,7 +43,7 @@ export function useVTTSync({ gameId, playerId, isGM = false }: { gameId: string;
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Send action to server
-  const sendAction = useCallback((action: Omit<VTTAction, 'playerId'>) => {
+  const sendAction = useCallback((action: VTTActionInput) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
       console.warn('[useVTTSync] WebSocket not connected, cannot send action')
       return

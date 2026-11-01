@@ -84,6 +84,13 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     tier = 'pro'
   }
   
+  // Stripe moved the billing period from the subscription onto its items
+  const item = subscription.items.data[0]
+  if (!item) {
+    console.error('No items on subscription')
+    return
+  }
+
   await db.stripeSubscription.upsert({
     where: { userId },
     create: {
@@ -93,8 +100,8 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
       stripeSubscriptionId: subscription.id,
       stripeCustomerId: subscription.customer as string,
       stripePriceId: priceId,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodStart: new Date(item.current_period_start * 1000),
+      currentPeriodEnd: new Date(item.current_period_end * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       metadata: JSON.stringify(subscription),
     },
@@ -102,8 +109,8 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
       tier,
       status: subscription.status,
       stripePriceId: priceId,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodStart: new Date(item.current_period_start * 1000),
+      currentPeriodEnd: new Date(item.current_period_end * 1000),
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : null,
       metadata: JSON.stringify(subscription),
@@ -125,8 +132,13 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   console.log(`✅ Subscription canceled: ${subscription.id}`)
 }
 
+function invoiceSubscriptionId(invoice: Stripe.Invoice): string | undefined {
+  const sub = invoice.parent?.subscription_details?.subscription
+  return typeof sub === 'string' ? sub : sub?.id
+}
+
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
-  const subscriptionId = invoice.subscription as string
+  const subscriptionId = invoiceSubscriptionId(invoice)
   if (!subscriptionId) return
   
   await db.stripeSubscription.updateMany({
@@ -138,7 +150,7 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
-  const subscriptionId = invoice.subscription as string
+  const subscriptionId = invoiceSubscriptionId(invoice)
   if (!subscriptionId) return
   
   await db.stripeSubscription.updateMany({

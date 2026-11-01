@@ -74,7 +74,7 @@ export async function exportPvpDeck(
       };
     }
 
-    const deck = JSON.parse(existingDeckStr);
+    const deck: Record<string, unknown> = JSON.parse(existingDeckStr);
 
     // Add PVP metadata
     const pvpMetadata: PvpDeckMetadata = {
@@ -90,7 +90,7 @@ export async function exportPvpDeck(
     await env.DECKS_KV.put(deckKey, JSON.stringify(deck), {
       expirationTtl: 90 * 24 * 60 * 60, // 90 days
       metadata: {
-        ...originalMetadata.metadata,
+        ...(typeof originalMetadata.metadata === 'object' ? originalMetadata.metadata : {}),
         pvpRegion,
         exportedForPvp: pvpMetadata.exportedForPvp,
         isPvpDeck: true

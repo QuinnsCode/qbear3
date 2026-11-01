@@ -1,13 +1,18 @@
-
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 
-const Batchify = ({ items, batchSize = 10, renderItem }: any) => {
-  const [batch, setBatch] = useState([]);
+interface BatchifyProps<T> {
+  items: T[];
+  batchSize?: number;
+  renderItem: (batch: T[]) => ReactNode;
+}
+
+const Batchify = <T,>({ items, batchSize = 10, renderItem }: BatchifyProps<T>) => {
+  const [batch, setBatch] = useState<T[][]>([]);
 
   useEffect(() => {
-    const batches = [];
-    let currentBatch = [];
+    const batches: T[][] = [];
+    let currentBatch: T[] = [];
 
     items.forEach((item) => {
       currentBatch.push(item);

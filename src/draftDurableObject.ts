@@ -162,7 +162,7 @@ export class DraftDO extends DurableObject {
     // }
 
     // TEMP FIX: Force drafter mode until permission system is fixed
-    const mode = 'drafter';
+    const mode = 'drafter' as 'drafter' | 'spectator';
     const playerId = userId || `guest-${crypto.randomUUID()}`;
 
     // Tag WebSocket: ['draft', playerId, playerName, mode]
@@ -372,7 +372,7 @@ export class DraftDO extends DurableObject {
             })
 
             // ✅ Update draft tracking for human player
-            const draftId = (this.ctx.id as DurableObjectId).name
+            const draftId = (this.ctx.id.name ?? this.draftState.id)
             updateDraftMetadata(action.playerId, draftId, {
               lastActivity: Date.now(),
               packNumber: this.draftState.currentRound + 1,
@@ -504,8 +504,9 @@ export class DraftDO extends DurableObject {
         this.draftState.playersWhoPickedThisRound = []
         
         // ✅ Check if ANY pack has enough cards for another full pick
+        const pickCount = this.draftState.config.pickCount
         const canContinuePicking = this.draftState.players.some(p => 
-          p.currentPack && p.currentPack.cards.length >= this.draftState.config.pickCount
+          p.currentPack && p.currentPack.cards.length >= pickCount
         )
         
         if (canContinuePicking) {
@@ -555,7 +556,7 @@ export class DraftDO extends DurableObject {
             this.broadcast({ type: 'draft_complete' })
 
             // ✅ Mark draft as complete in KV for all human players
-            const draftId = (this.ctx.id as DurableObjectId).name
+            const draftId = (this.ctx.id.name ?? this.draftState.id)
             const humanPlayers = this.draftState.players.filter(p => !p.isAI)
             humanPlayers.forEach(player => {
               completeDraft(player.id, draftId).catch(err => {

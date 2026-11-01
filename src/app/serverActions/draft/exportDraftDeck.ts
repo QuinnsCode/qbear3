@@ -8,6 +8,36 @@ import { getUserDecks } from '@/app/serverActions/deckBuilder/deckActions'
 
 const DECK_CACHE_TTL = 60 * 60 * 24 * 90 // 90 days
 
+function isCubeCard(v: unknown): v is CubeCard {
+  return (
+    typeof v === 'object' && v !== null &&
+    'scryfallId' in v && typeof v.scryfallId === 'string' &&
+    'name' in v && typeof v.name === 'string' &&
+    'colors' in v && Array.isArray(v.colors) &&
+    'types' in v && Array.isArray(v.types)
+  )
+}
+
+/** The parts of the draft state this export reads, checked field by field. */
+function readDraftState(body: unknown): { cubeCards: CubeCard[]; players: { id: string; draftPool: string[] }[] } {
+  const cubeCards: CubeCard[] = []
+  const players: { id: string; draftPool: string[] }[] = []
+  if (typeof body === 'object' && body !== null) {
+    if ('cubeCards' in body && Array.isArray(body.cubeCards)) {
+      for (const c of body.cubeCards) if (isCubeCard(c)) cubeCards.push(c)
+    }
+    if ('players' in body && Array.isArray(body.players)) {
+      for (const p of body.players) {
+        if (typeof p === 'object' && p !== null && 'id' in p && typeof p.id === 'string') {
+          const pool = 'draftPool' in p && Array.isArray(p.draftPool) ? p.draftPool.filter((x: unknown) => typeof x === 'string') : []
+          players.push({ id: p.id, draftPool: pool })
+        }
+      }
+    }
+  }
+  return { cubeCards, players }
+}
+
 export async function exportDraftDeck(
   draftId: string,
   playerId: string,
@@ -38,8 +68,8 @@ export async function exportDraftDeck(
       throw new Error('Failed to fetch draft state')
     }
     
-    const draftState = await draftRes.json()
-    const cubeCards: CubeCard[] = draftState.cubeCards || []
+    const draftState = readDraftState(await draftRes.json())
+    const cubeCards = draftState.cubeCards
     
     if (cubeCards.length === 0) {
       throw new Error('No cube cards found in draft state')
@@ -78,7 +108,7 @@ export async function exportDraftDeck(
         }
 
         return deckCard
-      }).filter(Boolean),
+      }).filter((c): c is NonNullable<typeof c> => c !== null),
       
       // Basic lands
       ...(Object.entries(deckConfig.basics) as [BasicLandColor, number][])
@@ -91,7 +121,7 @@ export async function exportDraftDeck(
           imageUrl: BASIC_LANDS[color].imageUrl,
           type: BASIC_LANDS[color].type,
           manaCost: '',
-          colors: BASIC_LANDS[color].colors,
+          colors: [...BASIC_LANDS[color].colors],
           isCommander: false,
           zone: 'main' as const,
           cmc: 0,
@@ -117,7 +147,7 @@ export async function exportDraftDeck(
           cmc: card.cmc || 0,
           rarity: card.rarity || 'common'
         }
-      }).filter(Boolean)
+      }).filter((c): c is NonNullable<typeof c> => c !== null)
     ]
     
     // 5. Calculate deck stats
@@ -131,7 +161,7 @@ export async function exportDraftDeck(
     }
     
     // 6. Create deck object
-    const player = draftState.players?.find((p: any) => p.id === playerId)
+    const player = draftState.players.find((p) => p.id === playerId)
     const deckId = `deck-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     
     const draftDeck: DeckV4 = {
@@ -140,14 +170,13 @@ export async function exportDraftDeck(
       format: 'draft',
       name: `Draft - ${new Date().toLocaleDateString()}`,
       colors: Array.from(allColors).sort() as ('W' | 'U' | 'B' | 'R' | 'G')[],
-      cards: deckCards as any,
+      cards: deckCards,
       totalCards,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       draftMetadata: {
         draftId,
         draftDate: Date.now(),
-        cubeId: draftState.cubeId,
         pickHistory: player?.draftPool || []
       }
     }

@@ -39,7 +39,7 @@ interface InvasionOverlayProps {
   onAdvanceToFortify: () => Promise<void>
 }
 
-const COMMANDER_ICONS = {
+const COMMANDER_ICONS: Record<string, { icon: import('lucide-react').LucideIcon; label: string; shortLabel?: string; dice?: string; color: string; bg?: string }> = {
   land: { icon: Mountain, label: 'Land', shortLabel: 'L', dice: '8', color: 'text-amber-600', bg: 'bg-amber-100' },
   diplomat: { icon: User, label: 'Diplomat', shortLabel: 'D', dice: '6', color: 'text-blue-600', bg: 'bg-blue-100' },
   nuclear: { icon: Zap, label: 'Nuclear', shortLabel: 'N', dice: '8', color: 'text-red-600', bg: 'bg-red-100' },

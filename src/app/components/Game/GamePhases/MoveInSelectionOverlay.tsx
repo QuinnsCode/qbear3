@@ -30,7 +30,7 @@ interface MoveInSelectionOverlayProps {
   onCancel: () => void;
 }
 
-const COMMANDER_ICONS = {
+const COMMANDER_ICONS: Record<string, { icon: import('lucide-react').LucideIcon; label: string; shortLabel?: string; dice?: string; color: string; bg?: string }> = {
   land: { icon: Mountain, label: 'Land Commander', color: 'text-amber-600' },
   diplomat: { icon: User, label: 'Diplomat', color: 'text-blue-600' },
   nuclear: { icon: Zap, label: 'Nuclear Commander', color: 'text-red-600' },

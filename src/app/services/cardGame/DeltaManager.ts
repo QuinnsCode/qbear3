@@ -4,7 +4,7 @@
  * Used alongside full state for testing and gradual rollout
  */
 
-import type { CardGameState, CardGameAction, Card } from './CardGameState';
+import type { CardGameState, CardGameAction } from './CardGameState';
 
 export type DeltaType =
   | 'card_moved'
@@ -101,126 +101,12 @@ export type Delta =
 
 export class DeltaManager {
   /**
-   * Generate delta from a CardGameAction
-   * Returns null if no delta can be generated for this action
+   * Generate delta from a CardGameAction.
+   * Real actions (snake_case types such as tap_card) do not produce deltas yet,
+   * so clients always take the full state. Returns null.
    */
-  generateDeltaFromAction(action: CardGameAction, state: CardGameState): Delta | null {
-    const timestamp = Date.now();
-
-    try {
-      switch (action.type) {
-        case 'MOVE_CARD': {
-          return {
-            type: 'card_moved',
-            cardId: action.payload.cardId,
-            fromZone: action.payload.fromZone,
-            toZone: action.payload.toZone,
-            fromPlayerId: action.payload.fromPlayerId || action.playerId,
-            toPlayerId: action.payload.toPlayerId || action.playerId,
-            position: action.payload.position,
-            timestamp,
-            actionType: action.type
-          };
-        }
-
-        case 'TAP_CARD':
-        case 'UNTAP_CARD': {
-          return {
-            type: 'card_tapped',
-            cardId: action.payload.cardId,
-            tapped: action.type === 'TAP_CARD',
-            playerId: action.playerId,
-            timestamp,
-            actionType: action.type
-          };
-        }
-
-        case 'FLIP_CARD': {
-          return {
-            type: 'card_flipped',
-            cardId: action.payload.cardId,
-            faceDown: action.payload.faceDown,
-            playerId: action.playerId,
-            timestamp,
-            actionType: action.type
-          };
-        }
-
-        case 'ADD_COUNTER':
-        case 'REMOVE_COUNTER': {
-          const card = this.findCard(state, action.payload.cardId);
-          const counterType = action.payload.counterType;
-          const delta = action.type === 'ADD_COUNTER' ? 1 : -1;
-          const newTotal = (card?.counters?.[counterType] || 0) + delta;
-
-          return {
-            type: 'counters_changed',
-            cardId: action.payload.cardId,
-            counterType,
-            delta,
-            newTotal,
-            playerId: action.playerId,
-            timestamp,
-            actionType: action.type
-          };
-        }
-
-        case 'CHANGE_LIFE': {
-          const player = state.players.find(p => p.id === action.playerId);
-          if (player) {
-            return {
-              type: 'life_changed',
-              playerId: action.playerId,
-              delta: action.payload.amount,
-              newLife: player.life + action.payload.amount,
-              timestamp,
-              actionType: action.type
-            };
-          }
-          return null;
-        }
-
-        case 'CHANGE_PHASE': {
-          return {
-            type: 'phase_changed',
-            phase: action.payload.phase,
-            activePlayerId: state.activePlayerId,
-            timestamp,
-            actionType: action.type
-          };
-        }
-
-        case 'NEXT_TURN': {
-          return {
-            type: 'turn_changed',
-            turnNumber: state.turnNumber + 1,
-            activePlayerId: action.payload.nextPlayerId,
-            timestamp,
-            actionType: action.type
-          };
-        }
-
-        case 'CREATE_TOKEN': {
-          if (action.payload.token) {
-            return {
-              type: 'token_created',
-              tokenId: action.payload.token.id,
-              playerId: action.playerId,
-              zone: action.payload.zone || 'battlefield',
-              timestamp,
-              actionType: action.type
-            };
-          }
-          return null;
-        }
-
-        default:
-          return null;
-      }
-    } catch (error) {
-      console.error('Error generating delta:', error);
-      return null;
-    }
+  generateDeltaFromAction(_action: CardGameAction, _state: CardGameState): Delta | null {
+    return null;
   }
 
   /**
@@ -234,18 +120,5 @@ export class DeltaManager {
       timestamp: Date.now(),
       actionType: 'PLAYER_JOIN'
     };
-  }
-
-  /**
-   * Find a card in the game state
-   */
-  private findCard(state: CardGameState, cardId: string): Card | undefined {
-    for (const player of state.players) {
-      for (const zone of Object.values(player.zones)) {
-        const card = zone.find(c => c.id === cardId);
-        if (card) return card;
-      }
-    }
-    return undefined;
   }
 }

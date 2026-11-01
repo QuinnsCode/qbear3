@@ -95,7 +95,7 @@ export async function createDraft(options: {
       packNumber: 1,
       pickNumber: 0,
       totalPacks: draftConfig.packsPerPlayer,
-      totalPicks: draftConfig.cardsPerPack,
+      totalPicks: draftConfig.packSize,
       playerCount: players.length
     })
     console.log('✅ [createDraft] Draft tracked in KV:', draftId)

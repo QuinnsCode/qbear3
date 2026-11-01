@@ -1,7 +1,8 @@
 // src/app/components/VTT/SceneManager.ts
 
 import * as THREE from 'three'
-import type { VTTGameState, VTTAction, Token } from '@/app/services/vtt/VTTGameState'
+import type { VTTActionInput } from '@/app/hooks/vtt/useVTTSync'
+import type { VTTGameState, Token } from '@/app/services/vtt/VTTGameState'
 import { EntityManager } from './EntityManager'
 import { FogOfWarRenderer } from './FogOfWarRenderer'
 
@@ -26,7 +27,7 @@ export class SceneManager {
   private camera: THREE.Camera
   private playerId: string
   private isGM: boolean
-  private sendAction: (action: Omit<VTTAction, 'playerId'>) => void
+  private sendAction: (action: VTTActionInput) => void
 
   private entityManager: EntityManager
   private fogRenderer: FogOfWarRenderer
@@ -46,7 +47,7 @@ export class SceneManager {
     camera: THREE.Camera,
     playerId: string,
     isGM: boolean,
-    sendAction: (action: Omit<VTTAction, 'playerId'>) => void
+    sendAction: (action: VTTActionInput) => void
   ) {
     this.scene = scene
     this.camera = camera

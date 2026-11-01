@@ -2,7 +2,7 @@ import { errorMessage } from '@/lib/errorMessage'
 import type { GameState } from '@/app/lib/GameState'
 
 export async function callGameDO(
-  gameStateDO: DurableObjectNamespace<any>,
+  gameStateDO: DurableObjectNamespace,
   gameId: string, 
   method: string, 
   data?: any

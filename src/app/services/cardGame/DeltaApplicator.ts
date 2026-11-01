@@ -5,7 +5,7 @@
  * Falls back to full state if delta application fails
  */
 
-import type { CardGameState, Card } from './CardGameState';
+import type { CardGameState, Card, MTGPlayer } from './CardGameState';
 import type { Delta } from './DeltaManager';
 
 export class DeltaApplicator {
@@ -59,7 +59,7 @@ export class DeltaApplicator {
           break;
 
         default:
-          throw new Error(`Unknown delta type: ${(delta as any).type}`);
+          return assertNever(delta);
       }
 
       return newState;
@@ -82,63 +82,47 @@ export class DeltaApplicator {
       throw new Error(`Destination player not found: ${delta.toPlayerId}`);
     }
 
-    // Find and remove card from source zone
-    const fromZone = fromPlayer.zones[delta.fromZone as keyof typeof fromPlayer.zones];
+    const fromZone = zoneOf(fromPlayer, delta.fromZone);
     if (!fromZone) {
       throw new Error(`Source zone not found: ${delta.fromZone}`);
     }
-
-    const cardIndex = fromZone.findIndex((c: Card) => c.id === delta.cardId);
-    if (cardIndex === -1) {
-      throw new Error(`Card not found in source zone: ${delta.cardId} in ${delta.fromZone}`);
-    }
-
-    const [card] = fromZone.splice(cardIndex, 1);
-
-    // Add card to destination zone
-    const toZone = toPlayer.zones[delta.toZone as keyof typeof toPlayer.zones];
+    const toZone = zoneOf(toPlayer, delta.toZone);
     if (!toZone) {
       throw new Error(`Destination zone not found: ${delta.toZone}`);
     }
 
+    const cardIndex = fromZone.indexOf(delta.cardId);
+    if (cardIndex === -1) {
+      throw new Error(`Card not found in source zone: ${delta.cardId} in ${delta.fromZone}`);
+    }
+    fromZone.splice(cardIndex, 1);
+
     if (delta.position !== undefined) {
-      toZone.splice(delta.position, 0, card);
+      toZone.splice(delta.position, 0, delta.cardId);
     } else {
-      toZone.push(card);
+      toZone.push(delta.cardId);
     }
 
-    console.log(`✅ Delta applied: Card moved ${card.name} from ${delta.fromZone} to ${delta.toZone}`);
+    console.log(`✅ Delta applied: Card moved ${delta.cardId} from ${delta.fromZone} to ${delta.toZone}`);
   }
 
   private applyCardTapped(state: CardGameState, delta: Delta & { type: 'card_tapped' }): void {
     const card = this.findCard(state, delta.cardId);
-    if (!card) {
-      throw new Error(`Card not found: ${delta.cardId}`);
-    }
-
-    card.tapped = delta.tapped;
-    console.log(`✅ Delta applied: Card ${delta.tapped ? 'tapped' : 'untapped'} ${card.name}`);
+    card.rotation = delta.tapped ? 90 : 0;
+    console.log(`✅ Delta applied: Card ${delta.tapped ? 'tapped' : 'untapped'} ${delta.cardId}`);
   }
 
   private applyCardFlipped(state: CardGameState, delta: Delta & { type: 'card_flipped' }): void {
     const card = this.findCard(state, delta.cardId);
-    if (!card) {
-      throw new Error(`Card not found: ${delta.cardId}`);
-    }
-
-    card.faceDown = delta.faceDown;
-    console.log(`✅ Delta applied: Card ${delta.faceDown ? 'flipped down' : 'flipped up'} ${card.name}`);
+    card.isFaceUp = !delta.faceDown;
+    console.log(`✅ Delta applied: Card ${delta.faceDown ? 'flipped down' : 'flipped up'} ${delta.cardId}`);
   }
 
   private applyCountersChanged(state: CardGameState, delta: Delta & { type: 'counters_changed' }): void {
     const card = this.findCard(state, delta.cardId);
-    if (!card) {
-      throw new Error(`Card not found: ${delta.cardId}`);
-    }
-
     if (!card.counters) card.counters = {};
     card.counters[delta.counterType] = delta.newTotal;
-    console.log(`✅ Delta applied: Counters ${card.name} ${delta.counterType} = ${delta.newTotal}`);
+    console.log(`✅ Delta applied: Counters ${delta.cardId} ${delta.counterType} = ${delta.newTotal}`);
   }
 
   private applyLifeChanged(state: CardGameState, delta: Delta & { type: 'life_changed' }): void {
@@ -151,28 +135,38 @@ export class DeltaApplicator {
     console.log(`✅ Delta applied: Life ${player.name} = ${delta.newLife} (${delta.delta > 0 ? '+' : ''}${delta.delta})`);
   }
 
-  private applyPhaseChanged(state: CardGameState, delta: Delta & { type: 'phase_changed' }): void {
-    state.currentPhase = delta.phase;
-    state.activePlayerId = delta.activePlayerId;
-    console.log(`✅ Delta applied: Phase ${delta.phase}`);
+  private applyPhaseChanged(_state: CardGameState, delta: Delta & { type: 'phase_changed' }): void {
+    // Game state tracks no phase; the caller falls back to the full state.
+    throw new Error(`Phase changes are not tracked in game state: ${delta.phase}`);
   }
 
-  private applyTurnChanged(state: CardGameState, delta: Delta & { type: 'turn_changed' }): void {
-    state.turnNumber = delta.turnNumber;
-    state.activePlayerId = delta.activePlayerId;
-    console.log(`✅ Delta applied: Turn ${delta.turnNumber}`);
+  private applyTurnChanged(_state: CardGameState, delta: Delta & { type: 'turn_changed' }): void {
+    // Game state tracks no turn; the caller falls back to the full state.
+    throw new Error(`Turn changes are not tracked in game state: ${delta.turnNumber}`);
   }
 
-  /**
-   * Find a card anywhere in the game state
-   */
-  private findCard(state: CardGameState, cardId: string): Card | undefined {
-    for (const player of state.players) {
-      for (const zone of Object.values(player.zones)) {
-        const card = zone.find((c: Card) => c.id === cardId);
-        if (card) return card;
-      }
+  private findCard(state: CardGameState, cardId: string): Card {
+    const card = state.cards[cardId];
+    if (!card) {
+      throw new Error(`Card not found: ${cardId}`);
     }
-    return undefined;
+    return card;
   }
+}
+
+function zoneOf(player: MTGPlayer, zone: string): string[] | undefined {
+  switch (zone) {
+    case 'library': return player.zones.library;
+    case 'hand': return player.zones.hand;
+    case 'battlefield': return player.zones.battlefield;
+    case 'graveyard': return player.zones.graveyard;
+    case 'exile': return player.zones.exile;
+    case 'command': return player.zones.command;
+    case 'sideboard': return player.zones.sideboard;
+    default: return undefined;
+  }
+}
+
+function assertNever(delta: never): never {
+  throw new Error(`Unknown delta type: ${JSON.stringify(delta)}`);
 }

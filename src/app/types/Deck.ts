@@ -430,8 +430,8 @@ export function ensureCardZones(deck: DeckV4): DeckV4 {
  * OLD FORMAT: [{ name: "Swamp", quantity: 1 }, { name: "Swamp", quantity: 1 }, ...]
  * NEW FORMAT: [{ name: "Swamp", quantity: 6 }]
  */
-export function groupDuplicateCards(cards: DeckCard[]): DeckCard[] {
-  const cardMap = new Map<string, DeckCard>()
+export function groupDuplicateCards<T extends DeckCard>(cards: T[]): T[] {
+  const cardMap = new Map<string, T>()
 
   for (const card of cards) {
     // Use scryfallId as unique key (or id as fallback)

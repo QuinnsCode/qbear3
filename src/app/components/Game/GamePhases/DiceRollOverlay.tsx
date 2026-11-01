@@ -199,7 +199,7 @@ const DiceRollOverlay = ({
   };
 
   const showMatches = () => {
-    const newMatches = [];
+    const newMatches: { attackerDie: DiceResult; defenderDie: DiceResult; winner: 'attacker' | 'defender' }[] = [];
     const maxMatches = Math.min(attackerDiceDisplay.length, defenderDiceDisplay.length);
     
     for (let i = 0; i < maxMatches; i++) {

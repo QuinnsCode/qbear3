@@ -109,7 +109,7 @@ const FeatureNavigation = ({ initialFeature = 'awaiting-shipments', onFeatureCha
       </div>
 
       {/* Add custom scrollbar hiding */}
-      <style jsx>{`
+      <style>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;

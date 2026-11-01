@@ -1,5 +1,6 @@
 // src/app/services/game/gameFunctions/cards/CardManager.ts
 
+type CommanderField = 'landCommander' | 'diplomatCommander' | 'navalCommander' | 'nuclearCommander'
 import type { GameState, GameAction, Player, Territory, ActiveScoutForce } from '@/app/lib/GameState';
 import { RAW_CARD_DATA } from '@/app/services/game/gameFunctions';
 
@@ -28,7 +29,7 @@ export class CardManager {
       return result;
     } catch (error) {
       console.error('🃏 ERROR: Failed to play card:', error);
-      console.error('🃏 ERROR: Stack trace:', error.stack);
+      console.error('🃏 ERROR: Stack trace:', error instanceof Error ? error.stack : error);
       throw error;
     }
   }
@@ -364,7 +365,7 @@ export class CardManager {
 
   static applyColonyInfluenceEffect(gameState: GameState, playerId: string, cardData: any): void {
     const cardType = cardData.commanderType;
-    let commanderField: string;
+    let commanderField: CommanderField;
     
     switch (cardType) {
       case 'diplomat':
@@ -638,7 +639,7 @@ export class CardManager {
     console.log(`Assassin Bomb: Rolled ${roll} on 8-sided die`);
 
     if (roll >= 3) {
-      const commanderField = `${commanderType}Commander`;
+      const commanderField = `${commanderType}Commander` as CommanderField;
       const targetPlayer = gameState.players.find(p => p.id === targetPlayerId);
       
       if (!targetPlayer) {

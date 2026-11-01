@@ -3,19 +3,7 @@
 
 import { useState } from 'react';
 import { X, Zap } from 'lucide-react';
-
-interface Card {
-  id: string;
-  type: string;
-  name: string;
-  data: {
-    cardTitle: string;
-    cardCost?: number;
-    commanderType?: string;
-    cardText?: string;
-    cardPhase?: number;
-  };
-}
+import type { Card } from '@/app/lib/GameState';
 
 interface ActiveScoutForce {
   cardId: string;
@@ -33,14 +21,14 @@ interface InGameCardsOverlayProps {
   territories?: Record<string, any>;
 }
 
-const COMMANDER_COLORS = {
+const COMMANDER_COLORS: Record<string, string> = {
   land: 'from-amber-600 to-amber-800',
   diplomat: 'from-blue-600 to-blue-800',
   naval: 'from-cyan-600 to-cyan-800',
   nuclear: 'from-red-600 to-red-800',
 };
 
-const COMMANDER_BORDER_COLORS = {
+const COMMANDER_BORDER_COLORS: Record<string, string> = {
   land: 'border-amber-500',
   diplomat: 'border-blue-500',
   naval: 'border-cyan-500',

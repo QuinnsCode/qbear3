@@ -6,7 +6,7 @@
 import { errorMessage } from '@/lib/errorMessage'
 import { env } from "cloudflare:workers";
 // import { syncGameState } from "@/lib/syncedState";
-import type { GameState, AttackResult, InvasionResult, MoveResult } from '@/app/lib/GameState'
+import type { Player, GameState, AttackResult, InvasionResult, MoveResult } from '@/app/lib/GameState'
 
 
 // Helper function to call the Durable Object - FIXED VERSION
@@ -305,7 +305,7 @@ export async function getCurrentPlayer(gameId: string) {
 export async function getPlayerDecision(gameId: string, playerId: string) {
   try {
     console.log('getPlayerDecision called:', { gameId, playerId })
-    const gameState = await callGameDO(gameId, 'getState')
+    const gameState: GameState = await callGameDO(gameId, 'getState')
     const player = gameState.players.find(p => p.id === playerId)
     return player?.pendingDecision || null
   } catch (error) {
@@ -808,7 +808,7 @@ export async function collectAndStartDeploy(
     })
     
     // ✅ VERIFY the result has correct data
-    const updatedPlayer = result.players?.find(p => p.id === playerId)
+    const updatedPlayer = result.players?.find((p: Player) => p.id === playerId)
     console.log('🎯 SERVER ACTION: Result verification:', {
       playerId,
       playerName: updatedPlayer?.name,
