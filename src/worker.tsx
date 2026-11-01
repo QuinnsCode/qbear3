@@ -201,14 +201,6 @@ export default defineApp([
       const autoOrgResult = await autoCreateOrgMiddleware(ctx, request);
       if (autoOrgResult) return autoOrgResult;
 
-      // Log when we SKIP the org check (to debug the issue)
-      const url = new URL(request.url);
-      if (ctx.user && url.pathname === '/') {
-        const { getCachedUserMemberships } = await import('@/lib/cache/authCache');
-        const memberships = await getCachedUserMemberships(ctx.user.id);
-        console.log('ℹ️ [ROOT PATH] User on / with', memberships.length, 'orgs - NOT redirecting (root exempted)');
-      }
-      
       // Handle organization errors for frontend routes
       if (ctx.orgError && 
           !request.url.includes('/api/') && 
