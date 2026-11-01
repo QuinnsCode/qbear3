@@ -18,7 +18,7 @@ export default function GameCenterPage({ ctx, request }: RequestInfo) {
           linkHref={isLoggedIn ? '/sanctum' : '/user/signup'}
           linkLabel={isLoggedIn ? 'Go to Sanctum' : 'Create an account'}
         />
-        <PortalGroups entries={games} groups={gameGroups} request={request} />
+        <PortalGroups bars entries={games} groups={gameGroups} request={request} />
 
         <div style={{ paddingTop: 'clamp(40px, 7vw, 72px)' }}>
           <span className="q-label">How it works</span>

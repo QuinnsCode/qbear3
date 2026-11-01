@@ -261,7 +261,9 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 .q-tile.q-wide .q-tile-body { flex: 1 1 0; min-width: 0; padding: clamp(12px, 2vw, 20px) clamp(8px, 1.5vw, 16px); }
 .q-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font: 13px var(--q-mono); color: var(--q-muted); }
 .q-list li::before { content: "› "; color: var(--q-accent-ink); }
-/* Bars: a group of wide tiles, one full-width row per app, preview big enough to read. */
+/* Bars: a group of wide tiles, one full-width row per app, preview big enough to read.
+   The group is a plain heading + stack here, not a padded card, so each bar runs the full page width. */
+.q-group.q-bars { padding: 0; border: 0; background: none; }
 .q-group.q-bars .q-group-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .q-group.q-bars .q-tile.q-wide { align-items: center; }
 .q-group.q-bars .q-tile.q-wide .q-tile-preview { width: clamp(150px, 30%, 340px); aspect-ratio: 16 / 7; min-height: 0; height: auto; align-self: stretch; }
