@@ -49,14 +49,11 @@ export function Document({ children }: { children: React.ReactNode }) {
       <meta name="description" content="QNTBR: a virtual tabletop for Magic: The Gathering Commander. Play, draft and build decks with friends in the browser." />
       <link rel="icon" type="image/png" href="/favicon.png"/>
       <link rel="modulepreload" href="/src/client.tsx" />
-      {/* Open the font connections before the stylesheets ask for them */}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      {/* The faces above the fold, fetched alongside the CSS instead of after it */}
+      <link rel="preload" href="/fonts/Sansation-400.woff2" as="font" type="font/woff2" crossOrigin="" />
+      <link rel="preload" href="/fonts/Unbounded-variable.woff2" as="font" type="font/woff2" crossOrigin="" />
       <link rel="stylesheet" href={styles} />
       <link rel="stylesheet" href={uiStyles} />
-
-      {/* @qntbr/ui type: Sansation (interface), Brawler (reading), Unbounded (titles), Geist Mono (tags) */}
-      <link href="https://fonts.googleapis.com/css2?family=Brawler:wght@400;700&family=Sansation:ital,wght@0,300;0,400;0,700;1,400&family=Unbounded:wght@500;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     </head>
     <body>
       <Suspense fallback={<div>Loading...</div>}>
