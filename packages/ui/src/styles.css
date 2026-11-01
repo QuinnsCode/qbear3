@@ -328,6 +328,63 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 .q-aside-line a { color: var(--q-muted); }
 .q-aside-line a:hover { color: var(--q-fg); }
 
+/* ── Feed: one full-width post per app, like a news feed or a chat thread ── */
+/* An avatar on the left, the name line, then a message bubble holding a capture of the running app,
+   the pitch and one button. The bubble's tail points at the avatar. */
+.q-feed { display: grid; gap: clamp(28px, 4.5vw, 48px); }
+.q-post {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 clamp(10px, 1.6vw, 16px);
+  color: inherit; text-decoration: none;
+}
+.q-post-avatar {
+  width: clamp(40px, 5vw, 52px); height: clamp(40px, 5vw, 52px); border-radius: 50%;
+  display: grid; place-items: center; font-size: clamp(20px, 2.6vw, 26px); line-height: 1;
+  background: var(--q-ink-bg); border: 1px solid rgba(0, 0, 0, 0.25); box-shadow: var(--q-shadow);
+  margin-top: 2px;
+}
+.q-post-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.q-post-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-height: 28px; }
+.q-post-name { margin: 0; font: 600 clamp(19px, 2.2vw, 23px)/1.15 var(--q-sans); letter-spacing: -0.03em; color: var(--q-fg); }
+.q-post-source { font: 400 12px/1.2 var(--q-mono); color: var(--q-faint); margin-left: auto; }
+.q-post-bubble {
+  position: relative; display: flex; flex-direction: column; gap: clamp(12px, 1.6vw, 16px);
+  padding: clamp(12px, 1.8vw, 18px);
+  background: var(--q-grain), var(--q-paper);
+  border: 1px solid var(--q-border-2); border-radius: 4px 18px 18px 18px;
+  transition: border-color 0.14s, box-shadow 0.14s;
+}
+/* the tail, drawn in the bubble's own border and fill */
+.q-post-bubble::before, .q-post-bubble::after { content: ""; position: absolute; top: -1px; width: 0; height: 0; border-style: solid; }
+.q-post-bubble::before { left: -11px; border-width: 0 11px 11px 0; border-color: transparent var(--q-border-2) transparent transparent; }
+.q-post-bubble::after { left: -9px; top: 0; border-width: 0 10px 10px 0; border-color: transparent var(--q-paper) transparent transparent; }
+.q-post:hover .q-post-bubble { border-color: var(--q-edge-hi); box-shadow: var(--q-shadow); }
+.q-post:hover .q-post-bubble::before { border-right-color: var(--q-edge-hi); }
+.q-post-lead { margin: 0; font: 500 clamp(17px, 2.1vw, 22px)/1.35 var(--q-sans); letter-spacing: -0.015em; color: var(--q-fg); }
+.q-post-shot {
+  position: relative; overflow: hidden; border-radius: 10px;
+  background: var(--q-ink-bg); border: 1px solid rgba(0, 0, 0, 0.25);
+}
+.q-post-shot > img { display: block; width: 100%; height: auto; transition: transform 0.4s ease-out; }
+.q-post-shot > svg { display: block; width: 100%; height: auto; aspect-ratio: 21 / 7; color: #fff; }
+.q-post:hover .q-post-shot > img { transform: scale(1.015); }
+.q-post-text { display: grid; gap: 8px; max-width: 72ch; }
+.q-post-text p { margin: 0; color: var(--q-muted); font-size: clamp(14.5px, 1.5vw, 16px); line-height: 1.55; }
+.q-post-text p:first-child { color: var(--q-fg); }
+.q-post-foot { display: flex; }
+.q-post-foot .q-btn { pointer-events: none; }
+.q-post:hover .q-post-foot .q-btn.q-primary { background: var(--q-grain), linear-gradient(0deg, var(--q-ink-hover), var(--q-ink-bg) 85%); }
+@media (max-width: 560px) {
+  .q-post { grid-template-columns: minmax(0, 1fr); }
+  .q-post-avatar { display: none; }
+  .q-post-bubble { border-radius: 14px; }
+  .q-post-bubble::before, .q-post-bubble::after { display: none; }
+  .q-post-source { margin-left: 0; flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .q-post-bubble, .q-post-shot > img { transition: none; }
+  .q-post:hover .q-post-shot > img { transform: none; }
+}
+
 /* ── Items: the pill on the craft workspace ───────────── */
 /* An item: Infinite Craft's pill. A glyph, a name, nothing else. */
 .q-item {

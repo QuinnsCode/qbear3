@@ -5,16 +5,20 @@ import { app, hasSection, headings, links, tags } from "./kit.ts";
 
 const RUSTY_BUNS = "https://github.com/QuinnsCode/RustyBuns";
 
-test("landing page leads with codeSplitter, then the featured games, the lab and the shelves", async () => {
+test("landing page is a feed of the featured apps, then the lab and the shelves", async () => {
   const b = (await app()).browser();
   const page = await b.get("/");
   expect(page.status).toBe(200);
   expect(page.hops).toEqual([]);
-  for (const id of ["feature", "featured-games", "lab", "products", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
-  // The feature capsule is one link to codeSplitter; the three games sit on their own capsules under it.
-  expect(links(page.body, { href: "https://codesplitter.notryanquinn.workers.dev", class: "q-hero" })).toHaveLength(1);
-  for (const host of ["git-recon", "skatetechpark", "park-hide-seek"]) {
-    expect(links(page.body, { href: `https://${host}.notryanquinn.workers.dev`, class: "q-capsule" })).toHaveLength(1);
+  for (const id of ["feed", "lab", "products", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
+  // One post per featured app, codeSplitter first, each one link to the running app.
+  const hosts = ["codesplitter", "git-recon", "skatetechpark", "park-hide-seek"];
+  const posts = links(page.body, { class: "q-post" }).map((l) => l.attrs.href);
+  expect(posts).toEqual(hosts.map((h) => `https://${h}.notryanquinn.workers.dev`));
+  // Each post shows a capture of the app, and the capture is served.
+  for (const key of ["codesplitter", "git-recon", "skate-tech-park", "park-hide-seek"]) {
+    const shot = await b.get(`/landing/${key}.jpg`);
+    expect(shot.status).toBe(200);
   }
   expect(page.body).toContain("Git the main HEAD merged before the Conflict takes over");
   // The lab's bag is server-rendered: words to combine and every app already in it.
