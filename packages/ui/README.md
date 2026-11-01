@@ -15,7 +15,7 @@ It is a pnpm workspace package. In a consuming app:
 "dependencies": { "@qntbr/ui": "workspace:*" }
 ```
 
-Load the stylesheet once (RedwoodSDK: in `Document.tsx`) and the Geist fonts:
+Load the stylesheet once (RedwoodSDK: in `Document.tsx`) and the fonts (Sansation, Brawler, Unbounded, Geist Mono):
 
 ```tsx
 import uiStyles from "@qntbr/ui/styles.css?url";

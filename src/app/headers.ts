@@ -20,6 +20,6 @@ export const setCommonHeaders =
 
     response.headers.set(
       "Content-Security-Policy",
-      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: https://cards.scryfall.io https://c1.scryfall.com; connect-src 'self' https://api.scryfall.com; frame-src https://challenges.cloudflare.com; object-src 'none';`,
+      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: https://cards.scryfall.io https://c1.scryfall.com; connect-src 'self' https://api.scryfall.com; frame-src https://challenges.cloudflare.com; object-src 'none';`,
     );
   };

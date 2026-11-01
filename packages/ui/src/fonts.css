@@ -1,2 +1,3 @@
-/* Geist + Geist Mono from Google Fonts. Import once (or add the equivalent <link> to your Document). */
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+/* Sansation (interface), Brawler (reading), Unbounded (titles) and Geist Mono (tags) from Google Fonts.
+   Import once (or add the equivalent <link> to your Document). */
+@import url('https://fonts.googleapis.com/css2?family=Brawler:wght@400;700&family=Sansation:ital,wght@0,300;0,400;0,700;1,400&family=Unbounded:wght@500;700;800&family=Geist+Mono:wght@400;500;600&display=swap');

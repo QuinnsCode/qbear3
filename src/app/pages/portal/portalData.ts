@@ -20,7 +20,7 @@ export interface PortalEntry {
   group: string;
   /** Icon shown in the card's preview window. */
   icon: LucideIcon;
-  /** Screenshot that replaces the icon in the preview window, when there is one. */
+  /** A capture of the running app (under public/), shown on the landing feed and in place of the icon. */
   image?: string;
   /** Emoji shown on the lab tile. */
   glyph?: string;
@@ -165,6 +165,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'park-hide-seek',
+    image: '/landing/park-hide-seek.jpg',
     group: 'rustybuns',
     icon: Trees,
     glyph: '🌲',
@@ -185,6 +186,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'skate-tech-park',
+    image: '/landing/skate-tech-park.jpg',
     group: 'rustybuns',
     icon: Wind,
     glyph: '🛹',
@@ -205,6 +207,7 @@ export const games: PortalEntry[] = [
   },
   {
     key: 'git-recon',
+    image: '/landing/git-recon.jpg',
     group: 'rustybuns',
     icon: Crosshair,
     glyph: '🔫',
@@ -291,6 +294,7 @@ export const games: PortalEntry[] = [
 export const apps: PortalEntry[] = [
   {
     key: 'codesplitter',
+    image: '/landing/codesplitter.jpg',
     group: 'dev',
     icon: GitBranch,
     glyph: '🧩',
@@ -341,6 +345,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'rustybuns',
+    image: '/landing/rustybuns.svg',
     group: 'dev',
     icon: Sandwich,
     glyph: '🍔',

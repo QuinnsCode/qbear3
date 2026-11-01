@@ -1,10 +1,10 @@
 // @/app/pages/landing/LandingPage.tsx
-// The QNTBR front door. The headline act first: codeSplitter on a full-width Steam-style capsule,
-// then the three games we are proudest of on their own capsules, then the lab (every game and app
-// is a verb and a noun; drop one on the other and the app appears), then the same compact shelves
-// the hubs use.
+// The QNTBR front door. A feed first: one full-width post per featured app, each a message with a
+// capture of the app running, its pitch and one button (codeSplitter, then the three games we are
+// proudest of). Then the lab (every game and app is a verb and a noun; drop one on the other and the
+// app appears), then the same compact shelves the hubs use.
 import { type RequestInfo } from "rwsdk/worker";
-import { Capsule } from "@qntbr/ui";
+import { FeedPost } from "@qntbr/ui";
 import { apps, appGroups, gameGroups, games, isExternal, resolveHref, type PortalEntry } from "@/app/pages/portal/portalData";
 import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from "@/app/pages/portal/PortalShell";
 import { toneOf } from "@/app/pages/portal/tones";
@@ -12,9 +12,8 @@ import { KeyArt } from "./KeyArt";
 import LandingLab from "./LandingLab";
 import { labItems } from "./lab";
 
-/** The one app the page is about, and the games under it, in the order they are shown. */
-export const FEATURED_APP = 'codesplitter';
-export const FEATURED_GAMES = ['git-recon', 'skate-tech-park', 'park-hide-seek'] as const;
+/** The feed, top to bottom: the one app the page is about, then the games. */
+export const FEED = ['codesplitter', 'git-recon', 'skate-tech-park', 'park-hide-seek'] as const;
 
 const byKey = (key: string): PortalEntry => {
   const entry = [...apps, ...games].find((e) => e.key === key);
@@ -22,21 +21,34 @@ const byKey = (key: string): PortalEntry => {
   return entry;
 };
 
-function EntryCapsule({ entry, request, hero }: { entry: PortalEntry; request: Request; hero?: boolean }) {
+/** Magic: The Gathering on the front door is one app: a draft of the cube. The hub keeps the rest. */
+const CUBE: PortalEntry = {
+  ...byKey('draft'),
+  name: 'Draft my cube',
+  tagline: 'Booster draft from the vintage cube',
+  description: 'Open a draft room on the cube, share the link, and pick packs together in real time. The deck you draft saves straight to your list.',
+  cta: 'Draft the cube',
+};
+const landingGames = games.flatMap((e) => (e.group !== 'mtg' ? [e] : e.key === CUBE.key ? [CUBE] : []));
+
+function EntryPost({ entry, request, first }: { entry: PortalEntry; request: Request; first?: boolean }) {
   const href = resolveHref(entry, request);
+  const external = isExternal(href);
   return (
-    <Capsule
-      hero={hero}
-      nameAs={hero ? 'h2' : 'h3'}
+    <FeedPost
+      nameAs="h2"
+      eager={first}
       name={entry.name}
       tag={entry.tag}
-      tagline={entry.tagline}
-      pitch={entry.pitch}
-      art={entry.image ?? <KeyArt entryKey={entry.key} glyph={entry.glyph} />}
+      source={external ? new URL(href).host : undefined}
+      avatar={entry.glyph}
       tone={toneOf(entry.key, entry.group)}
+      tagline={entry.tagline}
+      shot={entry.image ?? <KeyArt entryKey={entry.key} glyph={entry.glyph} />}
+      pitch={entry.pitch}
       href={href}
       cta={entry.cta}
-      external={isExternal(href)}
+      external={external}
     />
   );
 }
@@ -47,27 +59,16 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
 
   return (
     <PortalPage isLoggedIn={isLoggedIn} current="home">
-      {/* ── Feature: codeSplitter ── */}
-      <PortalSection id="feature">
+      {/* ── The feed: one post per featured app ── */}
+      <PortalSection id="feed">
         <PortalSectionHead
           as="h1"
           eyebrow="QNTBR · Solutions architecture · Web apps & web solutions"
-          title={<>Built for the <em>fleet.</em></>}
-          lede="We build tools we actually use and ship them on the runtime we wrote for it. This is the one we would show you first."
+          title={<>Built for the <em>fleet.</em> Then we <em>play.</em></>}
+          lede="We build tools we actually use and ship them on the runtime we wrote for it. Here is what is running right now: every picture below is the real thing, captured live."
         />
-        <EntryCapsule entry={byKey(FEATURED_APP)} request={request} hero />
-      </PortalSection>
-
-      {/* ── Featured games ── */}
-      <PortalSection id="featured-games">
-        <PortalSectionHead
-          small
-          eyebrow="Game Center · Featured"
-          title={<>Then we <em>play.</em></>}
-          lede="Three games shipped on Rusty Buns, in the order we love them. Each one is a browser tab away; the whole Game Center is further down."
-        />
-        <div className="q-capsules">
-          {FEATURED_GAMES.map((key) => <EntryCapsule key={key} entry={byKey(key)} request={request} />)}
+        <div className="q-feed">
+          {FEED.map((key, i) => <EntryPost key={key} entry={byKey(key)} request={request} first={i === 0} />)}
         </div>
       </PortalSection>
 
@@ -90,7 +91,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           title={<>What we <em>build.</em></>}
           lede="A code host for agents, the runtime it ships on, and everything we've built with them."
         />
-        <PortalGroups compact entries={apps} groups={appGroups.filter((g) => g.key === 'dev')} request={request} />
+        <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key === 'dev')} request={request} />
       </PortalSection>
 
       {/* ── Game Center ── */}
@@ -99,11 +100,11 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           small
           eyebrow="Game Center"
           title={<>The <em>tables.</em></>}
-          lede="Where QNTBR started: Commander tables, drafts, a sandbox that never closes, a strategy map, and the games shipped on Rusty Buns."
+          lede="The games shipped on Rusty Buns, a draft of the cube where QNTBR started, a strategy map and a place to find your pod. Every Commander table is in the Game Center."
           linkHref="/games"
           linkLabel="Open Game Center"
         />
-        <PortalGroups compact entries={games} groups={gameGroups} request={request} />
+        <PortalGroups bars entries={landingGames} groups={gameGroups} request={request} />
       </PortalSection>
 
       {/* ── App Center ── */}
@@ -116,7 +117,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           linkHref="/apps"
           linkLabel="Open App Center"
         />
-        <PortalGroups compact entries={apps} groups={appGroups.filter((g) => g.key !== 'dev')} request={request} />
+        <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key !== 'dev')} request={request} />
       </PortalSection>
 
       {/* ── About ── */}
