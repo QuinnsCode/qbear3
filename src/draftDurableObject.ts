@@ -7,6 +7,8 @@ import { viewFor, type DraftViewMode } from '@/app/services/draft/DraftView'
 import { DraftAI } from '@/app/services/draft/DraftAI'
 import { updateDraftMetadata, completeDraft } from '@/app/serverActions/draft/draftTracking'
 
+const DEFAULT_PICK_SECONDS = 120
+
 export class DraftDO extends DurableObject {
   private draftState: DraftState | null = null
   private cubeCards: CubeCard[] = []
@@ -38,7 +40,7 @@ export class DraftDO extends DurableObject {
         const playerId = decodeURIComponent(url.pathname.slice('/view/'.length))
         const state = await this.getState().catch(() => null)
         if (!state) return Response.json({ error: 'No such draft' }, { status: 404 })
-        const player = state.players.find(p => p.id === playerId && !p.isAI)
+        const player = state.players.find(p => p.id === playerId && !p.isAI && !p.open)
         if (!player) return Response.json({ error: 'Not a drafter in this draft' }, { status: 403 })
         const card = (id: string) => this.cubeCards.find(c => c.scryfallId === id)
         return Response.json({
@@ -75,6 +77,15 @@ export class DraftDO extends DurableObject {
         return Response.json(state)
       }
       
+      // Take an open seat. Who is asking comes from the Worker (session or guest cookie), as for the socket.
+      if (method === 'POST' && url.pathname === '/join') {
+        const userId = request.headers.get('X-Auth-User-Id')
+        const name = request.headers.get('X-Auth-User-Name') || 'Guest'
+        if (!userId) return Response.json({ error: 'Sign in, or join from a browser that can keep a cookie' }, { status: 401 })
+        const joined = await this.join(userId, name)
+        return 'error' in joined ? Response.json(joined, { status: joined.status }) : Response.json(joined)
+      }
+
       if (method === 'PATCH' && url.pathname === '/permissions') {
         const userId = request.headers.get('X-Auth-User-Id') || null
         const { isPublic, allowSpectators, spectatorList } = await request.json() as any
@@ -236,26 +247,11 @@ export class DraftDO extends DurableObject {
     return this.draftState
   }
 
-  /**
-   * Check if a user can actively participate in this draft
-   * - Guest drafts (no creator): anyone can draft (multiplayer)
-   * - Logged-in drafts (has creator): only creator can draft (single-player vs AI)
-   */
   /** How `userId` may join: as a seated drafter, as a spectator, or not at all. */
   private modeFor(userId: string | null): DraftViewMode | null {
-    const seated = !!userId && !!this.draftState?.players.some(p => !p.isAI && p.id === userId)
-    if (seated && this.canDraft(userId)) return 'drafter'
+    const seated = !!userId && !!this.draftState?.players.some(p => !p.isAI && !p.open && p.id === userId)
+    if (seated) return 'drafter'
     return this.canSpectate(userId) ? 'spectator' : null
-  }
-
-  private canDraft(userId: string | null): boolean {
-    if (!this.draftState?.permissions) return true // Default allow if no permissions set
-
-    // Guest drafts (no creator): anyone with the link can draft
-    if (!this.draftState.creatorId) return true
-
-    // Logged-in drafts: locked to creator only (single-player vs AI)
-    return userId !== null && userId === this.draftState.creatorId
   }
 
   /**
@@ -314,6 +310,9 @@ export class DraftDO extends DurableObject {
     // ✅ NEW: Set creator and permissions
     this.draftState.creatorId = creatorId || undefined
 
+    // Seats nobody has taken yet hold the draft back until the last one is filled
+    if (players.some(p => p.open)) this.draftState.status = 'waiting'
+
     // Default permissions based on whether creator is logged in
     const isGuestDraft = !creatorId
     this.draftState.permissions = {
@@ -325,8 +324,51 @@ export class DraftDO extends DurableObject {
     console.log(`✅ Draft initialized, status: ${this.draftState.status}, isPublic: ${this.draftState.permissions.isPublic}`)
 
     this.persist()
+    this.armPickDeadline()
 
     return this.draftState
+  }
+
+  /** Seat `userId` in the first open seat. Taking the last one starts the draft. */
+  private async join(userId: string, name: string): Promise<{ ok: true; status: DraftState['status'] } | { error: string; status: number }> {
+    const state = await this.getState()
+    if (state.players.some(p => p.id === userId && !p.open)) return { ok: true, status: state.status }
+    const seat = state.players.findIndex(p => p.open)
+    if (seat === -1) return { error: 'This draft has no open seats', status: 409 }
+
+    const seatNumber = state.players.filter(p => !p.isAI && !p.open).length + 1
+    state.players[seat] = { ...state.players[seat], id: userId, name: name === 'Guest' ? `Guest ${seatNumber}` : name, open: false }
+    if (!state.players.some(p => p.open) && state.status === 'waiting') state.status = 'drafting'
+    state.updatedAt = new Date()
+    this.draftState = state
+    this.persist()
+    this.armPickDeadline()
+    this.broadcastState('seat_taken', state)
+    return { ok: true, status: state.status }
+  }
+
+  /** With several humans, the pick everyone waits on has a deadline; with one there is nobody to wait for. */
+  private armPickDeadline(): void {
+    const state = this.draftState
+    if (!state) return
+    const humans = state.players.filter(p => !p.isAI).length
+    if (state.status !== 'drafting' || humans < 2) { state.pickDeadline = undefined; return }
+    const seconds = state.config.pickTimerSeconds ?? DEFAULT_PICK_SECONDS
+    state.pickDeadline = Date.now() + seconds * 1000
+    this.persist()
+    void this.ctx.storage.setAlarm(state.pickDeadline)
+  }
+
+  /** The deadline passed: a seated human who has not picked gets an AI pick, then the round moves on. */
+  async alarm(): Promise<void> {
+    const state = await this.getState().catch(() => null)
+    if (!state || state.status !== 'drafting' || !state.pickDeadline) return
+    if (Date.now() < state.pickDeadline) { void this.ctx.storage.setAlarm(state.pickDeadline); return }
+    for (const p of state.players) {
+      if (!p.isAI && !p.open) this.autoPick(p.id)
+    }
+    this.advanceRound()
+    this.persist()
   }
   
   async applyAction(action: Omit<DraftAction, 'id' | 'timestamp'>): Promise<{ success: boolean }> {
@@ -334,6 +376,7 @@ export class DraftDO extends DurableObject {
     if (!this.draftState) throw new Error('Draft not initialized')
 
     if (action.type === 'make_pick') {
+      if (this.draftState.status === 'waiting') throw new Error('Waiting for the other drafters to take their seats')
       if (this.draftState.status !== 'drafting') throw new Error('The draft is over')
       // Between a pick and the pass the same pack is still in hand: a second pick would take two turns
       if (this.draftState.playersWhoPickedThisRound?.includes(action.playerId)) {
@@ -450,121 +493,75 @@ export class DraftDO extends DurableObject {
     }
   }
 
+  /** Pick for `playerId` as the AI would, and count it as their pick this round. */
+  private autoPick(playerId: string): void {
+    const state = this.draftState
+    const p = state?.players.find(q => q.id === playerId)
+    if (!state || !p?.currentPack || p.currentPack.cards.length === 0) return
+    const picked = state.playersWhoPickedThisRound ?? (state.playersWhoPickedThisRound = [])
+    if (picked.includes(playerId)) return
+    const cardIds = DraftAI.pickCards(p.currentPack, p.draftPool, this.cubeCards, state.config.pickCount)
+    this.draftState = DraftManager.makePick(state, playerId, cardIds, this.cubeCards)
+    picked.push(playerId)
+  }
+
   private processAITurnsSync(): void {
-    console.log('🤖 Starting AI processing')
-    
-    if (!this.draftState || this.draftState.status !== 'drafting') {
-      console.log('❌ Invalid state for AI processing')
-      return
-    }
-    
-    // Initialize pick tracking if needed
-    if (!this.draftState.playersWhoPickedThisRound) {
-      this.draftState.playersWhoPickedThisRound = []  // ✅ Array not Set
-    }
-    
-    let iterations = 0
-    
-    while (iterations < 100) {
-      const aiPlayers = this.draftState.players.filter(p => 
-        p.isAI && 
-        p.currentPack && 
-        p.currentPack.cards.length > 0 &&
-        !this.draftState?.playersWhoPickedThisRound?.includes(p.id)  // ✅ Correct
-      )
-      
-      if (aiPlayers.length === 0) {
-        console.log('✅ All AI picked')
-        break
-      }
-      
-      const ai = aiPlayers[0]
-      const cardIds = DraftAI.pickCards(ai.currentPack!, ai.draftPool, this.cubeCards, this.draftState.config.pickCount)
-      
-      this.draftState = DraftManager.makePick(this.draftState, ai.id, cardIds, this.cubeCards)
-      
-      // Add AI to picked list
-      if (!this.draftState.playersWhoPickedThisRound!.includes(ai.id)) {
-        this.draftState.playersWhoPickedThisRound!.push(ai.id)  // ✅ Changed from .add()
-      }
-      
-      // Check if ALL players picked
-      const allPicked = this.draftState.players.every(p => 
-        this.draftState?.playersWhoPickedThisRound?.includes(p.id)  // ✅ Changed from .has()
-      )
-      
-      if (allPicked) {
-        console.log('🎯 Everyone picked')
-        
-        this.draftState.playersWhoPickedThisRound = []
-        
-        // ✅ Check if ANY pack has enough cards for another full pick
-        const { pickCount } = this.draftState.config
-        const canContinuePicking = this.draftState.players.some(p => 
-          p.currentPack && p.currentPack.cards.length >= pickCount
-        )
-        
-        if (canContinuePicking) {
-          // More picks available - pass packs
-          this.draftState.currentPick++
-          this.draftState = DraftManager.passPacks(this.draftState)
-          
-          this.broadcastState('packs_passed', this.draftState, { pick: this.draftState.currentPick })
-          
-          break  // Wait for next human pick
-          
-        } else {
-          // Pack exhausted - auto-pick any remaining cards (< pickCount)
-          this.draftState.players.forEach(p => {
-            if (p.currentPack && p.currentPack.cards.length > 0) {
-              console.log(`🎯 Auto-picking ${p.currentPack.cards.length} remaining cards for ${p.name}`)
-              const remainingCards = [...p.currentPack.cards]
-              this.draftState = DraftManager.makePick(
-                this.draftState!, 
-                p.id, 
-                remainingCards, 
-                this.cubeCards
-              )
-            }
-          })
-          
-          // Start next round or complete
-          if (this.draftState.currentRound < this.draftState.config.packsPerPlayer - 1) {
-            this.draftState.currentRound++
-            this.draftState.currentPick = 0
-            this.draftState = DraftManager.startNextRound(this.draftState)
-            
-            this.broadcastState('round_started', this.draftState, { round: this.draftState.currentRound })
-            
-            break  // Wait for human to start new pack
-            
-          } else {
-            this.draftState.status = 'complete'
-            this.broadcast({ type: 'draft_complete' })
-
-            // ✅ Mark draft as complete in KV for all human players
-            const draftId = this.ctx.id.name ?? ''
-            const humanPlayers = this.draftState.players.filter(p => !p.isAI)
-            humanPlayers.forEach(player => {
-              completeDraft(player.id, draftId).catch(err => {
-                console.error(`[DraftDO] Failed to complete draft for ${player.id}:`, err)
-              })
-            })
-
-            // ✅ Store draft decks in KV for easy import
-            this.storeDraftDecksInKV(draftId, humanPlayers)
-
-            break
-          }
-        }
-      }
-      
-      iterations++
-    }
-    
+    if (!this.draftState || this.draftState.status !== 'drafting') return
+    for (const ai of this.draftState.players.filter(p => p.isAI)) this.autoPick(ai.id)
+    this.advanceRound()
     this.persist()
   }
-  
+
+  /** Once every drafter has picked, pass the packs, start the next round, or finish. */
+  private advanceRound(): void {
+    if (!this.draftState || this.draftState.status !== 'drafting') return
+    const picked = this.draftState.playersWhoPickedThisRound ?? []
+    // Players whose pack ran dry have nothing to pick
+    const owing = this.draftState.players.filter(p => p.currentPack && p.currentPack.cards.length > 0)
+    if (owing.some(p => !picked.includes(p.id))) return
+
+    this.draftState.playersWhoPickedThisRound = []
+    const { pickCount } = this.draftState.config
+    const canContinuePicking = this.draftState.players.some(p => p.currentPack && p.currentPack.cards.length >= pickCount)
+
+    if (canContinuePicking) {
+      this.draftState.currentPick++
+      this.draftState = DraftManager.passPacks(this.draftState)
+      this.armPickDeadline()
+      this.broadcastState('packs_passed', this.draftState, { pick: this.draftState.currentPick })
+      return
+    }
+
+    // Pack exhausted - auto-pick any remaining cards (< pickCount)
+    this.draftState.players = this.draftState.players.map(p =>
+      p.currentPack && p.currentPack.cards.length > 0
+        ? { ...p, draftPool: [...p.draftPool, ...p.currentPack.cards], currentPack: undefined }
+        : p)
+
+    if (this.draftState.currentRound < this.draftState.config.packsPerPlayer - 1) {
+      this.draftState.currentRound++
+      this.draftState.currentPick = 0
+      this.draftState = DraftManager.startNextRound(this.draftState)
+      this.armPickDeadline()
+      this.broadcastState('round_started', this.draftState, { round: this.draftState.currentRound })
+      return
+    }
+
+    this.draftState.status = 'complete'
+    this.draftState.pickDeadline = undefined
+    this.broadcast({ type: 'draft_complete' })
+
+    // Mark draft as complete in KV for all human players, and store their pools for easy import
+    const draftId = this.ctx.id.name ?? ''
+    const humanPlayers = this.draftState.players.filter(p => !p.isAI)
+    humanPlayers.forEach(player => {
+      completeDraft(player.id, draftId).catch(err => {
+        console.error(`[DraftDO] Failed to complete draft for ${player.id}:`, err)
+      })
+    })
+    this.storeDraftDecksInKV(draftId, humanPlayers)
+  }
+
   /** Send each socket the state as its own viewer sees it. */
   private broadcastState(type: string, state: DraftState, extra: Record<string, unknown> = {}): void {
     for (const ws of this.ctx.getWebSockets()) {

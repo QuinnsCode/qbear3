@@ -3,14 +3,15 @@
 // qlave), bots, and the e2e suite. The drafter is the session's user, or the guest the draft's
 // cookie names; nobody passes a player id.
 //
-//   POST /api/draft                    { packSize?, packsPerPlayer?, pickCount?, aiCount? } -> 201 { draftId }
+//   POST /api/draft                    { packSize?, packsPerPlayer?, pickCount?, aiCount?, humanSeats?, pickTimerSeconds? } -> 201 { draftId }
+//   POST /api/draft/:draftId/join      take an open seat (humanSeats > 1)       -> 200 { status }
 //   GET  /api/draft/:draftId           -> your seat (DraftSeat): pack, pool, hasPicked, status
 //   POST /api/draft/:draftId/pick      { cardIds }                              -> 200 { ok }
 //   POST /api/draft/:draftId/deck      { mainDeck, sideboard?, basics? }        -> 201 { deckId }
 //
 // AI drafters pick about half a second after you do; poll the seat until `hasPicked` is false.
 import {
-  drafterIn, draftSeat, guestCookie, newDrafter, parseDeckConfig, parseDraftOptions, pickCards, saveDraftDeck, startDraft,
+  drafterIn, draftSeat, guestCookie, joinDraft, newDrafter, parseDeckConfig, parseDraftOptions, pickCards, saveDraftDeck, startDraft,
   type Drafter,
 } from "@/app/lib/draft/draftFunctions"
 
@@ -37,9 +38,10 @@ export async function startHandler({ request, ctx }: Info): Promise<Response> {
 }
 
 /** `/api/draft/:draftId` and `/api/draft/:draftId/:verb`. */
-export async function draftHandler({ request, params, ctx }: Info, verb?: 'pick' | 'deck'): Promise<Response> {
+export async function draftHandler({ request, params, ctx }: Info, verb?: 'pick' | 'deck' | 'join'): Promise<Response> {
   const draftId = params.draftId
   if (!draftId || !/^draft-[\w-]{1,80}$/.test(draftId)) return problem(404, 'No such draft')
+  if (verb === 'join') return joinHandler({ request, params, ctx }, false)
   const me: Drafter | null = drafterIn(draftId, ctx, request.headers.get('cookie'))
   if (!me) return problem(401, 'Sign in, or open the draft from the browser that started it')
 
@@ -63,4 +65,24 @@ export async function draftHandler({ request, params, ctx }: Info, verb?: 'pick'
   return saved.ok
     ? Response.json({ deckId: saved.deckId, deckName: saved.deckName, totalCards: saved.totalCards }, { status: 201 })
     : problem(saved.status, saved.error)
+}
+
+/**
+ * Take an open seat. A guest gets the draft's cookie with it. From the API the answer is JSON; from the
+ * join page's form (`page`) it is a redirect to the draft.
+ */
+export async function joinHandler({ request, params, ctx }: Info, page: boolean): Promise<Response> {
+  const draftId = params.draftId
+  if (!draftId || !/^draft-[\w-]{1,80}$/.test(draftId)) return problem(404, 'No such draft')
+  if (request.method !== 'POST') return problem(405, 'POST to join')
+  const me = drafterIn(draftId, ctx, request.headers.get('cookie')) ?? newDrafter(ctx)
+  const joined = await joinDraft(draftId, me)
+  if (!joined.ok) return problem(joined.status, joined.error)
+  const headers = new Headers()
+  if (me.isGuest) headers.append('Set-Cookie', guestCookie(draftId, me.id))
+  if (page) {
+    headers.set('Location', `/draft/${draftId}`)
+    return new Response(null, { status: 303, headers })
+  }
+  return Response.json({ status: joined.status }, { headers })
 }
