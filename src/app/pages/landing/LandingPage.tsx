@@ -102,7 +102,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           small
           eyebrow="Game Center"
           title={<>The <em>tables.</em></>}
-          lede="The games shipped on Rusty Buns, a draft of the cube where QNTBR started, a strategy map and a place to find your pod. Every Commander table is in the Game Center."
+          lede="The games shipped on Rusty Buns, a draft of the cube where QNTBR started. Every Commander table is in the Game Center."
           linkHref="/games"
           linkLabel="Open Game Center"
         />

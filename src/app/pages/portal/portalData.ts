@@ -2,7 +2,7 @@
 // Single source of truth for the QNTBR portal: the three sections on the
 // landing page (Products, Game Center, App Center) and the /games + /apps hubs.
 
-import { AudioWaveform, Brush, Crosshair, Droplet, Earth, Flame, GitBranch, Hand, KeyRound, Landmark, Layers, MessagesSquare, Monitor, MonitorSmartphone, Package, PersonStanding, Rocket, Sandwich, Smartphone, SprayCan, Sprout, Swords, TreePalm, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
+import { AudioWaveform, Brush, Crosshair, Droplet, Flame, GitBranch, Hand, KeyRound, Landmark, Layers, Monitor, MonitorSmartphone, Package, PersonStanding, Rocket, Sandwich, Smartphone, SprayCan, Sprout, Swords, TreePalm, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
 
 export type PortalStatus = 'live' | 'beta' | 'soon';
 
@@ -157,37 +157,6 @@ export const games: PortalEntry[] = [
     requiresAuth: true,
     verb: 'Build',
     noun: 'Cards',
-  },
-  {
-    key: 'strategy',
-    group: 'tables',
-    icon: Earth,
-    glyph: '🌍',
-    name: 'World Conquest',
-    tag: 'Strategy · Multiplayer',
-    tagline: 'Territory strategy game',
-    description: 'A Risk-style map game with real-time turns, powered by the same Durable Object engine as the card tables.',
-    href: '/game',
-    cta: 'New game',
-    status: 'beta',
-    requiresAuth: true,
-    verb: 'Conquer',
-    noun: 'World',
-  },
-  {
-    key: 'community',
-    group: 'tables',
-    icon: MessagesSquare,
-    glyph: '💬',
-    name: 'Community',
-    tag: 'Social',
-    tagline: 'Find a pod',
-    description: 'Friends, game invites, and Discord. Meet other players and get a seat at a table.',
-    href: '/community',
-    cta: 'Say hello',
-    status: 'live',
-    verb: 'Find',
-    noun: 'Pod',
   },
   {
     key: 'park-hide-seek',
@@ -446,7 +415,6 @@ export interface PortalGroup {
 export const gameGroups: PortalGroup[] = [
   { key: 'rustybuns', title: 'Built with Rusty Buns', lede: 'Games shipped on Rusty Buns, each running on its own Worker.', noun: 'game' },
   { key: 'mtg', title: 'Magic: The Gathering', lede: 'The original QNTBR tables: Commander, drafts, decks, and a sandbox that never closes.', noun: 'table' },
-  { key: 'tables', title: 'Strategy & social', lede: 'A territory map on the same engine, and a place to find your pod.', noun: 'space' },
 ];
 
 export const appGroups: PortalGroup[] = [
