@@ -683,7 +683,6 @@ export default function HomePage({ ctx, request }: RequestInfo) {
         organizationName={attemptedLairSlug}
         showOrgWarning={true}
         forceSignUp={true}
-        variant="cave"
         redirectPath="/"
       />
     );
@@ -692,7 +691,6 @@ export default function HomePage({ ctx, request }: RequestInfo) {
   return (
     <FantasyLogin 
       organizationName={ctx.organization?.name}
-      variant="adventure"
       redirectPath="/sanctum"
     />
   );
