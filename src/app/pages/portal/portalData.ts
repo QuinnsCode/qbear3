@@ -2,7 +2,7 @@
 // Single source of truth for the QNTBR portal: the three sections on the
 // landing page (Products, Game Center, App Center) and the /games + /apps hubs.
 
-import { AudioWaveform, Brush, Crosshair, Droplet, Flame, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Package, PersonStanding, Rocket, Sandwich, Smartphone, SprayCan, Sprout, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
+import { AudioWaveform, Box, Brush, Crosshair, Droplet, Flame, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Package, PersonStanding, Rocket, Sandwich, Smartphone, SprayCan, Sprout, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
 
 export type PortalStatus = 'live' | 'beta' | 'soon';
 
@@ -212,6 +212,21 @@ export const apps: PortalEntry[] = [
     noun: 'Friends',
   },
   {
+    key: 'geoboxq',
+    group: 'products',
+    icon: Box,
+    glyph: '📦',
+    name: 'GeoBoxQ',
+    tag: 'Geometry · Puzzle',
+    tagline: 'Will it fit in the box?',
+    description: 'Will it fit in the box? Including a box in a box in a box.',
+    href: 'https://geoboxq-worker-live-ryanquinn-tjhne4lpmumy6kz5.notryanquinn.workers.dev',
+    cta: 'Open GeoBoxQ',
+    status: 'live',
+    verb: 'Fit',
+    noun: 'Box',
+  },
+  {
     key: 'flareup',
     image: '/landing/flareup.jpg',
     group: 'backburner',
@@ -305,7 +320,7 @@ export interface PortalGroup {
 
 export const appGroups: PortalGroup[] = [
   { key: 'dev', title: 'Developer tools', lede: 'The code host for agents, and the open-source runtime it ships on.', noun: 'tool' },
-  { key: 'products', title: 'Products', lede: 'Calls and fulfillment.', noun: 'product' },
+  { key: 'products', title: 'Products', lede: 'Calls, fulfillment and box puzzles.', noun: 'product' },
   { key: 'account', title: 'Account', lede: 'One login for every game and app.', noun: 'service' },
   { key: 'backburner', title: 'Back burner', lede: 'Rusty Buns now covers most of what these set out to do.', noun: 'project' },
 ];
