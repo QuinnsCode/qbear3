@@ -31,7 +31,9 @@ export interface CubeCard {
     id: string
     name: string
     isAI: boolean
-    draftPool: string[]  // All cards drafted (scryfallIds)
+    draftPool: string[]  // All cards drafted (scryfallIds); empty in other people's views
+    poolSize?: number    // Public: how many cards they've drafted
+    hasPicked?: boolean  // Public: picked from the pack in hand this round
     currentPack?: Pack
     
     // ✅ NEW: Deck building (only for humans)
