@@ -595,64 +595,25 @@ export class DraftDO extends DurableObject {
   }
 
   /**
-   * Store draft decks in KV for easy import
-   *
-   * For guest drafts (1 human player): draft:${draftId}:deck
-   * For multi-player drafts: draft:${draftId}:${playerId}:deck
-   *
-   * TTL: 7 days
+   * Hand a finished solo (guest) draft's picks to the deck importer for 7 days: `draft:${draftId}:deck`,
+   * the key `fetchDraftDeckFromKV` reads. A guest has no eqosys account to save into, so this short-lived
+   * KV entry is the handoff, not a saved deck. Signed-in drafters export through the deck store; a
+   * multi-player draft has no per-player key because nothing reads one.
    */
   private async storeDraftDecksInKV(draftId: string, players: DraftPlayer[]): Promise<void> {
+    if (players.length !== 1) return
     try {
-      if (!this.env.DECKS_KV) {
-        console.warn('[DraftDO] DECKS_KV not available, skipping deck storage')
-        return
+      const [player] = players
+      const cardCounts = new Map<string, number>()
+      for (const scryfallId of player.draftPool) {
+        const card = this.cubeCards.find(c => c.scryfallId === scryfallId)
+        if (card) cardCounts.set(card.name, (cardCounts.get(card.name) ?? 0) + 1)
       }
-
-      // For single-player (guest) drafts, use simple key
-      const isSinglePlayer = players.length === 1
-
-      for (const player of players) {
-        // Group cards by name and count quantities
-        const cardCounts = new Map<string, number>()
-
-        for (const scryfallId of player.draftPool) {
-          const card = this.cubeCards.find(c => c.scryfallId === scryfallId)
-          if (card) {
-            const current = cardCounts.get(card.name) || 0
-            cardCounts.set(card.name, current + 1)
-          }
-        }
-
-        // Format as decklist text
-        const decklistLines: string[] = []
-
-        for (const [cardName, quantity] of cardCounts.entries()) {
-          decklistLines.push(`${quantity} ${cardName}`)
-        }
-
-        // Create full decklist text (matches import format)
-        const decklistText = decklistLines.join('\n')
-
-        // Choose key based on player count
-        const key = isSinglePlayer
-          ? `draft:${draftId}:deck`
-          : `draft:${draftId}:${player.id}:deck`
-
-        // Store in KV with 7-day expiration
-        await this.env.DECKS_KV.put(
-          key,
-          decklistText,
-          {
-            expirationTtl: 60 * 60 * 24 * 7 // 7 days
-          }
-        )
-
-        console.log(`[DraftDO] Stored draft deck in KV: ${key} (${decklistLines.length} unique cards, ${player.draftPool.length} total)`)
-      }
+      const decklistText = [...cardCounts].map(([name, quantity]) => `${quantity} ${name}`).join('\n')
+      await this.env.DECKS_KV.put(`draft:${draftId}:deck`, decklistText, { expirationTtl: 60 * 60 * 24 * 7 })
     } catch (error) {
-      console.error('[DraftDO] Error storing draft decks in KV:', error)
-      // Don't throw - this is not critical to draft completion
+      // Not critical to draft completion
+      console.error('[DraftDO] Error storing draft deck in KV:', error)
     }
   }
 }
