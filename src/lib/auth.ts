@@ -122,7 +122,8 @@ export const createAuth = () => {
           clientId: "qntbr",
           discoveryUrl: `${env.EQOSYS_URL}/.well-known/openid-configuration`,
           pkce: true,
-          scopes: ["openid", "email", "profile"],
+          // offline_access: a refresh token, so the saved-decks bearer (good ten minutes) can be renewed server-side.
+          scopes: ["openid", "email", "profile", "offline_access"],
           tokenEndpointAuth: { method: "none" },
         }],
       })] : []),

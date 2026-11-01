@@ -212,7 +212,7 @@ export default function NewDraftForm({ userId, userName, isGuest, previewCards =
             <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
             <div>
               <p className="text-sm font-semibold text-amber-100">Drafting as a guest</p>
-              <p className="text-xs text-amber-200/70">Progress is kept for 7 days on this browser. Log in to save decks to Sanctum and use them in games.</p>
+              <p className="text-xs text-amber-200/70">Progress is kept for 7 days on this browser. Sign in with eqosys to save decks to your account and use them in games.</p>
             </div>
           </div>
           <div className="flex gap-2">
