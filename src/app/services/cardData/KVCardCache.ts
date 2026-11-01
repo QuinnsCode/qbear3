@@ -8,6 +8,8 @@ import type { CardData } from './types'
  * - card:id:{printId}  → CardData JSON. Metadata { name, image } so admin listings need no reads.
  * - card:name:{name}   → printId, for each name a card was asked for by (its own name, and a
  *                        double-faced card's front face, which is what deck lists usually say).
+ * - card:missing:{name} → "1", for a name the provider said it has no card for. Expires in a day
+ *                        (KV's own TTL), so a card printed later is found again within 24 hours.
  *
  * KV bills every write ($5/M, 1k/day free) and every read ($0.50/M), so reads go out in bulk
  * (one call per 100 keys) and nothing is written twice in one batch. Search and autocomplete are
@@ -16,6 +18,8 @@ import type { CardData } from './types'
 
 const ID_PREFIX = 'card:id:'
 const NAME_PREFIX = 'card:name:'
+const MISSING_PREFIX = 'card:missing:'
+const MISSING_TTL_SECONDS = 24 * 60 * 60
 const TTL_SECONDS = 365 * 24 * 60 * 60 // printings don't change; prices in here can be a year old
 const BULK_GET_MAX = 100 // KV's limit on keys in one get
 
@@ -102,6 +106,22 @@ export class KVCardCache {
       if (card) byName.set(name, card)
     }
     return byName
+  }
+
+  /** Which of these names the provider already failed to find today, as normalizeCardName forms. */
+  async getMissingNames(names: string[]): Promise<Set<string>> {
+    const normalized = names.map(normalizeCardName)
+    const found = await this.getMany(normalized.map(n => MISSING_PREFIX + n))
+    return new Set(normalized.filter(n => found.has(MISSING_PREFIX + n)))
+  }
+
+  /** Remember names the provider has no card for, so the next import skips them. */
+  async putMissingNames(names: string[]): Promise<void> {
+    const unique = [...new Set(names.map(normalizeCardName))]
+    const results = await Promise.allSettled(unique.map(name =>
+      this.kv.put(MISSING_PREFIX + name, '1', { expirationTtl: MISSING_TTL_SECONDS })))
+    const failed = results.filter(r => r.status === 'rejected').length
+    if (failed > 0) console.warn(`[KVCardCache] ${failed}/${results.length} missing-name writes failed`)
   }
 
   async getCard(id: string): Promise<CardData | null> {

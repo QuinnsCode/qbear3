@@ -20,9 +20,12 @@ export class CardDataService {
     private defer?: Defer,
   ) {}
 
-  private async store(entries: Array<{ card: CardData; names?: string[] }>): Promise<void> {
-    if (entries.length === 0) return
-    const work = this.cache.putCards(entries)
+  private async store(entries: Array<{ card: CardData; names?: string[] }>, notFound: string[] = []): Promise<void> {
+    if (entries.length === 0 && notFound.length === 0) return
+    const work = Promise.all([
+      entries.length > 0 ? this.cache.putCards(entries) : undefined,
+      notFound.length > 0 ? this.cache.putMissingNames(notFound) : undefined,
+    ])
     if (this.defer) this.defer(work)
     else await work
   }
@@ -75,10 +78,21 @@ export class CardDataService {
       else missing.push(identifier)
     }
 
+    // Names Scryfall already failed to find today are not asked about again. Only names that
+    // missed the cache are looked up, so an import that is all cache hits costs no extra read.
+    if (!fresh && missing.length > 0) {
+      const knownMissing = await this.cache.getMissingNames(missing.flatMap(i => cachedByName(i) ?? []))
+      for (let i = missing.length - 1; i >= 0; i--) {
+        const name = cachedByName(missing[i]!)
+        if (name && knownMissing.has(normalizeCardName(name))) missing.splice(i, 1)
+      }
+    }
+
     if (missing.length === 0) return [...found.values()]
     console.log(`[CardData] ${found.size} cached, fetching ${missing.length} from ${this.provider.name}`)
 
     const toStore: Array<{ card: CardData; names: string[] }> = []
+    const notFound: string[] = []
     let failures = 0
     const batches = chunk(missing, this.provider.maxBatch)
     for (const batch of batches) {
@@ -89,6 +103,11 @@ export class CardDataService {
         failures++
         console.error(`[CardData] batch of ${batch.length} failed`, error)
         continue
+      }
+      // Only a batch that answered can say a name doesn't exist (a failed one says nothing).
+      for (const i of batch) {
+        const name = cachedByName(i)
+        if (name && !fetched.some(card => answersName(card, name))) notFound.push(name)
       }
       for (const card of fetched) {
         found.set(card.id, card)
@@ -101,7 +120,7 @@ export class CardDataService {
       throw new Error(`${this.provider.name} is not answering; try again in a moment`)
     }
 
-    await this.store(toStore)
+    await this.store(toStore, notFound)
     return [...found.values()]
   }
 
