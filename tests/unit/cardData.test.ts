@@ -114,6 +114,33 @@ test("a stripped card a draft export left in KV reads as a miss and is replaced"
   expect(bolt?.provider).toBe("scryfall");
 });
 
+test("a typo Scryfall can't find is asked about once, not on every import", async () => {
+  const kv = fakeKV();
+  const { provider, batches } = fakeProvider();
+  const real = provider.getCardsByIdentifiers;
+  provider.getCardsByIdentifiers = async (ids) =>
+    (await real(ids)).filter((c) => c.name !== "Lightnin Bolt");
+  const service = new CardDataService(provider, new KVCardCache(kv.store));
+  const deck = [{ name: "Lightnin Bolt" }, { name: "Counterspell" }];
+
+  expect(await service.getCardsByIdentifiers(deck)).toHaveLength(1);
+  expect(await service.getCardsByIdentifiers(deck)).toHaveLength(1);
+  expect(batches).toHaveLength(1); // second import: the card from KV, the typo from its missing entry
+
+  // A day later the entry has expired and Scryfall is asked again.
+  kv.data.delete("card:missing:lightnin_bolt");
+  await service.getCardsByIdentifiers(deck);
+  expect(batches).toHaveLength(2);
+  expect(batches[1]).toEqual([{ name: "Lightnin Bolt" }]);
+});
+
+test("a failed batch does not mark its names missing", async () => {
+  const kv = fakeKV();
+  const { provider } = fakeProvider(1);
+  await new CardDataService(provider, new KVCardCache(kv.store)).getCardsByIdentifiers(names(80));
+  expect([...kv.data.keys()].some((k) => k.startsWith("card:missing:"))).toBe(false);
+});
+
 const realFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = realFetch;
