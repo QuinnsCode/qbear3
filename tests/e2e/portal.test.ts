@@ -20,13 +20,13 @@ test("landing page is a feed of the featured apps, then the lab and the shelves"
     const shot = await b.get(`/landing/${key}.jpg`);
     expect(shot.status).toBe(200);
   }
-  // Magic: The Gathering on the front door is one bar, a draft of the cube; the other tables live on /games.
+  // Magic: The Gathering is one bar: a draft of the cube.
   expect(links(page.body, { href: "/draft/new", class: "q-tile" }).map((l) => l.attrs.class)).toEqual([expect.stringContaining("q-wide")]);
   expect(links(page.body, { href: "/sanctum", class: "q-tile" })).toHaveLength(0);
   expect(page.body).toContain("Git the main HEAD merged before the Conflict takes over");
   // The lab's bag is server-rendered: words to combine and every app already in it.
   const bag = tags(page.body, "button").map((t) => t.text);
-  for (const name of ["Draft", "Cards", "Draft Lobby", "codeSplitter", "Hippo Tycoon"]) {
+  for (const name of ["Draft", "Cards", "Draft my cube", "codeSplitter", "Hippo Tycoon"]) {
     expect(bag.some((t) => t === name || t.includes(name))).toBe(true); // app tiles carry an emoji and an arrow
   }
   // Section links into the hubs, and RustyBuns from the nav.
@@ -35,13 +35,14 @@ test("landing page is a feed of the featured apps, then the lab and the shelves"
   expect(links(page.body, { href: RUSTY_BUNS, class: "q-nav-link" })).toHaveLength(1);
 });
 
-test("game center lists games and marks itself active", async () => {
+test("game center has one Magic link, to draft the cube, and marks itself active", async () => {
   const b = (await app()).browser();
   const page = await b.get("/games");
   expect(page.status).toBe(200);
   expect(page.url.pathname).toBe("/games");
-  expect(headings(page.body)).toEqual(expect.arrayContaining(["Sanctum", "Sandbox"]));
-  expect(links(page.body, { href: "/sanctum", class: "q-tile" })).toHaveLength(1);
+  expect(headings(page.body)).toEqual(expect.arrayContaining(["Magic: The Gathering", "Draft my cube"]));
+  expect(links(page.body, { href: "/draft/new", class: "q-tile" })).toHaveLength(1);
+  for (const gone of ["/sanctum", "/pvp", "/deckbuilder"]) expect(links(page.body, { href: gone, class: "q-tile" })).toHaveLength(0);
   expect(links(page.body, { class: "q-active" }).map((l) => l.text)).toEqual(["Games"]);
 });
 

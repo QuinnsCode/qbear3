@@ -4,7 +4,7 @@ import { type RequestInfo } from "rwsdk/worker";
 import { apps, appGroups, RUSTY_BUNS_URL } from './portalData';
 import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from './PortalShell';
 
-export default function AppCenterPage({ ctx, request }: RequestInfo) {
+export default function AppCenterPage({ ctx }: RequestInfo) {
   const isLoggedIn = !!ctx.user;
 
   return (
@@ -18,14 +18,13 @@ export default function AppCenterPage({ ctx, request }: RequestInfo) {
           linkHref={RUSTY_BUNS_URL}
           linkLabel="RustyBuns on GitHub"
         />
-        <PortalGroups bars entries={apps} groups={appGroups} request={request} />
+        <PortalGroups bars entries={apps} groups={appGroups} />
 
         <div style={{ paddingTop: 'clamp(40px, 7vw, 72px)' }}>
           <span className="q-label">One login</span>
           <p className="q-prose" style={{ marginTop: 12 }}>
-            Apps marked <b>Q auth</b> use the shared QNTBR account: email and password, organizations, and API keys
-            from one place. Standalone products like Qlave and Flareup keep their own sign-in for now and will join the
-            shared login as it rolls out.
+            One account for every Q app lives on <b>eqosys</b>. Standalone products like Qlave and Flareup keep their
+            own sign-in for now and will join it as it rolls out.
           </p>
         </div>
       </PortalSection>

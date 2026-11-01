@@ -12,12 +12,8 @@ const byKey: Record<string, string> = {
   'druids-curse': 'linear-gradient(180deg, #2b1d4a 0%, #3f6b3a 100%)',
   'splat-spray': 'linear-gradient(180deg, #1c1030 0%, #a03a7a 65%, #e07a3a 100%)',
   'excalibrawl': 'linear-gradient(180deg, #7a1f2a 0%, #c98a2a 100%)',
-  // MTG tables and the social side
-  sanctum: 'linear-gradient(180deg, #2a1d5a 0%, #5a2d8a 100%)',
-  sandbox: 'linear-gradient(180deg, #3aa5b8 0%, #e3c48a 100%)',
-  pvp: 'linear-gradient(180deg, #5a1a1a 0%, #c43a2a 100%)',
+  // the cube draft
   draft: 'linear-gradient(180deg, #1d2a6a 0%, #3b5fd0 100%)',
-  deckbuilder: 'linear-gradient(180deg, #0f4a4a 0%, #1f8a7a 100%)',
   // apps
   codesplitter: 'linear-gradient(180deg, #0c1f3d 0%, #1b5f9a 100%)',
   qlave: 'linear-gradient(180deg, #0a3a4a 0%, #1fa0b8 100%)',
