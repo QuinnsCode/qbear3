@@ -10,7 +10,7 @@ import { FriendsModal } from '@/app/components/Social/FriendsModal'
 import { PresenceHeartbeat } from '@/app/components/Social/PresenceHeartbeat'
 import { LogoutButton } from '@/app/pages/user/LoginButton'
 import { deleteDeck } from '@/app/serverActions/deckBuilder/deckActions'
-import { deleteCardGameCompletely } from '@/app/serverActions/cardGame/cardGameRegistry'
+import { deleteCardGame } from '@/app/serverActions/cardGame/cardGameActions'
 import { acceptFriendRequest, rejectFriendRequest, type Friend, type FriendRequest } from '@/app/serverActions/social/friends'
 import { acceptGameInvite, declineGameInvite, sendGameInvite, type GameInvite } from '@/app/serverActions/social/gameInvites'
 import type { Presence, UserPresence } from '@/app/serverActions/social/presence'
@@ -189,7 +189,7 @@ export function SanctumClient({
     if (!doomed) return
     setBusy(true)
     try {
-      const r = doomed.kind === 'deck' ? await deleteDeck(userId, doomed.id) : await deleteCardGameCompletely(orgSlug, doomed.id)
+      const r = doomed.kind === 'deck' ? await deleteDeck(userId, doomed.id) : await deleteCardGame(doomed.id)
       if (r.success) window.location.reload()
       else { setNote(r.error || 'That did not work.'); setBusy(false) }
     } catch {

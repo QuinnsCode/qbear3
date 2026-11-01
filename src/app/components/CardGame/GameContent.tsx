@@ -33,7 +33,7 @@ export default async function GameContent({
   if (shouldJoin) {
     console.log(`Auto-joining ${userRole.isSandboxPlayer ? 'sandbox player' : 'user'}:`, { userId, userName })
     
-    gameState = await joinCardGame(cardGameId, userId, userName)
+    gameState = await joinCardGame(cardGameId)
     
     const joinedPlayer = gameState.players.find(p => p.id === userId)
     if (joinedPlayer) {
