@@ -21,7 +21,6 @@ import {
   extractOrgFromSubdomain,
   shouldSkipMiddleware 
 } from "@/lib/middlewareFunctions";
-import { draftWebSocketMiddleware } from '@/lib/userIdentity'
 import { env } from "cloudflare:workers";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import GamePage from "@/app/pages/game/GamePage";
@@ -300,8 +299,6 @@ export default defineApp([
         const rateLimitResult = await rateLimitMiddleware(request, 'draftsync')
         if (rateLimitResult) return rateLimitResult
 
-        // Add auth headers for guests/users
-        request = await draftWebSocketMiddleware(request, ctx)
       }
     },
     ...draftRoutes

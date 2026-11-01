@@ -3,6 +3,7 @@ import { DurableObject } from "cloudflare:workers";
 import type { DraftState, DraftConfig, DraftPlayer, CubeCard, DraftAction } from "@/app/types/Draft";
 import { DraftManager } from '@/app/services/draft/DraftManager'
 import { sanitizeArrayForPlayer, CommonRules } from '@/lib/durableObjectSecurity'
+import { viewFor, type DraftViewMode } from '@/app/services/draft/DraftView'
 import { DraftAI } from '@/app/services/draft/DraftAI'
 import { updateDraftMetadata, completeDraft } from '@/app/serverActions/draft/draftTracking'
 
@@ -53,6 +54,16 @@ export class DraftDO extends DurableObject {
         })
       }
       
+      // The draft as one viewer may see it (the page's initial state): their seat, or the public facts
+      if (method === 'GET' && url.pathname === '/for') {
+        const state = await this.getState().catch(() => null)
+        if (!state) return Response.json({ error: 'No such draft' }, { status: 404 })
+        const viewerId = url.searchParams.get('viewer') || null
+        const mode = this.modeFor(viewerId)
+        if (!mode) return Response.json({ error: 'This draft is protected' }, { status: 403 })
+        return Response.json({ mode, state: viewFor(state, this.cubeCards, viewerId, mode) })
+      }
+
       if (method === 'GET') {
         const state = await this.getState()
         return Response.json(state)
@@ -154,48 +165,18 @@ export class DraftDO extends DurableObject {
       }
     }
 
-    // ✅ Check permissions - DISABLED TEMPORARILY
-    const canUserDraft = this.canDraft(userId);
-    const canUserSpectate = this.canSpectate(userId);
-
-    // TEMPORARILY DISABLED - PERMISSION CHECK BROKEN
-    // if (!canUserDraft && !canUserSpectate) {
-    //   return new Response('Unauthorized: This draft is protected', { status: 403 });
-    // }
-
-    // TEMP FIX: Force drafter mode until permission system is fixed
-    const mode = 'drafter';
+    // Seated drafters draft; anyone else may watch if the draft lets them
+    const mode = this.modeFor(userId);
+    if (!mode) return new Response('Unauthorized: This draft is protected', { status: 403 });
     const playerId = userId || `guest-${crypto.randomUUID()}`;
 
     // Tag WebSocket: ['draft', playerId, playerName, mode]
     this.ctx.acceptWebSocket(server, ['draft', playerId, playerName, mode]);
 
-    // ✅ For spectators, focus on the first human player (MVP for single-player vs AI)
-    const humanPlayer = state.players.find(p => !p.isAI);
-    const focusedPlayerId = mode === 'spectator' && humanPlayer ? humanPlayer.id : playerId;
-
-    // Enrich packs with full card data
-    const enrichedState = {
-      ...state,
-      players: state.players.map(p => ({
-        ...p,
-        currentPack: p.currentPack ? {
-          ...p.currentPack,
-          // ✅ Spectators only see the focused player's pack
-          cards: (mode === 'spectator' && p.id !== focusedPlayerId)
-            ? [] // Hide other players' packs from spectators
-            : p.currentPack.cards.map((id: string) =>
-                this.cubeCards.find(c => c.scryfallId === id)
-              ).filter(Boolean) as CubeCard[]
-        } : undefined
-      }))
-    };
-
     server.send(JSON.stringify({
       type: 'state_update',
-      state: enrichedState,
+      state: viewFor(state, this.cubeCards, userId, mode),
       mode,
-      focusedPlayerId: mode === 'spectator' ? focusedPlayerId : undefined
     }));
 
     return new Response(null, { status: 101, webSocket: client });
@@ -260,6 +241,13 @@ export class DraftDO extends DurableObject {
    * - Guest drafts (no creator): anyone can draft (multiplayer)
    * - Logged-in drafts (has creator): only creator can draft (single-player vs AI)
    */
+  /** How `userId` may join: as a seated drafter, as a spectator, or not at all. */
+  private modeFor(userId: string | null): DraftViewMode | null {
+    const seated = !!userId && !!this.draftState?.players.some(p => !p.isAI && p.id === userId)
+    if (seated && this.canDraft(userId)) return 'drafter'
+    return this.canSpectate(userId) ? 'spectator' : null
+  }
+
   private canDraft(userId: string | null): boolean {
     if (!this.draftState?.permissions) return true // Default allow if no permissions set
 
@@ -376,10 +364,7 @@ export class DraftDO extends DurableObject {
         this.persist()
 
         if (!action.playerId.startsWith('ai-')) {
-            this.broadcast({
-                type: 'pick_confirmed',
-                state: this.enrichState(this.draftState)
-            })
+            this.broadcastState('pick_confirmed', this.draftState)
 
             // ✅ Update draft tracking for human player
             const draftId = (this.ctx.id as DurableObjectId).name
@@ -523,11 +508,7 @@ export class DraftDO extends DurableObject {
           this.draftState.currentPick++
           this.draftState = DraftManager.passPacks(this.draftState)
           
-          this.broadcast({
-            type: 'packs_passed',
-            pick: this.draftState.currentPick,
-            state: this.enrichState(this.draftState)
-          })
+          this.broadcastState('packs_passed', this.draftState, { pick: this.draftState.currentPick })
           
           break  // Wait for next human pick
           
@@ -552,11 +533,7 @@ export class DraftDO extends DurableObject {
             this.draftState.currentPick = 0
             this.draftState = DraftManager.startNextRound(this.draftState)
             
-            this.broadcast({
-              type: 'round_started',
-              round: this.draftState.currentRound,
-              state: this.enrichState(this.draftState)
-            })
+            this.broadcastState('round_started', this.draftState, { round: this.draftState.currentRound })
             
             break  // Wait for human to start new pack
             
@@ -587,21 +564,15 @@ export class DraftDO extends DurableObject {
     this.persist()
   }
   
-  private enrichState(state: DraftState): any {
-    return {
-      ...state,
-      players: state.players.map(p => ({
-        ...p,
-        currentPack: p.currentPack ? {
-          ...p.currentPack,
-          cards: p.currentPack.cards.map((id: string) => 
-            this.cubeCards.find(c => c.scryfallId === id)
-          ).filter(Boolean) as CubeCard[]
-        } : undefined
-      }))
+  /** Send each socket the state as its own viewer sees it. */
+  private broadcastState(type: string, state: DraftState, extra: Record<string, unknown> = {}): void {
+    for (const ws of this.ctx.getWebSockets()) {
+      const [, viewerId, , mode] = this.ctx.getTags(ws)
+      const view = viewFor(state, this.cubeCards, viewerId ?? null, mode === 'drafter' ? 'drafter' : 'spectator')
+      try { ws.send(JSON.stringify({ type, ...extra, state: view })) } catch (e) {}
     }
   }
-  
+
   private broadcast(message: any): void {
     const json = JSON.stringify(message)
     const sockets = this.ctx.getWebSockets()

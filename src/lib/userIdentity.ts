@@ -56,46 +56,4 @@ export function generateGuestId(): string {
     
     return `${cookieName}=${userId}; expires=${expiryDate.toUTCString()}; path=/; SameSite=Lax`
   }
-  
-  /**
-   * Middleware for draft WebSocket connections
-   * Adds auth headers for both logged-in users and guests
-   */
-  export async function draftWebSocketMiddleware(
-    request: Request, 
-    ctx: any
-  ): Promise<Request> {
-    if (request.headers.get('Upgrade') !== 'websocket') {
-      return request
-    }
-  
-    const newHeaders = new Headers(request.headers)
-    
-    if (ctx.user?.id) {
-      // Logged-in user - use their credentials
-      newHeaders.set('X-Auth-User-Id', ctx.user.id)
-      newHeaders.set('X-Auth-User-Name', ctx.user.name || ctx.user.email || 'Player')
-      console.log('🔐 WebSocket auth: logged-in user', ctx.user.id)
-    } else {
-      // Guest user - read from cookie
-      const url = new URL(request.url)
-      const pathParts = url.pathname.split('/')
-      const draftId = pathParts[pathParts.length - 1] // Last part is draft ID
-      const cookies = request.headers.get('cookie')
-      
-      if (draftId) {
-        const guestId = getOrCreateDraftGuestId(draftId, cookies)
-        newHeaders.set('X-Auth-User-Id', guestId)
-        newHeaders.set('X-Auth-User-Name', 'Guest')
-        console.log('🍪 WebSocket auth: guest user', guestId)
-      } else {
-        console.warn('⚠️ WebSocket: No draft ID found in URL', url.pathname)
-      }
-    }
-    
-    // Create new request with auth headers
-    return new Request(request.url, {
-      method: request.method,
-      headers: newHeaders,
-    })
-  }
+
