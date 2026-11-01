@@ -20,9 +20,9 @@ export default function DraftAuthBanner({ isLoggedIn, userName, onExportDeck }: 
           <span className="text-slate-400">
             Drafting as <span className="font-semibold text-slate-100">{userName}</span>
           </span>
-          <a className="inline-flex items-center gap-1.5 text-slate-400 transition-colors hover:text-white" href="/sanctum">
+          <a className="inline-flex items-center gap-1.5 text-slate-400 transition-colors hover:text-white" href="/">
             <Home className="h-3.5 w-3.5" />
-            Sanctum
+            Home
           </a>
         </div>
       </div>

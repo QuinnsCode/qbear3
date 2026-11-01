@@ -106,7 +106,7 @@ export function FloatingGameControls({ gameId, currentUserId }: FloatingGameCont
                 </button>
                 <button className="w-full text-left px-3 py-2 text-white hover:bg-gray-700 rounded flex items-center space-x-3">
                   <span>🏠</span>
-                  <span>Back to Sanctum</span>
+                  <span>Back home</span>
                 </button>
                 <button className="w-full text-left px-3 py-2 text-red-400 hover:bg-red-900/20 rounded flex items-center space-x-3">
                   <span>🚪</span>

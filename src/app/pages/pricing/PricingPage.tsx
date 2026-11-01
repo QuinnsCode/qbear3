@@ -183,7 +183,7 @@ export default async function PricingPage({ ctx, request }: RequestInfo) {
                       variant={isCurrent ? "secondary" : "primary"}
                       className="w-full text-center"
                     >
-                      <a href={ctx.user ? "/sanctum" : "/user/signup"} className="block w-full py-2">
+                      <a href={ctx.user ? "/" : "/user/signup"} className="block w-full py-2">
                         {isCurrent ? "✓ Current Path" : "🚀 Start Free"}
                       </a>
                     </FantasyButton>
@@ -421,8 +421,8 @@ export default async function PricingPage({ ctx, request }: RequestInfo) {
             
             <div className="flex gap-4 justify-center flex-wrap">
               <FantasyButton variant="magic" size="lg">
-                <a href={ctx.user ? "/sanctum" : "/user/signup"} className="px-8">
-                  ⚔️ {ctx.user ? "Enter Sanctum" : "Start Free"}
+                <a href={ctx.user ? "/" : "/user/signup"} className="px-8">
+                  ⚔️ {ctx.user ? "Enter" : "Start Free"}
                 </a>
               </FantasyButton>
               <FantasyButton variant="secondary" size="lg">

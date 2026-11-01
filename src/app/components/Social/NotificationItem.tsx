@@ -53,7 +53,7 @@ export function NotificationItem({ event, onDismiss, onRead }: NotificationItemP
       return event.data.gameUrl;
     }
     if (event.type === 'friend_request_received') {
-      return '/sanctum'; // Go to sanctum to see friend requests
+      return '/';
     }
     return null;
   };

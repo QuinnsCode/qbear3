@@ -30,8 +30,8 @@ export default async function DraftDeckEditorPage({ params, ctx }: RequestInfo) 
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl text-red-400 mb-4">❌ Deck not found</h1>
-          <a href="/sanctum" className="text-blue-400 hover:underline text-lg">
-            Back to Sanctum
+          <a href="/" className="text-blue-400 hover:underline text-lg">
+            Back home
           </a>
         </div>
       </div>
