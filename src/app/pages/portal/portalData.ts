@@ -62,7 +62,10 @@ export const RUSTY_BUNS_URL = 'https://github.com/QuinnsCode/RustyBuns';
 // ──────────────────────────────────────────────────────────────
 // Game Center — everything you can play
 // ──────────────────────────────────────────────────────────────
-export const games: PortalEntry[] = [
+/** Everything about a game but its words, which live in content/games.json (edit them with `pnpm run cms`)
+ * and are added by portalGames.ts. Kept free of that JSON because the landing lab, a client component,
+ * imports this file. */
+export const gameShells: Omit<PortalEntry, 'tagline' | 'description' | 'cta' | 'pitch'>[] = [
   {
     key: 'draft',
     group: 'mtg',
@@ -70,10 +73,7 @@ export const games: PortalEntry[] = [
     glyph: '📦',
     name: 'Draft my cube',
     tag: 'MTG · Vintage cube',
-    tagline: 'Booster draft from the vintage cube',
-    description: 'Open a draft room on the cube, share the link, and pick packs together in real time. The deck you draft saves straight to your list.',
     href: '/draft/new',
-    cta: 'Draft the cube',
     status: 'live',
     verb: 'Draft',
     noun: 'Cards',
@@ -86,18 +86,10 @@ export const games: PortalEntry[] = [
     glyph: '🌲',
     name: 'Park Hide & Seek',
     tag: 'Rusty Buns · 3D',
-    tagline: 'Drop into Yosemite and vanish',
-    description: '3D hide and seek on real Yosemite terrain. Each player is sent only what they can see.',
     href: 'https://park-hide-seek.notryanquinn.workers.dev',
-    cta: 'Play now',
     status: 'live',
     verb: 'Hide',
     noun: 'Park',
-    pitch: [
-      'Drop in from the sky onto real Yosemite terrain, pick a boulder, and disappear.',
-      'The server only sends you what you can actually see, so there is no wall peek and no map cheat. Just the woods, and whoever is in them.',
-      'Find everyone before the clock runs out, or be the last one nobody found.',
-    ],
   },
   {
     key: 'skate-tech-park',
@@ -107,18 +99,10 @@ export const games: PortalEntry[] = [
     glyph: '🛹',
     name: 'Skate Tech Park',
     tag: 'Rusty Buns · Multiplayer',
-    tagline: 'A giant skateboard shredding America’s National Parks',
-    description: 'A giant riderless fingerboard on park terrain, up to four riders.',
     href: 'https://skatetechpark.notryanquinn.workers.dev',
-    cta: 'Play now',
     status: 'live',
     verb: 'Skate',
     noun: 'Park',
-    pitch: [
-      'A skateboard the size of a school bus, no rider, and a National Park for a skatepark.',
-      'Grind the granite, launch off the ridgeline, and bring three friends: four boards to a session.',
-      'It makes no sense at all. Shred it anyway.',
-    ],
   },
   {
     key: 'git-recon',
@@ -128,18 +112,10 @@ export const games: PortalEntry[] = [
     glyph: '🔫',
     name: 'git-recon',
     tag: 'Rusty Buns · Shooter',
-    tagline: 'Git the main HEAD merged before the Conflict takes over',
-    description: 'A toy-soldier shooter fought in a codebase: folders become compounds and files become buildings.',
     href: 'https://git-recon.notryanquinn.workers.dev',
-    cta: 'Play now',
     status: 'live',
     verb: 'Shoot',
     noun: 'Repo',
-    pitch: [
-      'Your repo is the map. Folders are compounds, files are buildings, and the Conflict is spreading through main.',
-      'Drop in as a toy soldier, fight your way up the tree, and get HEAD merged before the whole branch goes red.',
-      'Point it at any codebase. Yours plays nothing like anyone else’s.',
-    ],
   },
   {
     key: 'two-fronts',
@@ -149,10 +125,7 @@ export const games: PortalEntry[] = [
     glyph: '🚀',
     name: 'Two Fronts',
     tag: 'Rusty Buns · Strategy',
-    tagline: 'War on a forest moon',
-    description: 'Turn-based strategy on a forest moon, with three.js battles on the ground and in orbit.',
     href: 'https://two-fronts.notryanquinn.workers.dev',
-    cta: 'Play now',
     status: 'live',
     verb: 'Conquer',
     noun: 'Moon',
@@ -165,10 +138,7 @@ export const games: PortalEntry[] = [
     glyph: '🌿',
     name: 'Druids Curse',
     tag: 'Rusty Buns · Multiplayer',
-    tagline: 'The game Rusty Buns was built for',
-    description: 'The live multiplayer game Rusty Buns was first built for.',
     href: 'https://druids-curse-votv.notryanquinn.workers.dev',
-    cta: 'Play now',
     status: 'live',
     verb: 'Curse',
     noun: 'Druid',
@@ -180,10 +150,7 @@ export const games: PortalEntry[] = [
     glyph: '🎨',
     name: 'Splat Spray',
     tag: 'Rusty Buns · Puzzle',
-    tagline: 'I-spy in the dark',
-    description: 'Scan a Gaussian-splat room and find 100 things in the fewest shots.',
     href: 'https://splat-spray.notryanquinn.workers.dev',
-    cta: 'Play now',
     status: 'live',
     verb: 'Spray',
     noun: 'Dark',
@@ -196,10 +163,7 @@ export const games: PortalEntry[] = [
     glyph: '🖍️',
     name: 'Excalibrawl',
     tag: 'Rusty Buns · AI',
-    tagline: 'Models draw, a third judges',
-    description: 'An hourly drawing fight between two models, refereed by a third.',
     href: 'https://excalibrawl.notryanquinn.workers.dev',
-    cta: 'Watch a fight',
     status: 'live',
     verb: 'Draw',
     noun: 'Robots',
@@ -338,10 +302,6 @@ export interface PortalGroup {
   noun: string;
 }
 
-export const gameGroups: PortalGroup[] = [
-  { key: 'rustybuns', title: 'Built with Rusty Buns', lede: 'Games shipped on Rusty Buns, each running on its own Worker.', noun: 'game' },
-  { key: 'mtg', title: 'Magic: The Gathering', lede: 'Where QNTBR started: one link to draft the cube.', noun: 'draft' },
-];
 
 export const appGroups: PortalGroup[] = [
   { key: 'dev', title: 'Developer tools', lede: 'The code host for agents, and the open-source runtime it ships on.', noun: 'tool' },

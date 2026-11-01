@@ -1,0 +1,33 @@
+{
+  "feed": {
+    "eyebrow": "QNTBR · Solutions architecture · Web apps & web solutions",
+    "title": "Built for the *fleet.* Then we *play.*",
+    "lede": "We build tools we actually use and ship them on the runtime we wrote for it. Here is what is running right now: every picture below is the real thing, captured live."
+  },
+  "lab": {
+    "eyebrow": "The lab",
+    "title": "Combine words. *Get software.*",
+    "lede": "Every game and app we ship is a verb and a noun. Drop one on the other and it appears; click it to go. The whole shelf is in the bag if you would rather just pick."
+  },
+  "products": {
+    "eyebrow": "Products",
+    "title": "What we *build.*",
+    "lede": "A code host for agents, the runtime it ships on, and everything we've built with them."
+  },
+  "games": {
+    "eyebrow": "Game Center",
+    "title": "The *tables.*",
+    "lede": "The games shipped on Rusty Buns, and a draft of the cube where QNTBR started.",
+    "link": "Open Game Center"
+  },
+  "apps": {
+    "eyebrow": "App Center",
+    "title": "The *rest.*",
+    "lede": "Calls, fulfillment, one login for everything, and the projects on the back burner.",
+    "link": "Open App Center"
+  },
+  "about": {
+    "label": "About",
+    "text": "QNTBR is a *solutions architecture studio* focused on web apps and web solutions. We build tools we actually use, and ship them on the runtime we wrote for it. The goal is software that works, ships fast, and stays out of your way."
+  }
+}

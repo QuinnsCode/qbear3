@@ -1,7 +1,8 @@
 // @/app/pages/portal/GameCenterPage.tsx
 // /games — the Game Center hub: everything playable on QNTBR in one place.
 import { type RequestInfo } from "rwsdk/worker";
-import { games, gameGroups } from './portalData';
+import { emphasis, gamesContent as c } from '@/app/content';
+import { games, gameGroups } from './portalGames';
 import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from './PortalShell';
 
 export default function GameCenterPage({ ctx }: RequestInfo) {
@@ -12,21 +13,17 @@ export default function GameCenterPage({ ctx }: RequestInfo) {
       <PortalSection>
         <PortalSectionHead
           as="h1"
-          eyebrow="Game Center"
-          title={<>Pick a table. <em>Play.</em></>}
-          lede="The games shipped on Rusty Buns, and a draft of the cube where QNTBR started."
+          eyebrow={c.text('page.eyebrow')}
+          title={emphasis(c.text('page.title'))}
+          lede={c.text('page.lede')}
           linkHref="/draft/new"
-          linkLabel="Draft the cube"
+          linkLabel={c.text('page.link')}
         />
         <PortalGroups bars entries={games} groups={gameGroups} />
 
         <div style={{ paddingTop: 'clamp(40px, 7vw, 72px)' }}>
-          <span className="q-label">How it works</span>
-          <p className="q-prose" style={{ marginTop: 12 }}>
-            Every table is a <b>Durable Object</b> at the edge. Actions go over a WebSocket, the room applies them,
-            and everyone at the table sees the same board at the same time. Accounts are moving to
-            <b>eqosys</b>, one login for every Q app.
-          </p>
+          <span className="q-label">{c.text('howItWorks.label')}</span>
+          <p className="q-prose" style={{ marginTop: 12 }}>{emphasis(c.text('howItWorks.text'), 'b')}</p>
         </div>
       </PortalSection>
     </PortalPage>

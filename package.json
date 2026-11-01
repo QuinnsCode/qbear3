@@ -24,6 +24,7 @@
     "migrate:dev": "prisma generate && wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
     "migrate:new": "rw-scripts migrate-new",
+    "cms": "bun scripts/cms.ts content --title QNTBR --port 4700",
     "seed": "pnpm run worker:run ./src/scripts/seed.ts",
     "generate": "rw-scripts ensure-env && prisma generate && wrangler types",
     "check": "pnpm run generate && pnpm run types",

@@ -5,12 +5,14 @@
 // app appears), then the same compact shelves the hubs use.
 import { type RequestInfo } from "rwsdk/worker";
 import { FeedPost } from "@qntbr/ui";
-import { apps, appGroups, gameGroups, games, isExternal, platformOf, type PortalEntry } from "@/app/pages/portal/portalData";
+import { games, gameGroups } from "@/app/pages/portal/portalGames";
+import { apps, appGroups, isExternal, platformOf, type PortalEntry } from "@/app/pages/portal/portalData";
 import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from "@/app/pages/portal/PortalShell";
 import { toneOf } from "@/app/pages/portal/tones";
+import { emphasis, landing as c } from "@/app/content";
 import { KeyArt } from "./KeyArt";
 import LandingLab from "./LandingLab";
-import { labItems } from "./lab";
+import { labItems } from "./labItems";
 
 /** The feed, top to bottom: the one app the page is about, then the games. */
 export const FEED = ['codesplitter', 'git-recon', 'skate-tech-park', 'park-hide-seek'] as const;
@@ -54,9 +56,9 @@ export default function LandingPage({ ctx }: RequestInfo) {
       <PortalSection id="feed">
         <PortalSectionHead
           as="h1"
-          eyebrow="QNTBR · Solutions architecture · Web apps & web solutions"
-          title={<>Built for the <em>fleet.</em> Then we <em>play.</em></>}
-          lede="We build tools we actually use and ship them on the runtime we wrote for it. Here is what is running right now: every picture below is the real thing, captured live."
+          eyebrow={c.text('feed.eyebrow')}
+          title={emphasis(c.text('feed.title'))}
+          lede={c.text('feed.lede')}
         />
         <div className="q-feed">
           {FEED.map((key, i) => <EntryPost key={key} entry={byKey(key)} first={i === 0} />)}
@@ -67,9 +69,9 @@ export default function LandingPage({ ctx }: RequestInfo) {
       <PortalSection id="lab">
         <PortalSectionHead
           small
-          eyebrow="The lab"
-          title={<>Combine words. <em>Get software.</em></>}
-          lede="Every game and app we ship is a verb and a noun. Drop one on the other and it appears; click it to go. The whole shelf is in the bag if you would rather just pick."
+          eyebrow={c.text('lab.eyebrow')}
+          title={emphasis(c.text('lab.title'))}
+          lede={c.text('lab.lede')}
         />
         <LandingLab items={labItems()} seed={['verb:draft', 'noun:cards', 'verb:split', 'noun:code']} />
       </PortalSection>
@@ -78,9 +80,9 @@ export default function LandingPage({ ctx }: RequestInfo) {
       <PortalSection id="products">
         <PortalSectionHead
           small
-          eyebrow="Products"
-          title={<>What we <em>build.</em></>}
-          lede="A code host for agents, the runtime it ships on, and everything we've built with them."
+          eyebrow={c.text('products.eyebrow')}
+          title={emphasis(c.text('products.title'))}
+          lede={c.text('products.lede')}
         />
         <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key === 'dev')} />
       </PortalSection>
@@ -89,11 +91,11 @@ export default function LandingPage({ ctx }: RequestInfo) {
       <PortalSection id="games">
         <PortalSectionHead
           small
-          eyebrow="Game Center"
-          title={<>The <em>tables.</em></>}
-          lede="The games shipped on Rusty Buns, and a draft of the cube where QNTBR started."
+          eyebrow={c.text('games.eyebrow')}
+          title={emphasis(c.text('games.title'))}
+          lede={c.text('games.lede')}
           linkHref="/games"
-          linkLabel="Open Game Center"
+          linkLabel={c.text('games.link')}
         />
         <PortalGroups bars entries={games} groups={gameGroups} />
       </PortalSection>
@@ -102,11 +104,11 @@ export default function LandingPage({ ctx }: RequestInfo) {
       <PortalSection id="apps">
         <PortalSectionHead
           small
-          eyebrow="App Center"
-          title={<>The <em>rest.</em></>}
-          lede="Calls, fulfillment, one login for everything, and the projects on the back burner."
+          eyebrow={c.text('apps.eyebrow')}
+          title={emphasis(c.text('apps.title'))}
+          lede={c.text('apps.lede')}
           linkHref="/apps"
-          linkLabel="Open App Center"
+          linkLabel={c.text('apps.link')}
         />
         <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key !== 'dev')} />
       </PortalSection>
@@ -114,12 +116,8 @@ export default function LandingPage({ ctx }: RequestInfo) {
       {/* ── About ── */}
       <PortalSection>
         <div style={{ paddingTop: 'clamp(40px, 7vw, 72px)' }}>
-          <span className="q-label">About</span>
-          <p className="q-prose" style={{ marginTop: 12 }}>
-            QNTBR is a <b>solutions architecture studio</b> focused on web apps and web solutions.
-            We build tools we actually use, and ship them on the runtime we wrote for it.
-            The goal is software that works, ships fast, and stays out of your way.
-          </p>
+          <span className="q-label">{c.text('about.label')}</span>
+          <p className="q-prose" style={{ marginTop: 12 }}>{emphasis(c.text('about.text'), 'b')}</p>
         </div>
       </PortalSection>
     </PortalPage>

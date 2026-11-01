@@ -2,7 +2,8 @@
 // The landing lab's table: every verb + noun pair makes its own thing, and every other drop
 // still lands on some app.
 import { expect, test } from "bun:test";
-import { combineLab, labItems, recipes } from "../../src/app/pages/landing/lab.ts";
+import { combineLab, recipes } from "../../src/app/pages/landing/lab.ts";
+import { labItems } from "../../src/app/pages/landing/labItems.ts";
 
 const bag = labItems();
 const word = (id: string) => bag.find((i) => i.id === id)!;
