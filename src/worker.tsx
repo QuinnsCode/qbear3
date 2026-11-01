@@ -542,8 +542,8 @@ export default defineApp([
     termsRoute,
 
     // Game routes
-    route("/game", async ({ request }) => {
-      const orgSlug = 'default';
+    route("/game", async ({ ctx }) => {
+      const orgSlug = ctx.user?.id ?? 'default';
       const result = await createNewGame(orgSlug);
       
       if (!result.success) {
@@ -590,7 +590,7 @@ export default defineApp([
       }
       
       // ✅ NORMAL: Create new org game (keep existing code)
-      const orgSlug = 'default';
+      const orgSlug = ctx.user?.id ?? 'default';
       
       const result = await createNewCardGame(orgSlug, {
         creatorUserId: ctx.user?.id,
