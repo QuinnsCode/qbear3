@@ -59,7 +59,7 @@ we would have to change all three. Rebuilding everything in one go would leave n
   Sanctum files then get deleted in one PR.
 
 Reused as they are: the deck builder and deck storage, `DeckImportManager`'s parser, `TokenManager`'s token lookup,
-`CardCacheDO`, presence, friends and invites, and Sanctum's tiles.
+the `CARDS_KV` card store, presence, friends and invites, and Sanctum's tiles.
 
 ### State and storage (SQLite in the DO)
 
@@ -71,7 +71,7 @@ cmd_dmg (from_seat, to_seat, dmg)
 events  (seq, at, seat, kind, body_json)       -- append-only; drives the log, undo and resume
 ```
 
-- A card stores only `print_id` and `oracle_id`. Scryfall data is fetched once per table through `CardCacheDO` and sent
+- A card stores only `print_id` and `oracle_id`. Scryfall data is fetched once per table through `CARDS_KV` and sent
   to clients as a separate, cacheable card catalog, not inside every update.
 - Images go through our own `/img/:print_id` proxy with long-lived cache headers, not hotlinked.
 - Hidden zones (library, hand, face-down cards) are real per-seat filters. Peeking (scry, search, "look at the top N")

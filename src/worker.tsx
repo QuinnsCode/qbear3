@@ -62,7 +62,6 @@ export { UserSessionDO } from './durableObjects/userSessionDO'
 export { MatchmakingDO } from './durableObjects/MatchmakingDO'
 export { CacheWarmingDO } from './durableObjects/CacheWarmingDO'
 
-export { CardCacheDO } from './cardCacheDO'
 export { VTTDO } from './vttDurableObject'
 export { SyncedStateServer };
 

@@ -53,7 +53,6 @@ export default defineConfig({
     REALTIME_DURABLE_OBJECT: { type: "durable_object", className: "RealtimeDurableObject" },
     GAME_STATE_DO: { type: "durable_object", className: "GameStateDO" },
     CARD_GAME_STATE_DO: { type: "durable_object", className: "CardGameDO" },
-    CARD_CACHE_DO: { type: "durable_object", className: "CardCacheDO" },
     CACHE_WARMING_DO: { type: "durable_object", className: "CacheWarmingDO" },
     SYNCED_STATE_SERVER: { type: "durable_object", className: "SyncedStateServer" },
     DRAFT_DO: { type: "durable_object", className: "DraftDO" },
