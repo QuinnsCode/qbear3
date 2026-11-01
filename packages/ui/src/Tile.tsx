@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { Badge, StatusPill, type Status } from './Badge';
 import { cx } from './cx';
+import { Platform } from './Platform';
+import type { PlatformHint } from './Platform';
 
 export interface TileProps {
   name: string;
@@ -17,6 +19,8 @@ export interface TileProps {
   /** Fallback preview when there is no icon or image: an emoji or character. Defaults to the name's first letter. */
   glyph?: ReactNode;
   status?: Status;
+  /** Where it plays best: a lucide icon and a short label, shown on the preview. */
+  platform?: PlatformHint;
   /** Extra badges, e.g. "Q auth". */
   badges?: ReactNode[];
   href?: string;
@@ -34,7 +38,7 @@ export interface TileProps {
 
 /** The card: a paper tile around a preview window (status pills ride on it). A link when it has an href and is not "soon". */
 export function Tile({
-  name, tag, tagline, description, icon, image, tone, glyph, status, badges, href, cta, external,
+  name, tag, tagline, description, icon, image, tone, glyph, status, platform, badges, href, cta, external,
   compact, wide, aside, nameAs: Name = 'h3', className,
 }: TileProps) {
   const soon = status === 'soon';
@@ -46,9 +50,10 @@ export function Tile({
       {image
         ? <img src={image} alt="" loading="lazy" />
         : <span className="q-tile-icon" aria-hidden="true">{icon ?? glyph ?? name.charAt(0)}</span>}
-      {!compact && (!!status || !!badges?.length) && (
+      {!compact && (!!status || !!badges?.length || !!platform) && (
         <div className="q-tile-pills">
           {status && <StatusPill status={status} />}
+          {platform && <Platform {...platform} />}
           {badges?.map((b, i) => <Badge key={i}>{b}</Badge>)}
         </div>
       )}

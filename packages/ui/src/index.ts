@@ -15,3 +15,4 @@ export { Sheet, type SheetProps } from './Sheet';
 export { Terminal, type TerminalLine, type TerminalProps } from './Terminal';
 export { Capsule, type CapsuleProps } from './Capsule';
 export { FeedPost, type FeedPostProps } from './FeedPost';
+export { Platform, type PlatformHint } from './Platform';

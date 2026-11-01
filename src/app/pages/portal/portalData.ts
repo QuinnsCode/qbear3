@@ -2,7 +2,7 @@
 // Single source of truth for the QNTBR portal: the three sections on the
 // landing page (Products, Game Center, App Center) and the /games + /apps hubs.
 
-import { AudioWaveform, Brush, Crosshair, Droplet, Earth, Flame, GitBranch, Hand, KeyRound, Landmark, Layers, MessagesSquare, Package, PersonStanding, Rocket, Sandwich, SprayCan, Sprout, Swords, TreePalm, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
+import { AudioWaveform, Brush, Crosshair, Droplet, Earth, Flame, GitBranch, Hand, KeyRound, Landmark, Layers, MessagesSquare, Monitor, MonitorSmartphone, Package, PersonStanding, Rocket, Sandwich, Smartphone, SprayCan, Sprout, Swords, TreePalm, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
 
 export type PortalStatus = 'live' | 'beta' | 'soon';
 
@@ -31,6 +31,32 @@ export interface PortalEntry {
   tag?: string;
   /** The elevator pitch, three sentences, for the landing capsules. One shot; make it count. */
   pitch?: readonly [string, string, string];
+}
+
+/** Where a game plays best. */
+export type Platform = 'mobile' | 'desktop' | 'both';
+
+/** Games that name a device. git-recon and Druids Curse are not mobile games; Skate Tech Park is better on desktop. */
+const PLATFORMS: Record<string, Platform> = {
+  'park-hide-seek': 'both',
+  'skate-tech-park': 'desktop',
+  'git-recon': 'desktop',
+  'two-fronts': 'both',
+  'druids-curse': 'desktop',
+  'splat-spray': 'both',
+  excalibrawl: 'both',
+};
+
+const PLATFORM_HINTS: Record<Platform, { icon: LucideIcon; label: string }> = {
+  mobile: { icon: Smartphone, label: 'Best on phone' },
+  desktop: { icon: Monitor, label: 'Best on desktop' },
+  both: { icon: MonitorSmartphone, label: 'Phone & desktop' },
+};
+
+/** The device hint for an entry: undefined when it names none. */
+export function platformOf(key: string): { icon: LucideIcon; label: string } | undefined {
+  const p = PLATFORMS[key];
+  return p ? PLATFORM_HINTS[p] : undefined;
 }
 
 export const GITHUB_ORG_URL = 'https://github.com/QuinnsCode';

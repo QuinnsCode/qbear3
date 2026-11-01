@@ -5,7 +5,7 @@
 // app appears), then the same compact shelves the hubs use.
 import { type RequestInfo } from "rwsdk/worker";
 import { FeedPost } from "@qntbr/ui";
-import { apps, appGroups, gameGroups, games, isExternal, resolveHref, type PortalEntry } from "@/app/pages/portal/portalData";
+import { apps, appGroups, gameGroups, games, isExternal, platformOf, resolveHref, type PortalEntry } from "@/app/pages/portal/portalData";
 import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from "@/app/pages/portal/PortalShell";
 import { toneOf } from "@/app/pages/portal/tones";
 import { KeyArt } from "./KeyArt";
@@ -34,6 +34,7 @@ const landingGames = games.flatMap((e) => (e.group !== 'mtg' ? [e] : e.key === C
 function EntryPost({ entry, request, first }: { entry: PortalEntry; request: Request; first?: boolean }) {
   const href = resolveHref(entry, request);
   const external = isExternal(href);
+  const platform = platformOf(entry.key);
   return (
     <FeedPost
       nameAs="h2"
@@ -43,6 +44,7 @@ function EntryPost({ entry, request, first }: { entry: PortalEntry; request: Req
       source={external ? new URL(href).host : undefined}
       avatar={entry.glyph}
       tone={toneOf(entry.key, entry.group)}
+      platform={platform && { icon: <platform.icon strokeWidth={1.75} />, label: platform.label }}
       tagline={entry.tagline}
       shot={entry.image ?? <KeyArt entryKey={entry.key} glyph={entry.glyph} />}
       pitch={entry.pitch}
