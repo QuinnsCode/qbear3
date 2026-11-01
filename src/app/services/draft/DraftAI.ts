@@ -7,10 +7,6 @@ export class DraftAI {
    * Pick multiple cards that synergize
    */
   static pickCards(pack: Pack, pool: string[], cubeCards: CubeCard[], pickCount: number): string[] {
-    if (pickCount === 1) {
-      return [this.pickCard(pack, pool, cubeCards)]
-    }
-    
     const packCards = pack.cards
       .map(id => cubeCards.find(c => c.scryfallId === id))
       .filter(c => c !== undefined) as CubeCard[]

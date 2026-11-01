@@ -31,6 +31,7 @@ export interface CubeCard {
     id: string
     name: string
     isAI: boolean
+    open?: boolean       // Public: a seat nobody has taken yet
     draftPool: string[]  // All cards drafted (scryfallIds); empty in other people's views
     poolSize?: number    // Public: how many cards they've drafted
     hasPicked?: boolean  // Public: picked from the pack in hand this round
@@ -63,6 +64,7 @@ export interface CubeCard {
 
     // ✅ NEW: Protected drafts and spectator support
     creatorId?: string  // User who created (null for guest drafts)
+    pickDeadline?: number  // When idle humans get an AI stand-in (ms since epoch); unset with one human
     permissions?: {
       isPublic: boolean        // Default: false for logged-in, true for guest
       allowSpectators: boolean // Default: true
