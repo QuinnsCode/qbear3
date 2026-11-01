@@ -34,7 +34,7 @@ export default function DraftAuthBanner({ isLoggedIn, userName, onExportDeck }: 
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 sm:flex-row">
         <div className="flex items-center gap-2 text-xs text-amber-100/90">
           <Info className="h-4 w-4 text-amber-300" />
-          <span>Guest draft. Export your picks or log in to save them to Sanctum.</span>
+          <span>Guest draft. Export your picks or sign in with eqosys to save them.</span>
         </div>
 
         <div className="flex items-center gap-2">
