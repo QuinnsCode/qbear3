@@ -5,7 +5,7 @@
 
 import type { ReactNode } from 'react';
 import { Footer, Page, SectionHead, ThemeScript, ThemeToggle, TopBar, Tile, TileGroup, Wrap, type NavItem } from '@qntbr/ui';
-import { GITHUB_ORG_URL, RUSTY_BUNS_URL, isExternal, platformOf, groupEntries, resolveHref, type PortalEntry, type PortalGroup } from './portalData';
+import { GITHUB_ORG_URL, RUSTY_BUNS_URL, isExternal, platformOf, groupEntries, type PortalEntry, type PortalGroup } from './portalData';
 import { toneOf } from './tones';
 
 interface PageProps {
@@ -56,7 +56,6 @@ export function PortalPage({ isLoggedIn, current = 'home', children }: PageProps
 interface GroupsProps {
   entries: PortalEntry[];
   groups: PortalGroup[];
-  request: Request;
   /** Preview and name only, smaller tiles. */
   compact?: boolean;
   /** One wide bar per entry, groups stacked full width: the landing page shelves. */
@@ -64,7 +63,7 @@ interface GroupsProps {
 }
 
 /** One group card per group, each holding the tiles of its entries. */
-export function PortalGroups({ entries, groups, request, compact, bars }: GroupsProps) {
+export function PortalGroups({ entries, groups, compact, bars }: GroupsProps) {
   return (
     <div className={compact ? 'q-groups q-dense' : 'q-groups'}>
       {groupEntries(entries, groups).map(({ group, entries }) => (
@@ -77,7 +76,7 @@ export function PortalGroups({ entries, groups, request, compact, bars }: Groups
           dense={compact}
           bars={bars}
         >
-          {entries.map((e) => <PortalTile key={e.key} entry={e} request={request} compact={compact} wide={bars} />)}
+          {entries.map((e) => <PortalTile key={e.key} entry={e} compact={compact} wide={bars} />)}
         </TileGroup>
       ))}
     </div>
@@ -91,11 +90,9 @@ const hint = (key: string) => {
   return { icon: <Icon strokeWidth={1.75} />, label: p.label };
 };
 
-export function PortalTile({ entry: e, request, compact, wide }: { entry: PortalEntry; request: Request; compact?: boolean; wide?: boolean }) {
-  const href = resolveHref(e, request);
+export function PortalTile({ entry: e, compact, wide }: { entry: PortalEntry; compact?: boolean; wide?: boolean }) {
+  const href = e.href;
   const Icon = e.icon;
-  // Auth-gated routes already redirect logged-out visitors to /user/login
-  // via middleware, so link straight through; the "Q auth" badge sets expectations.
   return (
     <Tile
       name={e.name}
@@ -108,7 +105,6 @@ export function PortalTile({ entry: e, request, compact, wide }: { entry: Portal
       tone={toneOf(e.key, e.group)}
       platform={hint(e.key)}
       status={e.status}
-      badges={e.requiresAuth ? ['Q auth'] : undefined}
       href={href}
       cta={e.cta}
       external={isExternal(href)}

@@ -2,7 +2,7 @@
 // Single source of truth for the QNTBR portal: the three sections on the
 // landing page (Products, Game Center, App Center) and the /games + /apps hubs.
 
-import { AudioWaveform, Brush, Crosshair, Droplet, Flame, GitBranch, Hand, KeyRound, Landmark, Layers, Monitor, MonitorSmartphone, Package, PersonStanding, Rocket, Sandwich, Smartphone, SprayCan, Sprout, Swords, TreePalm, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
+import { AudioWaveform, Brush, Crosshair, Droplet, Flame, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Package, PersonStanding, Rocket, Sandwich, Smartphone, SprayCan, Sprout, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
 
 export type PortalStatus = 'live' | 'beta' | 'soon';
 
@@ -14,8 +14,6 @@ export interface PortalEntry {
   href: string;
   cta: string;
   status: PortalStatus;
-  /** Requires a QNTBR account (Q auth) to use. */
-  requiresAuth?: boolean;
   /** Which group card this entry sits in on its hub (see gameGroups / appGroups). */
   group: string;
   /** Icon shown in the card's preview window. */
@@ -61,101 +59,23 @@ export function platformOf(key: string): { icon: LucideIcon; label: string } | u
 
 export const GITHUB_ORG_URL = 'https://github.com/QuinnsCode';
 export const RUSTY_BUNS_URL = 'https://github.com/QuinnsCode/RustyBuns';
-export const SANDBOX_HOST = 'sandbox.qntbr.com';
-
-/**
- * Sandbox lives on its own subdomain. On localhost the Playwright/dev setup
- * reaches it through nip.io, so build the URL from the request host.
- */
-export function getSandboxUrl(request: Request): string {
-  const url = new URL(request.url);
-  if (url.hostname.includes('localhost') || url.hostname.includes('nip.io')) {
-    return `${url.protocol}//sandbox.127.0.0.1.nip.io:${url.port || '5173'}/`;
-  }
-  return `https://${SANDBOX_HOST}/`;
-}
-
 // ──────────────────────────────────────────────────────────────
 // Game Center — everything you can play
 // ──────────────────────────────────────────────────────────────
 export const games: PortalEntry[] = [
   {
-    key: 'sanctum',
-    group: 'mtg',
-    icon: Landmark,
-    glyph: '🏛️',
-    name: 'Sanctum',
-    tag: 'MTG · Commander',
-    tagline: 'Your game hub',
-    description: 'Create card games, manage your pod, track decks, and jump into live tables. The home base for everything QVTT.',
-    href: '/sanctum',
-    cta: 'Enter the Sanctum',
-    status: 'live',
-    requiresAuth: true,
-    verb: 'Gather',
-    noun: 'Pod',
-  },
-  {
-    key: 'sandbox',
-    group: 'mtg',
-    icon: TreePalm,
-    glyph: '🏖️',
-    name: 'Sandbox',
-    tag: 'MTG · No account',
-    tagline: 'Play instantly',
-    description: 'A shared, always-on table. No login, no setup. Pick a starter deck and start slinging spells in seconds.',
-    href: '__SANDBOX__',
-    cta: 'Jump in',
-    status: 'live',
-    verb: 'Play',
-    noun: 'Cards',
-  },
-  {
-    key: 'pvp',
-    group: 'mtg',
-    icon: Swords,
-    glyph: '⚔️',
-    name: 'PVP Draft Arena',
-    tag: 'MTG · Draft',
-    tagline: 'Draft, then duel',
-    description: 'Draft against AI opponents, then get matched into PVP with your freshly drafted deck. Regional matchmaking keeps it snappy.',
-    href: '/pvp',
-    cta: 'Enter the Arena',
-    status: 'beta',
-    requiresAuth: true,
-    verb: 'Duel',
-    noun: 'Cards',
-  },
-  {
     key: 'draft',
     group: 'mtg',
     icon: Package,
     glyph: '📦',
-    name: 'Draft Lobby',
-    tag: 'MTG · Draft',
-    tagline: 'Booster draft with friends',
-    description: 'Spin up a draft room, share the link, and pick packs together in real time. Drafted decks save straight to your deck list.',
+    name: 'Draft my cube',
+    tag: 'MTG · Vintage cube',
+    tagline: 'Booster draft from the vintage cube',
+    description: 'Open a draft room on the cube, share the link, and pick packs together in real time. The deck you draft saves straight to your list.',
     href: '/draft/new',
-    cta: 'Start a draft',
+    cta: 'Draft the cube',
     status: 'live',
-    requiresAuth: true,
     verb: 'Draft',
-    noun: 'Cards',
-  },
-  {
-    key: 'deckbuilder',
-    group: 'mtg',
-    icon: Layers,
-    glyph: '🃏',
-    name: 'Deck Builder',
-    tag: 'MTG · Tools',
-    tagline: 'Build and import decks',
-    description: 'Paste a list, pull cards from Scryfall, and keep every deck ready for the table. Works with Commander, 60-card, and drafted decks.',
-    href: '/deckbuilder',
-    cta: 'Open the builder',
-    status: 'live',
-    requiresAuth: true,
-    verb: 'Build',
     noun: 'Cards',
   },
   {
@@ -420,7 +340,7 @@ export interface PortalGroup {
 
 export const gameGroups: PortalGroup[] = [
   { key: 'rustybuns', title: 'Built with Rusty Buns', lede: 'Games shipped on Rusty Buns, each running on its own Worker.', noun: 'game' },
-  { key: 'mtg', title: 'Magic: The Gathering', lede: 'The original QNTBR tables: Commander, drafts, decks, and a sandbox that never closes.', noun: 'table' },
+  { key: 'mtg', title: 'Magic: The Gathering', lede: 'Where QNTBR started: one link to draft the cube.', noun: 'draft' },
 ];
 
 export const appGroups: PortalGroup[] = [
@@ -477,12 +397,6 @@ export function groupEntries(entries: PortalEntry[], groups: PortalGroup[]) {
   return groups
     .map((group) => ({ group, entries: entries.filter((e) => e.group === group.key) }))
     .filter((g) => g.entries.length > 0);
-}
-
-/** Resolve placeholder hrefs (currently just the sandbox) against the request. */
-export function resolveHref(entry: PortalEntry, request: Request): string {
-  if (entry.href === '__SANDBOX__') return getSandboxUrl(request);
-  return entry.href;
 }
 
 export function isExternal(href: string): boolean {

@@ -4,8 +4,7 @@
 import { expect, test } from "bun:test";
 import { combineLab, labItems, recipes } from "../../src/app/pages/landing/lab.ts";
 
-const request = new Request("https://qntbr.com/");
-const bag = labItems(request);
+const bag = labItems();
 const word = (id: string) => bag.find((i) => i.id === id)!;
 const things = bag.filter((i) => i.group === "game" || i.group === "app");
 const words = bag.filter((i) => i.group === "verb" || i.group === "noun");
@@ -22,12 +21,6 @@ test("every thing in the bag has a verb + noun recipe that makes it, and no two 
   }
   expect([...made].sort()).toEqual(things.map((t) => t.id).sort());
   expect(recipes.size).toBe(things.length);
-});
-
-test("the sandbox link is built for the host it is asked from", () => {
-  const sandbox = labItems(new Request("http://localhost:5173/")).find((i) => i.id === "sandbox")!;
-  expect(sandbox.href).toBe("http://sandbox.127.0.0.1.nip.io:5173/");
-  expect(word("sandbox").href).toBe("https://sandbox.qntbr.com/");
 });
 
 test("any two words make an app, and the same two always make the same one", () => {

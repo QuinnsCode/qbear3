@@ -5,7 +5,7 @@
 // app appears), then the same compact shelves the hubs use.
 import { type RequestInfo } from "rwsdk/worker";
 import { FeedPost } from "@qntbr/ui";
-import { apps, appGroups, gameGroups, games, isExternal, platformOf, resolveHref, type PortalEntry } from "@/app/pages/portal/portalData";
+import { apps, appGroups, gameGroups, games, isExternal, platformOf, type PortalEntry } from "@/app/pages/portal/portalData";
 import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from "@/app/pages/portal/PortalShell";
 import { toneOf } from "@/app/pages/portal/tones";
 import { KeyArt } from "./KeyArt";
@@ -21,18 +21,8 @@ const byKey = (key: string): PortalEntry => {
   return entry;
 };
 
-/** Magic: The Gathering on the front door is one app: a draft of the cube. The hub keeps the rest. */
-const CUBE: PortalEntry = {
-  ...byKey('draft'),
-  name: 'Draft my cube',
-  tagline: 'Booster draft from the vintage cube',
-  description: 'Open a draft room on the cube, share the link, and pick packs together in real time. The deck you draft saves straight to your list.',
-  cta: 'Draft the cube',
-};
-const landingGames = games.flatMap((e) => (e.group !== 'mtg' ? [e] : e.key === CUBE.key ? [CUBE] : []));
-
-function EntryPost({ entry, request, first }: { entry: PortalEntry; request: Request; first?: boolean }) {
-  const href = resolveHref(entry, request);
+function EntryPost({ entry, first }: { entry: PortalEntry; first?: boolean }) {
+  const href = entry.href;
   const external = isExternal(href);
   const platform = platformOf(entry.key);
   return (
@@ -55,9 +45,8 @@ function EntryPost({ entry, request, first }: { entry: PortalEntry; request: Req
   );
 }
 
-export default function LandingPage({ ctx, request }: RequestInfo) {
+export default function LandingPage({ ctx }: RequestInfo) {
   const isLoggedIn = !!ctx.user;
-  const items = labItems(request);
 
   return (
     <PortalPage isLoggedIn={isLoggedIn} current="home">
@@ -70,7 +59,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           lede="We build tools we actually use and ship them on the runtime we wrote for it. Here is what is running right now: every picture below is the real thing, captured live."
         />
         <div className="q-feed">
-          {FEED.map((key, i) => <EntryPost key={key} entry={byKey(key)} request={request} first={i === 0} />)}
+          {FEED.map((key, i) => <EntryPost key={key} entry={byKey(key)} first={i === 0} />)}
         </div>
       </PortalSection>
 
@@ -82,7 +71,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           title={<>Combine words. <em>Get software.</em></>}
           lede="Every game and app we ship is a verb and a noun. Drop one on the other and it appears; click it to go. The whole shelf is in the bag if you would rather just pick."
         />
-        <LandingLab items={items} seed={['verb:draft', 'noun:cards', 'verb:split', 'noun:code']} />
+        <LandingLab items={labItems()} seed={['verb:draft', 'noun:cards', 'verb:split', 'noun:code']} />
       </PortalSection>
 
       {/* ── Products: the code host and the runtime it ships on ── */}
@@ -93,7 +82,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           title={<>What we <em>build.</em></>}
           lede="A code host for agents, the runtime it ships on, and everything we've built with them."
         />
-        <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key === 'dev')} request={request} />
+        <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key === 'dev')} />
       </PortalSection>
 
       {/* ── Game Center ── */}
@@ -102,11 +91,11 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           small
           eyebrow="Game Center"
           title={<>The <em>tables.</em></>}
-          lede="The games shipped on Rusty Buns, a draft of the cube where QNTBR started. Every Commander table is in the Game Center."
+          lede="The games shipped on Rusty Buns, and a draft of the cube where QNTBR started."
           linkHref="/games"
           linkLabel="Open Game Center"
         />
-        <PortalGroups bars entries={landingGames} groups={gameGroups} request={request} />
+        <PortalGroups bars entries={games} groups={gameGroups} />
       </PortalSection>
 
       {/* ── App Center ── */}
@@ -119,7 +108,7 @@ export default function LandingPage({ ctx, request }: RequestInfo) {
           linkHref="/apps"
           linkLabel="Open App Center"
         />
-        <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key !== 'dev')} request={request} />
+        <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key !== 'dev')} />
       </PortalSection>
 
       {/* ── About ── */}
