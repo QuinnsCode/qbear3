@@ -1,203 +1,146 @@
 // src/app/services/cardData/KVCardCache.ts
-import type { ICardCache } from './ICardCache'
-import type { CardData, CardSearchResult, AutocompleteResult, OracleData, PrintingData } from './types'
+import type { CardData } from './types'
 
 /**
- * KV-based card cache implementation
- * Uses Cloudflare Workers KV for globally distributed edge caching
+ * Card records in Workers KV, shared by every colo.
  *
- * Cache keys:
- * - card:id:{printId} → Full card data (legacy)
- * - card:name:{normalized_name} → Card ID (for name lookups)
- * - oracle:{oracleId} → Oracle data (game rules)
- * - print:{printId} → Printing data (art, set, price)
- * - printings:{oracleId} → Array of print IDs for this oracle
- * - search:{hash}:{page} → Search results
- * - autocomplete:{normalized_query} → Autocomplete results
+ * Keys:
+ * - card:id:{printId}  → CardData JSON. Metadata { name, image } so admin listings need no reads.
+ * - card:name:{name}   → printId, for each name a card was asked for by (its own name, and a
+ *                        double-faced card's front face, which is what deck lists usually say).
  *
- * TTL: 1 year (cards don't change often)
+ * KV bills every write ($5/M, 1k/day free) and every read ($0.50/M), so reads go out in bulk
+ * (one call per 100 keys) and nothing is written twice in one batch. Search and autocomplete are
+ * not here: Scryfall's GET replies sit in the free Cache API (src/app/api/scryfall/scryfall.ts).
  */
-export class KVCardCache implements ICardCache {
-  private kv: KVNamespace
-  private readonly CARD_ID_PREFIX = 'card:id:'
-  private readonly CARD_NAME_PREFIX = 'card:name:'
-  private readonly ORACLE_PREFIX = 'oracle:'
-  private readonly PRINT_PREFIX = 'print:'
-  private readonly PRINTINGS_PREFIX = 'printings:'
-  private readonly SEARCH_PREFIX = 'search:'
-  private readonly AUTOCOMPLETE_PREFIX = 'autocomplete:'
-  private readonly CACHE_TTL = 365 * 24 * 60 * 60 // 1 year
 
-  constructor(kv: KVNamespace) {
-    this.kv = kv
+const ID_PREFIX = 'card:id:'
+const NAME_PREFIX = 'card:name:'
+const TTL_SECONDS = 365 * 24 * 60 * 60 // printings don't change; prices in here can be a year old
+const BULK_GET_MAX = 100 // KV's limit on keys in one get
+
+/** What sits on each card:id: key, readable from list() without fetching the value. */
+export interface CardKeyMetadata {
+  name: string
+  image?: string
+}
+
+export function cardKeyMetadata(value: unknown): CardKeyMetadata | null {
+  if (!value || typeof value !== 'object' || !('name' in value) || typeof value.name !== 'string') return null
+  const image = 'image' in value && typeof value.image === 'string' ? value.image : undefined
+  return { name: value.name, image }
+}
+
+/** Lowercase, trimmed, spaces to underscores: the form card:name: keys have always used. */
+export function normalizeCardName(name: string): string {
+  return name.toLowerCase().trim().replace(/\s+/g, '_')
+}
+
+export function cardImageUrl(card: CardData): string | undefined {
+  return card.imageUris?.normal || card.imageUris?.large || card.imageUris?.small
+}
+
+function isCardData(value: unknown): value is CardData {
+  return !!value && typeof value === 'object'
+    && 'id' in value && typeof value.id === 'string'
+    && 'name' in value && typeof value.name === 'string'
+}
+
+export function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = []
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
+  return out
+}
+
+/** The slice of KVNamespace this cache uses (a KVNamespace is one). */
+export interface CardStore {
+  get(keys: string[], type: 'text'): Promise<Map<string, string | null>>
+  put(key: string, value: string, options: { expirationTtl: number; metadata?: CardKeyMetadata }): Promise<void>
+  delete(key: string): Promise<void>
+}
+
+export class KVCardCache {
+  constructor(private kv: CardStore) {}
+
+  /** Raw values for many keys, at most 100 per KV call, all calls in flight together. */
+  private async getMany(keys: string[]): Promise<Map<string, string>> {
+    const found = new Map<string, string>()
+    const unique = [...new Set(keys)]
+    const pages = await Promise.all(chunk(unique, BULK_GET_MAX).map(page => this.kv.get(page, 'text')))
+    for (const page of pages) {
+      for (const [key, value] of page) if (value !== null) found.set(key, value)
+    }
+    return found
+  }
+
+  /** Cards by print id. Ids not cached (or not parseable) are absent from the map. */
+  async getCards(ids: string[]): Promise<Map<string, CardData>> {
+    const raw = await this.getMany(ids.map(id => ID_PREFIX + id))
+    const cards = new Map<string, CardData>()
+    for (const [key, text] of raw) {
+      try {
+        const value: unknown = JSON.parse(text)
+        // Draft exports used to store stripped cube cards (no rules text) under real ids;
+        // read those as misses so the next fetch replaces them.
+        if (isCardData(value) && !value.provider?.startsWith('draft-')) cards.set(key.slice(ID_PREFIX.length), value)
+      } catch {
+        console.warn(`[KVCardCache] unreadable entry ${key}`)
+      }
+    }
+    return cards
+  }
+
+  /** Cards by the names they were asked for, keyed by normalizeCardName(name). Two bulk reads. */
+  async getCardsByName(names: string[]): Promise<Map<string, CardData>> {
+    const normalized = names.map(normalizeCardName)
+    const ids = await this.getMany(normalized.map(n => NAME_PREFIX + n))
+    const cards = await this.getCards([...ids.values()])
+    const byName = new Map<string, CardData>()
+    for (const name of normalized) {
+      const id = ids.get(NAME_PREFIX + name)
+      const card = id ? cards.get(id) : undefined
+      if (card) byName.set(name, card)
+    }
+    return byName
   }
 
   async getCard(id: string): Promise<CardData | null> {
-    const key = `${this.CARD_ID_PREFIX}${id}`
-    const cached = await this.kv.get(key, 'json')
-    return cached as CardData | null
+    return (await this.getCards([id])).get(id) ?? null
   }
 
   async getCardByName(name: string): Promise<CardData | null> {
-    const normalizedName = this.normalizeName(name)
-    const nameKey = `${this.CARD_NAME_PREFIX}${normalizedName}`
+    return (await this.getCardsByName([name])).get(normalizeCardName(name)) ?? null
+  }
 
-    // First lookup: name → card ID
-    const cardId = await this.kv.get(nameKey, 'text')
-    if (!cardId) return null
-
-    // Second lookup: card ID → full card data
-    return this.getCard(cardId)
+  /**
+   * Store cards and the names they were asked for. Each card gets its id key plus one name key
+   * per distinct name (its own and its front face's always included); duplicates are written once,
+   * since KV rejects a second write to one key within a second.
+   */
+  async putCards(entries: Array<{ card: CardData; names?: string[] }>): Promise<void> {
+    const writes = new Map<string, () => Promise<void>>()
+    for (const { card, names = [] } of entries) {
+      const metadata: CardKeyMetadata = { name: card.name, image: cardImageUrl(card) }
+      writes.set(ID_PREFIX + card.id, () =>
+        this.kv.put(ID_PREFIX + card.id, JSON.stringify(card), { expirationTtl: TTL_SECONDS, metadata }))
+      const frontFace = card.name.split(' // ')[0]!
+      for (const name of new Set([card.name, frontFace, ...names].map(normalizeCardName))) {
+        writes.set(NAME_PREFIX + name, () =>
+          this.kv.put(NAME_PREFIX + name, card.id, { expirationTtl: TTL_SECONDS }))
+      }
+    }
+    const results = await Promise.allSettled([...writes.values()].map(write => write()))
+    const failed = results.filter(r => r.status === 'rejected').length
+    if (failed > 0) console.warn(`[KVCardCache] ${failed}/${results.length} writes failed`)
   }
 
   async setCard(card: CardData): Promise<void> {
-    const cardKey = `${this.CARD_ID_PREFIX}${card.id}`
-    const nameKey = `${this.CARD_NAME_PREFIX}${this.normalizeName(card.name)}`
-
-    try {
-      // Store card data by ID
-      await this.kv.put(cardKey, JSON.stringify(card), {
-        expirationTtl: this.CACHE_TTL,
-        metadata: {
-          name: card.name,
-          lastUpdated: Date.now()
-        }
-      })
-
-      // Store name → ID mapping for name lookups
-      await this.kv.put(nameKey, card.id, {
-        expirationTtl: this.CACHE_TTL
-      })
-
-      console.log(`[KVCardCache] ✅ Cached card: ${card.name} (${card.id})`)
-    } catch (error) {
-      console.error(`[KVCardCache] ❌ Failed to cache card ${card.name}:`, error)
-      throw error
-    }
-  }
-
-  async setCards(cards: CardData[]): Promise<void> {
-    console.log(`[KVCardCache] Caching ${cards.length} cards...`)
-    // Batch write to KV (execute in parallel for performance)
-    try {
-      await Promise.all(cards.map(card => this.setCard(card)))
-      console.log(`[KVCardCache] ✅ Successfully cached ${cards.length} cards`)
-    } catch (error) {
-      console.error(`[KVCardCache] ❌ Error caching cards:`, error)
-      throw error
-    }
-  }
-
-  async getSearchResults(query: string, page: number): Promise<CardSearchResult | null> {
-    const key = `${this.SEARCH_PREFIX}${this.hashQuery(query)}:${page}`
-    const cached = await this.kv.get(key, 'json')
-    return cached as CardSearchResult | null
-  }
-
-  async setSearchResults(query: string, page: number, results: CardSearchResult): Promise<void> {
-    const key = `${this.SEARCH_PREFIX}${this.hashQuery(query)}:${page}`
-    await this.kv.put(key, JSON.stringify(results), {
-      expirationTtl: 7 * 24 * 60 * 60 // 7 days for search results
-    })
-  }
-
-  async getAutocomplete(query: string): Promise<AutocompleteResult | null> {
-    const key = `${this.AUTOCOMPLETE_PREFIX}${this.normalizeName(query)}`
-    const cached = await this.kv.get(key, 'json')
-    return cached as AutocompleteResult | null
-  }
-
-  async setAutocomplete(query: string, results: AutocompleteResult): Promise<void> {
-    const key = `${this.AUTOCOMPLETE_PREFIX}${this.normalizeName(query)}`
-    await this.kv.put(key, JSON.stringify(results), {
-      expirationTtl: 7 * 24 * 60 * 60 // 7 days for autocomplete
-    })
-  }
-
-  async hasCard(id: string): Promise<boolean> {
-    const key = `${this.CARD_ID_PREFIX}${id}`
-    const value = await this.kv.get(key)
-    return value !== null
+    await this.putCards([{ card }])
   }
 
   async deleteCard(id: string): Promise<void> {
-    // Need to get the card first to find its name for cleanup
     const card = await this.getCard(id)
-
-    const cardKey = `${this.CARD_ID_PREFIX}${id}`
-    await this.kv.delete(cardKey)
-
-    if (card) {
-      const nameKey = `${this.CARD_NAME_PREFIX}${this.normalizeName(card.name)}`
-      await this.kv.delete(nameKey)
-    }
-  }
-
-  async clearAll(): Promise<void> {
-    // KV doesn't have a deleteAll - would need to list and delete
-    // For maintenance, we can rely on TTL expiration
-    console.warn('KVCardCache.clearAll() - not implemented (rely on TTL)')
-  }
-
-  /**
-   * Normalize card name for consistent lookups
-   * Converts to lowercase, trims, replaces spaces with underscores
-   */
-  private normalizeName(name: string): string {
-    return name.toLowerCase().trim().replace(/\s+/g, '_')
-  }
-
-  /**
-   * Hash a search query for consistent cache keys
-   * Uses base64 encoding and removes special characters
-   */
-  private hashQuery(query: string): string {
-    return btoa(query.toLowerCase().trim()).replace(/[^a-zA-Z0-9]/g, '')
-  }
-
-  // ========== Oracle/Printing Support ==========
-
-  async getOracle(oracleId: string): Promise<OracleData | null> {
-    const key = `${this.ORACLE_PREFIX}${oracleId}`
-    const cached = await this.kv.get(key, 'json')
-    return cached as OracleData | null
-  }
-
-  async setOracle(oracle: OracleData): Promise<void> {
-    const key = `${this.ORACLE_PREFIX}${oracle.oracleId}`
-    await this.kv.put(key, JSON.stringify(oracle), {
-      expirationTtl: this.CACHE_TTL
-    })
-  }
-
-  async getPrinting(printId: string): Promise<PrintingData | null> {
-    const key = `${this.PRINT_PREFIX}${printId}`
-    const cached = await this.kv.get(key, 'json')
-    return cached as PrintingData | null
-  }
-
-  async setPrinting(printing: PrintingData): Promise<void> {
-    const key = `${this.PRINT_PREFIX}${printing.printId}`
-    await this.kv.put(key, JSON.stringify(printing), {
-      expirationTtl: this.CACHE_TTL
-    })
-  }
-
-  async getPrintingsForOracle(oracleId: string): Promise<string[]> {
-    const key = `${this.PRINTINGS_PREFIX}${oracleId}`
-    const cached = await this.kv.get(key, 'json')
-    return (cached as string[]) || []
-  }
-
-  async addPrintingToOracle(oracleId: string, printId: string): Promise<void> {
-    const key = `${this.PRINTINGS_PREFIX}${oracleId}`
-    const existing = await this.getPrintingsForOracle(oracleId)
-
-    // Deduplicate and add new print ID
-    const printings = [...new Set([...existing, printId])]
-
-    await this.kv.put(key, JSON.stringify(printings), {
-      expirationTtl: this.CACHE_TTL
-    })
+    await this.kv.delete(ID_PREFIX + id)
+    if (card) await this.kv.delete(NAME_PREFIX + normalizeCardName(card.name))
   }
 }

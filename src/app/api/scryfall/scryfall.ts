@@ -13,43 +13,70 @@ import {
     RandomCardParams,
     CollectionRequest,
     CardIdentifier,
-    ScryfallError,
   } from "./scryfallTypes";
   
   // Scryfall API utilities
   const SCRYFALL_API_BASE = "https://api.scryfall.com";
-  
-  // Rate limiting helper (Scryfall requests max 10 requests per second)
-  const RATE_LIMIT_DELAY = 100; // 100ms between requests
-  let lastRequestTime = 0;
-  
-  async function rateLimitDelay() {
+
+  // Scryfall asks for 100ms between requests, and 500ms (2/s) on search, named, random and collection.
+  // Slots are reserved synchronously, so requests that overlap in one isolate queue up instead of
+  // all reading the same "last request" time and firing together.
+  const GAP_MS = 100;
+  const SLOW_GAP_MS = 500;
+  const SLOW_ENDPOINT = /^\/cards\/(search|named|random|collection)\b/;
+  let nextSlot = 0;
+  let nextSlowSlot = 0;
+
+  async function waitForSlot(endpoint: string): Promise<void> {
+    const slow = SLOW_ENDPOINT.test(endpoint);
     const now = Date.now();
-    const timeSinceLastRequest = now - lastRequestTime;
-    
-    if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
-      await new Promise(resolve => 
-        setTimeout(resolve, RATE_LIMIT_DELAY - timeSinceLastRequest)
-      );
-    }
-    
-    lastRequestTime = Date.now();
+    const at = Math.max(now, nextSlot, slow ? nextSlowSlot : 0);
+    nextSlot = at + GAP_MS;
+    if (slow) nextSlowSlot = at + SLOW_GAP_MS;
+    if (at > now) await new Promise(resolve => setTimeout(resolve, at - now));
   }
-  
+
+  // GET replies are kept in the colo's Cache API for a day. It costs nothing per read or write
+  // (KV bills both), so searches, autocomplete, printings and named lookups repeat for free and
+  // skip the rate limit. /cards/random must stay random, so it is never cached.
+  const EDGE_TTL_SECONDS = 24 * 60 * 60;
+
+  async function edgeCache(endpoint: string, method: string): Promise<Cache | undefined> {
+    if (method !== 'GET' || endpoint.startsWith('/cards/random')) return undefined;
+    if (typeof caches === 'undefined') return undefined; // not on Workers (tests, scripts)
+    return caches.open('scryfall').catch(() => undefined);
+  }
+
+  function errorMessage(status: number, text: string): string {
+    try {
+      const body: unknown = JSON.parse(text);
+      if (body && typeof body === 'object' && 'details' in body && typeof body.details === 'string') {
+        return `Scryfall API Error: ${status} - ${body.details}`;
+      }
+    } catch {
+      // Not JSON (a gateway page, say): fall through to the status alone.
+    }
+    return `Scryfall API Error: ${status}`;
+  }
+
   // Unified Scryfall HTTP Client
   class ScryfallClient {
     private organizationId?: string;
-  
+
     constructor(organizationId?: string) {
       this.organizationId = organizationId;
     }
-  
+
     // Unified HTTP request method
     private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-      // Respect rate limiting
-      await rateLimitDelay();
-      
-      const response = await fetch(`${SCRYFALL_API_BASE}${endpoint}`, {
+      const url = `${SCRYFALL_API_BASE}${endpoint}`;
+      const cache = await edgeCache(endpoint, options.method ?? 'GET');
+
+      const hit = await cache?.match(url).catch(() => undefined);
+      if (hit) return hit.json();
+
+      await waitForSlot(endpoint);
+      const response = await fetch(url, {
         ...options,
         headers: {
             'Accept': 'application/json',
@@ -58,17 +85,19 @@ import {
             ...options.headers,
         },
       });
-  
-      if (!response.ok) {
-        const errorData = await response.json() as ScryfallError;
-        throw new Error(
-          `Scryfall API Error: ${errorData.status} - ${errorData.details}`
-        );
+
+      const text = await response.text();
+      if (!response.ok) throw new Error(errorMessage(response.status, text));
+
+      if (cache) {
+        const copy = new Response(text, {
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${EDGE_TTL_SECONDS}` },
+        });
+        await cache.put(url, copy).catch((error) => console.warn('[Scryfall] edge cache put failed', error));
       }
-  
-      return response.json();
+      return JSON.parse(text);
     }
-  
+
     // Build query string from params
     private buildQueryString(params?: Record<string, any>): string {
       if (!params) return '';
@@ -357,318 +386,3 @@ import {
   
   // Export the client class for direct use
   export { ScryfallClient };
-  
-  // Main handler for /api/scryfall/*
-  export default async function handler({ request, params, ctx }) {
-    try {
-      // Create client instance (organization context optional for Scryfall)
-      const client = new ScryfallClient(ctx.organization?.id);
-  
-      // Extract path from URL params
-      const apiPath = params["*"]; // This captures everything after /api/scryfall/
-      
-      if (!apiPath) {
-        return Response.json(
-          { error: "API endpoint not specified" },
-          { status: 400 }
-        );
-      }
-  
-      // Parse the route
-      const pathParts = apiPath.split('/').filter(Boolean);
-      const resource = pathParts[0];
-      const subResource = pathParts[1];
-      const identifier = pathParts[2];
-  
-      // Parse URL query parameters
-      const url = new URL(request.url);
-      const queryParams = Object.fromEntries(url.searchParams);
-  
-      // Handle different resources and HTTP methods
-      switch (resource) {
-        case 'cards':
-          if (!subResource) {
-            // /api/scryfall/cards
-            switch (request.method) {
-              case 'GET':
-                // Could be search with query params
-                if (queryParams.q) {
-                  const results = await client.searchCards(queryParams as any);
-                  return Response.json(results);
-                }
-                return Response.json(
-                  { error: "Query parameter 'q' required for card search" },
-                  { status: 400 }
-                );
-  
-              case 'POST':
-                // Collection endpoint
-                const body = await request.json();
-                const collection = await client.getCollection(body.identifiers);
-                return Response.json(collection);
-  
-              default:
-                return Response.json(
-                  { error: `Method ${request.method} not allowed` },
-                  { status: 405 }
-                );
-            }
-          }
-  
-          // Handle specific card endpoints
-          switch (subResource) {
-            case 'named':
-              // /api/scryfall/cards/named?exact=...&fuzzy=...
-              const card = await client.getNamedCard(queryParams as NamedCardParams);
-              return Response.json(card);
-  
-            case 'autocomplete':
-              // /api/scryfall/cards/autocomplete?q=...
-              const suggestions = await client.autocomplete(queryParams as any);
-              return Response.json(suggestions);
-  
-            case 'random':
-              // /api/scryfall/cards/random
-              const randomCard = await client.getRandomCard(queryParams);
-              return Response.json(randomCard);
-  
-            case 'search':
-              // /api/scryfall/cards/search?q=...
-              const searchResults = await client.searchCards(queryParams as SearchParams);
-              return Response.json(searchResults);
-  
-            case 'collection':
-              // /api/scryfall/cards/collection (POST)
-              if (request.method !== 'POST') {
-                return Response.json(
-                  { error: "Collection endpoint requires POST" },
-                  { status: 405 }
-                );
-              }
-              const collectionBody = await request.json();
-              const collectionResults = await client.getCollection(collectionBody.identifiers);
-              return Response.json(collectionResults);
-  
-            case 'multiverse':
-              // /api/scryfall/cards/multiverse/:id[/rulings]
-              if (!identifier) {
-                return Response.json(
-                  { error: "Multiverse ID required" },
-                  { status: 400 }
-                );
-              }
-              const multiverseId = parseInt(identifier);
-              if (pathParts[3] === 'rulings') {
-                const rulings = await client.getRulingsByMultiverseId(multiverseId);
-                return Response.json(rulings);
-              }
-              const multiverseCard = await client.getCardByMultiverseId(multiverseId);
-              return Response.json(multiverseCard);
-  
-            case 'mtgo':
-              // /api/scryfall/cards/mtgo/:id[/rulings]
-              if (!identifier) {
-                return Response.json(
-                  { error: "MTGO ID required" },
-                  { status: 400 }
-                );
-              }
-              const mtgoId = parseInt(identifier);
-              if (pathParts[3] === 'rulings') {
-                const rulings = await client.getRulingsByMtgoId(mtgoId);
-                return Response.json(rulings);
-              }
-              const mtgoCard = await client.getCardByMtgoId(mtgoId);
-              return Response.json(mtgoCard);
-  
-            case 'arena':
-              // /api/scryfall/cards/arena/:id[/rulings]
-              if (!identifier) {
-                return Response.json(
-                  { error: "Arena ID required" },
-                  { status: 400 }
-                );
-              }
-              const arenaId = parseInt(identifier);
-              if (pathParts[3] === 'rulings') {
-                const rulings = await client.getRulingsByArenaId(arenaId);
-                return Response.json(rulings);
-              }
-              const arenaCard = await client.getCardByArenaId(arenaId);
-              return Response.json(arenaCard);
-  
-            case 'tcgplayer':
-              // /api/scryfall/cards/tcgplayer/:id
-              if (!identifier) {
-                return Response.json(
-                  { error: "TCGplayer ID required" },
-                  { status: 400 }
-                );
-              }
-              const tcgplayerCard = await client.getCardByTcgplayerId(parseInt(identifier));
-              return Response.json(tcgplayerCard);
-  
-            case 'cardmarket':
-              // /api/scryfall/cards/cardmarket/:id
-              if (!identifier) {
-                return Response.json(
-                  { error: "Cardmarket ID required" },
-                  { status: 400 }
-                );
-              }
-              const cardmarketCard = await client.getCardByCardmarketId(parseInt(identifier));
-              return Response.json(cardmarketCard);
-  
-            default:
-              // Check if it's a UUID (card ID)
-              if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subResource)) {
-                // /api/scryfall/cards/:id[/rulings]
-                if (identifier === 'rulings') {
-                  const rulings = await client.getRulings(subResource);
-                  return Response.json(rulings);
-                }
-                const cardById = await client.getCard(subResource);
-                return Response.json(cardById);
-              }
-              
-              // Otherwise treat as set/collector number
-              // /api/scryfall/cards/:set/:number[/rulings]
-              if (identifier) {
-                if (pathParts[3] === 'rulings') {
-                  const rulings = await client.getRulingsBySetAndNumber(subResource, identifier);
-                  return Response.json(rulings);
-                }
-              }
-              const cardBySet = await client.getCardBySetAndNumber(subResource, identifier);
-              return Response.json(cardBySet);
-          }
-  
-        case 'sets':
-          if (!subResource) {
-            // /api/scryfall/sets - list all sets
-            const sets = await client.listSets();
-            return Response.json(sets);
-          }
-  
-          // Handle specific set endpoints
-          if (subResource === 'tcgplayer' && identifier) {
-            // /api/scryfall/sets/tcgplayer/:id
-            const setByTcgplayer = await client.getSetByTcgplayerId(parseInt(identifier));
-            return Response.json(setByTcgplayer);
-          }
-  
-          // Check if it's a UUID (set ID) or code
-          if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subResource)) {
-            const setById = await client.getSetById(subResource);
-            return Response.json(setById);
-          }
-  
-          // Treat as set code
-          const set = await client.getSet(subResource);
-          return Response.json(set);
-  
-        case 'symbology':
-          if (!subResource) {
-            // /api/scryfall/symbology - get all symbols
-            const symbols = await client.getSymbols();
-            return Response.json(symbols);
-          }
-  
-          if (subResource === 'parse-mana') {
-            // /api/scryfall/symbology/parse-mana?cost=...
-            if (!queryParams.cost) {
-              return Response.json(
-                { error: "Cost parameter required for mana parsing" },
-                { status: 400 }
-              );
-            }
-            const parsed = await client.parseMana(queryParams.cost);
-            return Response.json(parsed);
-          }
-  
-          return Response.json(
-            { error: "Unknown symbology endpoint" },
-            { status: 404 }
-          );
-  
-        case 'catalog':
-          if (!subResource) {
-            return Response.json(
-              { error: "Catalog type required. Available: card-names, artist-names, word-bank, etc." },
-              { status: 400 }
-            );
-          }
-  
-          // Map catalog endpoints to client methods
-          const catalogMethods: Record<string, () => Promise<Catalog>> = {
-            'card-names': () => client.getCardNames(),
-            'artist-names': () => client.getArtistNames(),
-            'word-bank': () => client.getWordBank(),
-            'creature-types': () => client.getCreatureTypes(),
-            'planeswalker-types': () => client.getPlaneswalkerTypes(),
-            'land-types': () => client.getLandTypes(),
-            'artifact-types': () => client.getArtifactTypes(),
-            'enchantment-types': () => client.getEnchantmentTypes(),
-            'spell-types': () => client.getSpellTypes(),
-            'powers': () => client.getPowers(),
-            'toughnesses': () => client.getToughnesses(),
-            'loyalties': () => client.getLoyalties(),
-            'watermarks': () => client.getWatermarks(),
-            'keyword-abilities': () => client.getKeywordAbilities(),
-            'keyword-actions': () => client.getKeywordActions(),
-            'ability-words': () => client.getAbilityWords(),
-          };
-  
-          const catalogMethod = catalogMethods[subResource];
-          if (!catalogMethod) {
-            return Response.json(
-              { 
-                error: "Unknown catalog type",
-                available: Object.keys(catalogMethods)
-              },
-              { status: 404 }
-            );
-          }
-  
-          const catalog = await catalogMethod();
-          return Response.json(catalog);
-  
-        case 'bulk-data':
-          if (!subResource) {
-            // /api/scryfall/bulk-data - list all bulk data
-            const bulkData = await client.getBulkData();
-            return Response.json(bulkData);
-          }
-  
-          // Check if it's a UUID or type string
-          if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(subResource)) {
-            const bulkDataById = await client.getBulkDataById(subResource);
-            return Response.json(bulkDataById);
-          }
-  
-          const bulkDataByType = await client.getBulkDataByType(subResource);
-          return Response.json(bulkDataByType);
-  
-        default:
-          return Response.json(
-            { 
-              error: "Unknown resource", 
-              available: ["cards", "sets", "symbology", "catalog", "bulk-data"],
-              requested: resource 
-            },
-            { status: 404 }
-          );
-      }
-  
-    } catch (error) {
-      console.error('Scryfall API Error:', error);
-      
-      return Response.json(
-        { 
-          error: "Internal server error",
-          message: error instanceof Error ? error.message : "Unknown error"
-        },
-        { status: 500 }
-      );
-    }
-  }

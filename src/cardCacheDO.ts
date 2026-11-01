@@ -1,6 +1,8 @@
 // src/cardCacheDO.ts
+// Nothing reads or writes this DO any more: cards live in CARDS_KV (src/app/services/cardData).
+// The class stays exported because wrangler.jsonc binds it and its migration created it; removing
+// it needs a `deleted_classes` migration, which is a production change for the owner to approve.
 import { DurableObject } from "cloudflare:workers";
-import type { CardData, CardSearchResult, AutocompleteResult } from '@/app/services/cardData/types';
 
 export class CardCacheDO extends DurableObject {
   private readonly CARD_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days in ms

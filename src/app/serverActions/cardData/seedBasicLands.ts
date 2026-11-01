@@ -2,66 +2,31 @@
 'use server';
 
 import { env } from "cloudflare:workers";
-import { ScryfallProvider } from '@/app/services/cardData/providers/ScryfallProvider';
-import { KVCardCache } from '@/app/services/cardData/KVCardCache';
+import { answersName } from '@/app/services/cardData/CardDataService';
+import { cardImageUrl } from '@/app/services/cardData/KVCardCache';
+import { cardDataService } from '@/app/services/cardData/fromEnv';
 
 /**
- * Seed the cache with basic land cards
- * Useful for ensuring common cards have proper images
+ * Fetch cards fresh from Scryfall (one collection call per 75) and overwrite them in the cache.
  */
-export async function seedBasicLands() {
+async function seed(cardNames: string[]) {
   try {
-    if (!env?.CARDS_KV) {
-      throw new Error('CARDS_KV not configured');
-    }
-
-    const provider = new ScryfallProvider();
-    const cache = new KVCardCache(env.CARDS_KV);
-
-    console.log('[seedBasicLands] Fetching basic lands from Scryfall...');
-
-    // Basic land names
-    const basicLands = ['Plains', 'Island', 'Swamp', 'Mountain', 'Forest'];
-    const results = [];
-
-    for (const landName of basicLands) {
-      try {
-        console.log(`[seedBasicLands] Fetching ${landName}...`);
-
-        // Fetch from Scryfall (gets the latest/default printing)
-        const card = await provider.getCardByName(landName);
-
-        // Cache it
-        await cache.setCard(card);
-
-        results.push({
-          name: card.name,
-          id: card.id,
-          imageUrl: card.imageUris?.normal || card.imageUris?.large,
-          cached: true
-        });
-
-        console.log(`✅ Cached ${landName}: ${card.id}`);
-
-        // Small delay to respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (error) {
-        console.error(`❌ Failed to cache ${landName}:`, error);
-        results.push({
-          name: landName,
-          cached: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-    }
+    const names = [...new Set(cardNames)];
+    const cards = await cardDataService().getCardsByIdentifiers(names.map(name => ({ name })), { fresh: true });
+    const results = names.map(name => {
+      const card = cards.find(c => answersName(c, name));
+      return card
+        ? { name: card.name, id: card.id, imageUrl: cardImageUrl(card), cached: true }
+        : { name, cached: false, error: 'Not found on Scryfall' };
+    });
 
     return {
       success: true,
       results,
-      message: `Seeded ${results.filter(r => r.cached).length}/${basicLands.length} basic lands`
+      message: `Seeded ${results.filter(r => r.cached).length}/${names.length} cards`
     };
   } catch (error) {
-    console.error('[seedBasicLands] Error:', error);
+    console.error('[seed] Error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -71,62 +36,17 @@ export async function seedBasicLands() {
 }
 
 /**
+ * Seed the cache with basic land cards
+ */
+export async function seedBasicLands() {
+  return seed(['Plains', 'Island', 'Swamp', 'Mountain', 'Forest']);
+}
+
+/**
  * Seed cache with specific cards by name
  */
 export async function seedCards(cardNames: string[]) {
-  try {
-    if (!env?.CARDS_KV) {
-      throw new Error('CARDS_KV not configured');
-    }
-
-    const provider = new ScryfallProvider();
-    const cache = new KVCardCache(env.CARDS_KV);
-
-    console.log(`[seedCards] Fetching ${cardNames.length} cards from Scryfall...`);
-
-    const results = [];
-
-    for (const cardName of cardNames) {
-      try {
-        console.log(`[seedCards] Fetching ${cardName}...`);
-
-        const card = await provider.getCardByName(cardName);
-        await cache.setCard(card);
-
-        results.push({
-          name: card.name,
-          id: card.id,
-          imageUrl: card.imageUris?.normal || card.imageUris?.large,
-          cached: true
-        });
-
-        console.log(`✅ Cached ${cardName}: ${card.id}`);
-
-        // Small delay to respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 100));
-      } catch (error) {
-        console.error(`❌ Failed to cache ${cardName}:`, error);
-        results.push({
-          name: cardName,
-          cached: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-      }
-    }
-
-    return {
-      success: true,
-      results,
-      message: `Seeded ${results.filter(r => r.cached).length}/${cardNames.length} cards`
-    };
-  } catch (error) {
-    console.error('[seedCards] Error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      results: []
-    };
-  }
+  return seed(cardNames);
 }
 
 /**

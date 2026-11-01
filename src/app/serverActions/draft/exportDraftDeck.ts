@@ -5,8 +5,6 @@ import { env } from 'cloudflare:workers'
 import { BASIC_LANDS, type BasicLandColor, type DeckV4, DECK_LIMITS, CURRENT_DECK_VERSION } from '@/app/types/Deck'
 import type { CubeCard } from '@/app/types/Draft'
 import { getUserDecks } from '@/app/serverActions/deckBuilder/deckActions'
-import { KVCardCache } from '@/app/services/cardData/KVCardCache'
-import type { CardData } from '@/app/services/cardData/types'
 
 const DECK_CACHE_TTL = 60 * 60 * 24 * 90 // 90 days
 
@@ -122,100 +120,6 @@ export async function exportDraftDeck(
       }).filter(Boolean)
     ]
     
-    // 4. Cache all cards in CARDS_KV for future use
-    if (env?.CARDS_KV) {
-      try {
-        console.log('💾 Caching draft cards to CARDS_KV...')
-        const cache = new KVCardCache(env.CARDS_KV)
-
-        // Convert deck cards to CardData format and cache them
-        const cardsToCache: CardData[] = []
-        const uniqueIds = new Set<string>()
-
-        for (const deckCard of deckCards) {
-          // Skip if already added (avoid duplicate caching)
-          if (uniqueIds.has(deckCard.scryfallId)) continue
-          uniqueIds.add(deckCard.scryfallId)
-
-          // Find the full cube card data (or use basic land data from BASIC_LANDS constant)
-          const cubeCard = cubeCards.find(c => c.scryfallId === deckCard.scryfallId)
-
-          // For basic lands (not in cube), we already have the data from BASIC_LANDS constant
-          if (!cubeCard) {
-            // This is a basic land - use the deck card data directly
-            const cardData: CardData = {
-              id: deckCard.scryfallId,
-              oracleId: deckCard.scryfallId,
-              name: deckCard.name,
-              manaCost: '',
-              cmc: 0,
-              typeLine: deckCard.type,
-              oracleText: '',
-              power: undefined,
-              toughness: undefined,
-              colors: deckCard.colors || [],
-              colorIdentity: deckCard.colors || [],
-              setCode: 'basic',
-              setName: 'Basic Lands',
-              collectorNumber: '',
-              rarity: 'common',
-              imageUris: deckCard.imageUrl ? {
-                normal: deckCard.imageUrl,
-                large: deckCard.imageUrl,
-                small: deckCard.imageUrl,
-                artCrop: deckCard.imageUrl
-              } : undefined,
-              legalities: undefined,
-              provider: 'draft-basic',
-              lastUpdated: Date.now()
-            }
-            cardsToCache.push(cardData)
-            console.log(`📦 Caching basic land: ${deckCard.name}`)
-            continue
-          }
-
-          // Convert to CardData format (CubeCard has limited fields)
-          const cardData: CardData = {
-            id: deckCard.scryfallId,
-            oracleId: deckCard.scryfallId, // CubeCard doesn't have oracle_id
-            name: deckCard.name,
-            manaCost: '', // CubeCard doesn't have manaCost
-            cmc: cubeCard.cmc || 0,
-            typeLine: deckCard.type,
-            oracleText: '', // CubeCard doesn't have oracle_text
-            power: undefined, // CubeCard doesn't have power/toughness
-            toughness: undefined,
-            colors: cubeCard.colors || [],
-            colorIdentity: cubeCard.colors || [], // Use colors as color_identity
-            setCode: 'cube', // Mark as from cube
-            setName: 'Vintage Cube',
-            collectorNumber: '',
-            rarity: (cubeCard.rarity as any) || 'common',
-            imageUris: cubeCard.imageUrl ? {
-              normal: cubeCard.imageUrl,
-              large: cubeCard.imageUrl,
-              small: cubeCard.imageUrl,
-              artCrop: cubeCard.imageUrl
-            } : undefined,
-            legalities: undefined, // CubeCard doesn't have legalities
-            provider: 'draft-cube',
-            lastUpdated: Date.now()
-          }
-
-          cardsToCache.push(cardData)
-        }
-
-        // Cache all unique cards in parallel
-        if (cardsToCache.length > 0) {
-          await cache.setCards(cardsToCache)
-          console.log(`✅ Cached ${cardsToCache.length} unique cards to CARDS_KV`)
-        }
-      } catch (cacheError) {
-        // Don't fail the export if caching fails
-        console.error('⚠️ Failed to cache cards (non-fatal):', cacheError)
-      }
-    }
-
     // 5. Calculate deck stats
     const allColors = new Set<string>()
     deckCards.forEach(card => card.colors?.forEach(c => allColors.add(c)))

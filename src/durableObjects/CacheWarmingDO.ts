@@ -69,8 +69,6 @@ const POPULAR_CARD_NAMES = [
   'Dovin\'s Veto',
 
   // Card draw
-  'Rhystic Study',
-  'Mystic Remora',
   'Esper Sentinel',
   'Dark Confidant',
   'Sylvan Library',
@@ -198,51 +196,17 @@ export class CacheWarmingDO extends DurableObject {
       throw new Error('CARDS_KV binding not found')
     }
 
-    // Initialize card data service
-    const provider = new ScryfallProvider()
-    const cache = new KVCardCache(this.env.CARDS_KV)
-    const cardService = new CardDataService(provider, cache)
-
+    // Cached cards cost one bulk read; the rest arrive in one Scryfall collection call per 75.
+    // Awaited (no waitUntil) so the stats below count what actually landed in KV.
+    const cardService = new CardDataService(new ScryfallProvider(), new KVCardCache(this.env.CARDS_KV))
+    const names = [...new Set(cardNames)]
     let successCount = 0
-    let errorCount = 0
-
-    // Process cards in batches to respect rate limits
-    const BATCH_SIZE = 10
-    const DELAY_BETWEEN_BATCHES_MS = 200 // ~5 batches/sec
-
-    for (let i = 0; i < cardNames.length; i += BATCH_SIZE) {
-      const batch = cardNames.slice(i, i + BATCH_SIZE)
-
-      console.log(`📦 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(cardNames.length / BATCH_SIZE)}`)
-
-      // Process batch in parallel
-      const results = await Promise.allSettled(
-        batch.map(async (name) => {
-          try {
-            // This will cache the card if not already cached
-            await cardService.getCardByName(name)
-            return { success: true, name }
-          } catch (error) {
-            console.warn(`⚠️ Failed to warm card: ${name}`, error)
-            return { success: false, name, error }
-          }
-        })
-      )
-
-      // Count successes/errors
-      results.forEach(result => {
-        if (result.status === 'fulfilled' && result.value.success) {
-          successCount++
-        } else {
-          errorCount++
-        }
-      })
-
-      // Delay between batches to respect rate limits
-      if (i + BATCH_SIZE < cardNames.length) {
-        await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES_MS))
-      }
+    try {
+      successCount = (await cardService.getCardsByIdentifiers(names.map(name => ({ name })))).length
+    } catch (error) {
+      console.warn('⚠️ Cache warming failed', error)
     }
+    const errorCount = names.length - successCount
 
     const duration = Date.now() - startTime
 
