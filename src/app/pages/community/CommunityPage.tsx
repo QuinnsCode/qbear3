@@ -32,10 +32,10 @@ export default async function CommunityPage({ ctx, request }: RequestInfo) {
             {ctx.user && (
               <div className="mt-4">
                 <a
-                  href="/sanctum"
+                  href="/"
                   className="text-purple-300 hover:text-purple-100 underline"
                 >
-                  ← Back to Sanctum
+                  ← Back home
                 </a>
               </div>
             )}

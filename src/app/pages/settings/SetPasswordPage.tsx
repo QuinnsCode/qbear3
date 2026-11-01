@@ -41,7 +41,7 @@ export default function SetPasswordPage() {
 
       // Redirect back to settings after 2 seconds
       setTimeout(() => {
-        window.location.href = '/sanctum?section=settings'
+        window.location.href = '/'
       }, 2000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to set password')
@@ -68,7 +68,7 @@ export default function SetPasswordPage() {
       <div className="max-w-md w-full">
         {/* Back Button */}
         <a
-          href="/sanctum?section=settings"
+          href="/"
           className="inline-flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />

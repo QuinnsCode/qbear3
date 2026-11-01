@@ -13,12 +13,6 @@ import {
 } from "@/app/components/theme/FantasyTheme";
 
 // Tier configuration
-function readAvailable(body: unknown): boolean | null {
-  return typeof body === 'object' && body !== null && 'available' in body && typeof body.available === 'boolean'
-    ? body.available
-    : null;
-}
-
 interface Tier {
   name: string
   icon: string
@@ -60,10 +54,6 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   
-  // Lair/Org fields
-  const [lairName, setLairName] = useState("");
-  const [lairSlug, setLairSlug] = useState("");
-  
   // ✅ Tier selection
   const [selectedTier, setSelectedTier] = useState<'free' | 'starter' | 'pro'>('free');
   
@@ -75,13 +65,6 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
   const [result, setResult] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isHydrated, setIsHydrated] = useState(false);
-  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
-  const [checkingSlug, setCheckingSlug] = useState(false);
-
-  // Refs for debounce and abort control
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
   useEffect(() => {
     setIsHydrated(true);
   }, []);
@@ -89,109 +72,9 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
   // CLIENT-SIDE redirect if user is logged in
   useEffect(() => {
     if (ctx.user && isHydrated) {
-      window.location.href = "/sanctum";
+      window.location.href = "/";
     }
   }, [ctx.user, isHydrated]);
-
-  // CLIENT-SIDE redirect if on subdomain
-  useEffect(() => {
-    if (isHydrated && typeof window !== 'undefined') {
-      const hostname = window.location.hostname;
-      const isSubdomain = hostname.split('.').length > 2 || 
-                         (hostname.includes('localhost') && hostname.startsWith('localhost') === false);
-      
-      if (isSubdomain) {
-        const parts = hostname.split('.');
-        const mainDomain = hostname.includes('localhost') 
-          ? `localhost:${window.location.port || '5173'}`
-          : parts.slice(-2).join('.');
-        const protocol = window.location.protocol;
-        const pathname = window.location.pathname;
-        
-        window.location.href = `${protocol}//${mainDomain}${pathname}`;
-      }
-    }
-  }, [isHydrated]);
-
-  // Auto-fill lair name when display name changes
-  useEffect(() => {
-    if (displayName && !lairName) {
-      setLairName(`${displayName}'s Lair`);
-    }
-  }, [displayName]);
-
-  // Auto-generate slug from lair name
-  useEffect(() => {
-    if (lairName) {
-      const slug = lairName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-      setLairSlug(slug);
-    }
-  }, [lairName]);
-
-  // Check slug availability (debounced with AbortController)
-  useEffect(() => {
-    // Clear previous timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Abort previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    if (!lairSlug || lairSlug.length < 6) {
-      setSlugAvailable(null);
-      setCheckingSlug(false);
-      return;
-    }
-
-    debounceTimerRef.current = setTimeout(async () => {
-      // Create new AbortController for this request
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-
-      setCheckingSlug(true);
-      try {
-        const response = await fetch(`/api/main/check-username?username=${lairSlug}`, {
-          signal: controller.signal
-        });
-
-        // Only update state if not aborted
-        if (!controller.signal.aborted) {
-          const body: unknown = await response.json();
-          setSlugAvailable(readAvailable(body));
-        }
-      } catch (error) {
-        // Ignore abort errors
-        if (error instanceof Error && error.name === 'AbortError') {
-          return;
-        }
-
-        console.error('Error checking slug:', error);
-        if (!controller.signal.aborted) {
-          setSlugAvailable(null);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setCheckingSlug(false);
-        }
-      }
-    }, 500);
-
-    // Cleanup function
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [lairSlug]);
 
   // Show loading state while redirecting logged-in users
   if (ctx.user) {
@@ -204,7 +87,7 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
               Redirecting...
             </FantasyTitle>
             <FantasyText variant="primary" className="mb-4">
-              Taking you to your sanctum
+              Taking you home
             </FantasyText>
           </FantasyCard>
         </div>
@@ -214,24 +97,12 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
 
   const handleSignup = async () => {
     try {
-      console.log('Starting signup for:', lairSlug, 'with tier:', selectedTier);
+      
       setResult("");
       
       // Validate passwords match
       if (password !== confirmPassword) {
         setResult("Passwords do not match");
-        return;
-      }
-
-      // Validate slug length
-      if (lairSlug.length < 6) {
-        setResult("Lair subdomain must be at least 6 characters");
-        return;
-      }
-
-      // Validate slug is available
-      if (slugAvailable === false) {
-        setResult("Lair subdomain is not available");
         return;
       }
 
@@ -241,30 +112,21 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
         return;
       }
       
-      // Import the server action
-      const { signupWithOrg } = await import("@/app/serverActions/admin/signup");
-      
-      // Create FormData with all signup info
-      const formData = new FormData();
-      formData.append('username', lairSlug);
-      formData.append('displayName', displayName);
-      formData.append('email', email);
-      formData.append('password', password);
-      formData.append('lairName', lairName);
-      formData.append('selectedTier', selectedTier);
-      
-      // Call server action to create user + org
-      const result = await signupWithOrg(formData);
-      
-      if (!result.success) {
-        setResult(`Signup failed: ${result.error}`);
+      const res = await fetch("/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name: displayName }),
+      });
+      const body: unknown = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = typeof body === 'object' && body !== null && 'message' in body && typeof body.message === 'string' ? body.message : 'Failed to create account';
+        setResult(`Signup failed: ${message}`);
         return;
       }
-      
-      console.log('✅ Signup successful:', result);
-      
+      const userId = typeof body === 'object' && body !== null && 'user' in body && typeof body.user === 'object' && body.user !== null && 'id' in body.user && typeof body.user.id === 'string' ? body.user.id : null;
+
       // ✅ If paid tier selected, redirect to Lemon Squeezy checkout
-      if (selectedTier !== 'free' && result.user.id) {
+      if (selectedTier !== 'free' && userId) {
         setResult("Account created! Redirecting to checkout...");
         
         // Get variant ID based on tier
@@ -272,7 +134,7 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
           ? process.env.NEXT_PUBLIC_LEMON_SQUEEZY_STARTER_VARIANT_ID
           : process.env.NEXT_PUBLIC_LEMON_SQUEEZY_PRO_VARIANT_ID;
         
-        const checkoutUrl = `https://qntbr.lemonsqueezy.com/checkout/buy/${variantId}?checkout[email]=${encodeURIComponent(email)}&checkout[custom][user_id]=${result.user.id}`;
+        const checkoutUrl = `https://qntbr.lemonsqueezy.com/checkout/buy/${variantId}?checkout[email]=${encodeURIComponent(email)}&checkout[custom][user_id]=${userId}`;
         
         setTimeout(() => {
           window.location.href = checkoutUrl;
@@ -280,10 +142,9 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
         return;
       }
       
-      // ✅ Free tier - redirect to their subdomain
-      setResult("Account created! Redirecting to your lair...");
+      setResult("Account created! Redirecting...");
       setTimeout(() => {
-        window.location.href = result.redirectUrl;
+        window.location.href = "/";
       }, 1500);
       
     } catch (error) {
@@ -293,7 +154,7 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
   };
 
   const handlePerformSignup = () => {
-    if (!displayName || !email || !password || !confirmPassword || !lairName || !lairSlug) {
+    if (!displayName || !email || !password || !confirmPassword) {
       setResult("All fields are required");
       return;
     }
@@ -305,16 +166,6 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
 
     if (password.length < 8) {
       setResult("Password must be at least 8 characters");
-      return;
-    }
-
-    if (lairSlug.length < 6) {
-      setResult("Lair subdomain must be at least 6 characters");
-      return;
-    }
-
-    if (slugAvailable === false) {
-      setResult("Lair subdomain is not available");
       return;
     }
 
@@ -359,7 +210,7 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
                 Create Your Account
               </FantasyTitle>
               <FantasyText variant="primary" className="text-base lg:text-lg">
-                Establish your account and claim your lair
+                Create your account
               </FantasyText>
             </div>
 
@@ -469,73 +320,6 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
                         Passwords do not match
                       </FantasyText>
                     )}
-                  </div>
-                </div>
-
-                {/* LAIR INFORMATION SECTION */}
-                <div className="space-y-4">
-                  <div className="pb-2 border-b border-amber-700/30">
-                    <h3 className="text-sm font-bold text-amber-200 uppercase tracking-wide">
-                      Your Lair
-                    </h3>
-                  </div>
-
-                  {/* Lair Name field */}
-                  <div>
-                    <label htmlFor="lairName" className="block text-sm font-medium text-amber-200 mb-2">
-                      Lair Name
-                    </label>
-                    <input
-                      id="lairName"
-                      type="text"
-                      value={lairName}
-                      onChange={(e) => setLairName(e.target.value)}
-                      placeholder="The Dragon's Keep"
-                      className="w-full px-4 py-3 bg-black/50 border border-amber-700/50 rounded-lg text-amber-100 placeholder-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent backdrop-blur-sm"
-                      suppressHydrationWarning
-                      required
-                    />
-                    <FantasyText variant="secondary" className="text-xs mt-2">
-                      The display name for your lair (can be anything)
-                    </FantasyText>
-                  </div>
-
-                  {/* Lair Subdomain field */}
-                  <div>
-                    <label htmlFor="lairSlug" className="block text-sm font-medium text-amber-200 mb-2">
-                      Lair Subdomain
-                    </label>
-                    <input
-                      id="lairSlug"
-                      type="text"
-                      value={lairSlug}
-                      onChange={(e) => setLairSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                      placeholder="dragons-keep"
-                      minLength={6}
-                      required
-                      className="w-full px-4 py-3 bg-black/50 border border-amber-700/50 rounded-lg text-amber-100 placeholder-amber-400/60 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent backdrop-blur-sm"
-                      suppressHydrationWarning
-                    />
-                    <div className="mt-2 flex items-center justify-between">
-                      <FantasyText variant="secondary" className="text-xs">
-                        Your lair URL: <span className="text-amber-300">{lairSlug || 'your-lair'}.qntbr.com</span>
-                      </FantasyText>
-                      {checkingSlug && (
-                        <span className="text-xs text-amber-400">⏳ Checking...</span>
-                      )}
-                      {slugAvailable === true && lairSlug.length >= 6 && (
-                        <span className="text-xs text-green-400">✅ Available</span>
-                      )}
-                      {slugAvailable === false && (
-                        <span className="text-xs text-red-400">❌ Taken</span>
-                      )}
-                      {lairSlug.length > 0 && lairSlug.length < 6 && (
-                        <span className="text-xs text-yellow-400">⚠️ Too short</span>
-                      )}
-                    </div>
-                    <FantasyText variant="secondary" className="text-xs mt-2">
-                      At least 6 characters • Lowercase letters, numbers, and hyphens only
-                    </FantasyText>
                   </div>
                 </div>
 
@@ -650,14 +434,10 @@ export default function BetterAuthSignup({ ctx }: { ctx: AppContext }) {
                   size="lg"
                   disabled={
                     isPending || 
-                    lairSlug.length < 6 || 
-                    slugAvailable === false || 
                     !displayName || 
                     !email || 
                     !password || 
                     !confirmPassword || 
-                    !lairName || 
-                    !lairSlug ||
                     !agreedToTerms
                   }
                   className="w-full"
