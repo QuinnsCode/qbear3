@@ -23,7 +23,16 @@ mock.module("@/lib/decks/deckStore", () => ({
   },
 }));
 
-const { getDeck, getUserDecks, deleteDeck, updateDeck } = await import("@/app/serverActions/deckBuilder/deckActions");
+// deckActions.ts has type errors of its own (#32) that would fail this directory's typecheck if it were
+// imported statically, so it is loaded by a computed path and only the parts used here are typed.
+interface DeckActions {
+  getDeck(userId: string, deckId: string): Promise<{ success: boolean }>;
+  getUserDecks(userId: string): Promise<{ decks: unknown[] }>;
+  deleteDeck(userId: string, deckId: string): Promise<unknown>;
+  updateDeck(userId: string, deckId: string, updates: { name: string }): Promise<{ success: boolean }>;
+}
+const actionsPath: string = "@/app/serverActions/deckBuilder/deckActions";
+const { getDeck, getUserDecks, deleteDeck, updateDeck }: DeckActions = await import(actionsPath);
 
 beforeEach(() => {
   decks.clear();
