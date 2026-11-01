@@ -8,6 +8,7 @@ import { DEFAULT_DRAFT_CONFIG, type CubeCard, type DraftConfig, type DraftDeckCo
 import { VINTAGE_CUBE } from "@/app/data/vintageCubeData"
 import { canCreateDraft, trackNewDraft } from "@/app/serverActions/draft/draftTracking"
 import { generateGuestId } from "@/lib/userIdentity"
+import { listDeckIds, readDeck, writeDeck } from "@/lib/decks/deckStore"
 
 export interface Drafter { id: string; name: string; isGuest: boolean }
 
@@ -15,7 +16,6 @@ export type Result<T> = ({ ok: true } & T) | { ok: false; status: number; error:
 
 const fail = (status: number, error: string) => ({ ok: false as const, status, error })
 
-const DECK_TTL = 60 * 60 * 24 * 90 // 90 days
 const GUEST_COOKIE_DAYS = 7
 
 /** The cookie that remembers which guest drafts in `draftId`. */
@@ -206,11 +206,9 @@ export async function saveDraftDeck(draftId: string, playerId: string, config: D
   const mainCount = cards.filter(c => c.zone === 'main').reduce((n, c) => n + c.quantity, 0)
   if (mainCount < 40) return fail(400, `A draft deck needs at least 40 main deck cards (has ${mainCount})`)
 
-  const listKey = `deck:${playerId}:list`
-  const list: unknown = JSON.parse((await env.DECKS_KV.get(listKey)) ?? '[]')
-  const deckIds = Array.isArray(list) ? list.filter((id): id is string => typeof id === 'string') : []
-  const formats = await Promise.all(deckIds.map(id => env.DECKS_KV.getWithMetadata(`deck:${playerId}:${id}`)))
-  const draftDecks = formats.filter(r => isRecord(r.metadata) && r.metadata.format === 'draft').length
+  // Wherever their decks live (eqosys or DECKS_KV), the deck store knows.
+  const stored = await Promise.all((await listDeckIds(playerId)).map(id => readDeck(playerId, id)))
+  const draftDecks = stored.filter(s => s?.deck.format === 'draft').length
   if (draftDecks >= DECK_LIMITS.draft) return fail(409, `You can only have ${DECK_LIMITS.draft} draft decks. Please delete an old one first.`)
 
   const deckId = `deck-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
@@ -226,11 +224,8 @@ export async function saveDraftDeck(draftId: string, playerId: string, config: D
     updatedAt: Date.now(),
     draftMetadata: { draftId, draftDate: Date.now(), pickHistory: seat.pool.map(c => c.scryfallId) },
   }
-  await env.DECKS_KV.put(`deck:${playerId}:${deckId}`, JSON.stringify(deck), {
-    expirationTtl: DECK_TTL,
-    metadata: { userId: playerId, deckName: deck.name, format: 'draft', totalCards, createdAt: deck.createdAt },
-  })
-  await env.DECKS_KV.put(listKey, JSON.stringify([deckId, ...deckIds]), { expirationTtl: DECK_TTL })
+  const written = await writeDeck(playerId, { deck })
+  if (!written.ok) return fail(409, written.error)
 
   await draftStub(draftId).fetch(new Request('https://fake-host/action', {
     method: 'POST',

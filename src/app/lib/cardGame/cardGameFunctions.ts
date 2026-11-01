@@ -4,6 +4,7 @@
 import { env } from "cloudflare:workers"
 import type { CardGameState, MTGPlayer } from "@/app/services/cardGame/CardGameState"
 import { deckGameCards, migrateDeck } from "@/app/types/Deck"
+import { readDeck } from "@/lib/decks/deckStore"
 
 export async function getCardGameState(cardGameId: string): Promise<CardGameState> {
   if (!env?.CARD_GAME_STATE_DO) {
@@ -106,13 +107,11 @@ export async function sitWithSavedDeck(cardGameId: string, playerId: string, dec
   const game = await getCardGameState(cardGameId)
   if (!game.players.some(p => p.id === playerId)) return { ok: false, status: 403, error: 'Sit at this table first' }
 
-  const raw = await env.DECKS_KV.get(`deck:${playerId}:${deckId}`)
-  if (!raw) return { ok: false, status: 404, error: 'No such deck' }
-  const stored: unknown = JSON.parse(raw)
-  if (typeof stored !== 'object' || stored === null || !('cards' in stored) || !Array.isArray(stored.cards)) {
-    return { ok: false, status: 422, error: 'That deck has no cards' }
-  }
-  const deck = migrateDeck(stored) // a no-op for current decks
+  // eqosys or DECKS_KV, wherever this person's decks live
+  const stored = await readDeck(playerId, deckId)
+  if (!stored) return { ok: false, status: 404, error: 'No such deck' }
+  if (!Array.isArray(stored.deck.cards)) return { ok: false, status: 422, error: 'That deck has no cards' }
+  const deck = migrateDeck(stored.deck) // a no-op for current decks
   const deckCards = deckGameCards(deck)
   if (deckCards.length === 0) return { ok: false, status: 422, error: 'That deck has no cards' }
 
