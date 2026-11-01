@@ -3,8 +3,7 @@ import { type RequestInfo } from "rwsdk/worker"
 import { env } from "cloudflare:workers"
 import DraftContent from '@/app/components/Draft/DraftContent'
 import { getOrCreateDraftGuestId } from '@/lib/userIdentity'
-import { isDraftState, type DraftState } from '@/app/types/Draft'
-import { errorMessage } from '@/lib/errorMessage'
+import type { DraftState } from '@/app/types/Draft'
 import type { Region } from '@/app/lib/constants/regions'
 
 export default async function DraftPage({ params, ctx, request }: RequestInfo) {
@@ -50,26 +49,22 @@ export default async function DraftPage({ params, ctx, request }: RequestInfo) {
   const stub = env.DRAFT_DO.get(id)
   
   let initialState: DraftState | null = null
-  let error: string | null = null
+  let error = null
   
   try {
-    const response = await stub.fetch(new Request('https://fake-host/', {
-      method: 'GET'
-    }))
-    
+    // The draft as this visitor may see it: their own seat, or the public facts
+    const response = await stub.fetch(`https://fake-host/for?viewer=${encodeURIComponent(userId)}`)
+
     if (response.ok) {
-      const body: unknown = await response.json()
-      if (isDraftState(body)) {
-        initialState = body
-      } else {
-        error = 'Draft not found'
-      }
+      initialState = (await response.json<{ state: DraftState }>()).state
+    } else if (response.status === 403) {
+      error = 'This draft is protected'
     } else {
       error = 'Draft not found'
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error('Error loading draft:', e)
-    error = errorMessage(e)
+    error = e.message
   }
   
   if (error || !initialState) {

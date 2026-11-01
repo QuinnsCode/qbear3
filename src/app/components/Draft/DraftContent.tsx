@@ -230,7 +230,7 @@ export default function DraftContent({
 
     try {
       await navigator.clipboard.writeText(text)
-      alert('✅ Deck exported and copied to clipboard!\n\nLog in to save it to Sanctum.')
+      alert('✅ Deck exported and copied to clipboard!\n\nSign in with eqosys to save it to your account.')
     } catch {
       alert('✅ Deck exported as file!')
     }

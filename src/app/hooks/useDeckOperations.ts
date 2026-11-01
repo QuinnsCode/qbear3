@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
-import type { Deck, DeckCard } from '@/app/types/Deck'
+import { deckGameCards, type Deck, type DeckCard } from '@/app/types/Deck'
 
 interface UseDeckOperationsProps {
   currentPlayerId: string
@@ -228,30 +228,10 @@ async function importDeckData(deck: Deck, cardGameId: string, currentPlayerId: s
   // card count isn't exactly 100 or if commander metadata is missing. import_deck_direct
   // skips parsing and uses the structured card objects directly, which is always reliable.
 
-  // Filter to only include commander and main deck cards (exclude sideboard and contemplating)
-  const gameCards = deck.cards.filter(deckCard => {
-    const zone = deckCard.zone || (deckCard.isCommander ? 'commander' : 'main')
-    return zone === 'commander' || zone === 'main'
-  })
-
   await applyCardGameAction(cardGameId, {
     type: 'import_deck_direct',
     playerId: currentPlayerId,
-    data: {
-      deckName: deck.name,
-      deckCards: gameCards.map(deckCard => ({
-        scryfallId: deckCard.scryfallId || deckCard.id,
-        id: deckCard.scryfallId || deckCard.id,
-        name: deckCard.name,
-        quantity: deckCard.quantity || 1,
-        // Map zone: commander stays commander, everything else goes to library (main)
-        zone: (deckCard.zone === 'commander' || deckCard.isCommander) ? 'commander' : 'main',
-        imageUrl: deckCard.imageUrl || '',
-        type: deckCard.type || '',
-        manaCost: deckCard.manaCost || '',
-        colors: deckCard.colors || [],
-      }))
-    }
+    data: { deckName: deck.name, deckCards: deckGameCards(deck) }
   })
 }
 

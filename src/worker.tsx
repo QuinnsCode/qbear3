@@ -21,7 +21,6 @@ import {
   extractOrgFromSubdomain,
   shouldSkipMiddleware 
 } from "@/lib/middlewareFunctions";
-import { draftWebSocketMiddleware } from '@/lib/userIdentity'
 import { env } from "cloudflare:workers";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import GamePage from "@/app/pages/game/GamePage";
@@ -300,8 +299,6 @@ export default defineApp([
         const rateLimitResult = await rateLimitMiddleware(request, 'draftsync')
         if (rateLimitResult) return rateLimitResult
 
-        // Add auth headers for guests/users
-        request = await draftWebSocketMiddleware(request, ctx)
       }
     },
     ...draftRoutes
@@ -399,6 +396,12 @@ export default defineApp([
       const { default: handler } = await import('@/app/api/vtt/upload-model');
       return handler(info);
     }),
+
+    route("/draft", async (info) => (await import('@/app/api/draft/draft')).startHandler(info)),
+    route("/draft/:draftId", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info)),
+    route("/draft/:draftId/pick", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info, 'pick')),
+    route("/draft/:draftId/deck", async (info) => (await import('@/app/api/draft/draft')).draftHandler(info, 'deck')),
+    route("/cardGame/:gameId/deck", async (info) => (await import('@/app/api/cardGame/deck')).default(info)),
 
     route("/pvp/initialize", async ({ request }) => {
       const { default: handler } = await import('@/app/api/pvp/initialize');

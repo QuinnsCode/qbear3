@@ -6,7 +6,6 @@
 'use server'
 
 import * as lib from '@/app/lib/cardGame/cardGameFunctions'
-import { env } from "cloudflare:workers"
 import { requestInfo } from "rwsdk/worker"
 import type { CardGameState } from "@/app/services/cardGame/CardGameState"
 import { deleteCardGameCompletely } from "./cardGameRegistry"
@@ -48,26 +47,7 @@ export async function applyCardGameAction(
   cardGameId: string,
   action: { type: string, playerId?: string, data: unknown }
 ): Promise<CardGameState> {
-  if (!env?.CARD_GAME_STATE_DO) {
-    throw new Error('CARD_GAME_STATE_DO binding not found')
-  }
   if (typeof action?.type !== 'string') throw new Error('Invalid action')
-
   // Callers still send playerId; it is replaced, not trusted.
-  const body = { type: action.type, playerId: sessionPlayer().id, data: action.data }
-
-  const id = env.CARD_GAME_STATE_DO.idFromName(cardGameId)
-  const stub = env.CARD_GAME_STATE_DO.get(id)
-
-  const response = await stub.fetch(new Request('https://fake-host/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  }))
-
-  if (!response.ok) {
-    throw new Error(`Failed to apply action: ${await response.text()}`)
-  }
-
-  return await response.json() as CardGameState
+  return lib.applyCardGameActionAs(cardGameId, sessionPlayer().id, action.type, action.data)
 }

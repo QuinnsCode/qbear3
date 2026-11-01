@@ -2,6 +2,7 @@
 'use server'
 
 import { env } from "cloudflare:workers"
+import { requestInfo } from 'rwsdk/worker'
 import { parseDeckList } from '@/app/lib/cardGame/deckListParser'
 import { getCardsByIdentifiers } from '@/app/serverActions/cardData/cardDataActions'
 import { answersName, cardNames } from '@/app/services/cardData/CardDataService'
@@ -10,17 +11,21 @@ import type { Deck, DeckCard } from '@/app/types/Deck'
 import { migrateDeck, needsMigration, normalizeDeck, CURRENT_DECK_VERSION } from '@/app/types/Deck'
 import { ScryfallCard } from "@/app/services/cardGame/CardGameState"
 import { db, setupDb } from '@/db' // ✅ Import setupDb
+import { listDeckIds, readDeck, removeDeck, writeDeck, type StoredDeck } from '@/lib/decks/deckStore'
 import { getTierConfig, getEffectiveTier } from '@/app/lib/subscriptions/tiers' // ✅ ADDED
 
-/**
- * KV Key structure:
- * - `deck:${userId}:list` -> Array of deck IDs
- * - `deck:${userId}:${deckId}` -> Full deck object
- * 
- * Cache duration: 90 days (7,776,000 seconds)
- */
+// Every export here is callable from the browser with any arguments, so whose decks these are
+// always comes from the session. The userId parameters stay for callers that still pass one and are ignored.
+function sessionUserId(): string {
+  const id = requestInfo.ctx.user?.id
+  if (!id) throw new Error('Sign in to use decks')
+  return id
+}
 
-const DECK_CACHE_TTL = 60 * 60 * 24 * 90 // 90 days in seconds
+/**
+ * Where decks are stored (eqosys cloud saves, or DECKS_KV for older decks and people
+ * without an eqosys account) is src/lib/decks/deckStore.ts.
+ */
 
 /** Lowercased name → card, under the full name and each face ("Delver of Secrets" too). */
 function cardsByName(cards: CardData[]): Map<string, CardData> {
@@ -216,10 +221,11 @@ export async function parseDeckAndFetchCards(deckListText: string) {
  * ✅ Enforces subscription tier limits (2 decks for all tiers)
  */
 export async function createDeck(
-  userId: string,
+  _userId: string,
   deckName: string,
   deckListText: string
 ) {
+  const userId = sessionUserId()
   try {
     const startTime = Date.now()
 
@@ -310,39 +316,8 @@ export async function createDeck(
       updatedAt: Date.now(),
     }
 
-    // Store deck in KV
-    if (!env?.DECKS_KV) {
-      throw new Error('DECKS_KV binding not found')
-    }
-    
-    await env.DECKS_KV.put(
-      `deck:${userId}:${deck.id}`, 
-      JSON.stringify(deck), 
-      {
-        expirationTtl: DECK_CACHE_TTL,
-        metadata: {
-          userId,
-          deckName: deck.name,
-          commanders: (deck.commanders ?? []).join(', '),  // ✅ Use commanders array
-          totalCards: deck.totalCards,
-          createdAt: deck.createdAt,
-        }
-      }
-    )
-    
-    // Update user's deck list
-    const deckListKey = `deck:${userId}:list`
-    const existingListJson = await env.DECKS_KV.get(deckListKey)
-    const existingList: string[] = existingListJson ? JSON.parse(existingListJson) : []
-    const updatedList = [deck.id, ...existingList].slice(0, 50)
-    
-    await env.DECKS_KV.put(
-      deckListKey, 
-      JSON.stringify(updatedList),
-      {
-        expirationTtl: DECK_CACHE_TTL
-      }
-    )
+    const saved = await writeDeck(userId, { deck })
+    if (!saved.ok) throw new Error(saved.error)
 
     const totalTime = Date.now() - startTime
     console.log(`[DeckBuilder] ✅ Created deck "${deckName}" in ${totalTime}ms`)
@@ -455,11 +430,12 @@ function parseDraftExport(text: string): { draftId?: string; deckList: string } 
  * 2. Full text export (parses text, extracts draft ID)
  */
 export async function createDraftDeck(
-  userId: string,
+  _userId: string,
   deckName: string,
   deckListText: string,
   draftId?: string
 ) {
+  const userId = sessionUserId()
   try {
     const startTime = Date.now()
 
@@ -662,34 +638,8 @@ export async function createDraftDeck(
       }
     }
 
-    // Store in KV
-    await env.DECKS_KV.put(
-      `deck:${userId}:${deckId}`,
-      JSON.stringify(deck),
-      {
-        expirationTtl: DECK_CACHE_TTL,
-        metadata: {
-          deckName: deck.name,
-          format: deck.format,
-          totalCards: deck.totalCards,
-          createdAt: deck.createdAt,
-        }
-      }
-    )
-
-    // Update user's deck list
-    const deckListKey = `deck:${userId}:list`
-    const existingListJson = await env.DECKS_KV.get(deckListKey)
-    const existingList: string[] = existingListJson ? JSON.parse(existingListJson) : []
-    const updatedList = [deck.id, ...existingList].slice(0, 50)
-
-    await env.DECKS_KV.put(
-      deckListKey,
-      JSON.stringify(updatedList),
-      {
-        expirationTtl: DECK_CACHE_TTL
-      }
-    )
+    const saved = await writeDeck(userId, { deck })
+    if (!saved.ok) throw new Error(saved.error)
 
     const totalTime = Date.now() - startTime
     console.log(`[DeckBuilder] ✅ Created draft deck "${deckName}" in ${totalTime}ms`)
@@ -720,107 +670,17 @@ export async function createDraftDeck(
 /**
  * Get all decks for a user from KV
  */
-export async function getUserDecks(userId: string) {
+export async function getUserDecks(_userId: string) {
+  const userId = sessionUserId()
   try {
-    if (!env?.DECKS_KV) {
-      throw new Error('DECKS_KV binding not found')
-    }
-    
-    const deckListKey = `deck:${userId}:list`
-    const deckListJson = await env.DECKS_KV.get(deckListKey)
-    
-    if (!deckListJson) {
-      console.log(`[DeckBuilder] No decks found for user ${userId}`)
-      return {
-        success: true,
-        decks: [] as Deck[],
-      }
-    }
-    
-    const deckIds: string[] = JSON.parse(deckListJson)
-    console.log(`[DeckBuilder] Found ${deckIds.length} deck IDs for user ${userId}`)
-    
-    // Fetch all decks in parallel
-    const deckPromises = deckIds.map(async (deckId) => {
-      const kvResult = await env.DECKS_KV.getWithMetadata(`deck:${userId}:${deckId}`)
-      if (!kvResult.value) {
-        console.warn(`[DeckBuilder] Deck ${deckId} not found in KV (may have expired)`)
-        return null
-      }
-
-      let deck: Deck = JSON.parse(kvResult.value)
-      const metadata = kvResult.metadata as any
-      let needsUpdate = false
-
-      // AUTO-MIGRATE old deck versions
-      if (needsMigration(deck)) {
-        console.log(`[DeckBuilder] Auto-migrating deck ${deckId} to v${CURRENT_DECK_VERSION}`)
-        deck = migrateDeck(deck)
-        needsUpdate = true
-      }
-
-      // NORMALIZE: Only if deck has never been normalized OR needs migration
-      // Check if normalized: must have normalizedAt timestamp in metadata AND correct version
-      const isNormalized = metadata?.normalizedAt && metadata?.version === CURRENT_DECK_VERSION
-
-      if (!isNormalized) {
-        console.log(`[DeckBuilder] Normalizing deck ${deckId} (first time or after migration)`)
-        const originalTotalCards = deck.totalCards
-        deck = normalizeDeck(deck)
-
-        // Check if normalization actually changed anything
-        if (deck.totalCards !== originalTotalCards || needsUpdate) {
-          needsUpdate = true
-        }
-      }
-
-      // Only save back to KV if deck was actually modified
-      if (needsUpdate) {
-        env.DECKS_KV.put(
-          `deck:${userId}:${deckId}`,
-          JSON.stringify(deck),
-          {
-            expirationTtl: DECK_CACHE_TTL,
-            metadata: {
-              userId,
-              deckName: deck.name,
-              commanders: deck.commanders?.join(', ') || 'Unknown',
-              totalCards: deck.totalCards,
-              version: deck.version,
-              normalizedAt: Date.now(),
-            }
-          }
-        ).then(() => {
-          console.log(`[DeckBuilder] ✅ Updated and saved deck ${deckId}`)
-        }).catch(err => {
-          console.error(`[DeckBuilder] Failed to save updated deck ${deckId}:`, err)
-        })
-      }
-
-      return deck
-    })
-    
-    const decks = (await Promise.all(deckPromises)).filter(d => d !== null) as Deck[]
-    
+    const deckIds = await listDeckIds(userId)
+    const loaded = await Promise.all(deckIds.map(async (deckId) => {
+      const stored = await readDeck(userId, deckId)
+      return stored && (await upgradeDeck(userId, stored))
+    }))
+    const decks = loaded.filter((d): d is Deck => d !== null)
     console.log(`[DeckBuilder] Fetched ${decks.length} decks for user ${userId}`)
-    
-    // Clean up missing decks from list
-    if (decks.length < deckIds.length) {
-      const validDeckIds = decks.map(d => d.id)
-      await env.DECKS_KV.put(
-        deckListKey, 
-        JSON.stringify(validDeckIds),
-        {
-          expirationTtl: DECK_CACHE_TTL
-        }
-      )
-      console.log(`[DeckBuilder] Cleaned up deck list, removed ${deckIds.length - decks.length} missing decks`)
-    }
-    
-    return {
-      success: true,
-      decks,
-    }
+    return { success: true, decks }
   } catch (error) {
     console.error('[DeckBuilder] Error fetching decks:', error)
     return {
@@ -831,39 +691,34 @@ export async function getUserDecks(userId: string) {
   }
 }
 
+/** Migrates and normalizes a stored deck, saving it back only when that changed something. */
+async function upgradeDeck(userId: string, stored: StoredDeck): Promise<Deck> {
+  let deck = stored.deck
+  let changed = false
+  if (needsMigration(deck)) {
+    deck = migrateDeck(deck)
+    changed = true
+  }
+  if (!(stored.normalizedAt && deck.version === CURRENT_DECK_VERSION)) {
+    const before = deck.totalCards
+    deck = normalizeDeck(deck)
+    if (deck.totalCards !== before) changed = true
+  }
+  if (changed) {
+    await writeDeck(userId, { deck, normalizedAt: Date.now() }).catch(err => console.error(`[DeckBuilder] Failed to save updated deck ${deck.id}:`, err))
+  }
+  return deck
+}
+
 /**
  * Delete a deck from KV
  */
-export async function deleteDeck(userId: string, deckId: string) {
+export async function deleteDeck(_userId: string, deckId: string) {
+  const userId = sessionUserId()
   try {
-    if (!env?.DECKS_KV) {
-      throw new Error('DECKS_KV binding not found')
-    }
-    
-    await env.DECKS_KV.delete(`deck:${userId}:${deckId}`)
-    
-    const deckListKey = `deck:${userId}:list`
-    const deckListJson = await env.DECKS_KV.get(deckListKey)
-    
-    if (deckListJson) {
-      const deckIds: string[] = JSON.parse(deckListJson)
-      const updatedList = deckIds.filter(id => id !== deckId)
-      await env.DECKS_KV.put(
-        deckListKey, 
-        JSON.stringify(updatedList),
-        {
-          expirationTtl: DECK_CACHE_TTL
-        }
-      )
-    }
-    
+    await removeDeck(userId, deckId)
     console.log(`[DeckBuilder] Deleted deck ${deckId} for user ${userId}`)
-
-    // await syncDeckBuilder(userId);
-    
-    return {
-      success: true,
-    }
+    return { success: true }
   } catch (error) {
     console.error('[DeckBuilder] Error deleting deck:', error)
     return {
@@ -877,26 +732,20 @@ export async function deleteDeck(userId: string, deckId: string) {
  * Update a deck in KV
  */
 export async function updateDeck(
-  userId: string,
+  _userId: string,
   deckId: string,
   updates: Partial<Deck>
 ) {
+  const userId = sessionUserId()
   try {
-    if (!env?.DECKS_KV) {
-      throw new Error('DECKS_KV binding not found')
-    }
-    
-    const deckKey = `deck:${userId}:${deckId}`
-    const deckJson = await env.DECKS_KV.get(deckKey)
-    
-    if (!deckJson) {
+    const existing = await readDeck(userId, deckId)
+    if (!existing) {
       return {
         success: false,
         error: 'Deck not found',
       }
     }
-    
-    const existingDeck: Deck = JSON.parse(deckJson)
+    const existingDeck = existing.deck
 
     const updatedDeck: Deck = {
       ...existingDeck,
@@ -909,22 +758,9 @@ export async function updateDeck(
       updatedAt: Date.now(),
     }
     
-    await env.DECKS_KV.put(
-      deckKey,
-      JSON.stringify(updatedDeck),
-      {
-        expirationTtl: DECK_CACHE_TTL,
-        metadata: {
-          userId,
-          deckName: updatedDeck.name,
-          commanders: updatedDeck.commanders?.join(', ') || 'Unknown',  // ✅ Handle undefined
-          totalCards: updatedDeck.totalCards,
-          createdAt: updatedDeck.createdAt,
-          updatedAt: updatedDeck.updatedAt,
-        }
-      }
-    )
-    
+    const saved = await writeDeck(userId, { deck: updatedDeck, normalizedAt: existing.normalizedAt })
+    if (!saved.ok) return { success: false, error: saved.error }
+
     console.log(`[DeckBuilder] Updated deck ${deckId} for user ${userId}`)
     
     // await syncDeckBuilder(userId);
@@ -953,11 +789,12 @@ export async function updateDeck(
  * Update deck from editor
  */
 export async function updateDeckFromEditor(
-  userId: string,
+  _userId: string,
   deckId: string,
   deckName: string,
   cards: DeckCard[]
 ) {
+  const userId = sessionUserId()
   // Validate card data before saving
   const incompleteCards: { name: string; missingFields: string[] }[] = []
 
@@ -1020,69 +857,17 @@ export async function updateDeckFromEditor(
 /**
  * Get a single deck by ID
  */
-export async function getDeck(userId: string, deckId: string) {
+export async function getDeck(_userId: string, deckId: string) {
+  const userId = sessionUserId()
   try {
-    if (!env?.DECKS_KV) {
-      throw new Error('DECKS_KV binding not found')
-    }
-    
-    const kvResult = await env.DECKS_KV.getWithMetadata(`deck:${userId}:${deckId}`)
-
-    if (!kvResult.value) {
+    const stored = await readDeck(userId, deckId)
+    if (!stored) {
       return {
         success: false,
         error: 'Deck not found',
       }
     }
-
-    let deck: Deck = JSON.parse(kvResult.value)
-    const metadata = kvResult.metadata as any
-    let needsUpdate = false
-
-    // AUTO-MIGRATE old deck versions
-    if (needsMigration(deck)) {
-      console.log(`[DeckBuilder] Auto-migrating deck ${deckId} to v${CURRENT_DECK_VERSION}`)
-      deck = migrateDeck(deck)
-      needsUpdate = true
-    }
-
-    // NORMALIZE: Only if deck has never been normalized OR needs migration
-    const isNormalized = metadata?.normalizedAt && metadata?.version === CURRENT_DECK_VERSION
-
-    if (!isNormalized) {
-      console.log(`[DeckBuilder] Normalizing deck ${deckId} (first time or after migration)`)
-      const originalTotalCards = deck.totalCards
-      deck = normalizeDeck(deck)
-
-      if (deck.totalCards !== originalTotalCards || needsUpdate) {
-        needsUpdate = true
-      }
-    }
-
-    // Only save back to KV if deck was actually modified
-    if (needsUpdate) {
-      await env.DECKS_KV.put(
-        `deck:${userId}:${deckId}`,
-        JSON.stringify(deck),
-        {
-          expirationTtl: DECK_CACHE_TTL,
-          metadata: {
-            userId,
-            deckName: deck.name,
-            commanders: deck.commanders?.join(', ') || 'Unknown',
-            totalCards: deck.totalCards,
-            version: deck.version,
-            normalizedAt: Date.now(),
-          }
-        }
-      )
-      console.log(`[DeckBuilder] ✅ Updated and saved deck ${deckId}`)
-    }
-
-    return {
-      success: true,
-      deck,
-    }
+    return { success: true, deck: await upgradeDeck(userId, stored) }
   } catch (error) {
     console.error('[DeckBuilder] Error fetching deck:', error)
     return {

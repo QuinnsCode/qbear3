@@ -76,6 +76,8 @@ const SKIP_MIDDLEWARE_PREFIXES = [
  */
 const FORCE_MIDDLEWARE_ROUTES = [
   '/__draftsync',    // Draft sync needs user/org context
+  '/api/draft',      // Drafting over JSON acts as the session's user (src/app/api/draft/draft.ts)
+  '/api/cardGame/',  // Loading a saved deck at a table, likewise
 ] as const;
 
 /**

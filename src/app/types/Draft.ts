@@ -31,7 +31,9 @@ export interface CubeCard {
     id: string
     name: string
     isAI: boolean
-    draftPool: string[]  // All cards drafted (scryfallIds)
+    draftPool: string[]  // All cards drafted (scryfallIds); empty in other people's views
+    poolSize?: number    // Public: how many cards they've drafted
+    hasPicked?: boolean  // Public: picked from the pack in hand this round
     currentPack?: Pack
     
     // ✅ NEW: Deck building (only for humans)
@@ -77,6 +79,27 @@ export interface CubeCard {
     timerEnabled: false
   }
   
+  /** One drafter's view of a draft (DraftDO `GET /view/:playerId`): their pack and pool, nobody else's. */
+  export interface DraftSeat {
+    status: DraftState['status']
+    round: number
+    pick: number
+    config: DraftConfig
+    me: { id: string; name: string }
+    pack: CubeCard[]
+    /** Picked from the pack in hand; it hasn't passed yet. */
+    hasPicked: boolean
+    pool: CubeCard[]
+    /** The deck saved from this draft, once there is one. */
+    deckId: string | null
+  }
+
+  export interface DraftDeckConfig {
+    mainDeck: Array<{ scryfallId: string; quantity: number }>
+    sideboard: Array<{ scryfallId: string; quantity: number }>
+    basics: { W: number; U: number; B: number; R: number; G: number }
+  }
+
   export interface DraftAction {
     id: string
     type: 'make_pick' | 'finalize_deck'  // ✅ UPDATED: Add finalize_deck
