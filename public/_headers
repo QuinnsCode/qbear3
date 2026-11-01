@@ -1,0 +1,15 @@
+# Cache rules for files served straight from static assets (Workers Static Assets reads this file).
+# Vite writes the client build to /assets/ with a content hash in every name, so a changed file gets a new URL.
+# Anything you put in public/assets/ by hand is cached a year too: rename it when you change it.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Fixed names, so a day in the browser's cache, with a week of revalidating in the background after that.
+/fonts/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/landing/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/mana-symbols-sprite.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/favicon.png
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800

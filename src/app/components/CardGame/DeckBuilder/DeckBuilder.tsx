@@ -1,13 +1,12 @@
 // app/components/DeckBuilder/Deckbuilder.tsx
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import DeckCard from './DeckCard'
 import CreateDeckModal from './CreateDeckModal'
 import CreateDraftDeckModal from './CreateDraftDeckModal'
 import type { Deck, DeckCard as DeckCardType } from '@/app/types/Deck'
 import EditDeckModal from './EditDeckModal'
-import { EDH_SANDBOX_STARTER_DECK_DATA } from '@/app/components/CardGame/Sandbox/starterDeckData'
 import { createDeck, createDraftDeck, deleteDeck, updateDeckFromEditor } from '@/app/serverActions/deckBuilder/deckActions'
 import { Gamepad2 } from 'lucide-react'
 
@@ -25,31 +24,6 @@ interface Props {
   onSelectDeck?: (deckId: string) => Promise<void>
   onEditDeck?: (deckId: string, cards: DeckCardType[], deckName: string) => Promise<void>
 }
-
-const SANDBOX_STARTER_DECKS: Deck[] = EDH_SANDBOX_STARTER_DECK_DATA.map((deck, index) => {
-  const commanderCard = deck.cards.find(card => 
-    card.name.toLowerCase() === deck.commander.toLowerCase()
-  );
-  
-  return {
-    version: 4,
-    format: 'commander',
-    id: `sandbox-${index}`,
-    name: deck.name,
-    commanders: [deck.commander], // CHANGE: single commander to array
-    commanderImageUrls: commanderCard?.image_uris?.art_crop || commanderCard?.image_uris?.large || commanderCard?.image_uris?.normal 
-      ? [commanderCard.image_uris.art_crop || commanderCard.image_uris.large || commanderCard.image_uris.normal]
-      : undefined, // CHANGE: wrap in array
-    colors: [deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '⚪' ? 'W' : 
-             deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '⚫' ? 'B' :
-             deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '🔴' ? 'R' :
-             deck.name.match(/⚪|⚫|🔴|🟢|🔵/)?.[0] === '🟢' ? 'G' : 'U'] as ('W' | 'U' | 'B' | 'R' | 'G')[],
-    cards: [],
-    totalCards: 100,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  };
-});
 
 export default function DeckBuilder({
   decks,
@@ -75,7 +49,18 @@ export default function DeckBuilder({
   const [selectedDeckIds, setSelectedDeckIds] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const displayDecks = isSandbox ? SANDBOX_STARTER_DECKS : decks;
+  // The starter decks are ~1 MB of card data: load them only when the sandbox needs them
+  const [sandboxDecks, setSandboxDecks] = useState<Deck[] | null>(null)
+  useEffect(() => {
+    if (!isSandbox || sandboxDecks) return
+    let cancelled = false
+    import('@/app/components/CardGame/Sandbox/sandboxStarterDeckSummaries').then(m => {
+      if (!cancelled) setSandboxDecks(m.SANDBOX_STARTER_DECKS)
+    })
+    return () => { cancelled = true }
+  }, [isSandbox, sandboxDecks])
+
+  const displayDecks = isSandbox ? (sandboxDecks ?? []) : decks;
 
   // Count decks by format
   const commanderDecksCount = (displayDecks || []).filter(d => d != null && d.format === 'commander').length
@@ -464,7 +449,7 @@ export default function DeckBuilder({
           <div className="flex flex-col items-center justify-center py-20">
             <div className="text-8xl mb-6">🃏</div>
             <h3 className="text-2xl font-bold text-white mb-3">
-              {searchQuery ? 'No decks found' : isSandbox ? 'No starter decks available' : 'No decks yet'}
+              {searchQuery ? 'No decks found' : isSandbox ? (sandboxDecks ? 'No starter decks available' : 'Loading starter decks…') : 'No decks yet'}
             </h3>
             <p className="text-gray-400 mb-8 text-center max-w-md">
               {searchQuery
