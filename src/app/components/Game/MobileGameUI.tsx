@@ -1733,10 +1733,10 @@ const MobileGameUI = ({ gameId, currentUserId, initialState }: MobileGameUIProps
             </button> */}
 
             <a 
-              href={"/sanctum"}
+              href={"/"}
               className="w-full p-3 text-left bg-green-50 hover:bg-green-100 rounded-lg transition-colors text-green-800"
             >
-              Back to Sanctum
+              Back home
             </a>
           </div>
         </div>

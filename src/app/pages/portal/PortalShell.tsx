@@ -42,7 +42,7 @@ export function PortalPage({ isLoggedIn, current = 'home', children }: PageProps
           <>
             <ThemeToggle />
             {isLoggedIn
-              ? <a href="/sanctum" className="q-btn q-primary">Sanctum →</a>
+              ? <a href="/" className="q-btn q-primary">Games →</a>
               : <a href="/user/login" className="q-btn q-primary">Sign in</a>}
           </>
         }

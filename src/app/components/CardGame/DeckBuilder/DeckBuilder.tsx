@@ -510,7 +510,7 @@ export default function DeckBuilder({
             deck={editingDeck}
             onClose={() => {
               setEditingDeck(null)
-              window.location.href = '/sanctum'
+              window.location.href = '/'
             }}
             onSave={handleEditDeck}
             isSaving={isSaving}

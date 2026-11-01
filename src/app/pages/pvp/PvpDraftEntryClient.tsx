@@ -65,8 +65,8 @@ export function PvpDraftEntryClient({ decksByRegion, pvpDeckExpiryHours, userId,
     <div className="space-y-5">
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4">
-        <a href="/sanctum" className="inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-white">
-          <ArrowLeft className="h-4 w-4" /> Sanctum
+        <a href="/" className="inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-white">
+          <ArrowLeft className="h-4 w-4" /> Home
         </a>
         <button
           onClick={() => setDraftsModalOpen(true)}

@@ -91,8 +91,8 @@ export default function DraftDeckEditorClient({
         throw new Error(result.error || 'Failed to save deck')
       }
 
-      // Redirect back to sanctum
-      window.location.href = '/sanctum'
+      // Redirect back home
+      window.location.href = '/'
     } catch (error) {
       console.error('Failed to save draft deck:', error)
       alert('Failed to save deck. Please try again.')
@@ -102,7 +102,7 @@ export default function DraftDeckEditorClient({
   }
 
   const handleClose = () => {
-    window.location.href = '/sanctum'
+    window.location.href = '/'
   }
 
   return (

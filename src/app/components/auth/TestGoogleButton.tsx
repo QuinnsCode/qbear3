@@ -19,7 +19,7 @@ export function TestGoogleButton() {
 
       await authClientV2.signIn.social({
         provider: "google",
-        callbackURL: "/sanctum"
+        callbackURL: "/"
       });
 
       console.log('[TEST V2] OAuth initiated');

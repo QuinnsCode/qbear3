@@ -3,7 +3,6 @@ import { type RequestInfo } from "rwsdk/worker";
 import { LogoutButton } from "./LoginButton";
 import { RoleToggleButton } from "./RoleToggleButton";
 import { FantasyLogin } from "./FantasyLogin";
-import { extractOrgFromSubdomain } from "@/lib/middlewareFunctions";
 import {
   FantasyBackground,
   FantasyCard,
@@ -14,37 +13,6 @@ import {
 import { Castle } from "lucide-react";
 
 export default async function LoginPage({ ctx, request }: RequestInfo) {
-  // Check if we're on a subdomain
-  const orgSlug = extractOrgFromSubdomain(request);
-
-  // If on subdomain, redirect to main domain
-  if (orgSlug) {
-    const currentUrl = new URL(request.url);
-    const protocol = currentUrl.protocol;
-    const mainDomain = currentUrl.hostname.includes('localhost')
-      ? `localhost:${currentUrl.port || '5173'}`
-      : currentUrl.hostname.split('.').slice(-2).join('.');
-    const pathname = currentUrl.pathname; // preserves /user/login
-
-    // Redirect to main domain, keeping the same path
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: `${protocol}//${mainDomain}${pathname}`
-      }
-    });
-  }
-
-  // Determine redirect path based on org membership
-  let redirectPath = "/sanctum";
-  if (ctx.user) {
-    const { getCachedUserMemberships } = await import('@/lib/cache/authCache');
-    const memberships = await getCachedUserMemberships(ctx.user.id);
-    if (memberships.length === 0) {
-      redirectPath = "/user/create-lair";
-    }
-  }
-
   // If user is already logged in, show fantasy-themed status page
   if (ctx.user) {
     return (
@@ -76,18 +44,13 @@ export default async function LoginPage({ ctx, request }: RequestInfo) {
                   <div>
                     <span className="font-medium">Role:</span> {ctx.user.role === 'admin' ? 'Lair Master' : ctx.user.role === 'owner' ? 'Grand Master' : 'Adventurer'}
                   </div>
-                  {ctx.organization && (
-                    <div className="md:col-span-2">
-                      <span className="font-medium">Current Lair:</span> {ctx.organization.name}
-                    </div>
-                  )}
                 </div>
               </div>
 
               <div className="flex flex-wrap justify-center gap-4">
                 <FantasyButton variant="primary">
-                  <a href="/sanctum" className="block w-full h-full">
-                    🎲 Enter Sanctum
+                  <a href="/" className="block w-full h-full">
+                    🎲 Enter
                   </a>
                 </FantasyButton>
                 
@@ -120,14 +83,6 @@ export default async function LoginPage({ ctx, request }: RequestInfo) {
               </div>
             </FantasyCard>
 
-            <div className="text-center">
-              <FantasyText variant="secondary" className="text-sm">
-                Need to switch lairs?{" "}
-                <a href="/" className="text-amber-300 hover:text-amber-100 underline decoration-amber-700 underline-offset-2 hover:decoration-amber-500 transition-colors">
-                  Visit the crossroads
-                </a>
-              </FantasyText>
-            </div>
           </div>
         </div>
       </FantasyBackground>
@@ -137,9 +92,8 @@ export default async function LoginPage({ ctx, request }: RequestInfo) {
   // If not logged in, show fantasy login form
   return (
     <FantasyLogin
-      organizationName={ctx.organization?.name}
       variant="adventure"
-      redirectPath={redirectPath}
+      redirectPath="/"
       showDevTools={false}
     />
   );

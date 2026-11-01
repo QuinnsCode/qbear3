@@ -8,8 +8,6 @@
 import * as lib from '@/app/lib/cardGame/cardGameFunctions'
 import { requestInfo } from "rwsdk/worker"
 import type { CardGameState } from "@/app/services/cardGame/CardGameState"
-import { deleteCardGameCompletely } from "./cardGameRegistry"
-import { extractOrgFromSubdomain } from "@/lib/middlewareFunctions"
 
 function sessionPlayer(): { id: string, name: string } {
   const user = requestInfo.ctx.user
@@ -31,16 +29,6 @@ export async function restartCardGame(cardGameId: string): Promise<CardGameState
   const state = await lib.getCardGameState(cardGameId)
   if (!state.players.some(p => p.id === me.id)) throw new Error('Only a player at this table can restart it')
   return lib.restartCardGame(cardGameId)
-}
-
-/** Delete a game from this lair. The lair comes from the subdomain, and the caller must be a member of it. */
-export async function deleteCardGame(cardGameId: string): Promise<{ success: boolean, error?: string }> {
-  const { ctx, request } = requestInfo
-  const orgSlug = extractOrgFromSubdomain(request)
-  if (!ctx.user?.id || !orgSlug || !ctx.organization || !ctx.userRole) {
-    return { success: false, error: 'Only members of this lair can delete its games' }
-  }
-  return deleteCardGameCompletely(orgSlug, cardGameId)
 }
 
 export async function applyCardGameAction(

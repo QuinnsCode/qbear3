@@ -68,7 +68,7 @@ export function AccountLinkingSection() {
       // For OAuth providers (Google, Discord)
       await authClient.linkSocial({
         provider: provider,
-        callbackURL: '/sanctum?section=settings'
+        callbackURL: '/'
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to link account')

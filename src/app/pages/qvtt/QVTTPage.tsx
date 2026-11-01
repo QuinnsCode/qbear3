@@ -43,10 +43,9 @@ function getDomainUrl(subdomain: string | null, path: string, request: Request):
 
 export default function QVTTPage({ ctx, request }: RequestInfo) {
   const isLoggedIn = !!ctx.user;
-  const userOrg = ctx.organization?.slug;
 
   const sandboxUrl = getDomainUrl('sandbox', '/cardGame/regal-gray-wolf', request);
-  const orgUrl = userOrg ? getDomainUrl(userOrg, '/sanctum', request) : null;
+  const orgUrl = isLoggedIn ? '/games' : null;
 
   return (
     <FantasyBackground variant="minimal">

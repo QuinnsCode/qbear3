@@ -33,7 +33,7 @@ export function DiscordThreadButton({
 
       if (!result.success) {
         if (result.needsConnection) {
-          setError('Connect Discord in Sanctum first!');
+          setError('Connect Discord in your settings first!');
         } else {
           setError(result.error || 'Failed to create Discord channel');
         }

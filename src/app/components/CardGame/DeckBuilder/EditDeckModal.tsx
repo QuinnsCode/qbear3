@@ -104,8 +104,8 @@ export default function EditDeckModal({ deck, userId, deckId, onClose, onSave, i
     if (onClose) {
       onClose()
     } else {
-      console.log('No onClose prop, navigating to /sanctum')
-      window.location.href = '/sanctum'
+      console.log('No onClose prop, navigating to /')
+      window.location.href = '/'
     }
   }
   

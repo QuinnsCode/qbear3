@@ -299,7 +299,7 @@ export default function DraftContent({
           const shouldDelete = confirm(
             '⚠️ You have reached the 10 draft deck limit.\n\n' +
             'Would you like to delete your oldest draft deck to make room?\n\n' +
-            '(You can also go to Sanctum and manually delete decks you don\'t need)'
+            '(You can also go to the deck builder and manually delete decks you don\'t need)'
           )
 
           if (shouldDelete) {
@@ -337,15 +337,15 @@ export default function DraftContent({
               }
             } catch (cleanupError) {
               console.error('Failed to cleanup old decks:', cleanupError)
-              alert(`Failed to delete old deck: ${cleanupError instanceof Error ? cleanupError.message : 'Unknown error'}\n\nPlease go to Sanctum and delete one manually.`)
+              alert(`Failed to delete old deck: ${cleanupError instanceof Error ? cleanupError.message : 'Unknown error'}\n\nPlease go to the deck builder and delete one manually.`)
               return
             }
           } else {
-            const goToSanctum = confirm(
-              'No problem! Would you like to go to Sanctum to manage your decks?\n\n' +
+            const goToDecks = confirm(
+              'No problem! Would you like to go to the deck builder to manage your decks?\n\n' +
               '(Your draft progress is saved - you can come back and build this deck later)'
             )
-            if (goToSanctum) window.location.href = '/sanctum'
+            if (goToDecks) window.location.href = '/'
             return
           }
         }
@@ -451,7 +451,7 @@ export default function DraftContent({
                         <Pencil className="h-5 w-5" />
                         Build your deck
                       </button>
-                      <p className="text-xs text-slate-500">Add basic lands, set a sideboard and save it to Sanctum.</p>
+                      <p className="text-xs text-slate-500">Add basic lands, set a sideboard and save it to your decks.</p>
                     </>
                   ) : (
                     <>
@@ -515,12 +515,12 @@ export default function DraftContent({
             </div>
             <h2 className="text-2xl font-bold">Deck saved</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Your {currentPlayer.deckConfiguration?.totalCards}-card draft deck is in Sanctum.
+              Your {currentPlayer.deckConfiguration?.totalCards}-card draft deck is saved to your decks.
             </p>
 
             <div className="mt-6 flex flex-col gap-2.5">
-              <a href="/sanctum" className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-6 py-3 font-bold text-slate-950 transition-colors hover:bg-amber-300">
-                <Library className="h-5 w-5" /> View in Sanctum
+              <a href="/" className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-6 py-3 font-bold text-slate-950 transition-colors hover:bg-amber-300">
+                <Library className="h-5 w-5" /> View decks
               </a>
               <button onClick={() => setShowDeckBuilder(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/10 px-6 py-3 font-semibold text-white transition-colors hover:bg-white/15">
                 <Pencil className="h-4 w-4" /> Edit deck

@@ -20,7 +20,6 @@ const REALTIME_ROUTES = [
   '/search',
   '/orders/',
   // '/dashboard',
-  '/sanctum',
   '/game',
   '/game/',
   '/cardGame',

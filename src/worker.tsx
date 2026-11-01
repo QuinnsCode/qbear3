@@ -13,13 +13,12 @@ import { draftRoutes } from "@/app/pages/draft/draftRoutes"
 import { cardGameRoutes } from "@/app/pages/cardGame/cardGameRoutes";
 import { realtimeRoutes } from "@/app/pages/realtime/realtimeRoutes";
 import { auth, initAuth } from "@/lib/auth";
-import { type User, type Organization, db, setupDb } from "@/db";
-import { 
-  initializeServices, 
-  setupOrganizationContext, 
-  setupSessionContext, 
+import { type Organization, db } from "@/db";
+import {
+  initializeServices,
+  setupSessionContext,
   extractOrgFromSubdomain,
-  shouldSkipMiddleware 
+  shouldSkipMiddleware
 } from "@/lib/middlewareFunctions";
 import { env } from "cloudflare:workers";
 import { verifyTurnstileToken } from "@/lib/turnstile";
@@ -28,15 +27,12 @@ import CardGamePage from "@/app/pages/cardGame/CardGamePage";
 import DraftPage from '@/app/pages/draft/DraftPage'
 import NewDraftPage from '@/app/pages/draft/NewDraftPage'
 import DraftDeckEditorPage from '@/app/pages/draft/deck/DraftDeckEditorPage'
-import SanctumPage from "@/app/pages/sanctum/SanctumPage";
 import PvpDraftEntryPage from "@/app/pages/pvp/PvpDraftEntryPage";
 import PvpDraftPage from "@/app/pages/pvp/PvpDraftPage";
 import PvpLobbyPage from "@/app/pages/pvp/PvpLobbyPage";
 import AdminDashboard from "@/app/pages/admin/AdminDashboard";
 import CacheBrowserPage from "@/app/pages/admin/CacheBrowserPage";
 import VTTPage from "@/app/pages/vtt/VTTPage";
-import OrgNotFoundPage from "@/app/pages/errors/OrgNotFoundPage";
-import NoAccessPage from "@/app/pages/errors/NoAccessPage";
 import PricingPage from "@/app/pages/pricing/PricingPage";
 import CommunityPage from "@/app/pages/community/CommunityPage";
 import { createNewGame } from "./app/serverActions/gameRegistry";
@@ -73,9 +69,10 @@ const SANDBOX_GAME_ID = 'regal-gray-wolf';
 export type AppContext = {
   session: any | null;
   user: any | null;
+  /** Only the sandbox host sets these; there are no org subdomains. */
   organization: Organization | null;
   userRole: string | null;
-  orgError: 'ORG_NOT_FOUND' | 'NO_ACCESS' | 'ERROR' | null;
+  orgError: null;
 };
 
 // Helper function to normalize URLs for main domain variants
@@ -130,134 +127,38 @@ export default defineApp([
     }
   },
   
-  /**
-   * ⚠️⚠️⚠️ CRITICAL MIDDLEWARE CHAIN - DO NOT FUCK WITH THIS ⚠️⚠️⚠️
-   *
-   * This middleware runs BEFORE every request and sets up:
-   * - ctx.user (from session cookie)
-   * - ctx.organization (from subdomain)
-   * - ctx.userRole (from membership)
-   *
-   * THE LOGIN FLOW DEPENDS ON THIS EXACT ORDER:
-   * 1. setupSessionContext() - reads better-auth cookie, sets ctx.user
-   * 2. setupOrganizationContext() - extracts org from URL, sets ctx.organization
-   * 3. autoCreateOrgMiddleware() - redirects main domain to org subdomain
-   *
-   * IF YOU BREAK THIS ORDER:
-   * - Login redirects fail
-   * - Users get "No Organization" errors
-   * - Sanctum page crashes
-   * - Root route shows landing page
-   *
-   * WHAT NOT TO DO:
-   * ❌ Don't add conditional checks (shouldRunMiddleware, needsOrganizationContext, etc)
-   * ❌ Don't change the order of setupSessionContext -> setupOrganizationContext
-   * ❌ Don't remove autoCreateOrgMiddleware
-   * ❌ Don't add new middleware without testing the ENTIRE login flow
-   * ❌ Don't assume ctx.organization will be set - it might be null on main domain
-   *
-   * CACHE ISSUES:
-   * - KV cache (AUTH_CACHE_KV) has 5-10 min TTL
-   * - Stale cache can return null orgs even when they exist
-   * - Wait 10 mins or flush KV cache manually if weird issues happen
-   *
-   * TESTED WORKING: March 2, 2026 @ 6:46 PM PST (commit b4d443e)
-   * LAST BROKEN: March 3, 2026 @ 12:00 AM PST (tried to add config-based middleware)
-   *
-   * REPEAT: DO NOT MODIFY UNLESS YOU TEST THE FULL LOGIN FLOW
-   */
+  // Sub-domains: only the sandbox ones are served here. Reserved names belong to other Workers
+  // (or nobody) and 404; anything else is an old lair address and goes to the main domain.
+  ({ request }) => {
+    const slug = extractOrgFromSubdomain(request);
+    if (!slug || isSandboxEnvironment(request)) return;
+    if (isReservedSubdomain(slug)) return new Response('Not found', { status: 404 });
+    const url = new URL(request.url);
+    const host = url.hostname.endsWith('localhost') ? `localhost${url.port ? `:${url.port}` : ''}` : url.hostname.split('.').slice(-2).join('.');
+    return new Response(null, { status: 302, headers: { Location: `${url.protocol}//${host}${url.pathname}${url.search}` } });
+  },
+
+  // Session context: ctx.user comes from the better-auth cookie. The sandbox host gets its own guest user.
   async ({ ctx, request, response }) => {
     try {
-      // Always initialize services
       await initializeServices();
 
-      // Check if this is a sandbox environment
-      const isSandbox = isSandboxEnvironment(request);
-      
-      if (isSandbox) {
+      if (isSandboxEnvironment(request)) {
         await setupSandboxContext(ctx, request);
-        
-        // Set cookie for stable sandbox player ID
         const sandboxPlayerId = ctx.user?.id;
         if (sandboxPlayerId) {
           response.headers.set('Set-Cookie', createSandboxCookieHeader(sandboxPlayerId));
         }
-        
-        return; // Skip normal auth flow
-      }
-      
-      // Skip middleware setup for auth routes
-      if (shouldSkipMiddleware(request)) {
         return;
       }
-      
-      // Setup context for other routes
+
+      if (shouldSkipMiddleware(request)) return;
+
       await setupSessionContext(ctx, request);
-      await setupOrganizationContext(ctx, request);
-      
-      // ✅ AUTO-CREATE ORG: Automatically create org for users who don't have one
-      const { autoCreateOrgMiddleware } = await import('@/lib/middleware/autoCreateOrgMiddleware');
-      const autoOrgResult = await autoCreateOrgMiddleware(ctx, request);
-      if (autoOrgResult) return autoOrgResult;
-
-      // Log when we SKIP the org check (to debug the issue)
-      const url = new URL(request.url);
-      if (ctx.user && url.pathname === '/') {
-        const { getCachedUserMemberships } = await import('@/lib/cache/authCache');
-        const memberships = await getCachedUserMemberships(ctx.user.id);
-        console.log('ℹ️ [ROOT PATH] User on / with', memberships.length, 'orgs - NOT redirecting (root exempted)');
-      }
-      
-      // Handle organization errors for frontend routes
-      if (ctx.orgError && 
-          !request.url.includes('/api/') && 
-          !request.url.includes('/__realtime') &&
-          !request.url.includes('/__gsync') &&
-          !request.url.includes('/__cgsync') &&
-          !request.url.includes('/user/') &&
-          !request.url.includes('/orgs/new') &&
-          !request.url.includes('/sanctum')
-        ) {
-
-        const url = new URL(request.url);
-        
-        if (ctx.orgError === 'ORG_NOT_FOUND') {
-          // A reserved name is never an unclaimed org: don't offer to create it
-          const reservedSlug = extractOrgFromSubdomain(request);
-          if (reservedSlug && isReservedSubdomain(reservedSlug)) {
-            return new Response('Not found', { status: 404 });
-          }
-
-          // Redirect to main domain with org creation option
-          const mainDomain = url.hostname.includes('localhost') 
-            ? `localhost:${url.port || '5173'}`
-            : 'qntbr.com';
-          
-          const orgSlug = extractOrgFromSubdomain(request);
-          return new Response(null, {
-            status: 302,
-            headers: { 
-              Location: `${url.protocol}//${mainDomain}/orgs/new?suggested=${orgSlug}` 
-            },
-          });
-        }
-        
-        if (ctx.orgError === 'NO_ACCESS') {
-          // User is logged in but not a member - show join page
-          return new Response(null, {
-            status: 302,
-            headers: { Location: `/user/login` },
-          });
-        }
-      }
     } catch (error) {
       console.error('Middleware error:', error);
-      // Continue with empty context rather than failing
       ctx.session = null;
       ctx.user = null;
-      ctx.organization = null;
-      ctx.userRole = null;
-      ctx.orgError = null;
     }
   },
 
@@ -384,11 +285,6 @@ export default defineApp([
   prefix("/api", [
     route("/stripe/create-checkout", async ({ request }) => {
       const { default: handler } = await import('@/app/api/stripe/create-checkout');
-      return handler({ request });
-    }),
-
-    route("/main/check-username", async ({ request }) => {
-      const { default: handler } = await import('@/app/api/main/check-username');
       return handler({ request });
     }),
 
@@ -607,10 +503,6 @@ export default defineApp([
 
   // FRONTEND ROUTES
   render(Document, [
-    route("/org-not-found", OrgNotFoundPage),
-
-    route("/no-access", NoAccessPage),
-
     route("/admin", AdminPage),
     route("/admin/cache", CacheBrowserPage),
 
@@ -622,7 +514,7 @@ export default defineApp([
     route("/games", GameCenterPage),
     route("/apps", AppCenterPage),
 
-    route("/sanctum", SanctumPage),
+    route("/sanctum", () => new Response(null, { status: 301, headers: { Location: "/" } })),
 
     route("/pvp", PvpDraftEntryPage),
     route("/pvp/draft/:region/new", PvpDraftPage),
@@ -651,14 +543,14 @@ export default defineApp([
 
     // Game routes
     route("/game", async ({ request }) => {
-      const orgSlug = extractOrgFromSubdomain(request) || 'default';
+      const orgSlug = 'default';
       const result = await createNewGame(orgSlug);
       
       if (!result.success) {
         return new Response(null, {
           status: 302,
           headers: { 
-            Location: `/sanctum?error=${encodeURIComponent(result.error || 'Failed to create game')}`
+            Location: `/?error=${encodeURIComponent(result.error || 'Failed to create game')}`
           }
         });
       }
@@ -685,7 +577,7 @@ export default defineApp([
           return new Response(null, {
             status: 302,
             headers: { 
-              Location: `/sanctum?error=${encodeURIComponent(result.error || 'Failed to get sandbox game')}`
+              Location: `/?error=${encodeURIComponent(result.error || 'Failed to get sandbox game')}`
             }
           });
         }
@@ -698,7 +590,7 @@ export default defineApp([
       }
       
       // ✅ NORMAL: Create new org game (keep existing code)
-      const orgSlug = extractOrgFromSubdomain(request) || 'default';
+      const orgSlug = 'default';
       
       const result = await createNewCardGame(orgSlug, {
         creatorUserId: ctx.user?.id,
@@ -710,7 +602,7 @@ export default defineApp([
         return new Response(null, {
           status: 302,
           headers: { 
-            Location: `/sanctum?error=${encodeURIComponent(result.error || 'Failed to create game')}`
+            Location: `/?error=${encodeURIComponent(result.error || 'Failed to create game')}`
           }
         });
       }
@@ -768,33 +660,7 @@ export default defineApp([
           });
         }
         
-        const orgSlug = extractOrgFromSubdomain(request);
-        
-        // ✅ MAIN DOMAIN: Show landing page
-        if (!orgSlug) {
-          return; // Fall through to LandingPage
-        }
-        
-        // ✅ ORG SUBDOMAIN: Handle based on auth
-        if (ctx.orgError) {
-          return; // Let middleware handle redirects
-        }
-        
-        // If we have an organization but user isn't logged in or doesn't have role
-        if (ctx.organization && (!ctx.user || !ctx.userRole)) {
-          return new Response(null, {
-            status: 302,
-            headers: { Location: "/user/login" },
-          });
-        }
-
-        // If user is authenticated and has access to org
-        if (ctx.organization && ctx.user && ctx.userRole) {
-          return new Response(null, {
-            status: 302,
-            headers: { Location: "/sanctum" },
-          });
-        }
+        return;
       },
       LandingPage,  // ✅ Changed from HomePage (if it was HomePage before)
     ]),

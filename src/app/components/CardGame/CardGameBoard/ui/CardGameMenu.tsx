@@ -111,7 +111,7 @@ export default function CardGameMenu({
       const result = await createThreadForGame(cardGameId, gameName, 'cardGame')
       if (!result.success) {
         alert(result.needsConnection
-          ? 'Please connect your Discord account in Sanctum before creating a thread.'
+          ? 'Please connect your Discord account in your settings before creating a thread.'
           : 'Failed to create Discord thread. Please try again.')
         return
       }
@@ -147,9 +147,9 @@ export default function CardGameMenu({
       separator: !isSandbox,
     },
     ...(!isSandbox ? [{
-      label: 'Return to Sanctum',
+      label: 'Return home',
       icon: '🏰',
-      onClick: () => { window.location.href = '/sanctum' },
+      onClick: () => { window.location.href = '/' },
       separator: true,
     }] : []),
     ...(!isSandbox ? [{
