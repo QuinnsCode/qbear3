@@ -263,7 +263,6 @@ export function FantasyLogin({
                   size="lg"
                   disabled={isPending}
                   className="w-full"
-                  suppressHydrationWarning
                 >
                   {isPending ? "..." : "🗝️ Enter Lair"}
                 </FantasyButton>

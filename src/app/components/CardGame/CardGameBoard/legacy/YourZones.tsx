@@ -5,7 +5,7 @@ import type { MTGPlayer, CardGameState, TokenData } from '@/app/services/cardGam
 import { useState } from 'react'
 import { Swords, BookOpen, Skull, Flame, Crown, Coins, Hand } from 'lucide-react'
 import DeckBuilder from '@/app/components/CardGame/DeckBuilder/DeckBuilder'
-import type { Deck } from '@/app/types/Deck'
+import type { Deck, DeckCard } from '@/app/types/Deck'
 
 // Extracted hooks
 import { useLibraryActions } from '@/app/hooks/useLibraryActions'
@@ -30,8 +30,8 @@ interface Props {
   userId: string
   onCreateDeck?: (deckList: string, deckName: string) => Promise<void>
   onDeleteDeck?: (deckId: string) => Promise<void>
-  onSelectDeck?: (deckId: string) => Promise<void>
-  onEditDeck?: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
+  onSelectDeck?: (deckId: string) => Promise<unknown>
+  onEditDeck?: (deckId: string, cards: DeckCard[], deckName: string) => Promise<void>
   onPrefetchDecks?: () => Promise<void>
   spectatorMode?: boolean
   isSandbox?: boolean
@@ -222,6 +222,7 @@ export default function YourZones({
         onMulligan={libraryActions.handleMulligan}
         onDrawCards={libraryActions.handleDrawCards}
         onDrawX={libraryActions.openDrawModal}
+        onMillX={libraryActions.openMillModal}
         onLibraryToHand={libraryActions.handleLibraryToHand}
         onShuffle={libraryActions.handleShuffleLibrary}
         onMill={libraryActions.handleMillCards}
@@ -306,7 +307,6 @@ export default function YourZones({
         isOpen={tokenModalOpen}
         onClose={() => setTokenModalOpen(false)}
         onCreateToken={handleCreateToken}
-        playerId={player.id}
       />
       
       {/* Deck Builder Modal */}

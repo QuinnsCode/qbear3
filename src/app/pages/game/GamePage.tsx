@@ -1,10 +1,11 @@
 // app/pages/game/GamePage.tsx
+import { type RequestInfo } from 'rwsdk/worker'
 import { errorMessage } from '@/lib/errorMessage'
 import { getGameState, getCurrentPlayer } from '@/app/serverActions/gameActions'
 import ClientGameWrapper from '@/app/components/Game/GameUtils/ClientGameWrapper'
 import { env } from "cloudflare:workers"
 
-export default async function GamePage({ params, ctx }) {
+export default async function GamePage({ params, ctx }: { params: { gameId: string }; ctx: RequestInfo['ctx'] }) {
   const gameId = params.gameId
   const userId = 'game-master'
   

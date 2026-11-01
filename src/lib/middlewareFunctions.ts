@@ -1,4 +1,5 @@
 // @/lib/middlewareFunctions.ts
+import { errorMessage } from '@/lib/errorMessage'
 import { type User, type Organization, db, setupDb } from "@/db";
 import { isLoopbackIp } from "@/lib/loopback";
 import type { AppContext } from "@/worker";
@@ -164,7 +165,7 @@ export async function setupSessionContext(ctx: AppContext, request: Request) {
       ctx.user = session?.user as any; // Cast to any to handle type differences
       console.log('✅ Session context set:', !!ctx.user ? `User: ${ctx.user?.email}` : 'No user');
     } catch (authError) {
-      console.warn('⚠️ Auth session failed, continuing without session:', authError?.message);
+      console.warn('⚠️ Auth session failed, continuing without session:', errorMessage(authError));
       ctx.session = null;
       ctx.user = null;
     }

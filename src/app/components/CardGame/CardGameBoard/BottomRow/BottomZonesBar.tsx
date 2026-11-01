@@ -3,7 +3,7 @@
 
 import YourZones from '@/app/components/CardGame/CardGameBoard/legacy/YourZones'
 import type { MTGPlayer, CardGameState } from '@/app/services/cardGame/CardGameState'
-import type { Deck } from '@/app/types/Deck'
+import type { Deck, DeckCard } from '@/app/types/Deck'
 
 interface BottomZonesBarProps {
   player: MTGPlayer
@@ -16,7 +16,7 @@ interface BottomZonesBarProps {
   onCreateDeck: (deckListText: string, deckName: string) => Promise<void>
   onDeleteDeck: (deckId: string) => Promise<void>
   onSelectDeck: (deckId: string) => Promise<void>
-  onEditDeck: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
+  onEditDeck: (deckId: string, cards: DeckCard[], deckName: string) => Promise<void>
   onPrefetchDecks: () => Promise<void>
   isSandbox: boolean
 }

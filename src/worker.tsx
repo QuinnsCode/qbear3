@@ -1,5 +1,5 @@
 import { defineApp, ErrorResponse, requestInfo } from "rwsdk/worker";
-import { isLoopbackHost } from "@/lib/loopback";
+import { errorMessage } from "@/lib/errorMessage";import { isLoopbackHost } from "@/lib/loopback";
 import { isReservedSubdomain } from "@/lib/subdomains";
 // import { realtimeRoute } from "rwsdk/realtime/worker";
 // import { syncOrderNotes } from "./lib/syncedState";
@@ -478,9 +478,11 @@ export default defineApp([
       try {
         // Check if this is a signup request and verify Turnstile
         if (request.url.includes('/sign-up') && request.method === 'POST') {
-          const body = await request.clone().json();
+          const body: unknown = await request.clone().json();
 
-          const { turnstileToken } = body;
+          const turnstileToken = typeof body === 'object' && body !== null && 'turnstileToken' in body && typeof body.turnstileToken === 'string'
+            ? body.turnstileToken
+            : undefined;
 
           if (turnstileToken) {
             const isValid = await verifyTurnstileToken(turnstileToken);
@@ -501,7 +503,7 @@ export default defineApp([
       } catch (error) {
         return new Response(JSON.stringify({
           error: 'Auth failed',
-          message: error?.message || String(error)
+          message: errorMessage(error)
         }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
@@ -569,7 +571,7 @@ export default defineApp([
 
       if (webhookPath === 'lemonsqueezy') {
         const { default: handler } = await import('@/app/api/webhooks/lemonsqueezy-wh');
-        return handler({ request, params, ctx });
+        return handler({ request });
       }
       
       return Response.json({ error: "Webhook not supported" }, { status: 404 });
@@ -645,7 +647,6 @@ export default defineApp([
     termsRoute,
 
     // Game routes
-    // @ts-expect-error - RWSDK type inference issue
     route("/game", async ({ request }) => {
       const orgSlug = extractOrgFromSubdomain(request) || 'default';
       const result = await createNewGame(orgSlug);
@@ -669,7 +670,6 @@ export default defineApp([
     // ============================================
     // 🎮 CARD GAME ROUTES - SANDBOX HARDCODED
     // ============================================
-    // @ts-expect-error - RWSDK type inference issue
     route("/cardGame", async ({ request, ctx }) => {
       const isSandbox = isSandboxEnvironment(request);
       

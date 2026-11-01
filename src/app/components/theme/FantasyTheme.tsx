@@ -237,7 +237,14 @@ export function FantasyDeleteButton({
   disabled = false,
   size = 'md',
   className = ''
-}: FantasyDeleteButtonProps) {
+}: {
+  onDelete: () => void
+  itemName: string
+  isDeleting?: boolean
+  disabled?: boolean
+  size?: 'sm' | 'md' | 'lg'
+  className?: string
+}) {
   const [showConfirm, setShowConfirm] = useState(false);
 
   const sizeClasses = {

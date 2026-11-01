@@ -173,14 +173,14 @@ export default function CardGameBoard({
       
       // Build deck list text from MIGRATED deck structure
       const deckListText = [
-        deck.commander ? `Commander: ${deck.commander}` : '',
+        deck.commanders?.[0] ? `Commander: ${deck.commanders[0]}` : '',
         ...deck.cards
           .filter(card => !card.isCommander)
           .map(card => `${card.quantity} ${card.name}`)
       ].filter(Boolean).join('\n')
       
       console.log('[CardGameBoard] Importing deck:', deck.name)
-      console.log('[CardGameBoard] Commander:', deck.commander)
+      console.log('[CardGameBoard] Commander:', deck.commanders?.[0])
       console.log('[CardGameBoard] Cards in main list (excluding commander):', deck.cards.filter(c => !c.isCommander).length)
       console.log('[CardGameBoard] Total cards (including commander):', deck.cards.reduce((sum, c) => sum + c.quantity, 0))
       console.log('[CardGameBoard] This will reset all game state for this player')
@@ -238,7 +238,7 @@ export default function CardGameBoard({
 
   const handleEditDeck = async (
     deckId: string,
-    updatedCards: Array<{name: string, quantity: number}>,
+    updatedCards: DeckCard[],
     deckName: string
   ) => {
     if (spectatorMode || !currentPlayerId) {
@@ -291,6 +291,14 @@ export default function CardGameBoard({
     : (selectedPlayerId 
         ? gameState.players.find(p => p.id === selectedPlayerId) || currentPlayer
         : currentPlayer)
+
+  if (!viewedPlayer) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-900 text-white">
+        <p className="text-red-400">❌ No players in this game</p>
+      </div>
+    )
+  }
   
   return (
     <div className="h-screen w-screen bg-slate-900 flex flex-col relative">
@@ -456,7 +464,7 @@ export default function CardGameBoard({
         )}
         
         {/* Row 3: Bottom bar (hidden in large view, hidden for spectators) */}
-        {!isLargeBattlefieldView && !spectatorMode && (
+        {!isLargeBattlefieldView && !spectatorMode && currentPlayer && (
           <div className="col-span-2 bg-slate-800 rounded-lg">
             <YourZones
               player={currentPlayer}

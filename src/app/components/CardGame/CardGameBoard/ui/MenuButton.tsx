@@ -7,7 +7,7 @@ import { MenuItem } from "./MenuItem";
 export interface MenuItemConfig {
   label: string;
   icon?: string | React.ReactNode;  // ✅ Allow both string emojis and React components
-  onClick: (e?: React.MouseEvent) => void | false;  // ✅ Can accept event and return false to keep menu open
+  onClick: (e?: React.MouseEvent) => void | false | Promise<void>;  // ✅ Can accept event and return false to keep menu open
   disabled?: boolean;
   separator?: boolean;
 }

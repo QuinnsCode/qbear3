@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 interface AddThirdPartyApiKeyFormProps {
-  createThirdPartyApiKey: (formData: FormData) => Promise<{ success: boolean }>;
+  createThirdPartyApiKey: (formData: FormData) => Promise<{ success: true } | { success: false; error: string }>;
   organizationId: string;
 }
 

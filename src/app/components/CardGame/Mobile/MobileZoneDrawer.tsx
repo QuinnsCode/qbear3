@@ -6,7 +6,7 @@ import type { MTGPlayer, CardGameState } from '@/app/services/cardGame/CardGameS
 import { applyCardGameAction } from '@/app/serverActions/cardGame/cardGameActions'
 import DeckBuilder from '@/app/components/CardGame/DeckBuilder/DeckBuilder'
 import { ZoneViewer } from '../ZoneViewer/ZoneViewer'
-import type { Deck } from '@/app/types/Deck'
+import type { Deck, DeckCard } from '@/app/types/Deck'
 import { 
   BookOpen, 
   Skull, 
@@ -30,8 +30,8 @@ interface Props {
   userId?: string
   onCreateDeck?: (deckList: string, deckName: string) => Promise<void>
   onDeleteDeck?: (deckId: string) => Promise<void>
-  onSelectDeck?: (deckId: string) => Promise<void>
-  onEditDeck?: (deckId: string, cards: Array<{name: string, quantity: number}>, deckName: string) => Promise<void>
+  onSelectDeck?: (deckId: string) => Promise<unknown>
+  onEditDeck?: (deckId: string, cards: DeckCard[], deckName: string) => Promise<void>
   isSandbox?: boolean
   onCreateToken?: () => void
 }

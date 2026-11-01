@@ -3,6 +3,14 @@ import { SANDBOX_STARTER_DECKS_ARRAY } from '../../app/components/CardGame/Sandb
 import * as fs from 'fs'
 import * as path from 'path'
 
+interface ScryfallApiFace { mana_cost?: string; oracle_text?: string; image_uris?: Record<string, string> }
+interface ScryfallApiCard {
+  id: string; name: string; mana_cost?: string; type_line: string; oracle_text?: string
+  power?: string; toughness?: string; colors?: string[]; color_identity?: string[]
+  image_uris?: Record<string, string>; card_faces?: ScryfallApiFace[]
+  set: string; set_name: string; collector_number: string; rarity: string
+}
+
 const failedCards: Array<{deck: string, card: string, error: string}> = []
 let totalFetched = 0
 let totalFailed = 0
@@ -29,7 +37,7 @@ async function fetchCardFromScryfall(cardName: string, deckName: string) {
         return null
       }
       
-      const data = await response.json()
+      const data = await response.json<ScryfallApiCard>()
       totalFetched++
       
       return {
@@ -37,7 +45,7 @@ async function fetchCardFromScryfall(cardName: string, deckName: string) {
         name: data.name,
         mana_cost: data.mana_cost || data.card_faces?.[0]?.mana_cost || '',
         type_line: data.type_line,
-        oracle_text: data.oracle_text || data.card_faces?.map((f: any) => f.oracle_text).join(' // ') || '',
+        oracle_text: data.oracle_text || data.card_faces?.map((f) => f.oracle_text).join(' // ') || '',
         power: data.power,
         toughness: data.toughness,
         colors: data.colors || [],

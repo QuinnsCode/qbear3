@@ -49,6 +49,7 @@ export async function createGame(
     territories[id] = {
       id,
       name: config.name,
+      type: config.type,
       machineCount: config.initialMachines || 0,
       connections: config.connections || [],
       modifiers: config.modifiers,

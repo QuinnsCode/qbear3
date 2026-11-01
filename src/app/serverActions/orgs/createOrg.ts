@@ -30,7 +30,10 @@ function getRedirectUrl(slug: string, request: Request): string {
   return `${protocol}//${slug}.qntbr.com/sanctum`;
 }
 
-export async function createOrganization(formData: FormData) {
+export async function createOrganization(formData: FormData): Promise<
+  | { success: true; redirectUrl: string; organization: { id: string; name: string; slug: string | null } }
+  | { success: false; error: string }
+> {
   try {
     // Initialize services first
     await initializeServices();

@@ -213,15 +213,21 @@ import type {
           return null
         }
         
-        const data = await response.json()
+        const body: unknown = await response.json()
+        const results: unknown[] = typeof body === 'object' && body !== null && 'data' in body && Array.isArray(body.data) ? body.data : []
         
-        if (!data.data || data.data.length === 0) {
+        if (results.length === 0) {
           console.log(`❌ No results for token "${tokenName}"`)
           return null
         }
         
         // Get first result
-        const card: ScryfallCard = data.data[0]
+        const first = results[0]
+        if (!isScryfallCard(first)) {
+          console.log(`❌ Unreadable result for token "${tokenName}"`)
+          return null
+        }
+        const card: ScryfallCard = first
         
         const tokenData: TokenData = {
           name: card.name,
@@ -279,3 +285,7 @@ import type {
       ]
     }
   }
+
+function isScryfallCard(v: unknown): v is ScryfallCard {
+  return typeof v === 'object' && v !== null && 'name' in v && typeof v.name === 'string' && 'type_line' in v && typeof v.type_line === 'string'
+}

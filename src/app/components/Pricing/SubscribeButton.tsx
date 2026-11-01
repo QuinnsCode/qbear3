@@ -15,6 +15,7 @@ export function SubscribeButton({
   isCurrent: boolean
   isLoggedIn: boolean
   userId?: string
+  userEmail?: string
   isPro: boolean
 }) {
   const [isLoading, setIsLoading] = useState(false)

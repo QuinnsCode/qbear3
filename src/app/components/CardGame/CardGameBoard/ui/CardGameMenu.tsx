@@ -155,7 +155,7 @@ export default function CardGameMenu({
     ...(!isSandbox ? [{
       label: isRestarting ? 'Restarting...' : restartClickCount === 1 ? '⚠️ Are You Sure?' : 'Restart Card Game',
       icon: restartClickCount === 1 ? '⚠️' : '🔄',
-      onClick: (e: any) => handleRestartClick(e),
+      onClick: (e?: React.MouseEvent) => handleRestartClick(e),
       disabled: isRestarting,
     }] : []),
   ]

@@ -102,11 +102,8 @@ const POPULAR_CARD_NAMES = [
 ]
 
 export class CacheWarmingDO extends DurableObject {
-  private env: Env
-
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env)
-    this.env = env
   }
 
   async fetch(request: Request): Promise<Response> {

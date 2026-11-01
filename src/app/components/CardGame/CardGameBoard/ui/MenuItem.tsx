@@ -1,6 +1,6 @@
 // @/src/components/CardGame/ui/MenuItem.tsx
 
-export function MenuItem({ onClick, children }: { onClick: () => void, children: React.ReactNode }) {
+export function MenuItem({ onClick, children }: { onClick: (e: React.MouseEvent) => void, children: React.ReactNode }) {
     return (
       <button
         onClick={onClick}

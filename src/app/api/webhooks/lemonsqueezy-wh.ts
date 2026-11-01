@@ -25,7 +25,7 @@ interface LemonSqueezyWebhookEvent {
   }
 }
 
-export default async function handler({ request, ctx }: { request: Request; ctx: any }) {
+export default async function handler({ request }: { request: Request }) {
   console.log('🍋 Lemon Squeezy webhook received')
 
   // 1. Verify webhook signature

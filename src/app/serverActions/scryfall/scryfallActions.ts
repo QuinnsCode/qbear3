@@ -19,7 +19,7 @@ function getCardImageUrl(
   }
 
   // Fallback order - tries preferred size first, then falls back
-  const fallbackOrder = [
+  const fallbackOrder = ([
     preferredSize,
     'normal',
     'large',
@@ -27,12 +27,13 @@ function getCardImageUrl(
     'small',
     'art_crop',
     'border_crop'
-  ].filter((v, i, a) => a.indexOf(v) === i) // Remove duplicates
+  ] as const).filter((v, i, a) => a.indexOf(v) === i) // Remove duplicates
 
   // Return the first available image
   for (const size of fallbackOrder) {
-    if (imageUris[size]) {
-      return imageUris[size]
+    const url = imageUris[size]
+    if (url) {
+      return url
     }
   }
 
@@ -48,7 +49,7 @@ async function validateCardImage(imageUrl: string): Promise<boolean> {
       method: 'HEAD',
       cache: 'no-store' 
     })
-    return response.ok && response.headers.get('content-type')?.startsWith('image/')
+    return response.ok && response.headers.get('content-type')?.startsWith('image/') === true
   } catch {
     return false
   }

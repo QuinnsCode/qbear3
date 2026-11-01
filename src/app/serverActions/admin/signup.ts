@@ -75,7 +75,15 @@ export async function checkUsernameAvailability(username: string) {
     }
 }
 
-export async function signupWithOrg(formData: FormData) {
+export async function signupWithOrg(formData: FormData): Promise<
+  | {
+      success: true;
+      redirectUrl: string;
+      user: { id: string; email: string; name: string };
+      organization: { id: string; name: string; slug: string | null };
+    }
+  | { success: false; error: string }
+> {
   try {
     // Initialize services first
     await initializeServices();
@@ -195,8 +203,7 @@ export async function signupWithOrg(formData: FormData) {
         id: org.id,
         name: org.name,
         slug: org.slug
-      },
-      session: signUpResult.session // Pass session for client to use
+      }
     };
 
   } catch (error) {

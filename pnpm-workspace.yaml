@@ -15,6 +15,8 @@ allowBuilds:
 # Rusty Buns' pinned deploy set (`rustybuns add deploy` writes these to package.json,
 # which pnpm 12 ignores).
 overrides:
+  # better-auth and @better-auth/api-key each resolved their own kysely, so their plugin types clashed (#32)
+  'kysely': 0.28.18
   'effect': 4.0.0-rc.112
   '@effect/platform-bun': 4.0.0-rc.112
   '@effect/platform-node': 4.0.0-rc.112

@@ -30,7 +30,7 @@ export default async function PricingPage({ ctx, request }: RequestInfo) {
   }
   
   return (
-    <FantasyBackground variant="scroll">
+    <FantasyBackground variant="minimal">
       <div className="min-h-screen">
         
         {/* Header */}

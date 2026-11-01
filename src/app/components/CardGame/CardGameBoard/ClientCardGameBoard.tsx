@@ -251,7 +251,7 @@ export default function ClientCardGameBoard({
         />
 
         {/* Bottom Row */}
-        {!spectatorMode && (
+        {!spectatorMode && currentPlayer && (
           <div 
             className="bg-slate-800 rounded-b-lg overflow-visible shrink-0"
             style={{ height: `${layout.bottomBarHeight}px` }}

@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { errorMessage } from "@/lib/errorMessage";
 import { 
   FantasyBackground, 
   FantasyCard, 
@@ -23,7 +24,7 @@ export default function RequestPasswordResetPage() {
     setResult("");
 
     try {
-      await authClient.forgetPassword({
+      await authClient.requestPasswordReset({
         email,
         redirectTo: "/user/reset-password"
       });
@@ -31,8 +32,8 @@ export default function RequestPasswordResetPage() {
       setIsSuccess(true);
       setResult("✅ Password reset email sent! Check your inbox.");
       setEmail("");
-    } catch (error: any) {
-      setResult(`❌ ${error.message || "Failed to send reset email"}`);
+    } catch (error) {
+      setResult(`❌ ${errorMessage(error) || "Failed to send reset email"}`);
     } finally {
       setIsLoading(false);
     }

@@ -24,7 +24,7 @@ export function LogoutButton({
       const result = await authClient.signOut();
       
       if (result.error) {
-        setError(result.error.message);
+        setError(result.error.message ?? null);
         return;
       }
 

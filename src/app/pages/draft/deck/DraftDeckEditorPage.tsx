@@ -2,6 +2,7 @@
 import { type RequestInfo } from "rwsdk/worker"
 import { env } from "cloudflare:workers"
 import DraftDeckEditorClient from './DraftDeckEditorClient'
+import { isDraftState, type DraftState } from '@/app/types/Draft'
 import { getDeck } from '@/app/serverActions/deckBuilder/deckActions'
 
 export default async function DraftDeckEditorPage({ params, ctx }: RequestInfo) {
@@ -72,7 +73,7 @@ export default async function DraftDeckEditorPage({ params, ctx }: RequestInfo) 
   const id = env.DRAFT_DO.idFromName(draftId)
   const stub = env.DRAFT_DO.get(id)
 
-  let draftState = null
+  let draftState: DraftState | null = null
 
   try {
     const response = await stub.fetch(new Request('https://fake-host/', {
@@ -80,7 +81,8 @@ export default async function DraftDeckEditorPage({ params, ctx }: RequestInfo) 
     }))
 
     if (response.ok) {
-      draftState = await response.json()
+      const body: unknown = await response.json()
+      if (isDraftState(body)) draftState = body
     }
   } catch (e: any) {
     console.error('Error loading draft:', e)
@@ -98,7 +100,7 @@ export default async function DraftDeckEditorPage({ params, ctx }: RequestInfo) 
   }
 
   // Find the player's data in the draft
-  const player = draftState.players.find((p: any) => p.id === ctx.user!.id)
+  const player = draftState.players.find((p) => p.id === ctx.user!.id)
 
   if (!player) {
     return (

@@ -32,7 +32,7 @@ export function RoleToggleButton({
       });
       
       if (result.error) {
-        setError(result.error.message);
+        setError(result.error.message ?? null);
         return;
       }
 

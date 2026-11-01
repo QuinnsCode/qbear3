@@ -9,7 +9,7 @@ import {
 
 export default function TermsPage({ ctx, request }: RequestInfo) {
   return (
-    <FantasyBackground variant="scroll">
+    <FantasyBackground variant="minimal">
       <div className="min-h-screen">
         
         {/* Header */}

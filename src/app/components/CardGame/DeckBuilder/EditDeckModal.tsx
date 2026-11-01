@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import type { Deck } from '@/app/types/Deck'
+import type { Deck, DeckCard as SharedDeckCard } from '@/app/types/Deck'
 import CardSearch from '../CardGameBoard/MiddleRow/CardSearch'
 import DeckListView from './DeckListView'
 import type { Card as ScryfallCard } from '@/app/api/scryfall/scryfallTypes'
@@ -27,25 +27,14 @@ type FilterType = 'type' | 'color' | 'cmc' | 'rarity' | 'custom'
 type ViewMode = 'kanban' | 'gallery' | 'list'
 type CardDisplayMode = 'full' | 'stacked' | 'list'
 
-interface DeckCard {
-  id: string
+/** The editor's cards always carry their ids, image, type line and zone. */
+type DeckCard = SharedDeckCard & {
   scryfallId: string
-  name: string
-  quantity: number
   imageUrl: string
   type: string
   manaCost: string
   colors: string[]
-  cmc?: number
   zone: CardZone
-  rarity?: string
-  oracle_text?: string
-  rulings?: Array<{
-    source: 'wotc' | 'scryfall'
-    published_at: string
-    comment: string
-  }>
-  legalities?: Record<string, 'legal' | 'not_legal' | 'restricted' | 'banned'>
 }
 
 interface MobileSection {
@@ -76,9 +65,18 @@ const DEFAULT_COLUMNS: Omit<KanbanColumn, 'cards'>[] = [
   { id: 'instants', title: '⚡ Instants', filterType: 'type', filterValue: 'instant', collapsed: false, width: 15 },
   { id: 'sorceries', title: '📜 Sorceries', filterType: 'type', filterValue: 'sorcery', collapsed: false, width: 15 },
   { id: 'lands', title: '🏔️ Lands', filterType: 'type', filterValue: 'land', collapsed: false, width: 20 },
-  { id: 'contemplating', title: 'Contemplating', emoji: '☁️', cardTypes: [], cards: [], column: 2, order: 6, collapsed: false },
+    { id: 'contemplating', title: 'Contemplating ☁️', filterType: 'type', filterValue: 'contemplating', collapsed: false, width: 15 },
   { id: 'other', title: '📦 Other', filterType: 'custom', filterValue: null, collapsed: false, width: 15 }
 ]
+
+function isRuling(v: unknown): v is NonNullable<DeckCard['rulings']>[number] {
+  return (
+    typeof v === 'object' && v !== null &&
+    'source' in v && (v.source === 'wotc' || v.source === 'scryfall') &&
+    'published_at' in v && typeof v.published_at === 'string' &&
+    'comment' in v && typeof v.comment === 'string'
+  )
+}
 
 const COLOR_FILTERS = [
   { value: 'W', label: '⚪ White', emoji: '⚪' },
@@ -449,8 +447,9 @@ export default function EditDeckModal({ deck, userId, deckId, onClose, onSave, i
     try {
       const rulingsResponse = await fetch(scryfallCard.rulings_uri)
       if (rulingsResponse.ok) {
-        const rulingsData = await rulingsResponse.json()
-        rulings = rulingsData.data || []
+        const rulingsData: unknown = await rulingsResponse.json()
+        const list = typeof rulingsData === 'object' && rulingsData !== null && 'data' in rulingsData && Array.isArray(rulingsData.data) ? rulingsData.data : []
+        rulings = list.filter(isRuling)
       }
     } catch (error) {
       console.error('Failed to fetch rulings:', error)
@@ -471,7 +470,7 @@ export default function EditDeckModal({ deck, userId, deckId, onClose, onSave, i
       rarity: scryfallCard.rarity,
       oracle_text: scryfallCard.oracle_text,
       rulings: rulings.length > 0 ? rulings : undefined,
-      legalities: scryfallCard.legalities
+      legalities: { ...scryfallCard.legalities }
     }
   
     setCards([...cards, newCard])
@@ -499,7 +498,15 @@ export default function EditDeckModal({ deck, userId, deckId, onClose, onSave, i
     
     try {
       const updatedCards = await refreshAllCards(cards)
-      setCards(updatedCards)
+      setCards(updatedCards.map(c => ({
+        ...c,
+        scryfallId: c.scryfallId || c.id,
+        imageUrl: c.imageUrl || '',
+        type: c.type || '',
+        manaCost: c.manaCost || '',
+        colors: c.colors || [],
+        zone: c.zone || (c.isCommander ? 'commander' : 'main')
+      })))
       
       const successCount = updatedCards.filter(c => c.oracle_text || c.rulings).length
       alert(`✅ Refreshed ${successCount} card(s)!`)

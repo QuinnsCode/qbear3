@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers"
 // src/app/api/vtt/assets/[...path].ts
 
 import type { RequestInfo } from 'rwsdk/worker'
@@ -11,7 +12,7 @@ import type { RequestInfo } from 'rwsdk/worker'
  * - Public access (no auth required for viewing)
  */
 
-export default async function getAsset({ params, env }: RequestInfo) {
+export default async function getAsset({ params }: RequestInfo) {
   const path = params?.path
 
   if (!path) {

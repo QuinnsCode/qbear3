@@ -2,6 +2,7 @@
 "use server";
 
 import { requestInfo } from "rwsdk/worker";
+import { errorMessage } from "@/lib/errorMessage";
 import { db } from "@/db";
 import { initializeServices } from "@/lib/middlewareFunctions";
 import { isReservedSubdomain } from "@/lib/subdomains";
@@ -37,7 +38,10 @@ export async function createOrgForExistingUser({
   lairName: string;
   lairSlug: string;
   selectedTier?: 'free' | 'starter' | 'pro';
-}) {
+}): Promise<
+  | { success: true; orgId: string; orgSlug: string | null; redirectUrl: string }
+  | { success: false; error: string }
+> {
   try {
     await initializeServices();
     const { request } = requestInfo;
@@ -133,7 +137,7 @@ export async function createOrgForExistingUser({
     console.error('❌ Error creating org for existing user:', error);
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : "Unknown error" 
+      error: errorMessage(error) 
     };
   }
 }

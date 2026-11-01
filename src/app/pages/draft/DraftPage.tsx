@@ -3,6 +3,8 @@ import { type RequestInfo } from "rwsdk/worker"
 import { env } from "cloudflare:workers"
 import DraftContent from '@/app/components/Draft/DraftContent'
 import { getOrCreateDraftGuestId } from '@/lib/userIdentity'
+import { isDraftState, type DraftState } from '@/app/types/Draft'
+import { errorMessage } from '@/lib/errorMessage'
 import type { Region } from '@/app/lib/constants/regions'
 
 export default async function DraftPage({ params, ctx, request }: RequestInfo) {
@@ -47,8 +49,8 @@ export default async function DraftPage({ params, ctx, request }: RequestInfo) {
   const id = env.DRAFT_DO.idFromName(draftId)
   const stub = env.DRAFT_DO.get(id)
   
-  let initialState = null
-  let error = null
+  let initialState: DraftState | null = null
+  let error: string | null = null
   
   try {
     const response = await stub.fetch(new Request('https://fake-host/', {
@@ -56,13 +58,18 @@ export default async function DraftPage({ params, ctx, request }: RequestInfo) {
     }))
     
     if (response.ok) {
-      initialState = await response.json()
+      const body: unknown = await response.json()
+      if (isDraftState(body)) {
+        initialState = body
+      } else {
+        error = 'Draft not found'
+      }
     } else {
       error = 'Draft not found'
     }
-  } catch (e: any) {
+  } catch (e) {
     console.error('Error loading draft:', e)
-    error = e.message
+    error = errorMessage(e)
   }
   
   if (error || !initialState) {

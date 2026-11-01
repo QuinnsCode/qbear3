@@ -93,15 +93,13 @@ export function MinimapBattlefield({
               {imageUrl ? (
                 <img 
                   src={imageUrl} 
-                  alt={card.name || 'Card'}
+                  alt="Card"
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                  <span className="text-white text-xs font-bold" style={{ fontSize: '8px' }}>
-                    {card.name?.substring(0, 3)}
-                  </span>
+                  <span className="text-white text-xs font-bold" style={{ fontSize: '8px' }} />
                 </div>
               )}
             </div>

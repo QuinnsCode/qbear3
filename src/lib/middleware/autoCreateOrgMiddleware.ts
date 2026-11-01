@@ -45,7 +45,7 @@ export async function autoCreateOrgMiddleware(
         include: { organization: true }
       });
 
-      if (membership) {
+      if (membership?.organization.slug) {
         const redirectUrl = buildOrgRedirectUrl(membership.organization.slug, request);
         console.log('✅ [AUTO-REDIRECT] User has org, redirecting to:', redirectUrl);
         return new Response(null, {
@@ -77,6 +77,7 @@ export async function autoCreateOrgMiddleware(
     if (freshMemberships.length > 0) {
       const orgId = freshMemberships[0].organization.id;
       const orgSlug = freshMemberships[0].organization.slug;
+      if (!orgSlug) throw new Error('Organization has no slug');
 
       // Invalidate membership cache with the actual org ID
       await invalidateMember(ctx.user.id, orgId);
