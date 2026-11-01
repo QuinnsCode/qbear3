@@ -1,31 +1,26 @@
-import { beforeEach, expect, mock, test } from "bun:test"
+import { beforeEach, expect, test } from "bun:test"
 
-// A fake eqosys (slots that can't be deleted, 20 per person) and a fake DECKS_KV, behind the real deckStore.
+// A fake eqosys (slots that can't be deleted, 20 per person) and a fake DECKS_KV, behind the real deck store.
 const slots = new Map<string, string>()
 const kv = new Map<string, string>()
 let signedIn = true
 
-mock.module("cloudflare:workers", () => ({
-  env: {
-    DECKS_KV: {
-      get: async (k: string) => kv.get(k) ?? null,
-      getWithMetadata: async (k: string) => ({ value: kv.get(k) ?? null, metadata: null }),
-      put: async (k: string, v: string) => void kv.set(k, v),
-      delete: async (k: string) => void kv.delete(k),
-    },
+const { makeDeckStore } = await import("@/lib/decks/deckStoreCore")
+const { listDeckIds, readDeck, removeDeck, writeDeck } = makeDeckStore({
+  kv: {
+    get: async key => kv.get(key) ?? null,
+    getWithMetadata: async <M>(key: string) => ({ value: kv.get(key) ?? null, metadata: null as M | null }),
+    put: async (key, value) => void kv.set(key, value),
+    delete: async key => void kv.delete(key),
   },
-}))
-mock.module("@/lib/eqosys", () => ({
-  eqosysToken: async () => (signedIn ? "token" : null),
-  getSave: async (_t: string, slot: string) => slots.get(slot) ?? null,
-  putSave: async (_t: string, slot: string, body: string) => {
+  token: async () => (signedIn ? "token" : null),
+  getSave: async (_token, slot) => slots.get(slot) ?? null,
+  putSave: async (_token, slot, body) => {
     if (!slots.has(slot) && slots.size >= 20) return { ok: false, status: 409, error: "full" }
     slots.set(slot, body)
     return { ok: true }
   },
-}))
-
-const { listDeckIds, readDeck, removeDeck, writeDeck } = await import("@/lib/decks/deckStore")
+})
 const deck = (id: string) => ({ id, name: id, version: 4, format: "commander", cards: [], totalCards: 0 }) as never
 
 beforeEach(() => {
