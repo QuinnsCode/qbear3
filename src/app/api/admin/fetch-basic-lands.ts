@@ -1,6 +1,6 @@
 // app/api/admin/fetch-basic-lands.ts
 import { ScryfallProvider } from '@/app/services/cardData/providers/ScryfallProvider';
-import { auth } from "@/lib/auth";
+import { getSessionFromHeaders } from "@/lib/session";
 import { requireSuperAdmin } from "@/lib/auth/adminCheck";
 
 /**
@@ -14,7 +14,7 @@ export default async function handler({ request }: { request: Request }) {
 
   // Require super admin
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
+    const session = await getSessionFromHeaders(request.headers);
     requireSuperAdmin(session?.user || null);
   } catch (error) {
     return Response.json({

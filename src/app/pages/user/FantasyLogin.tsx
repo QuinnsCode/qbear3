@@ -84,11 +84,16 @@ export function FantasyLogin({
     }
   };
 
-  // Google, or eqosys (the one account across every Q app, see src/lib/auth.ts)
+  // Google, or eqosys (the one account across every Q app, see src/lib/eqosysAuth.ts)
   const handleSocialSignIn = async (provider: "google" | "eqosys", label: string) => {
     try {
       setResult("");
       setPendingProvider(provider);
+      if (provider === "eqosys") {
+        // our own OIDC flow (src/lib/eqosysAuth.ts): a full-page redirect to eqosys and back
+        window.location.href = `/api/auth/eqosys/start?callbackURL=${encodeURIComponent(redirectPath)}`;
+        return;
+      }
       const { error } = await authClient.signIn.social({
         provider,
         callbackURL: redirectPath,

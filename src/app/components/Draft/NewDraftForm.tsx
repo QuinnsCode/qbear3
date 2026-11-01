@@ -23,10 +23,11 @@ export default function NewDraftForm({ userId, userName, isGuest, previewCards =
     packSize: DEFAULT_DRAFT_CONFIG.packSize,
     packsPerPlayer: DEFAULT_DRAFT_CONFIG.packsPerPlayer,
     pickCount: DEFAULT_DRAFT_CONFIG.pickCount,
-    aiCount: DEFAULT_DRAFT_CONFIG.playerCount
+    aiCount: DEFAULT_DRAFT_CONFIG.playerCount,
+    humanSeats: 1
   })
 
-  const totalPlayers = config.aiCount + 1
+  const totalPlayers = config.aiCount + config.humanSeats
   const totalPicks = config.packSize * config.packsPerPlayer
 
   const handleStart = async () => {
@@ -37,6 +38,7 @@ export default function NewDraftForm({ userId, userName, isGuest, previewCards =
       const result = await createDraft({
         config,
         aiCount: config.aiCount,
+        humanSeats: config.humanSeats,
         userId,
         userName
       })
@@ -186,11 +188,21 @@ export default function NewDraftForm({ userId, userName, isGuest, previewCards =
               </div>
               <div>
                 <Stepper
+                  label="Human seats"
+                  hint="you plus friends who join from a link"
+                  value={config.humanSeats}
+                  min={1}
+                  max={8 - (config.humanSeats > 1 ? 0 : 1)}
+                  onChange={v => setConfig({ ...config, humanSeats: v, aiCount: Math.max(v > 1 ? 0 : 1, Math.min(config.aiCount, 8 - v)) })}
+                />
+              </div>
+              <div>
+                <Stepper
                   label="AI opponents"
                   hint={`${totalPlayers} at the table`}
                   value={config.aiCount}
-                  min={1}
-                  max={7}
+                  min={config.humanSeats > 1 ? 0 : 1}
+                  max={8 - config.humanSeats}
                   onChange={v => setConfig({ ...config, aiCount: v })}
                 />
                 <div className="mt-2 flex items-center gap-1" aria-hidden>
