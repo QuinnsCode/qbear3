@@ -3,7 +3,7 @@
 import { type RequestInfo } from "rwsdk/worker";
 import { emphasis, gamesContent as c } from '@/app/content';
 import { games, gameGroups } from './portalGames';
-import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from './PortalShell';
+import { PortalCards, PortalPage, PortalSection, PortalSectionHead } from './PortalShell';
 
 export default function GameCenterPage({ ctx }: RequestInfo) {
   const isLoggedIn = !!ctx.user;
@@ -19,7 +19,7 @@ export default function GameCenterPage({ ctx }: RequestInfo) {
           linkHref="/draft/new"
           linkLabel={c.text('page.link')}
         />
-        <PortalGroups bars entries={games} groups={gameGroups} />
+        <PortalCards entries={games} groups={gameGroups} />
 
         <div style={{ paddingTop: 'clamp(40px, 7vw, 72px)' }}>
           <span className="q-label">{c.text('howItWorks.label')}</span>

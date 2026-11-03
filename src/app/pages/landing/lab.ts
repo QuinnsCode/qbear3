@@ -2,7 +2,7 @@
 // The landing lab: every game and app is a verb and a noun. Drop the verb on the noun
 // and the app appears; drop anything else on anything and some other app does. Pure data and rules, so `bun test` can check the table without React. Free of content/*.json: LandingLab (client) imports this; the bag itself is built in labItems.ts.
 import type { CraftResult, WorkspaceGroup, WorkspaceItem } from '@qntbr/ui';
-import { apps, gameShells, playgroundApps } from '@/app/pages/portal/portalData';
+import { apps, gameShells } from '@/app/pages/portal/portalData';
 
 export const labGroups: WorkspaceGroup[] = [
   { id: 'verb', label: 'Verbs' },
@@ -13,9 +13,9 @@ export const labGroups: WorkspaceGroup[] = [
 
 export const wordId = (kind: 'verb' | 'noun', word: string) => `${kind}:${word.toLowerCase()}`;
 
-/** Verb + noun → the key of the thing it makes. Each pair is unique across games, apps and the playground. */
+/** Verb + noun → the key of the thing it makes. Each pair is unique across games and apps. */
 export const recipes: ReadonlyMap<string, string> = new Map(
-  [...gameShells, ...apps, ...playgroundApps].map((e): [string, string] => [`${wordId('verb', e.verb)}+${wordId('noun', e.noun)}`, e.key]),
+  [...gameShells, ...apps].map((e): [string, string] => [`${wordId('verb', e.verb)}+${wordId('noun', e.noun)}`, e.key]),
 );
 
 const kindOf = (item: WorkspaceItem) => (item.group === 'verb' || item.group === 'noun' ? item.group : 'thing');

@@ -41,19 +41,23 @@ test("game center has one Magic link, to draft the cube, and marks itself active
   expect(page.status).toBe(200);
   expect(page.url.pathname).toBe("/games");
   expect(headings(page.body)).toEqual(expect.arrayContaining(["Magic: The Gathering", "Draft my cube"]));
-  expect(links(page.body, { href: "/draft/new", class: "q-tile" })).toHaveLength(1);
-  for (const gone of ["/sanctum", "/pvp", "/deckbuilder"]) expect(links(page.body, { href: gone, class: "q-tile" })).toHaveLength(0);
+  expect(links(page.body, { href: "/draft/new", class: "q-card-play" })).toHaveLength(1);
+  for (const gone of ["/sanctum", "/pvp", "/deckbuilder"]) expect(links(page.body, { href: gone })).toHaveLength(0);
   expect(links(page.body, { class: "q-active" }).map((l) => l.text)).toEqual(["Games"]);
 });
 
-test("game and app centers link the deployed Rusty Buns apps, not their repo", async () => {
+test("game center is the Playground: play the deployed games, download or wait for the rest", async () => {
   const b = (await app()).browser();
   const games = await b.get("/games");
-  for (const host of ["park-hide-seek", "skatetechpark", "druids-curse-votv", "splat-spray", "two-fronts", "git-recon", "excalibrawl"]) {
-    expect(links(games.body, { href: `https://${host}.notryanquinn.workers.dev`, class: "q-tile" })).toHaveLength(1);
+  for (const host of ["park-hide-seek", "skatetechpark", "druids-curse-votv", "splat-spray", "two-fronts", "git-recon", "excalibrawl", "alien-disc-golf"]) {
+    expect(links(games.body, { href: `https://${host}.notryanquinn.workers.dev`, class: "q-card-play" })).toHaveLength(1);
   }
-  const apps = await b.get("/apps");
-  expect(links(apps.body, { href: "https://codesplitter.notryanquinn.workers.dev", class: "q-tile" })).toHaveLength(1);
+  // Hippo Tycoon is a desktop download; Mythic Masters isn't playable yet, so it has its source and no Play.
+  expect(links(games.body, { class: "q-card-play", text: /Download/ }).filter((l) => l.attrs.href?.includes("q=hippo-tycoon-v"))).toHaveLength(1);
+  expect(links(games.body, { href: `${RUSTY_BUNS}/tree/main/apps/mythic-masters`, text: /Source/ })).toHaveLength(1);
+  expect(links(games.body, { class: "q-card-play" }).some((l) => l.attrs.href?.includes("mythic-masters"))).toBe(false);
+  // Each card carries eqosys's screenshot of the game, and it is served.
+  for (const key of ["alien-disc-golf", "hippo-tycoon", "mythic-masters"]) expect((await b.get(`/shots/${key}.jpg`)).status).toBe(200);
 });
 
 test("app center lists apps including RustyBuns on GitHub", async () => {
@@ -61,9 +65,10 @@ test("app center lists apps including RustyBuns on GitHub", async () => {
   const page = await b.get("/apps");
   expect(page.status).toBe(200);
   expect(page.url.pathname).toBe("/apps");
-  expect(headings(page.body)).toContain("RustyBuns");
-  expect(links(page.body, { href: RUSTY_BUNS, class: "q-tile" })).toHaveLength(1);
-  expect(links(page.body, { href: "https://qlave.dev", class: "q-tile" })).toHaveLength(1);
+  expect(headings(page.body)).toEqual(expect.arrayContaining(["RustyBuns", "FM Groovebox"]));
+  for (const href of [RUSTY_BUNS, "https://qlave.dev", "https://codesplitter.notryanquinn.workers.dev"]) {
+    expect(links(page.body, { href, class: "q-card-play" })).toHaveLength(1);
+  }
   // Shippycloud is on ice: shown, not linked.
   expect(headings(page.body)).toContain("Shippycloud");
   expect(links(page.body, { href: "https://github.com/QuinnsCode/shippycloud" })).toHaveLength(0);

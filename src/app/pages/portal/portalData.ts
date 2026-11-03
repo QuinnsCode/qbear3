@@ -2,7 +2,7 @@
 // Single source of truth for the QNTBR portal: the three sections on the
 // landing page (Products, Game Center, App Center) and the /games + /apps hubs.
 
-import { AudioWaveform, Box, Brush, Crosshair, Droplet, Flame, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Package, PersonStanding, Rocket, Sandwich, Smartphone, SprayCan, Sprout, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
+import { AudioWaveform, Box, Brush, Crosshair, Disc3, Droplet, Flame, Gamepad2, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Music, Package, PersonStanding, Rocket, Sandwich, Skull, Smartphone, SprayCan, Sprout, Tablet, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
 
 export type PortalStatus = 'live' | 'beta' | 'soon';
 
@@ -29,32 +29,37 @@ export interface PortalEntry {
   tag?: string;
   /** The elevator pitch, three sentences, for the landing capsules. One shot; make it count. */
   pitch?: readonly [string, string, string];
+  /** How far along it is, as on the Rusty Buns Playground: 1 Sketch, 2 Alpha, 3 Beta, 4 Solid. */
+  stage?: Stage;
+  /** The systems it plays best on, as on the Playground. */
+  best?: readonly Device[];
+  /** Release tag prefix of its desktop download on the RustyBuns repo, e.g. "fm-daw-v". */
+  download?: string;
+  /** Its folder under apps/ in the RustyBuns repo. */
+  source?: string;
+  /** eqosys's screenshot of it (RustyBuns apps/eqosys/public/cards, copied to public/shots/), shown on the hub cards. */
+  shot?: string;
 }
 
-/** Where a game plays best. */
-export type Platform = 'mobile' | 'desktop' | 'both';
+export type Stage = 1 | 2 | 3 | 4;
+export const STAGES: Record<Stage, string> = { 1: 'Sketch', 2: 'Alpha', 3: 'Beta', 4: 'Solid' };
 
-/** Games that name a device. git-recon and Druids Curse are not mobile games; Skate Tech Park is better on desktop. */
-const PLATFORMS: Record<string, Platform> = {
-  'park-hide-seek': 'both',
-  'skate-tech-park': 'desktop',
-  'git-recon': 'desktop',
-  'two-fronts': 'both',
-  'druids-curse': 'desktop',
-  'splat-spray': 'both',
-  excalibrawl: 'both',
-};
-
-const PLATFORM_HINTS: Record<Platform, { icon: LucideIcon; label: string }> = {
-  mobile: { icon: Smartphone, label: 'Best on phone' },
+export type Device = 'phone' | 'tablet' | 'desktop' | 'gamepad';
+export const DEVICES: Record<Device, { icon: LucideIcon; label: string }> = {
+  phone: { icon: Smartphone, label: 'Best on phone' },
+  tablet: { icon: Tablet, label: 'Best on tablet' },
   desktop: { icon: Monitor, label: 'Best on desktop' },
-  both: { icon: MonitorSmartphone, label: 'Phone & desktop' },
+  gamepad: { icon: Gamepad2, label: 'Best with a controller' },
 };
 
-/** The device hint for an entry: undefined when it names none. */
-export function platformOf(key: string): { icon: LucideIcon; label: string } | undefined {
-  const p = PLATFORMS[key];
-  return p ? PLATFORM_HINTS[p] : undefined;
+/** One hint for the landing feed, from what it plays best on: undefined when it names nothing. */
+export function platformOf(e: Pick<PortalEntry, 'best'>): { icon: LucideIcon; label: string } | undefined {
+  const phone = e.best?.includes('phone');
+  const desktop = e.best?.includes('desktop');
+  if (phone && desktop) return { icon: MonitorSmartphone, label: 'Phone & desktop' };
+  if (phone) return DEVICES.phone;
+  if (desktop) return DEVICES.desktop;
+  return undefined;
 }
 
 export const GITHUB_ORG_URL = 'https://github.com/QuinnsCode';
@@ -90,6 +95,11 @@ export const gameShells: Omit<PortalEntry, 'tagline' | 'description' | 'cta' | '
     status: 'live',
     verb: 'Hide',
     noun: 'Park',
+    stage: 3,
+    best: ['phone', 'tablet', 'desktop'],
+    download: 'park-hide-seek-v',
+    source: 'park-hide-seek',
+    shot: '/shots/park-hide-seek.jpg',
   },
   {
     key: 'skate-tech-park',
@@ -103,6 +113,10 @@ export const gameShells: Omit<PortalEntry, 'tagline' | 'description' | 'cta' | '
     status: 'live',
     verb: 'Skate',
     noun: 'Park',
+    stage: 2,
+    best: ['desktop'],
+    source: 'skate-tech-park',
+    shot: '/shots/skate-tech-park.jpg',
   },
   {
     key: 'git-recon',
@@ -116,6 +130,10 @@ export const gameShells: Omit<PortalEntry, 'tagline' | 'description' | 'cta' | '
     status: 'live',
     verb: 'Shoot',
     noun: 'Repo',
+    stage: 2,
+    best: ['desktop', 'gamepad'],
+    source: 'git-recon',
+    shot: '/shots/git-recon.jpg',
   },
   {
     key: 'two-fronts',
@@ -129,6 +147,10 @@ export const gameShells: Omit<PortalEntry, 'tagline' | 'description' | 'cta' | '
     status: 'live',
     verb: 'Conquer',
     noun: 'Moon',
+    stage: 2,
+    best: ['desktop'],
+    source: 'two-fronts',
+    shot: '/shots/two-fronts.jpg',
   },
   {
     key: 'druids-curse',
@@ -142,6 +164,8 @@ export const gameShells: Omit<PortalEntry, 'tagline' | 'description' | 'cta' | '
     status: 'live',
     verb: 'Curse',
     noun: 'Druid',
+    stage: 3,
+    best: ['desktop'],
   },
   {
     key: 'splat-spray',
@@ -154,6 +178,11 @@ export const gameShells: Omit<PortalEntry, 'tagline' | 'description' | 'cta' | '
     status: 'live',
     verb: 'Spray',
     noun: 'Dark',
+    stage: 2,
+    best: ['phone', 'desktop'],
+    download: 'splat-spray-v',
+    source: 'splat-spray',
+    shot: '/shots/splat-spray.jpg',
   },
   {
     key: 'excalibrawl',
@@ -167,6 +196,74 @@ export const gameShells: Omit<PortalEntry, 'tagline' | 'description' | 'cta' | '
     status: 'live',
     verb: 'Draw',
     noun: 'Robots',
+    stage: 2,
+    best: ['phone', 'tablet', 'desktop'],
+    source: 'excalibrawl',
+  },
+  {
+    key: 'alien-disc-golf',
+    group: 'rustybuns',
+    icon: Disc3,
+    glyph: '🥏',
+    name: 'Alien Disc Golf',
+    tag: 'Rusty Buns · Sports',
+    href: 'https://alien-disc-golf.notryanquinn.workers.dev',
+    status: 'live',
+    verb: 'Throw',
+    noun: 'Globe',
+    stage: 2,
+    best: ['desktop', 'gamepad'],
+    source: 'alien-disc-golf',
+    shot: '/shots/alien-disc-golf.jpg',
+  },
+  {
+    key: 'hippo-tycoon',
+    group: 'rustybuns',
+    icon: Droplet,
+    glyph: '🦛',
+    name: 'Hippo Tycoon',
+    tag: 'Rusty Buns · Party',
+    href: `${RUSTY_BUNS_URL}/releases?q=hippo-tycoon-v&expanded=true`,
+    status: 'live',
+    verb: 'Chomp',
+    noun: 'Oil',
+    stage: 2,
+    best: ['phone', 'tablet', 'desktop', 'gamepad'],
+    download: 'hippo-tycoon-v',
+    source: 'hippo-tycoon',
+    shot: '/shots/hippo-tycoon.jpg',
+  },
+  {
+    key: 'mythic-masters',
+    group: 'rustybuns',
+    icon: Skull,
+    glyph: '🐉',
+    name: 'Mythic Masters',
+    tag: 'Rusty Buns · Brawler',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/mythic-masters`,
+    status: 'soon',
+    verb: 'Brawl',
+    noun: 'Beast',
+    stage: 1,
+    best: ['desktop', 'gamepad'],
+    source: 'mythic-masters',
+    shot: '/shots/mythic-masters.jpg',
+  },
+  {
+    key: 'delayed-reaction',
+    group: 'rustybuns',
+    icon: Music,
+    glyph: '🎶',
+    name: 'Delayed Reaction',
+    tag: 'Rusty Buns · Rhythm',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/delayed-reaction`,
+    status: 'soon',
+    verb: 'Answer',
+    noun: 'Beat',
+    stage: 1,
+    best: ['phone'],
+    source: 'delayed-reaction',
+    shot: '/shots/delayed-reaction.jpg',
   },
 ];
 
@@ -194,6 +291,9 @@ export const apps: PortalEntry[] = [
       'codeSplitter makes every line a record you can query, on real git, on Cloudflare Artifacts: no servers, no fleet to babysit, the edge the agents already run on.',
       'Point one agent at it today. When the merge queue is the bottleneck for ten thousand, you will want the host that was built for the fleet.',
     ],
+    stage: 3,
+    best: ['desktop'],
+    source: 'codesplitter',
   },
   {
     key: 'qlave',
@@ -225,6 +325,10 @@ export const apps: PortalEntry[] = [
     status: 'live',
     verb: 'Fit',
     noun: 'Box',
+    stage: 3,
+    best: ['desktop', 'tablet'],
+    source: 'geoboxq',
+    shot: '/shots/geoboxq.jpg',
   },
   {
     key: 'flareup',
@@ -304,6 +408,61 @@ export const apps: PortalEntry[] = [
     verb: 'Unlock',
     noun: 'Account',
   },
+  {
+    key: 'fm-daw',
+    group: 'workshop',
+    icon: AudioWaveform,
+    glyph: '🎛️',
+    name: 'FM Groovebox',
+    tag: 'Rusty Buns · Desktop',
+    tagline: 'A twelve-track FM groovebox',
+    description: 'A twelve-track FM groovebox with a drum machine, step sequencer, piano roll and reverb.',
+    href: `${RUSTY_BUNS_URL}/releases?q=fm-daw-v&expanded=true`,
+    cta: 'Download',
+    status: 'live',
+    verb: 'Jam',
+    noun: 'Beats',
+    stage: 2,
+    best: ['desktop'],
+    download: 'fm-daw-v',
+    source: 'fm-daw',
+  },
+  {
+    key: 'auto-rig',
+    group: 'workshop',
+    icon: PersonStanding,
+    glyph: '🦴',
+    name: 'Auto Rig',
+    tag: 'Rusty Buns · 3D',
+    tagline: 'The IK engine',
+    description: 'Drop in a 3D model, get a skeleton, skin weights and inverse kinematics you can drag around, in Rust and TypeScript.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/auto-rig`,
+    cta: 'Coming soon',
+    status: 'soon',
+    verb: 'Rig',
+    noun: 'Model',
+    stage: 2,
+    best: ['desktop'],
+    source: 'auto-rig',
+  },
+  {
+    key: 'hello-world',
+    group: 'workshop',
+    icon: Hand,
+    glyph: '👋',
+    name: 'Hello World',
+    tag: 'Rusty Buns · Starter',
+    tagline: 'The smallest Rusty Buns app',
+    description: 'One page, static assets only. Start here.',
+    href: 'https://hello-world.notryanquinn.workers.dev',
+    cta: 'Say hello',
+    status: 'live',
+    verb: 'Say',
+    noun: 'Hello',
+    stage: 4,
+    best: ['phone', 'tablet', 'desktop'],
+    source: 'hello-world',
+  },
 ];
 
 // ──────────────────────────────────────────────────────────────
@@ -321,51 +480,18 @@ export interface PortalGroup {
 export const appGroups: PortalGroup[] = [
   { key: 'dev', title: 'Developer tools', lede: 'The code host for agents, and the open-source runtime it ships on.', noun: 'tool' },
   { key: 'products', title: 'Products', lede: 'Calls, fulfillment and box puzzles.', noun: 'product' },
+  { key: 'workshop', title: 'From the workshop', lede: 'Smaller Rusty Buns apps: a groovebox, a rigger, and the starter.', noun: 'app' },
   { key: 'account', title: 'Account', lede: 'One login for every game and app.', noun: 'service' },
   { key: 'backburner', title: 'Back burner', lede: 'Rusty Buns now covers most of what these set out to do.', noun: 'project' },
 ];
 
-// ──────────────────────────────────────────────────────────────
-// Rusty Buns Playground — every app in the RustyBuns repo's apps/playground/public/apps.json,
-// the ones not already in the Game or App Center join the landing lab. Keep it in step with that file.
-// ──────────────────────────────────────────────────────────────
+// The Game and App Center cards are QNTBR's copy of the Rusty Buns Playground (RustyBuns apps/playground/public/apps.json):
+// keep stage, best and the links in step with that file.
 export const PLAYGROUND_URL = 'https://rustybuns-playground.notryanquinn.workers.dev';
 
-export interface PlaygroundApp {
-  key: string;
-  name: string;
-  line: string;
-  /** Live browser build. */
-  play?: string;
-  /** Release tag prefix for the desktop download. */
-  download?: string;
-  /** Folder under apps/ in the RustyBuns repo. */
-  source?: string;
-  icon: LucideIcon;
-  glyph: string;
-  /** The two words that make this app on the landing lab. */
-  verb: string;
-  noun: string;
-}
-
-export const playgroundApps: PlaygroundApp[] = [
-  { key: 'park-hide-seek', name: 'Park Hide & Seek', line: '3D hide and seek on real Yosemite terrain; each player is sent only what they can see.', play: 'https://park-hide-seek.notryanquinn.workers.dev', download: 'park-hide-seek-v', source: 'park-hide-seek', icon: Trees, glyph: '🌲', verb: 'Hide', noun: 'Park' },
-  { key: 'skate-tech-park', name: 'Skate Tech Park', line: 'A giant riderless fingerboard on park terrain, up to four riders.', play: 'https://skatetechpark.notryanquinn.workers.dev', source: 'skate-tech-park', icon: Wind, glyph: '🛹', verb: 'Skate', noun: 'Park' },
-  { key: 'git-recon', name: 'git-recon', line: 'A toy-soldier shooter fought in a codebase: the repo is the level.', play: 'https://git-recon.notryanquinn.workers.dev', source: 'git-recon', icon: Crosshair, glyph: '🔫', verb: 'Shoot', noun: 'Repo' },
-  { key: 'two-fronts', name: 'Two Fronts', line: 'Turn-based strategy on a forest moon, with three.js battles on the ground and in orbit.', play: 'https://two-fronts.notryanquinn.workers.dev', source: 'two-fronts', icon: Rocket, glyph: '🚀', verb: 'Conquer', noun: 'Moon' },
-  { key: 'druids-curse', name: 'Druids Curse', line: 'The live multiplayer game Rusty Buns was first built for.', play: 'https://druids-curse-votv.notryanquinn.workers.dev', icon: Sprout, glyph: '🌿', verb: 'Curse', noun: 'Druid' },
-  { key: 'codesplitter', name: 'codeSplitter', line: 'A code host for agents: every line a record, real git on Cloudflare Artifacts.', play: 'https://codesplitter.notryanquinn.workers.dev', source: 'codesplitter', icon: GitBranch, glyph: '🧩', verb: 'Split', noun: 'Code' },
-  { key: 'excalibrawl', name: 'Excalibrawl', line: 'An hourly drawing fight between two models, refereed by a third.', play: 'https://excalibrawl.notryanquinn.workers.dev', source: 'excalibrawl', icon: Brush, glyph: '🖍️', verb: 'Draw', noun: 'Robots' },
-  { key: 'fm-daw', name: 'FM Groovebox', line: 'A twelve-track FM groovebox with a drum machine, step sequencer, piano roll and reverb.', download: 'fm-daw-v', source: 'fm-daw', icon: AudioWaveform, glyph: '🎛️', verb: 'Jam', noun: 'Beats' },
-  { key: 'splat-spray', name: 'Splat Spray', line: 'An I-spy game in the dark: scan a Gaussian-splat room and find 100 things in the fewest shots.', play: 'https://splat-spray.notryanquinn.workers.dev', download: 'splat-spray-v', source: 'splat-spray', icon: SprayCan, glyph: '🎨', verb: 'Spray', noun: 'Dark' },
-  { key: 'auto-rig', name: 'Auto Rig', line: 'Drop in a 3D model, get a skeleton, skin weights and inverse kinematics you can drag around.', source: 'auto-rig', icon: PersonStanding, glyph: '🦴', verb: 'Rig', noun: 'Model' },
-  { key: 'hello-world', name: 'Hello World', line: 'The smallest Rusty Buns app: one page, static assets only.', play: 'https://hello-world.notryanquinn.workers.dev', source: 'hello-world', icon: Hand, glyph: '👋', verb: 'Say', noun: 'Hello' },
-  { key: 'hippo-tycoon', name: 'Hippo Tycoon', line: 'Four greedy oil-baron hippos race to chomp the most oil from a jungle geyser; solo, couch, LAN or online.', download: 'hippo-tycoon-v', source: 'hippo-tycoon', icon: Droplet, glyph: '🦛', verb: 'Chomp', noun: 'Oil' },
-];
-
-/** The playground's own links: live build, desktop release, source folder. */
-export const playgroundDownloadUrl = (a: PlaygroundApp) => a.download && `${RUSTY_BUNS_URL}/releases?q=${a.download}&expanded=true`;
-export const playgroundSourceUrl = (a: PlaygroundApp) => a.source && `${RUSTY_BUNS_URL}/tree/main/apps/${a.source}`;
+/** An entry's desktop release and source folder on the RustyBuns repo. */
+export const downloadUrl = (e: Pick<PortalEntry, 'download'>) => e.download && `${RUSTY_BUNS_URL}/releases?q=${e.download}&expanded=true`;
+export const sourceUrl = (e: Pick<PortalEntry, 'source'>) => e.source && `${RUSTY_BUNS_URL}/tree/main/apps/${e.source}`;
 
 /** Each group with its entries, in group order; empty groups are dropped. */
 export function groupEntries(entries: PortalEntry[], groups: PortalGroup[]) {
