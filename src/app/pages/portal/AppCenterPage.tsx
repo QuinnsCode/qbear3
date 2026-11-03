@@ -2,7 +2,7 @@
 // /apps — the App Center hub: the business tools and open-source projects.
 import { type RequestInfo } from "rwsdk/worker";
 import { apps, appGroups, RUSTY_BUNS_URL } from './portalData';
-import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from './PortalShell';
+import { PortalCards, PortalPage, PortalSection, PortalSectionHead } from './PortalShell';
 
 export default function AppCenterPage({ ctx }: RequestInfo) {
   const isLoggedIn = !!ctx.user;
@@ -18,7 +18,7 @@ export default function AppCenterPage({ ctx }: RequestInfo) {
           linkHref={RUSTY_BUNS_URL}
           linkLabel="RustyBuns on GitHub"
         />
-        <PortalGroups bars entries={apps} groups={appGroups} />
+        <PortalCards entries={apps} groups={appGroups} />
 
         <div style={{ paddingTop: 'clamp(40px, 7vw, 72px)' }}>
           <span className="q-label">One login</span>

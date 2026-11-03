@@ -26,7 +26,7 @@ const byKey = (key: string): PortalEntry => {
 function EntryPost({ entry, first }: { entry: PortalEntry; first?: boolean }) {
   const href = entry.href;
   const external = isExternal(href);
-  const platform = platformOf(entry.key);
+  const platform = platformOf(entry);
   return (
     <FeedPost
       nameAs="h2"

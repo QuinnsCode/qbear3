@@ -640,3 +640,80 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 .q-or { display: flex; align-items: center; gap: 10px; color: var(--q-faint); font: 400 12px/1 var(--q-mono); }
 .q-or::before, .q-or::after { content: ""; flex: 1; height: 1px; background: var(--q-border); }
 .q-auth-card a:not(.q-btn) { color: var(--q-accent-ink); }
+
+/* ── Play cards: the Rusty Buns Playground's card ─────────── */
+/* A paper card tilted a hair, popping in one after another: the shot across the top, the name in an
+   orange disc, the line, a four-pip stage meter and orange lava-lamp chips for where it plays best,
+   then Play / Download / Source. The Game and App Center hubs are a grid of these. */
+.q-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 18px; }
+.q-card {
+  position: relative; display: flex; flex-direction: column; gap: 9px;
+  padding: 16px; border: 1px solid var(--q-border-2); border-radius: 8px;
+  background: var(--q-grain), var(--q-paper);
+  box-shadow: 0 3px 0 var(--q-border-2), 0 18px 40px -22px rgba(0, 0, 0, 0.45);
+  transform: rotate(var(--tilt, 0deg));
+  transition: transform 0.18s cubic-bezier(.3, 1.6, .5, 1), box-shadow 0.18s;
+  animation: q-card-pop 0.5s cubic-bezier(.3, 1.5, .5, 1) both; animation-delay: calc(var(--n, 0) * 45ms);
+}
+@keyframes q-card-pop { from { opacity: 0; transform: translateY(24px) rotate(0) scale(.9); } }
+.q-card:hover { transform: rotate(0) translateY(-6px) scale(1.02); box-shadow: 0 6px 0 var(--q-accent), 0 28px 50px -22px rgba(0, 0, 0, 0.55); }
+.q-card-art {
+  position: relative; overflow: hidden; display: grid; place-items: center;
+  margin: -16px -16px 4px; aspect-ratio: 16 / 10;
+  border-radius: 7px 7px 0 0; border-bottom: 1px solid var(--q-border-2); background: var(--q-canvas);
+}
+.q-card-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.q-card-art.q-toned::after { content: ""; position: absolute; inset: 0; background: var(--q-grain); pointer-events: none; }
+.q-card-art-icon { color: #fff; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35)); }
+.q-card-art-icon svg { width: 52px; height: 52px; }
+.q-card-flag {
+  position: absolute; top: -10px; right: 12px; z-index: 1;
+  padding: 4px 9px 3px; border-radius: 4px; transform: rotate(4deg);
+  font: 500 11px/1.3 var(--q-mono); letter-spacing: 0.06em; text-transform: uppercase;
+  color: #fff; background: var(--q-accent); box-shadow: 0 2px 0 var(--q-accent-ink);
+}
+.q-card-name { display: flex; align-items: center; gap: 10px; margin: 0; font: 700 21px/1.1 var(--q-display); letter-spacing: -0.015em; color: var(--q-fg); }
+.q-card-name i {
+  flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+  color: #fff; background: var(--q-accent); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18);
+}
+.q-card-name i svg { width: 18px; height: 18px; }
+.q-card-tagline { font: 500 13px var(--q-sans); color: var(--q-fg); opacity: 0.85; }
+.q-card-line { flex: 1; margin: 0; color: var(--q-muted); font: 400 15px/1.45 var(--q-serif); }
+.q-card-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
+.q-stage { display: inline-flex; align-items: center; gap: 7px; font: 500 11px/1 var(--q-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--q-fg); }
+.q-pips { display: inline-flex; gap: 3px; }
+.q-pips b { width: 16px; height: 7px; border-radius: 2px; border: 1px solid var(--q-border-2); }
+.q-pips b.q-on { background: var(--q-accent); border-color: var(--q-accent-ink); }
+@property --q-ax { syntax: '<percentage>'; inherits: false; initial-value: 20%; }
+@property --q-ay { syntax: '<percentage>'; inherits: false; initial-value: 80%; }
+@property --q-bx { syntax: '<percentage>'; inherits: false; initial-value: 80%; }
+@property --q-by { syntax: '<percentage>'; inherits: false; initial-value: 20%; }
+.q-best { display: inline-flex; gap: 6px; }
+.q-best > * {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px;
+  color: #fff; border: 1px solid #c4500f; box-shadow: 0 2px 0 #c4500f;
+  background:
+    radial-gradient(circle at var(--q-ax) var(--q-ay), #ffd36b 0 18%, transparent 52%),
+    radial-gradient(circle at var(--q-bx) var(--q-by), #e8344f 0 16%, transparent 50%), var(--q-accent);
+  animation: q-lava-chip 14s ease-in-out infinite alternate; animation-delay: calc(var(--k, 0) * -3.7s);
+}
+.q-best svg { width: 16px; height: 16px; filter: drop-shadow(0 1px 1px rgba(90, 20, 0, 0.45)); }
+@keyframes q-lava-chip {
+  25% { --q-ax: 75%; --q-ay: 60%; --q-bx: 25%; --q-by: 35%; }
+  50% { --q-ax: 55%; --q-ay: 15%; --q-bx: 40%; --q-by: 85%; }
+  75% { --q-ax: 15%; --q-ay: 40%; --q-bx: 85%; --q-by: 65%; }
+  100% { --q-ax: 40%; --q-ay: 90%; --q-bx: 60%; --q-by: 10%; }
+}
+.q-card-links { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.q-card-links .q-btn svg { width: 15px; height: 15px; }
+.q-card-links .q-btn:hover { transform: translateY(-2px) rotate(-1.5deg); }
+.q-btn.q-card-play { color: #fff; background: var(--q-accent); border-color: var(--q-accent-ink); box-shadow: 0 2px 0 var(--q-accent-ink); }
+.q-btn.q-card-play:hover { background: #ff7a2e; border-color: var(--q-accent-ink); }
+.q-btn.q-card-play svg { animation: q-nudge 1.6s ease-in-out infinite; }
+@keyframes q-nudge { 50% { transform: translateX(3px); } }
+.q-card-note { color: var(--q-muted); font: 400 14px var(--q-serif); }
+@media (prefers-reduced-motion: reduce) {
+  .q-card, .q-best > *, .q-btn.q-card-play svg { animation: none; }
+  .q-card, .q-card-links .q-btn { transition: none; }
+}

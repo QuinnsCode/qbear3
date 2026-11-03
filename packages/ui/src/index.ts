@@ -16,3 +16,4 @@ export { Terminal, type TerminalLine, type TerminalProps } from './Terminal';
 export { Capsule, type CapsuleProps } from './Capsule';
 export { FeedPost, type FeedPostProps } from './FeedPost';
 export { Platform, type PlatformHint } from './Platform';
+export { PlayCard, type PlayCardProps, type PlayCardDevice, type PlayCardLink } from './PlayCard';

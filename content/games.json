@@ -68,6 +68,26 @@
       "tagline": "Models draw, a third judges",
       "description": "An hourly drawing fight between two models, refereed by a third.",
       "cta": "Watch a fight"
+    },
+    "alien-disc-golf": {
+      "tagline": "Nine holes on a real-wind globe",
+      "description": "Nine holes between countries on a 3D globe, the disc carried by NOAA's real wind right now; loft it into the jet stream if you dare.",
+      "cta": "Play now"
+    },
+    "hippo-tycoon": {
+      "tagline": "Four hippos, one oil geyser",
+      "description": "Four greedy oil-baron hippos race to chomp the most oil from a jungle geyser; solo, couch, LAN or online.",
+      "cta": "Download"
+    },
+    "mythic-masters": {
+      "tagline": "Folklore beasts, real mass",
+      "description": "A 3D arena brawler of 76 folklore beasts where mass and height are real, from a 6 kg jackalope to a tonne of lake monster.",
+      "cta": "Coming soon"
+    },
+    "delayed-reaction": {
+      "tagline": "Answer the note a bar later",
+      "description": "A phone-first dub rhythm game: a ring calls a note down a neon tunnel and you answer it a bar later.",
+      "cta": "Coming soon"
     }
   }
 }

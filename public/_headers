@@ -9,6 +9,9 @@
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 /landing/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+# eqosys's card screenshots (RustyBuns apps/eqosys/public/cards), one per app, shown on the Game and App Center cards.
+/shots/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 /mana-symbols-sprite.png
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
 /favicon.png
