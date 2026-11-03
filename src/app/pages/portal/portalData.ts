@@ -2,7 +2,7 @@
 // Single source of truth for the QNTBR portal: the three sections on the
 // landing page (Products, Game Center, App Center) and the /games + /apps hubs.
 
-import { AudioWaveform, Box, Brush, CircuitBoard, Contact, LayoutGrid, MessageSquareQuote, Piano, ScanEye, Shapes, Sparkles, Telescope, Trophy, Crosshair, Disc3, Droplet, Flame, Gamepad2, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Music, Package, PersonStanding, Rocket, Sandwich, Skull, Smartphone, SprayCan, Sprout, Tablet, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
+import { AudioWaveform, Box, Brush, CircuitBoard, Contact, LayoutGrid, MessageSquareQuote, Piano, Rotate3d, ScanEye, Shapes, Sparkles, Telescope, Trophy, Crosshair, Disc3, Droplet, Flame, Gamepad2, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Music, Package, PersonStanding, Rocket, Sandwich, Skull, Smartphone, SprayCan, Sprout, Tablet, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
 
 export type PortalStatus = 'live' | 'beta' | 'soon';
 
@@ -228,7 +228,7 @@ export const gameShells: Omit<PortalEntry, 'tagline' | 'description' | 'cta' | '
     glyph: '🦛',
     name: 'Hippo Tycoon',
     tag: 'Rusty Buns · Party',
-    href: `${RUSTY_BUNS_URL}/releases?q=hippo-tycoon-v&expanded=true`,
+    href: 'https://hippo-ty32kk4m44sz57g2i6knvzzb7o-production.up.railway.app',
     status: 'live',
     verb: 'Chomp',
     noun: 'Oil',
@@ -261,8 +261,8 @@ export const gameShells: Omit<PortalEntry, 'tagline' | 'description' | 'cta' | '
     glyph: '🎶',
     name: 'Delayed Reaction',
     tag: 'Rusty Buns · Rhythm',
-    href: `${RUSTY_BUNS_URL}/tree/main/apps/delayed-reaction`,
-    status: 'soon',
+    href: 'https://delayed-reaction.notryanquinn.workers.dev',
+    status: 'live',
     verb: 'Answer',
     noun: 'Beat',
     stage: 1,
@@ -513,9 +513,9 @@ export const apps: PortalEntry[] = [
     tag: 'Rusty Buns · CRM',
     tagline: 'The CRM your agents can use',
     description: 'Contacts, companies, deals and signed webhooks in one quick workspace, with an MCP server built in.',
-    href: `${RUSTY_BUNS_URL}/tree/main/apps/qcrm`,
-    cta: 'Coming soon',
-    status: 'soon',
+    href: 'https://qcrm.qntbr.com',
+    cta: 'Try the demo',
+    status: 'live',
     verb: 'Close',
     noun: 'Deal',
     stage: 2,
@@ -653,6 +653,24 @@ export const apps: PortalEntry[] = [
     stage: 2,
     best: ['desktop'],
     source: 'tscircuit-desktop',
+  },
+  {
+    key: 'sharesplat',
+    group: 'workshop',
+    icon: Rotate3d,
+    glyph: '🔄',
+    name: 'ShareSplat',
+    tag: 'Rusty Buns · 3D commerce',
+    tagline: '3D product spins from your phone',
+    description: 'Shoot a product with your phone, follow the shot list, and put a 3D spin on its store page.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/sharesplat`,
+    cta: 'Coming soon',
+    status: 'soon',
+    verb: 'Spin',
+    noun: 'Product',
+    stage: 1,
+    best: ['phone', 'desktop'],
+    source: 'sharesplat',
   },
 ];
 

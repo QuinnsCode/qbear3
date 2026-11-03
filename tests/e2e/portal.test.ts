@@ -56,11 +56,12 @@ test("game center has one Magic link, to draft the cube, and marks itself active
 test("game center is the Playground: play the deployed games, download or wait for the rest", async () => {
   const b = (await app()).browser();
   const games = await b.get("/games");
-  for (const host of ["park-hide-seek", "skatetechpark", "druids-curse-votv", "splat-spray", "two-fronts", "git-recon", "excalibrawl", "alien-disc-golf"]) {
+  for (const host of ["park-hide-seek", "skatetechpark", "druids-curse-votv", "splat-spray", "two-fronts", "git-recon", "excalibrawl", "alien-disc-golf", "delayed-reaction"]) {
     expect(links(games.body, { href: `https://${host}.notryanquinn.workers.dev`, class: "q-card-play" })).toHaveLength(1);
   }
-  // Hippo Tycoon is a desktop download; Mythic Masters isn't playable yet, so it has its source and no Play.
-  expect(links(games.body, { class: "q-card-play", text: /Download/ }).filter((l) => l.attrs.href?.includes("q=hippo-tycoon-v"))).toHaveLength(1);
+  // Hippo Tycoon plays on Railway and is also a desktop download; Mythic Masters isn't playable yet, so it has its source and no Play.
+  expect(links(games.body, { href: "https://hippo-ty32kk4m44sz57g2i6knvzzb7o-production.up.railway.app", class: "q-card-play" })).toHaveLength(1);
+  expect(links(games.body, { text: /Download/ }).filter((l) => l.attrs.href?.includes("q=hippo-tycoon-v"))).toHaveLength(1);
   expect(links(games.body, { href: `${RUSTY_BUNS}/tree/main/apps/mythic-masters`, text: /Source/ })).toHaveLength(1);
   expect(links(games.body, { class: "q-card-play" }).some((l) => l.attrs.href?.includes("mythic-masters"))).toBe(false);
   await expectShotsServed(b, games.body, ["alien-disc-golf", "hippo-tycoon", "mythic-masters", "what-would-fantano-say"]);
