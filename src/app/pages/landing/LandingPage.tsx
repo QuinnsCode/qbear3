@@ -52,6 +52,10 @@ export default function LandingPage({ ctx }: RequestInfo) {
 
   return (
     <PortalPage isLoggedIn={isLoggedIn} current="home">
+      {/* The likely next pages. After hydration rwsdk's client navigation fetches their RSC payload into its
+          navigation cache, so a click on one swaps the page in without waiting on the network. */}
+      <link rel="x-prefetch" href="/games" />
+      {!isLoggedIn && <link rel="x-prefetch" href="/user/login" />}
       {/* ── The feed: one post per featured app ── */}
       <PortalSection id="feed">
         <PortalSectionHead

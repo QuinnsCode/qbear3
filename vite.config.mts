@@ -8,6 +8,11 @@ export default defineConfig({
     exclude: ['rwsdk/use-synced-state/worker'],
   },
   environments: {
+    // rwsdk turns on source maps everywhere. In the browser build, write them (dist/client, kept out of the
+    // deployed assets by public/.assetsignore) without the sourceMappingURL comment, so no page asks for them.
+    client: {
+      build: { sourcemap: 'hidden' },
+    },
     ssr: {
       optimizeDeps: {
         exclude: ['rwsdk/use-synced-state/worker'],
