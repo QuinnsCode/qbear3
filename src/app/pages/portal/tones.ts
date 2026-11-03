@@ -36,7 +36,8 @@ const byGroup: Record<string, string> = {
   dev: 'linear-gradient(180deg, #0c1f3d 0%, #1b5f9a 100%)',
   products: 'linear-gradient(180deg, #0a3a4a 0%, #1fa0b8 100%)',
   account: 'linear-gradient(180deg, #1a1f2a 0%, #4a5568 100%)',
-  backburner: 'linear-gradient(180deg, #2a2a2a 0%, #555 100%)',
+  commerce: 'linear-gradient(180deg, #1f2a1a 0%, #5a8a3a 100%)',
+  workshop: 'linear-gradient(180deg, #2a1f3a 0%, #6a4a8a 100%)',
 };
 
 const FALLBACK = 'linear-gradient(180deg, #1a1a1a 0%, #444 100%)';

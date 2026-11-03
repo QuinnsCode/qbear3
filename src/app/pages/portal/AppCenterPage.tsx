@@ -14,7 +14,7 @@ export default function AppCenterPage({ ctx }: RequestInfo) {
           as="h1"
           eyebrow="App Center"
           title={<>Tools that <em>ship.</em></>}
-          lede="Calls, cost monitoring, hosting, fulfillment, and the open-source runtime that packages a web app as a native binary. The business side of QNTBR."
+          lede="A proof-of-concept CRM, packing and fulfillment, Qlave calls, Flareup cost monitoring, Staticflare hosting, and the open-source runtime that packages a web app as a native binary, with everything built on it. The business side of QNTBR."
           linkHref={RUSTY_BUNS_URL}
           linkLabel="RustyBuns on GitHub"
         />

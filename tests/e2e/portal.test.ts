@@ -10,7 +10,9 @@ test("landing page is a feed of the featured apps, then the lab and the shelves"
   const page = await b.get("/");
   expect(page.status).toBe(200);
   expect(page.hops).toEqual([]);
-  for (const id of ["feed", "lab", "products", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
+  for (const id of ["feed", "lab", "products", "services", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
+  // What we do includes the commerce integrations.
+  expect(headings(page.body)).toEqual(expect.arrayContaining(["Custom warehouse integrations", "3PL app integrations", "Drop shipping integrations"]));
   // One post per featured app, codeSplitter first, each one link to the running app.
   const hosts = ["codesplitter", "git-recon", "skatetechpark", "park-hide-seek"];
   const posts = links(page.body, { class: "q-post" }).map((l) => l.attrs.href);
@@ -69,6 +71,11 @@ test("app center lists apps including RustyBuns on GitHub", async () => {
   for (const href of [RUSTY_BUNS, "https://qlave.dev", "https://codesplitter.notryanquinn.workers.dev"]) {
     expect(links(page.body, { href, class: "q-card-play" })).toHaveLength(1);
   }
+  // qCRM is a proof of concept: its card links to its source and says so.
+  expect(headings(page.body)).toEqual(expect.arrayContaining(["qCRM", "Flareup", "Staticflare", "Qlave"]));
+  expect(links(page.body, { href: `${RUSTY_BUNS}/tree/main/apps/qcrm`, text: /Source/ })).toHaveLength(1);
+  expect(page.body).toContain("Proof of concept");
+  expect((await b.get("/shots/qcrm.jpg")).status).toBe(200);
   // Shippycloud is on ice: shown, not linked.
   expect(headings(page.body)).toContain("Shippycloud");
   expect(links(page.body, { href: "https://github.com/QuinnsCode/shippycloud" })).toHaveLength(0);

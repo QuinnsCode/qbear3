@@ -88,6 +88,11 @@
       "tagline": "Answer the note a bar later",
       "description": "A phone-first dub rhythm game: a ring calls a note down a neon tunnel and you answer it a bar later.",
       "cta": "Coming soon"
+    },
+    "splat-rooms": {
+      "tagline": "Light the room one shot at a time",
+      "description": "A hunt in photoreal Gaussian-splat rooms: the room goes dark, you are told what to find, and every shot lights the patch it lands on for good.",
+      "cta": "Coming soon"
     }
   }
 }

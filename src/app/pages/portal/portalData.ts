@@ -2,7 +2,7 @@
 // Single source of truth for the QNTBR portal: the three sections on the
 // landing page (Products, Game Center, App Center) and the /games + /apps hubs.
 
-import { AudioWaveform, Box, Brush, Crosshair, Disc3, Droplet, Flame, Gamepad2, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Music, Package, PersonStanding, Rocket, Sandwich, Skull, Smartphone, SprayCan, Sprout, Tablet, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
+import { AtSign, AudioWaveform, Box, Brush, Building2, CircuitBoard, Crosshair, Disc3, Droplet, Flame, FlaskConical, Gamepad2, GitBranch, Hand, Handshake, KeyRound, Layers, LayoutGrid, Mic, Monitor, MonitorSmartphone, Music, Package, PersonStanding, Piano, Rocket, Sandwich, ScanSearch, Shapes, ShoppingCart, Skull, Smartphone, Sparkles, SprayCan, Sprout, Tablet, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
 
 export type PortalStatus = 'live' | 'beta' | 'soon';
 
@@ -39,6 +39,8 @@ export interface PortalEntry {
   source?: string;
   /** eqosys's screenshot of it (RustyBuns apps/eqosys/public/cards, copied to public/shots/), shown on the hub cards. */
   shot?: string;
+  /** A word on the hub card beside its links, e.g. "Proof of concept". A 'soon' entry shows its cta here instead. */
+  note?: string;
 }
 
 export type Stage = 1 | 2 | 3 | 4;
@@ -64,6 +66,7 @@ export function platformOf(e: Pick<PortalEntry, 'best'>): { icon: LucideIcon; la
 
 export const GITHUB_ORG_URL = 'https://github.com/QuinnsCode';
 export const RUSTY_BUNS_URL = 'https://github.com/QuinnsCode/RustyBuns';
+export const PLAYGROUND_URL = 'https://rustybuns-playground.notryanquinn.workers.dev';
 // ──────────────────────────────────────────────────────────────
 // Game Center — everything you can play
 // ──────────────────────────────────────────────────────────────
@@ -265,6 +268,21 @@ export const gameShells: Omit<PortalEntry, 'tagline' | 'description' | 'cta' | '
     source: 'delayed-reaction',
     shot: '/shots/delayed-reaction.jpg',
   },
+  {
+    key: 'splat-rooms',
+    group: 'rustybuns',
+    icon: ScanSearch,
+    glyph: '🔦',
+    name: 'Splat Rooms',
+    tag: 'Rusty Buns · Hunt',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/splat-rooms`,
+    status: 'soon',
+    verb: 'Hunt',
+    noun: 'Room',
+    stage: 1,
+    best: ['desktop'],
+    source: 'splat-rooms',
+  },
 ];
 
 // ──────────────────────────────────────────────────────────────
@@ -296,6 +314,87 @@ export const apps: PortalEntry[] = [
     source: 'codesplitter',
   },
   {
+    key: 'qcrm',
+    group: 'commerce',
+    icon: Handshake,
+    glyph: '🤝',
+    name: 'qCRM',
+    tag: 'Proof of concept · CRM',
+    tagline: 'The CRM your agents can use',
+    description: 'Contacts, companies, deals and activities, with an MCP server built in, signed webhooks, office sync and every row yours to export. One Worker, one D1 database.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/qcrm`,
+    cta: 'Source',
+    status: 'beta',
+    verb: 'Track',
+    noun: 'Deals',
+    best: ['desktop'],
+    source: 'qcrm',
+    shot: '/shots/qcrm.jpg',
+    note: 'Proof of concept',
+  },
+  {
+    key: 'geoboxq-shopify',
+    group: 'commerce',
+    icon: ShoppingCart,
+    glyph: '🛒',
+    name: 'GeoBoxQ for Shopify',
+    tag: 'Shopify · Packing',
+    tagline: 'A Shopify cart in, the store’s own box out',
+    description: 'Takes a cart or a draft order, looks up each variant’s size and answers with the smallest box from the store’s own set.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/geoboxq-shopify`,
+    cta: 'Source',
+    status: 'beta',
+    verb: 'Pack',
+    noun: 'Cart',
+    source: 'geoboxq-shopify',
+  },
+  {
+    key: 'playground',
+    group: 'dev',
+    icon: LayoutGrid,
+    glyph: '🛝',
+    name: 'Rusty Buns Playground',
+    tag: 'Rusty Buns · Showcase',
+    tagline: 'Every Rusty Buns app on one page',
+    description: 'The shelf this one is copied from: each app’s stage, what it plays best on, and Play, Download or Source.',
+    href: PLAYGROUND_URL,
+    cta: 'Open the Playground',
+    status: 'live',
+    verb: 'Try',
+    noun: 'Apps',
+  },
+  {
+    key: 'frameworks',
+    group: 'dev',
+    icon: Layers,
+    glyph: '🧱',
+    name: 'Framework examples',
+    tag: 'Rusty Buns · Examples',
+    tagline: 'Your framework, packed',
+    description: 'Astro, Next.js, Nuxt, SvelteKit, SolidStart, Qwik, TanStack Start, React Router, Hono, Elysia and plain SPAs, each one running on Rusty Buns.',
+    href: `${RUSTY_BUNS_URL}/blob/main/FRAMEWORKS.md`,
+    cta: 'See the list',
+    status: 'live',
+    verb: 'Port',
+    noun: 'Framework',
+  },
+  {
+    key: 'borg',
+    group: 'dev',
+    icon: FlaskConical,
+    glyph: '🧪',
+    name: 'borg',
+    tag: 'Rusty Buns · Test rig',
+    tagline: 'The twins behave like Cloudflare',
+    description: 'One small Worker that uses every binding once, checked by the same suite on the desktop host and on a deploy. Its Postgres sibling runs on PGlite and Hyperdrive.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/borg`,
+    cta: 'Source',
+    status: 'live',
+    verb: 'Test',
+    noun: 'Twins',
+    source: 'borg',
+  },
+  {
     key: 'qlave',
     image: '/landing/qlave.jpg',
     group: 'products',
@@ -313,7 +412,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'geoboxq',
-    group: 'products',
+    group: 'commerce',
     icon: Box,
     glyph: '📦',
     name: 'GeoBoxQ',
@@ -333,7 +432,7 @@ export const apps: PortalEntry[] = [
   {
     key: 'flareup',
     image: '/landing/flareup.jpg',
-    group: 'backburner',
+    group: 'products',
     icon: Flame,
     glyph: '🔥',
     name: 'Flareup',
@@ -365,7 +464,7 @@ export const apps: PortalEntry[] = [
   {
     key: 'staticflare',
     image: '/landing/staticflare.jpg',
-    group: 'backburner',
+    group: 'products',
     icon: Zap,
     glyph: '⚡',
     name: 'Staticflare',
@@ -380,7 +479,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'shippycloud',
-    group: 'products',
+    group: 'commerce',
     icon: Truck,
     glyph: '🚚',
     name: 'Shippycloud',
@@ -463,6 +562,126 @@ export const apps: PortalEntry[] = [
     best: ['phone', 'tablet', 'desktop'],
     source: 'hello-world',
   },
+  {
+    key: 'motion-midi',
+    group: 'workshop',
+    icon: Piano,
+    glyph: '🎹',
+    name: 'Motion MIDI',
+    tag: 'Rusty Buns · Rust',
+    tagline: 'One synth, written twice',
+    description: 'A synth in Rust and in TypeScript inside one downloadable app, checked sample by sample, with the TypeScript one as the fallback.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/motion-midi`,
+    cta: 'Source',
+    status: 'live',
+    verb: 'Render',
+    noun: 'Synth',
+    best: ['desktop'],
+    source: 'motion-midi',
+  },
+  {
+    key: 'meshy-studio',
+    group: 'workshop',
+    icon: Shapes,
+    glyph: '🗿',
+    name: 'Meshy Batch Studio',
+    tag: 'Rusty Buns · Desktop',
+    tagline: 'Concept art in, game-ready models out',
+    description: 'A folder of labelled images or prompts goes to Meshy with your own key; scaled, centred .glb files come back, with texturing, rigging and animation a step away.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/meshy-studio`,
+    cta: 'Source',
+    status: 'live',
+    verb: 'Mesh',
+    noun: 'Images',
+    best: ['desktop'],
+    source: 'meshy-studio',
+  },
+  {
+    key: 'splat-desktop',
+    group: 'workshop',
+    icon: Sparkles,
+    glyph: '✨',
+    name: 'Splat Desktop',
+    tag: 'Rusty Buns · Desktop',
+    tagline: 'SuperSplat on your own disk',
+    description: 'PlayCanvas’ open-source Gaussian-splat editor as one desktop file that works on a folder of scenes. Next: phone video in, 3D scene out, trained on your GPU.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/splat-desktop`,
+    cta: 'Source',
+    status: 'live',
+    verb: 'Edit',
+    noun: 'Splats',
+    best: ['desktop'],
+    source: 'splat-desktop',
+  },
+  {
+    key: 'tscircuit-desktop',
+    group: 'workshop',
+    icon: CircuitBoard,
+    glyph: '🔌',
+    name: 'tscircuit Desktop',
+    tag: 'Rusty Buns · Desktop',
+    tagline: 'Circuit boards, one file, a Rust engine',
+    description: 'tscircuit’s circuit editor as one desktop file, with a Rust engine up to 22x faster. It works; parked until tscircuit updates its own dependencies.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/tscircuit-desktop`,
+    cta: 'Parked for now',
+    status: 'soon',
+    verb: 'Wire',
+    noun: 'Circuit',
+    stage: 2,
+    best: ['desktop'],
+    source: 'tscircuit-desktop',
+  },
+  {
+    key: 'agent-office',
+    group: 'workshop',
+    icon: Building2,
+    glyph: '🥐',
+    name: 'Agent Office',
+    tag: 'Rusty Buns · Desktop',
+    tagline: 'The 3D office for coding agents, as one file',
+    description: 'Someone else’s Node server, PTYs, WebSockets and a 3D client, turned into one file for Mac and Linux with nothing forked.',
+    href: `${RUSTY_BUNS_URL}/releases/tag/agent-office-latest`,
+    cta: 'Download',
+    status: 'live',
+    verb: 'Seat',
+    noun: 'Agents',
+    best: ['desktop'],
+    source: 'agent-office',
+  },
+  {
+    key: 'at-lens',
+    group: 'workshop',
+    icon: AtSign,
+    glyph: '🦋',
+    name: 'AT Lens',
+    tag: 'Rusty Buns · Bluesky',
+    tagline: 'Watch the AT Protocol work',
+    description: 'Type a handle and walk it to a DID, a data server and typed records, then watch the account live on the firehose and write a record of your own.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/at-lens`,
+    cta: 'Source',
+    status: 'live',
+    verb: 'Trace',
+    noun: 'Handle',
+    best: ['phone', 'desktop'],
+    source: 'at-lens',
+  },
+  {
+    key: 'what-would-fantano-say',
+    group: 'workshop',
+    icon: Mic,
+    glyph: '🎤',
+    name: 'What Would Fantano Say?',
+    tag: 'Rusty Buns · Parody',
+    tagline: 'A parody review of your best 15 seconds',
+    description: 'Pick a track, drag to your best 15 seconds and get a score and a verdict. The phone does the listening; one Workers AI call does the judging.',
+    href: 'https://what-would-fantano-say.notryanquinn.workers.dev',
+    cta: 'Get reviewed',
+    status: 'live',
+    verb: 'Review',
+    noun: 'Track',
+    best: ['phone'],
+    source: 'what-would-fantano-say',
+  },
 ];
 
 // ──────────────────────────────────────────────────────────────
@@ -478,16 +697,15 @@ export interface PortalGroup {
 
 
 export const appGroups: PortalGroup[] = [
-  { key: 'dev', title: 'Developer tools', lede: 'The code host for agents, and the open-source runtime it ships on.', noun: 'tool' },
-  { key: 'products', title: 'Products', lede: 'Calls, fulfillment and box puzzles.', noun: 'product' },
-  { key: 'workshop', title: 'From the workshop', lede: 'Smaller Rusty Buns apps: a groovebox, a rigger, and the starter.', noun: 'app' },
+  { key: 'dev', title: 'Developer tools', lede: 'The code host for agents, the open-source runtime it ships on, and the shelf of everything built with it.', noun: 'tool' },
+  { key: 'commerce', title: 'Commerce & fulfillment', lede: 'A CRM, packing, Shopify and fulfillment: the pieces behind our warehouse, 3PL and drop-shipping work.', noun: 'app' },
+  { key: 'products', title: 'Products', lede: 'Qlave for calls, Flareup for Cloudflare spend, Staticflare for hosting.', noun: 'product' },
+  { key: 'workshop', title: 'From the workshop', lede: 'Smaller Rusty Buns apps: music, 3D, circuits, protocols and a parody critic.', noun: 'app' },
   { key: 'account', title: 'Account', lede: 'One login for every game and app.', noun: 'service' },
-  { key: 'backburner', title: 'Back burner', lede: 'Rusty Buns now covers most of what these set out to do.', noun: 'project' },
 ];
 
 // The Game and App Center cards are QNTBR's copy of the Rusty Buns Playground (RustyBuns apps/playground/public/apps.json):
 // keep stage, best and the links in step with that file.
-export const PLAYGROUND_URL = 'https://rustybuns-playground.notryanquinn.workers.dev';
 
 /** An entry's desktop release and source folder on the RustyBuns repo. */
 export const downloadUrl = (e: Pick<PortalEntry, 'download'>) => e.download && `${RUSTY_BUNS_URL}/releases?q=${e.download}&expanded=true`;

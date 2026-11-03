@@ -167,7 +167,7 @@ export function PortalCard({ entry: e, index }: { entry: PortalEntry; index: num
       stage={e.stage && { n: e.stage, label: STAGES[e.stage] }}
       best={e.best?.map((d) => { const D = DEVICES[d]; return { icon: <D.icon strokeWidth={2} />, label: D.label }; })}
       links={links}
-      note={soon ? e.cta : undefined}
+      note={soon ? e.cta : e.note}
       live={playable && own.length > 0}
     />
   );
