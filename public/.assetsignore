@@ -1,0 +1,4 @@
+# Built but never served: client source maps (build.sourcemap: "hidden" in vite.config.mts) and Vite's build manifest,
+# which rwsdk inlines into the Worker. @cloudflare/vite-plugin appends its own entries to this file in dist/client.
+*.map
+.vite
