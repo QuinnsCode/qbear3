@@ -5,6 +5,13 @@ import { app, hasSection, headings, links, tags } from "./kit.ts";
 
 const RUSTY_BUNS = "https://github.com/QuinnsCode/RustyBuns";
 
+/** The hub shows eqosys's screenshot on at least these cards, and every screenshot it shows is served. */
+async function expectShotsServed(b: ReturnType<Awaited<ReturnType<typeof app>>["browser"]>, body: string, keys: string[]) {
+  const shots = [...body.matchAll(/<img\b[^>]*\bsrc="(\/shots\/[^"]+)"/g)].map((m) => m[1] ?? "");
+  expect(shots).toEqual(expect.arrayContaining(keys.map((k) => `/shots/${k}.jpg`)));
+  for (const src of new Set(shots)) expect((await b.get(src)).status).toBe(200);
+}
+
 test("landing page is a feed of the featured apps, then the lab and the shelves", async () => {
   const b = (await app()).browser();
   const page = await b.get("/");
@@ -56,8 +63,7 @@ test("game center is the Playground: play the deployed games, download or wait f
   expect(links(games.body, { class: "q-card-play", text: /Download/ }).filter((l) => l.attrs.href?.includes("q=hippo-tycoon-v"))).toHaveLength(1);
   expect(links(games.body, { href: `${RUSTY_BUNS}/tree/main/apps/mythic-masters`, text: /Source/ })).toHaveLength(1);
   expect(links(games.body, { class: "q-card-play" }).some((l) => l.attrs.href?.includes("mythic-masters"))).toBe(false);
-  // Each card carries eqosys's screenshot of the game, and it is served.
-  for (const key of ["alien-disc-golf", "hippo-tycoon", "mythic-masters"]) expect((await b.get(`/shots/${key}.jpg`)).status).toBe(200);
+  await expectShotsServed(b, games.body, ["alien-disc-golf", "hippo-tycoon", "mythic-masters", "what-would-fantano-say"]);
 });
 
 test("app center lists apps including RustyBuns on GitHub", async () => {
@@ -73,6 +79,7 @@ test("app center lists apps including RustyBuns on GitHub", async () => {
   expect(headings(page.body)).toContain("Shippycloud");
   expect(links(page.body, { href: "https://github.com/QuinnsCode/shippycloud" })).toHaveLength(0);
   expect(links(page.body, { class: "q-active" }).map((l) => l.text)).toEqual(["Apps"]);
+  await expectShotsServed(b, page.body, ["codesplitter", "playground", "qcrm", "fm-daw"]);
 });
 
 test("unknown paths redirect home", async () => {
