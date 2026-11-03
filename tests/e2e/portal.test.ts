@@ -69,9 +69,10 @@ test("app center lists apps including RustyBuns on GitHub", async () => {
   for (const href of [RUSTY_BUNS, "https://qlave.dev", "https://codesplitter.notryanquinn.workers.dev"]) {
     expect(links(page.body, { href, class: "q-card-play" })).toHaveLength(1);
   }
-  // Shippycloud is on ice: shown, not linked.
-  expect(headings(page.body)).toContain("Shippycloud");
-  expect(links(page.body, { href: "https://github.com/QuinnsCode/shippycloud" })).toHaveLength(0);
+  // qCRM is coming soon and Shippycloud is on ice: shown, not linked.
+  expect(headings(page.body)).toEqual(expect.arrayContaining(["qCRM", "Shippycloud"]));
+  for (const href of ["https://qcrm.qntbr.com", "https://github.com/QuinnsCode/shippycloud"]) expect(links(page.body, { href })).toHaveLength(0);
+  expect((await b.get("/shots/qcrm.jpg")).status).toBe(200);
   expect(links(page.body, { class: "q-active" }).map((l) => l.text)).toEqual(["Apps"]);
 });
 

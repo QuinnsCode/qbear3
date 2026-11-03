@@ -2,7 +2,7 @@
 // Single source of truth for the QNTBR portal: the three sections on the
 // landing page (Products, Game Center, App Center) and the /games + /apps hubs.
 
-import { AudioWaveform, Box, Brush, Crosshair, Disc3, Droplet, Flame, Gamepad2, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Music, Package, PersonStanding, Rocket, Sandwich, Skull, Smartphone, SprayCan, Sprout, Tablet, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
+import { AudioWaveform, Box, Brush, Crosshair, Disc3, Droplet, Flame, Gamepad2, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Music, Package, PersonStanding, Rocket, Sandwich, Skull, Smartphone, SprayCan, Sprout, Tablet, Trees, Truck, Users, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
 
 export type PortalStatus = 'live' | 'beta' | 'soon';
 
@@ -331,6 +331,22 @@ export const apps: PortalEntry[] = [
     shot: '/shots/geoboxq.jpg',
   },
   {
+    key: 'qcrm',
+    group: 'products',
+    icon: Users,
+    glyph: '📇',
+    name: 'qCRM',
+    tag: 'CRM · qcrm.qntbr.com',
+    tagline: 'The CRM your agents can use',
+    description: 'Contacts, companies, deals and activities for a real place of business, with an MCP server built in. One Worker, one database, every row yours.',
+    href: 'https://qcrm.qntbr.com',
+    cta: 'Coming soon',
+    status: 'soon',
+    verb: 'Track',
+    noun: 'Deals',
+    shot: '/shots/qcrm.jpg',
+  },
+  {
     key: 'flareup',
     image: '/landing/flareup.jpg',
     group: 'backburner',
@@ -479,7 +495,7 @@ export interface PortalGroup {
 
 export const appGroups: PortalGroup[] = [
   { key: 'dev', title: 'Developer tools', lede: 'The code host for agents, and the open-source runtime it ships on.', noun: 'tool' },
-  { key: 'products', title: 'Products', lede: 'Calls, fulfillment and box puzzles.', noun: 'product' },
+  { key: 'products', title: 'Products', lede: 'Calls, a CRM, fulfillment and box puzzles.', noun: 'product' },
   { key: 'workshop', title: 'From the workshop', lede: 'Smaller Rusty Buns apps: a groovebox, a rigger, and the starter.', noun: 'app' },
   { key: 'account', title: 'Account', lede: 'One login for every game and app.', noun: 'service' },
   { key: 'backburner', title: 'Back burner', lede: 'Rusty Buns now covers most of what these set out to do.', noun: 'project' },

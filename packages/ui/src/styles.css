@@ -713,6 +713,9 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 .q-btn.q-card-play svg { animation: q-nudge 1.6s ease-in-out infinite; }
 @keyframes q-nudge { 50% { transform: translateX(3px); } }
 .q-card-note { color: var(--q-muted); font: 400 14px var(--q-serif); }
+/* Off: not open yet. Grey, faded, and it doesn't lift on hover. */
+.q-card.q-off { filter: grayscale(1); opacity: 0.55; }
+.q-card.q-off:hover { transform: rotate(var(--tilt, 0deg)); box-shadow: 0 3px 0 var(--q-border-2), 0 18px 40px -22px rgba(0, 0, 0, 0.45); }
 @media (prefers-reduced-motion: reduce) {
   .q-card, .q-best > *, .q-btn.q-card-play svg { animation: none; }
   .q-card, .q-card-links .q-btn { transition: none; }

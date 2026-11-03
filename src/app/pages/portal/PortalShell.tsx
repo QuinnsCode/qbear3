@@ -169,6 +169,7 @@ export function PortalCard({ entry: e, index }: { entry: PortalEntry; index: num
       links={links}
       note={soon ? e.cta : undefined}
       live={playable && own.length > 0}
+      off={soon && !playable}
     />
   );
 }
