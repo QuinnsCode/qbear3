@@ -2,7 +2,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { admin } from "better-auth/plugins";
-import { organization } from "better-auth/plugins";
 import { apiKey } from "@better-auth/api-key"
 import { multiSession } from "better-auth/plugins"
 import { env } from "cloudflare:workers";
@@ -110,7 +109,6 @@ export const createAuth = () => {
         defaultBanExpiresIn: 60 * 60 * 24 * 7,
         impersonationSessionDuration: 60 * 60,
       }),
-      organization(),
       apiKey(),
       multiSession({
         maximumSessions: 3

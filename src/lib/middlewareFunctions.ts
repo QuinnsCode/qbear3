@@ -40,7 +40,7 @@ export async function rateLimitMiddleware(
 }
 
 /**
- * Routes that don't need session or organization context
+ * Routes that don't need session context
  * These routes handle their own auth or are public
  */
 const SKIP_ALL_MIDDLEWARE_ROUTES = [
@@ -66,7 +66,7 @@ const SKIP_MIDDLEWARE_PREFIXES = [
  * Document exceptions here to avoid confusion
  */
 const FORCE_MIDDLEWARE_ROUTES = [
-  '/__draftsync',    // Draft sync needs user/org context
+  '/__draftsync',    // Draft sync needs user context
   '/api/draft',      // Drafting over JSON acts as the session's user (src/app/api/draft/draft.ts)
   '/api/cardGame/',  // Loading a saved deck at a table, likewise
   '/api/call/',      // A table's video call is for people who sit there (src/app/api/call/call.ts)
@@ -141,11 +141,12 @@ export async function setupSessionContext(ctx: AppContext, request: Request) {
   }
 }
 
-export function extractOrgFromSubdomain(request: Request): string | null { 
+/** The leftmost label of a sub-domain host (`sandbox.qntbr.com` → `sandbox`), or null on the bare domain. */
+export function subdomainOf(request: Request): string | null {
   const url = new URL(request.url);
   const hostname = url.hostname;
 
-  // 127.0.0.1 (the desktop host) has no subdomain; without this it reads as the org "127"
+  // 127.0.0.1 (the desktop host) has no subdomain; without this it reads as the sub-domain "127"
   if (isLoopbackIp(hostname)) {
     return null;
   }
@@ -153,13 +154,13 @@ export function extractOrgFromSubdomain(request: Request): string | null {
   if (hostname.includes('localhost')) {
     const parts = hostname.split('.');
     if (parts.length >= 2 && parts[1] === 'localhost') {
-      const orgSlug = parts[0];
-      // Don't treat 'www' as an org slug
-      if (orgSlug === 'www') {
+      const slug = parts[0];
+      // 'www' is the bare domain
+      if (slug === 'www') {
         return null;
       }
-      if (/^[a-z0-9-]+$/.test(orgSlug) && orgSlug.length > 0) {
-        return orgSlug;
+      if (/^[a-z0-9-]+$/.test(slug) && slug.length > 0) {
+        return slug;
       }
     }
     return null;
@@ -168,13 +169,13 @@ export function extractOrgFromSubdomain(request: Request): string | null {
   if (hostname.includes('workers.dev')) {
     const parts = hostname.split('.');
     if (parts.length >= 4) {
-      const orgSlug = parts[0];
-      // Don't treat 'www' as an org slug
-      if (orgSlug === 'www') {
+      const slug = parts[0];
+      // 'www' is the bare domain
+      if (slug === 'www') {
         return null;
       }
-      if (/^[a-z0-9-]+$/.test(orgSlug) && orgSlug.length > 0) {
-        return orgSlug;
+      if (/^[a-z0-9-]+$/.test(slug) && slug.length > 0) {
+        return slug;
       }
     }
     return null;
@@ -182,13 +183,13 @@ export function extractOrgFromSubdomain(request: Request): string | null {
   
   const parts = hostname.split('.');
   if (parts.length >= 3) {
-    const orgSlug = parts[0];
-    // Don't treat 'www' as an org slug
-    if (orgSlug === 'www') {
+    const slug = parts[0];
+    // 'www' is the bare domain
+    if (slug === 'www') {
       return null;
     }
-    if (/^[a-z0-9-]+$/.test(orgSlug) && orgSlug.length > 0) {
-      return orgSlug;
+    if (/^[a-z0-9-]+$/.test(slug) && slug.length > 0) {
+      return slug;
     }
   }
   

@@ -2,37 +2,12 @@
 import { createAuthClient } from "better-auth/client";
 import { adminClient } from "better-auth/client/plugins";
 import { apiKeyClient } from "@better-auth/api-key/client";
-import { organizationClient } from "better-auth/client/plugins"
 import { multiSessionClient } from "better-auth/client/plugins"
-
-// export const authClient = createAuthClient({
-//   baseURL: typeof window !== "undefined" ? window.location.origin : "http://localhost:5173",
-//   plugins: [
-//     adminClient(),
-//     apiKeyClient(),
-//     multiSessionClient(),
-//     // Always include org plugin to match server
-//     // organizationClient({
-//     //   teams: {
-//     //     enabled: false
-//     //   }
-//     // })
-//     organizationClient()
-//   ]
-// });
-
-// export const authClient = createAuthClient({
-//   baseURL: typeof window !== "undefined" ? window.location.origin : "http://localhost:5173",
-//   plugins: [
-//     // adminClient(), // Only admin plugin to match server
-//   ]
-// });
 
 export const authClient = createAuthClient({
   baseURL: typeof window !== "undefined" ? window.location.origin : "http://localhost:5173",
   plugins: [
     adminClient(),
-    organizationClient(),
     apiKeyClient(),
     multiSessionClient(),
   ]

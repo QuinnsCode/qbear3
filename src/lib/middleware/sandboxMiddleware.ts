@@ -1,8 +1,8 @@
 // @/lib/middleware/sandboxMiddleware.ts
 import { isSandboxSubdomain } from '@/lib/subdomains';
-import { extractOrgFromSubdomain } from '@/lib/middlewareFunctions';
+import { subdomainOf } from '@/lib/middlewareFunctions';
 import type { AppContext } from '@/worker';
-import { createSandboxUser, createSandboxOrganization } from '@/lib/sandbox';
+import { createSandboxUser } from '@/lib/sandbox';
 
 /**
  * Check if the current request is for a sandbox environment
@@ -16,8 +16,8 @@ export function isSandboxEnvironment(request: Request): boolean {
   }
   
   // Also check subdomain for production
-  const orgSlug = extractOrgFromSubdomain(request);
-  return orgSlug ? isSandboxSubdomain(orgSlug) : false;
+  const slug = subdomainOf(request);
+  return slug ? isSandboxSubdomain(slug) : false;
 }
 
 /**
@@ -84,10 +84,7 @@ export async function setupSandboxContext(ctx: AppContext, request: Request) {
   const sandboxPlayerId = getOrCreateSandboxPlayerId(request);
   
   ctx.user = createSandboxUser(sandboxPlayerId) as any;
-  ctx.organization = createSandboxOrganization();
-  ctx.userRole = 'player';
   ctx.session = null;
-  ctx.orgError = null;
   
   console.log('✅ Sandbox context set up for chaos player:', sandboxPlayerId);
 }

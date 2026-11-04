@@ -1,5 +1,5 @@
 // @/lib/sandbox.ts
-import type { User, Organization } from '@/db';
+import type { User } from '@/db';
 
 export function createSandboxUser(spectatorId: string): Partial<User> {
   return {
@@ -15,19 +15,5 @@ export function createSandboxUser(spectatorId: string): Partial<User> {
     banned: false,
     banReason: null,
     banExpires: null,
-  };
-}
-
-export function createSandboxOrganization(): Organization {
-  return {
-    id: 'sandbox-org',
-    name: 'Sandbox',
-    slug: 'sandbox',
-    logo: null,
-    createdAt: new Date(),
-    metadata: JSON.stringify({ 
-      isSandbox: true,
-      maxPlayers: 256 
-    }),
   };
 }

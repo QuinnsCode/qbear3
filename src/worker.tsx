@@ -1,8 +1,8 @@
 import { defineApp, ErrorResponse, requestInfo } from "rwsdk/worker";
-import { errorMessage } from "@/lib/errorMessage";import { isLoopbackHost } from "@/lib/loopback";
+import { errorMessage } from "@/lib/errorMessage";
+import { isLoopbackHost } from "@/lib/loopback";
 import { isReservedSubdomain } from "@/lib/subdomains";
 // import { realtimeRoute } from "rwsdk/realtime/worker";
-// import { syncOrderNotes } from "./lib/syncedState";
 import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
@@ -13,11 +13,10 @@ import { draftRoutes } from "@/app/pages/draft/draftRoutes"
 import { cardGameRoutes } from "@/app/pages/cardGame/cardGameRoutes";
 import { realtimeRoutes } from "@/app/pages/realtime/realtimeRoutes";
 import { auth, initAuth } from "@/lib/auth";
-import { type Organization, db } from "@/db";
 import {
   initializeServices,
   setupSessionContext,
-  extractOrgFromSubdomain,
+  subdomainOf,
   shouldSkipMiddleware
 } from "@/lib/middlewareFunctions";
 import { env } from "cloudflare:workers";
@@ -70,10 +69,6 @@ const SANDBOX_GAME_ID = 'regal-gray-wolf';
 export type AppContext = {
   session: any | null;
   user: any | null;
-  /** Only the sandbox host sets these; there are no org subdomains. */
-  organization: Organization | null;
-  userRole: string | null;
-  orgError: null;
 };
 
 // Helper function to normalize URLs for main domain variants
@@ -131,7 +126,7 @@ export default defineApp([
   // Sub-domains: only the sandbox ones are served here. Reserved names belong to other Workers
   // (or nobody) and 404; anything else is an old lair address and goes to the main domain.
   ({ request }) => {
-    const slug = extractOrgFromSubdomain(request);
+    const slug = subdomainOf(request);
     if (!slug || isSandboxEnvironment(request)) return;
     if (isReservedSubdomain(slug)) return new Response('Not found', { status: 404 });
     const url = new URL(request.url);
@@ -417,59 +412,9 @@ export default defineApp([
       }
     }),
 
-    // Other API routes
-    route("/orders/:orderDbId/notes", async ({ request, params, ctx }) => {
-      if (request.method !== "POST") {
-        return new Response(null, { status: 405 });
-      }
-      
-      if (!ctx.user) {
-        return new Response(JSON.stringify({ error: "Unauthorized" }), { 
-          status: 401,
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-      
-      const body = await request.json() as { content: string; isInternal?: boolean };
-      const { content, isInternal = false } = body;
-      const orderDbId = parseInt(params.orderDbId);
-      
-      const note = await db.orderNote.create({
-        data: {
-          orderId: orderDbId,
-          userId: ctx.user.id,
-          content,
-          isInternal
-        },
-        include: { user: true }
-      });
-      
-      const order = await db.order.findUnique({
-        where: { id: orderDbId },
-        select: { orderNumber: true }
-      });
-      
-      if (order) {
-        // await syncOrderNotes(order.orderNumber, note);
-      }
-      
-      return new Response(JSON.stringify(note), {
-        headers: { "Content-Type": "application/json" }
-      });
-    }),
-
     route("/webhooks/:service", async ({ request, params, ctx }) => {
       const webhookPath = params.service;
       
-      if (webhookPath === 'shipstation') {
-        if (!ctx.organization) {
-          return Response.json({ error: "Organization not found" }, { status: 404 });
-        }
-        
-        const { default: handler } = await import('@/app/api/webhooks/shipstation-wh');
-        return handler({ request, params, ctx });
-      }
-
       if (webhookPath === 'stripe') {
         const { default: handler } = await import('@/app/api/webhooks/stripe-wh');
         return handler({ request });
@@ -495,11 +440,6 @@ export default defineApp([
   route("/webhooks/:service", async ({ request, params, ctx }) => {
     const webhookPath = params.service;
     
-    if (webhookPath === 'shipstation') {
-      const { default: handler } = await import('@/app/api/webhooks/shipstation-wh');
-      return handler({ request, params, ctx });
-    }
-
     if (webhookPath === 'stripe') {
       const { default: handler } = await import('@/app/api/webhooks/stripe-wh');
       return handler({ request });

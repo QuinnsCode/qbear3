@@ -2,7 +2,7 @@
 // Subdomains: the public sandbox, reserved names and retired lair addresses, as the middleware sees them from the Host header.
 import { expect, test } from "bun:test";
 import { app } from "./kit.ts";
-import { isReservedSubdomain, isSubdomainAvailable, validateSubdomainForOrg } from "../../src/lib/subdomains.ts";
+import { isReservedSubdomain } from "../../src/lib/subdomains.ts";
 
 test("a retired lair address goes to the same path on the main domain", async () => {
   const a = await app();
@@ -40,15 +40,9 @@ test("a reserved name is a 404, never redirected", async () => {
   }
 });
 
-test("system and sibling-app names can't be claimed as an org", () => {
+test("system and sibling-app names are reserved, whatever the case; ordinary names are not", () => {
   for (const name of ["eqosys", "qcrm", "www", "api", "auth", "admin", "app", "mail", "sandbox", "EQOSYS"]) {
     expect(isReservedSubdomain(name)).toBe(true);
   }
-  expect(isSubdomainAvailable("eqosys").available).toBe(false);
-  expect(() => validateSubdomainForOrg("eqosys")).toThrow();
-});
-
-test("an ordinary name is still available", () => {
   expect(isReservedSubdomain("mylairname")).toBe(false);
-  expect(isSubdomainAvailable("mylairname")).toEqual({ available: true });
 });

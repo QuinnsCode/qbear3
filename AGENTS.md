@@ -49,7 +49,7 @@ deletes more than it adds is the goal.
 ## Hostnames other Workers serve
 
 `wrangler.jsonc` routes `*.qntbr.com/*` to this Worker, so every subdomain lands here unless a more specific
-route says otherwise. Names in `BANNED_SUBDOMAINS` (`src/lib/subdomains.ts`) can't be claimed as orgs, but
+route says otherwise. Names in `BANNED_SUBDOMAINS` (`src/lib/subdomains.ts`) get a 404 here, but
 reserving one doesn't send it anywhere. A name served by another Worker (eqosys) also needs a route for
 `<name>.qntbr.com/*` with no Worker set, added in the dashboard or the zone's Workers routes API. Wrangler can't
 express "no Worker", so it isn't in `wrangler.jsonc`. Without it the request reaches this Worker and gets a 404.

@@ -27,17 +27,6 @@ export function useDeckBuilder(userId: string) {
 }
 
 /**
- * Activity feed sync (for Sanctum)
- */
-export function useActivityFeed(orgId: string) {
-  const [activity] = useRWSyncedState<{ timestamp: number } | null>(
-    null,
-    `sanctum:${orgId}:activity`
-  );
-  return activity;
-}
-
-/**
  * User events/notifications sync
  */
 export function useUserEvents(userId: string) {
@@ -46,15 +35,4 @@ export function useUserEvents(userId: string) {
     `user-events:${userId}:events`
   );
   return eventsData;
-}
-
-/**
- * Order notes sync
- */
-export function useOrderNotes(orderNumber: string) {
-  const [notesData] = useRWSyncedState<{ timestamp: number } | null>(
-    null,
-    `order:${orderNumber}:notes`
-  );
-  return notesData;
 }
