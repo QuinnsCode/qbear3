@@ -31,9 +31,6 @@ export const cardGameRoutes = [
         headers.set('X-Auth-User-Id', ctx.user.id);
         headers.set('X-Auth-User-Name', ctx.user.name || ctx.user.email);
         headers.set('X-Is-Authenticated', 'true');
-        if (ctx.organization) {
-          headers.set('X-Auth-Org-Id', ctx.organization.id);
-        }
       } else if (isSandbox) {
         // Sandbox mode - create temp user
         const tempUserId = `sandbox-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

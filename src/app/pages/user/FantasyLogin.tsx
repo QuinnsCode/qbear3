@@ -7,8 +7,6 @@ import { Page, Button } from "@qntbr/ui";
 import { Castle, KeyRound } from "lucide-react";
 
 interface FantasyLoginProps {
-  organizationName?: string;
-  showOrgWarning?: boolean;
   forceSignUp?: boolean;
   onAuthSuccess?: (user: any) => void;
   redirectOnSuccess?: boolean;
@@ -17,8 +15,6 @@ interface FantasyLoginProps {
 }
 
 export function FantasyLogin({ 
-  organizationName, 
-  showOrgWarning, 
   forceSignUp = false,
   onAuthSuccess,
   redirectOnSuccess = true,
@@ -132,17 +128,10 @@ export function FantasyLogin({
       return "Enter Your Lair";
     }
     
-    if (organizationName) {
-      return `Enter ${organizationName} Lair`;
-    }
-    
     return "Welcome Back, Traveler";
   };
 
   const getSubtitle = () => {
-    if (showOrgWarning && organizationName) {
-      return `Sign in or create an account to claim the "${organizationName}" domain.`;
-    }
     return "Provide your credentials to continue your quest.";
   };
 
@@ -165,12 +154,6 @@ export function FantasyLogin({
             <h1>Redirecting to signup...</h1>
           ) : (
             <>
-              {showOrgWarning && organizationName && (
-                <p className="q-note" role="status">
-                  The "{organizationName}" lair awaits a master. Sign in or register to claim this domain.
-                </p>
-              )}
-
               <div>
                 <h1>{getTitle()}</h1>
                 <p>{getSubtitle()}</p>

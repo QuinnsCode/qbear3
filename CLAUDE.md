@@ -8,7 +8,7 @@ QNTBR is a Magic: The Gathering (MTG) virtual tabletop for Commander format mult
 
 **Stack**: RedwoodSDK (rwsdk), React 19, TypeScript, Cloudflare Workers, Durable Objects, Prisma with D1 (SQLite), Vite 7, Tailwind CSS 4, better-auth
 
-**Domain**: qntbr.com with subdomain-based multi-tenancy (`{org}.qntbr.com`)
+**Domain**: qntbr.com. The only sub-domain served here is the sandbox (`sandbox.qntbr.com`); old lair sub-domains redirect to the main domain
 
 ## Common Commands
 
@@ -126,12 +126,12 @@ Card game logic is organized into managers in `src/app/services/cardGame/manager
 
 Game state types are defined in `src/app/services/cardGame/CardGameState.ts`.
 
-### Authentication & Multi-Tenancy
+### Authentication
 
-- **better-auth** for email/password login, organizations, API keys
-- **Subdomains**: `{org}.qntbr.com` mapped to organizations via middleware
+- **better-auth** for email/password login, API keys
+- **Subdomains**: no orgs; reserved names (`src/lib/subdomains.ts`) 404, any other sub-domain redirects to the main domain
 - **Sandbox mode**: Unauthenticated play on `sandbox.qntbr.com` with a hardcoded game ID
-- **Context** populated by middleware: `ctx.session`, `ctx.user`, `ctx.organization`, `ctx.userRole`, `ctx.orgError`
+- **Context** populated by middleware: `ctx.session`, `ctx.user`
 
 ### Database
 
