@@ -5,12 +5,21 @@ import { app, hasSection, headings, links, tags } from "./kit.ts";
 
 const RUSTY_BUNS = "https://github.com/QuinnsCode/RustyBuns";
 
+/** The hub shows eqosys's screenshot on at least these cards, and every screenshot it shows is served. */
+async function expectShotsServed(b: ReturnType<Awaited<ReturnType<typeof app>>["browser"]>, body: string, keys: string[]) {
+  const shots = [...body.matchAll(/<img\b[^>]*\bsrc="(\/shots\/[^"]+)"/g)].map((m) => m[1] ?? "");
+  expect(shots).toEqual(expect.arrayContaining(keys.map((k) => `/shots/${k}.jpg`)));
+  for (const src of new Set(shots)) expect((await b.get(src)).status).toBe(200);
+}
+
 test("landing page is a feed of the featured apps, then the lab and the shelves", async () => {
   const b = (await app()).browser();
   const page = await b.get("/");
   expect(page.status).toBe(200);
   expect(page.hops).toEqual([]);
-  for (const id of ["feed", "lab", "products", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
+  for (const id of ["feed", "lab", "products", "services", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
+  // What we do includes the commerce integrations.
+  expect(headings(page.body)).toEqual(expect.arrayContaining(["Custom warehouse integrations", "3PL app integrations", "Drop shipping integrations"]));
   // One post per featured app, codeSplitter first, each one link to the running app.
   const hosts = ["codesplitter", "git-recon", "skatetechpark", "park-hide-seek"];
   const posts = links(page.body, { class: "q-post" }).map((l) => l.attrs.href);
@@ -49,15 +58,15 @@ test("game center has one Magic link, to draft the cube, and marks itself active
 test("game center is the Playground: play the deployed games, download or wait for the rest", async () => {
   const b = (await app()).browser();
   const games = await b.get("/games");
-  for (const host of ["park-hide-seek", "skatetechpark", "druids-curse-votv", "splat-spray", "two-fronts", "git-recon", "excalibrawl", "alien-disc-golf"]) {
+  for (const host of ["park-hide-seek", "skatetechpark", "druids-curse-votv", "splat-spray", "two-fronts", "git-recon", "excalibrawl", "alien-disc-golf", "delayed-reaction"]) {
     expect(links(games.body, { href: `https://${host}.notryanquinn.workers.dev`, class: "q-card-play" })).toHaveLength(1);
   }
-  // Hippo Tycoon is a desktop download; Mythic Masters isn't playable yet, so it has its source and no Play.
-  expect(links(games.body, { class: "q-card-play", text: /Download/ }).filter((l) => l.attrs.href?.includes("q=hippo-tycoon-v"))).toHaveLength(1);
+  // Hippo Tycoon plays on Railway and is also a desktop download; Mythic Masters isn't playable yet, so it has its source and no Play.
+  expect(links(games.body, { href: "https://hippo-ty32kk4m44sz57g2i6knvzzb7o-production.up.railway.app", class: "q-card-play" })).toHaveLength(1);
+  expect(links(games.body, { text: /Download/ }).filter((l) => l.attrs.href?.includes("q=hippo-tycoon-v"))).toHaveLength(1);
   expect(links(games.body, { href: `${RUSTY_BUNS}/tree/main/apps/mythic-masters`, text: /Source/ })).toHaveLength(1);
   expect(links(games.body, { class: "q-card-play" }).some((l) => l.attrs.href?.includes("mythic-masters"))).toBe(false);
-  // Each card carries eqosys's screenshot of the game, and it is served.
-  for (const key of ["alien-disc-golf", "hippo-tycoon", "mythic-masters"]) expect((await b.get(`/shots/${key}.jpg`)).status).toBe(200);
+  await expectShotsServed(b, games.body, ["alien-disc-golf", "hippo-tycoon", "mythic-masters", "what-would-fantano-say"]);
 });
 
 test("app center lists apps including RustyBuns on GitHub", async () => {
@@ -66,13 +75,18 @@ test("app center lists apps including RustyBuns on GitHub", async () => {
   expect(page.status).toBe(200);
   expect(page.url.pathname).toBe("/apps");
   expect(headings(page.body)).toEqual(expect.arrayContaining(["RustyBuns", "FM Groovebox"]));
-  for (const href of [RUSTY_BUNS, "https://qlave.dev", "https://codesplitter.notryanquinn.workers.dev"]) {
+  for (const href of [RUSTY_BUNS, "https://qlave.dev", "https://codesplitter.notryanquinn.workers.dev", "https://fm-daw-worker-live-ryanquinn-ugis7btfi5dsu52t.notryanquinn.workers.dev"]) {
     expect(links(page.body, { href, class: "q-card-play" })).toHaveLength(1);
   }
   // Shippycloud is on ice: shown, not linked.
   expect(headings(page.body)).toContain("Shippycloud");
   expect(links(page.body, { href: "https://github.com/QuinnsCode/shippycloud" })).toHaveLength(0);
   expect(links(page.body, { class: "q-active" }).map((l) => l.text)).toEqual(["Apps"]);
+  // qCRM's demo is live, labelled a proof of concept.
+  expect(headings(page.body)).toEqual(expect.arrayContaining(["qCRM", "Flareup", "Staticflare", "Qlave", "Agent Office"]));
+  expect(links(page.body, { href: "https://qcrm.qntbr.com", class: "q-card-play" })).toHaveLength(1);
+  expect(page.body).toContain("Proof of concept");
+  await expectShotsServed(b, page.body, ["codesplitter", "playground", "qcrm", "fm-daw"]);
 });
 
 test("unknown paths redirect home", async () => {

@@ -34,6 +34,8 @@ export interface PlayCardProps {
   note?: string;
   /** "Play now" on the corner. */
   live?: boolean;
+  /** Greyed out: not open yet. */
+  off?: boolean;
   /** Its place in the grid: staggers the pop-in, the tilt and the lava. */
   index?: number;
   nameAs?: 'h2' | 'h3' | 'h4';
@@ -41,11 +43,11 @@ export interface PlayCardProps {
 
 /** The Rusty Buns Playground card: shot, name, line, a four-pip stage meter, best-on chips and its links. */
 export function PlayCard({
-  name, tag, tagline, description, shot, icon, tone, stage, best, links, note, live, index = 0, nameAs: Name = 'h3',
+  name, tag, tagline, description, shot, icon, tone, stage, best, links, note, live, off, index = 0, nameAs: Name = 'h3',
 }: PlayCardProps) {
   const style = { '--n': index, '--tilt': `${(((index * 7) % 5) - 2) * 0.5}deg` } as CSSProperties;
   return (
-    <div className="q-card" style={style}>
+    <div className={cx('q-card', off && 'q-off')} style={style}>
       {live && <span className="q-card-flag">Play now</span>}
       <div className={cx('q-card-art', !shot && 'q-toned')} style={!shot && tone ? { background: tone } : undefined}>
         {shot ? <img src={shot} alt="" loading="lazy" /> : <span className="q-card-art-icon" aria-hidden="true">{icon}</span>}

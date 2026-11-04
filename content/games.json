@@ -77,7 +77,7 @@
     "hippo-tycoon": {
       "tagline": "Four hippos, one oil geyser",
       "description": "Four greedy oil-baron hippos race to chomp the most oil from a jungle geyser; solo, couch, LAN or online.",
-      "cta": "Download"
+      "cta": "Play now"
     },
     "mythic-masters": {
       "tagline": "Folklore beasts, real mass",
@@ -87,7 +87,23 @@
     "delayed-reaction": {
       "tagline": "Answer the note a bar later",
       "description": "A phone-first dub rhythm game: a ring calls a note down a neon tunnel and you answer it a bar later.",
-      "cta": "Coming soon"
+      "cta": "Play now"
+    },
+    "splat-rooms": {
+      "tagline": "Find everything in a real, scanned room",
+      "description": "The room goes dark and you get a list. Find every object in a photoreal Gaussian-splat room.",
+      "cta": "Coming soon",
+      "pitch1": "A real room, scanned to the last sock, and the lights just went out.",
+      "pitch2": "You get a list. Every object in the room has a label and a box, and you have to find them all.",
+      "pitch3": "Quick hunt drops you somewhere random. Good luck."
+    },
+    "what-would-fantano-say": {
+      "tagline": "A parody review of your best 15 seconds",
+      "description": "Pick a track, drag to your best 15 seconds and get a parody review with a score. A joke, labelled as one.",
+      "cta": "Try it",
+      "pitch1": "Pick a track and drag to the 15 seconds you are proudest of.",
+      "pitch2": "Get a score, a verdict, the best and worst bits, and a share button. It is parody, and it says so.",
+      "pitch3": "Light to decent? Find out."
     }
   }
 }

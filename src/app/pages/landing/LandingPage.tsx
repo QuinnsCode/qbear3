@@ -17,6 +17,9 @@ import { labItems } from "./labItems";
 /** The feed, top to bottom: the one app the page is about, then the games. */
 export const FEED = ['codesplitter', 'git-recon', 'skate-tech-park', 'park-hide-seek'] as const;
 
+/** What we do, in order: each one's title and line are services.items.<key> in content/landing.json. */
+const SERVICES = ['webapps', 'architecture', 'warehouse', 'threepl', 'dropship', 'desktop'] as const;
+
 const byKey = (key: string): PortalEntry => {
   const entry = [...apps, ...games].find((e) => e.key === key);
   if (!entry) throw new Error(`landing: no portal entry "${key}"`);
@@ -89,6 +92,24 @@ export default function LandingPage({ ctx }: RequestInfo) {
           lede={c.text('products.lede')}
         />
         <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key === 'dev')} />
+      </PortalSection>
+
+      {/* ── What we do ── */}
+      <PortalSection id="services">
+        <PortalSectionHead
+          small
+          eyebrow={c.text('services.eyebrow')}
+          title={emphasis(c.text('services.title'))}
+          lede={c.text('services.lede')}
+        />
+        <ul className="q-services">
+          {SERVICES.map((key) => (
+            <li key={key}>
+              <h3>{c.text(`services.items.${key}.title`)}</h3>
+              <p>{emphasis(c.text(`services.items.${key}.text`), 'b')}</p>
+            </li>
+          ))}
+        </ul>
       </PortalSection>
 
       {/* ── Game Center ── */}
