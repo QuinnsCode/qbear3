@@ -75,7 +75,7 @@ test("app center lists apps including RustyBuns on GitHub", async () => {
   expect(page.status).toBe(200);
   expect(page.url.pathname).toBe("/apps");
   expect(headings(page.body)).toEqual(expect.arrayContaining(["RustyBuns", "FM Groovebox"]));
-  for (const href of [RUSTY_BUNS, "https://qlave.dev", "https://codesplitter.notryanquinn.workers.dev"]) {
+  for (const href of [RUSTY_BUNS, "https://qlave.dev", "https://codesplitter.notryanquinn.workers.dev", "https://fm-daw-worker-live-ryanquinn-ugis7btfi5dsu52t.notryanquinn.workers.dev"]) {
     expect(links(page.body, { href, class: "q-card-play" })).toHaveLength(1);
   }
   // Shippycloud is on ice: shown, not linked.
