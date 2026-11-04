@@ -2,7 +2,7 @@
 // Single source of truth for the QNTBR portal: the three sections on the
 // landing page (Products, Game Center, App Center) and the /games + /apps hubs.
 
-import { AudioWaveform, Box, Brush, CircuitBoard, Contact, LayoutGrid, MessageSquareQuote, Piano, Rotate3d, ScanEye, Shapes, Sparkles, Telescope, Trophy, Crosshair, Disc3, Droplet, Flame, Gamepad2, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Music, Package, PersonStanding, Rocket, Sandwich, Skull, Smartphone, SprayCan, Sprout, Tablet, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
+import { AudioWaveform, Building2, FlaskConical, Layers, ShoppingCart, Box, Brush, CircuitBoard, Contact, LayoutGrid, MessageSquareQuote, Piano, Rotate3d, ScanEye, Shapes, Sparkles, Telescope, Trophy, Crosshair, Disc3, Droplet, Flame, Gamepad2, GitBranch, Hand, KeyRound, Monitor, MonitorSmartphone, Music, Package, PersonStanding, Rocket, Sandwich, Skull, Smartphone, SprayCan, Sprout, Tablet, Trees, Truck, Video, Wind, Zap, type LucideIcon } from 'lucide-react';
 
 export type PortalStatus = 'live' | 'beta' | 'soon';
 
@@ -37,6 +37,8 @@ export interface PortalEntry {
   download?: string;
   /** Its folder under apps/ in the RustyBuns repo. */
   source?: string;
+  /** A word on the hub card beside its links, e.g. "Proof of concept". A 'soon' entry shows its cta here instead. */
+  note?: string;
   /** eqosys's screenshot of it (RustyBuns apps/eqosys/public/cards, copied to public/shots/), shown on the hub cards. */
   shot?: string;
 }
@@ -351,7 +353,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'geoboxq',
-    group: 'products',
+    group: 'commerce',
     icon: Box,
     glyph: '📦',
     name: 'GeoBoxQ',
@@ -371,7 +373,7 @@ export const apps: PortalEntry[] = [
   {
     key: 'flareup',
     image: '/landing/flareup.jpg',
-    group: 'backburner',
+    group: 'products',
     icon: Flame,
     glyph: '🔥',
     name: 'Flareup',
@@ -403,7 +405,7 @@ export const apps: PortalEntry[] = [
   {
     key: 'staticflare',
     image: '/landing/staticflare.jpg',
-    group: 'backburner',
+    group: 'products',
     icon: Zap,
     glyph: '⚡',
     name: 'Staticflare',
@@ -418,7 +420,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'shippycloud',
-    group: 'products',
+    group: 'commerce',
     icon: Truck,
     glyph: '🚚',
     name: 'Shippycloud',
@@ -506,7 +508,7 @@ export const apps: PortalEntry[] = [
   },
   {
     key: 'qcrm',
-    group: 'products',
+    group: 'commerce',
     icon: Contact,
     glyph: '📇',
     name: 'qCRM',
@@ -522,6 +524,7 @@ export const apps: PortalEntry[] = [
     best: ['desktop'],
     source: 'qcrm',
     shot: '/shots/qcrm.jpg',
+    note: 'Proof of concept',
   },
   {
     key: 'playground',
@@ -672,6 +675,70 @@ export const apps: PortalEntry[] = [
     best: ['phone', 'desktop'],
     source: 'sharesplat',
   },
+  {
+    key: 'geoboxq-shopify',
+    group: 'commerce',
+    icon: ShoppingCart,
+    glyph: '🛒',
+    name: 'GeoBoxQ for Shopify',
+    tag: 'Shopify · Packing',
+    tagline: 'A Shopify cart in, the store’s own box out',
+    description: 'Takes a cart or a draft order, looks up each variant’s size and answers with the smallest box from the store’s own set.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/geoboxq-shopify`,
+    cta: 'Source',
+    status: 'beta',
+    verb: 'Pack',
+    noun: 'Cart',
+    source: 'geoboxq-shopify',
+  },
+  {
+    key: 'frameworks',
+    group: 'dev',
+    icon: Layers,
+    glyph: '🧱',
+    name: 'Framework examples',
+    tag: 'Rusty Buns · Examples',
+    tagline: 'Your framework, packed',
+    description: 'Astro, Next.js, Nuxt, SvelteKit, SolidStart, Qwik, TanStack Start, React Router, Hono, Elysia and plain SPAs, each one running on Rusty Buns.',
+    href: `${RUSTY_BUNS_URL}/blob/main/FRAMEWORKS.md`,
+    cta: 'See the list',
+    status: 'live',
+    verb: 'Port',
+    noun: 'Framework',
+  },
+  {
+    key: 'borg',
+    group: 'dev',
+    icon: FlaskConical,
+    glyph: '🧪',
+    name: 'borg',
+    tag: 'Rusty Buns · Test rig',
+    tagline: 'The twins behave like Cloudflare',
+    description: 'One small Worker that uses every binding once, checked by the same suite on the desktop host and on a deploy. Its Postgres sibling runs on PGlite and Hyperdrive.',
+    href: `${RUSTY_BUNS_URL}/tree/main/apps/borg`,
+    cta: 'Source',
+    status: 'live',
+    verb: 'Test',
+    noun: 'Twins',
+    source: 'borg',
+  },
+  {
+    key: 'agent-office',
+    group: 'workshop',
+    icon: Building2,
+    glyph: '🥐',
+    name: 'Agent Office',
+    tag: 'Rusty Buns · Desktop',
+    tagline: 'The 3D office for coding agents, as one file',
+    description: 'Someone else’s Node server, PTYs, WebSockets and a 3D client, turned into one file for Mac and Linux with nothing forked.',
+    href: `${RUSTY_BUNS_URL}/releases/tag/agent-office-latest`,
+    cta: 'Download',
+    status: 'live',
+    verb: 'Seat',
+    noun: 'Agents',
+    best: ['desktop'],
+    source: 'agent-office',
+  },
 ];
 
 // ──────────────────────────────────────────────────────────────
@@ -687,11 +754,11 @@ export interface PortalGroup {
 
 
 export const appGroups: PortalGroup[] = [
-  { key: 'dev', title: 'Developer tools', lede: 'The code host for agents, the open-source runtime it ships on, and the Playground of everything built with it.', noun: 'tool' },
-  { key: 'products', title: 'Products', lede: 'Calls, a CRM, fulfillment and box puzzles.', noun: 'product' },
-  { key: 'workshop', title: 'From the workshop', lede: 'Smaller Rusty Buns apps: synths, 3D tools, a football calculator, a protocol lens and the starter.', noun: 'app' },
+  { key: 'dev', title: 'Developer tools', lede: 'The code host for agents, the open-source runtime it ships on, and the shelf of everything built with it.', noun: 'tool' },
+  { key: 'commerce', title: 'Commerce & fulfillment', lede: 'A CRM, packing, Shopify and fulfillment: the pieces behind our warehouse, 3PL and drop-shipping work.', noun: 'app' },
+  { key: 'products', title: 'Products', lede: 'Qlave for calls, Flareup for Cloudflare spend, Staticflare for hosting.', noun: 'product' },
+  { key: 'workshop', title: 'From the workshop', lede: 'Smaller Rusty Buns apps: music, 3D, circuits, protocols, a football calculator and the starter.', noun: 'app' },
   { key: 'account', title: 'Account', lede: 'One login for every game and app.', noun: 'service' },
-  { key: 'backburner', title: 'Back burner', lede: 'Rusty Buns now covers most of what these set out to do.', noun: 'project' },
 ];
 
 

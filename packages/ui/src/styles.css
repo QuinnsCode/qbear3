@@ -422,6 +422,13 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 .q-prose { max-width: 62ch; color: var(--q-muted); font-family: var(--q-serif); font-size: clamp(15px, 1.7vw, 17px); line-height: 1.75; margin: 0; }
 .q-prose b, .q-prose strong { color: var(--q-fg); font-weight: 700; }
 
+/* ── Services: what we do, a plain list of title + line ───── */
+.q-services { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 1px; background: var(--q-border); border: 1px solid var(--q-border); }
+.q-services li { background: var(--q-bg); padding: 18px 20px; }
+.q-services h3 { margin: 0 0 6px; color: var(--q-fg); font-family: var(--q-sans); font-size: 16px; font-weight: 700; }
+.q-services p { margin: 0; color: var(--q-muted); font-family: var(--q-serif); font-size: 14px; line-height: 1.6; }
+.q-services b { color: var(--q-fg); }
+
 @media (prefers-reduced-motion: reduce) {
   .q-btn, .q-tile, .q-item { transition: none; }
   a.q-tile:hover, a.q-tile:hover .q-tile-icon { transform: none; }
@@ -713,6 +720,9 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
 .q-btn.q-card-play svg { animation: q-nudge 1.6s ease-in-out infinite; }
 @keyframes q-nudge { 50% { transform: translateX(3px); } }
 .q-card-note { color: var(--q-muted); font: 400 14px var(--q-serif); }
+/* Off: not open yet. Grey, faded, and it doesn't lift on hover. */
+.q-card.q-off { filter: grayscale(1); opacity: 0.55; }
+.q-card.q-off:hover { transform: rotate(var(--tilt, 0deg)); box-shadow: 0 3px 0 var(--q-border-2), 0 18px 40px -22px rgba(0, 0, 0, 0.45); }
 @media (prefers-reduced-motion: reduce) {
   .q-card, .q-best > *, .q-btn.q-card-play svg { animation: none; }
   .q-card, .q-card-links .q-btn { transition: none; }

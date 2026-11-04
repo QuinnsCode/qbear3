@@ -17,7 +17,9 @@ test("landing page is a feed of the featured apps, then the lab and the shelves"
   const page = await b.get("/");
   expect(page.status).toBe(200);
   expect(page.hops).toEqual([]);
-  for (const id of ["feed", "lab", "products", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
+  for (const id of ["feed", "lab", "products", "services", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
+  // What we do includes the commerce integrations.
+  expect(headings(page.body)).toEqual(expect.arrayContaining(["Custom warehouse integrations", "3PL app integrations", "Drop shipping integrations"]));
   // One post per featured app, codeSplitter first, each one link to the running app.
   const hosts = ["codesplitter", "git-recon", "skatetechpark", "park-hide-seek"];
   const posts = links(page.body, { class: "q-post" }).map((l) => l.attrs.href);
@@ -80,6 +82,10 @@ test("app center lists apps including RustyBuns on GitHub", async () => {
   expect(headings(page.body)).toContain("Shippycloud");
   expect(links(page.body, { href: "https://github.com/QuinnsCode/shippycloud" })).toHaveLength(0);
   expect(links(page.body, { class: "q-active" }).map((l) => l.text)).toEqual(["Apps"]);
+  // qCRM's demo is live, labelled a proof of concept.
+  expect(headings(page.body)).toEqual(expect.arrayContaining(["qCRM", "Flareup", "Staticflare", "Qlave", "Agent Office"]));
+  expect(links(page.body, { href: "https://qcrm.qntbr.com", class: "q-card-play" })).toHaveLength(1);
+  expect(page.body).toContain("Proof of concept");
   await expectShotsServed(b, page.body, ["codesplitter", "playground", "qcrm", "fm-daw"]);
 });
 
