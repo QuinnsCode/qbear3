@@ -12,26 +12,32 @@ async function expectShotsServed(b: ReturnType<Awaited<ReturnType<typeof app>>["
   for (const src of new Set(shots)) expect((await b.get(src)).status).toBe(200);
 }
 
-test("landing page is a feed of the featured apps, then the lab and the shelves", async () => {
+test("landing page is a sky hero, the featured apps, then the lab and the shelves", async () => {
   const b = (await app()).browser();
   const page = await b.get("/");
   expect(page.status).toBe(200);
   expect(page.hops).toEqual([]);
   for (const id of ["feed", "lab", "products", "services", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
+  // The hero: eqosys's sky behind the headline, and its two buttons.
+  expect(page.body).toContain('class="q-sky"');
+  expect(headings(page.body)).toEqual(expect.arrayContaining(["Built for the fleet.Then we play."]));
+  expect(links(page.body, { href: "#feed", class: "q-hero-go" })).toHaveLength(1);
+  expect(links(page.body, { href: "/games", class: "q-hero-alt" })).toHaveLength(1);
   // What we do includes the commerce integrations.
   expect(headings(page.body)).toEqual(expect.arrayContaining(["Custom warehouse integrations", "3PL app integrations", "Drop shipping integrations"]));
-  // One post per featured app, codeSplitter first, each one link to the running app.
+  // One feature panel per featured app, codeSplitter first, each one link to the running app.
   const hosts = ["codesplitter", "git-recon", "skatetechpark", "park-hide-seek"];
-  const posts = links(page.body, { class: "q-post" }).map((l) => l.attrs.href);
-  expect(posts).toEqual(hosts.map((h) => `https://${h}.notryanquinn.workers.dev`));
-  // Each post shows a capture of the app, and the capture is served.
+  const feed = page.body.slice(page.body.indexOf('id="feed"'), page.body.indexOf('id="lab"'));
+  expect(links(feed, { class: "q-feature-link" }).map((l) => l.attrs.href)).toEqual(hosts.map((h) => `https://${h}.notryanquinn.workers.dev`));
+  // Each panel shows a capture of the app, and the capture is served.
   for (const key of ["codesplitter", "git-recon", "skate-tech-park", "park-hide-seek"]) {
+    expect(feed).toContain(`src="/landing/${key}.jpg"`);
     const shot = await b.get(`/landing/${key}.jpg`);
     expect(shot.status).toBe(200);
   }
-  // Magic: The Gathering is one bar: a draft of the cube.
-  expect(links(page.body, { href: "/draft/new", class: "q-tile" }).map((l) => l.attrs.class)).toEqual([expect.stringContaining("q-wide")]);
-  expect(links(page.body, { href: "/sanctum", class: "q-tile" })).toHaveLength(0);
+  // Magic: The Gathering is one shelf tile: a draft of the cube.
+  expect(links(page.body, { href: "/draft/new", class: "q-feature-link" })).toHaveLength(1);
+  expect(links(page.body, { href: "/sanctum" })).toHaveLength(0);
   expect(page.body).toContain("Git the main HEAD merged before the Conflict takes over");
   // The lab's bag is server-rendered: words to combine and every app already in it.
   const bag = tags(page.body, "button").map((t) => t.text);

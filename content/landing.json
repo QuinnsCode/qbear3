@@ -1,8 +1,17 @@
 {
-  "feed": {
+  "hero": {
     "eyebrow": "QNTBR · Solutions architecture · Web apps & web solutions",
-    "title": "Built for the *fleet.* Then we *play.*",
-    "lede": "We build tools we actually use and ship them on the runtime we wrote for it. Here is what is running right now: every picture below is the real thing, captured live."
+    "line1": "Built for the fleet.",
+    "line2": "Then we play.",
+    "lede": "We build tools we actually use and ship them on *Rusty Buns*, the runtime we wrote for it. Everything below is running right now, and every picture is the real thing.",
+    "primary": "See what is running",
+    "secondary": "Open Game Center",
+    "facts": "Browser · Desktop · Phone / Built on Cloudflare Workers / Open source on GitHub"
+  },
+  "feed": {
+    "eyebrow": "Running now",
+    "title": "The one we are *proudest of.*",
+    "lede": "A code host for agents, then the three games we built on the same stack."
   },
   "lab": {
     "eyebrow": "The lab",
