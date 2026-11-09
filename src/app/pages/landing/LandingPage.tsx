@@ -1,20 +1,19 @@
 // @/app/pages/landing/LandingPage.tsx
-// The QNTBR front door. A feed first: one full-width post per featured app, each a message with a
-// capture of the app running, its pitch and one button (codeSplitter, then the three games we are
-// proudest of). Then the lab (every game and app is a verb and a noun; drop one on the other and the
-// app appears), then the same compact shelves the hubs use.
+// The QNTBR front door, laid out like the Rusty Buns front doors (eqosys and the Playground): eqosys's day-and-night
+// sky behind a big headline, then eqosys's featured panel (codeSplitter, screenshot beside its words) with the three
+// games we are proudest of under it, then the lab (every game and app is a verb and a noun; drop one on the other and
+// the app appears), what we do, and eqosys-style shelves of screenshot tiles. The page runs wide (PortalPage `wide`).
 import { type RequestInfo } from "rwsdk/worker";
-import { FeedPost } from "@qntbr/ui";
 import { games, gameGroups } from "@/app/pages/portal/portalGames";
-import { apps, appGroups, isExternal, platformOf, type PortalEntry } from "@/app/pages/portal/portalData";
-import { PortalGroups, PortalPage, PortalSection, PortalSectionHead } from "@/app/pages/portal/PortalShell";
-import { toneOf } from "@/app/pages/portal/tones";
+import { apps, appGroups, type PortalEntry } from "@/app/pages/portal/portalData";
+import { PortalPage, PortalSection, PortalSectionHead } from "@/app/pages/portal/PortalShell";
 import { emphasis, landing as c } from "@/app/content";
-import { KeyArt } from "./KeyArt";
 import LandingLab from "./LandingLab";
 import { labItems } from "./labItems";
+import { Feature, Hero, Shelves } from "./Showcase";
+import { skyPhase } from "./Sky";
 
-/** The feed, top to bottom: the one app the page is about, then the games. */
+/** The featured row, top to bottom: the one app the page is about, then the games. */
 export const FEED = ['codesplitter', 'git-recon', 'skate-tech-park', 'park-hide-seek'] as const;
 
 /** What we do, in order: each one's title and line are services.items.<key> in content/landing.json. */
@@ -26,49 +25,42 @@ const byKey = (key: string): PortalEntry => {
   return entry;
 };
 
-function EntryPost({ entry, first }: { entry: PortalEntry; first?: boolean }) {
-  const href = entry.href;
-  const external = isExternal(href);
-  const platform = platformOf(entry);
-  return (
-    <FeedPost
-      nameAs="h2"
-      eager={first}
-      name={entry.name}
-      tag={entry.tag}
-      source={external ? new URL(href).host : undefined}
-      avatar={entry.glyph}
-      tone={toneOf(entry.key, entry.group)}
-      platform={platform && { icon: <platform.icon strokeWidth={1.75} />, label: platform.label }}
-      tagline={entry.tagline}
-      shot={entry.image ?? <KeyArt entryKey={entry.key} glyph={entry.glyph} />}
-      pitch={entry.pitch}
-      href={href}
-      cta={entry.cta}
-      external={external}
-    />
-  );
-}
-
 export default function LandingPage({ ctx }: RequestInfo) {
   const isLoggedIn = !!ctx.user;
+  const [lead, ...rest] = FEED.map(byKey);
 
   return (
-    <PortalPage isLoggedIn={isLoggedIn} current="home">
+    <PortalPage isLoggedIn={isLoggedIn} current="home" wide>
       {/* The likely next pages. After hydration rwsdk's client navigation fetches their RSC payload into its
           navigation cache, so a click on one swaps the page in without waiting on the network. */}
       <link rel="x-prefetch" href="/games" />
       {!isLoggedIn && <link rel="x-prefetch" href="/user/login" />}
-      {/* ── The feed: one post per featured app ── */}
+
+      {/* ── The hero, on eqosys's sky ── */}
+      <Hero
+        t0={skyPhase()}
+        eyebrow={c.text('hero.eyebrow')}
+        line1={c.text('hero.line1')}
+        line2={c.text('hero.line2')}
+        lede={emphasis(c.text('hero.lede'), 'b')}
+        primary={{ label: c.text('hero.primary'), href: '#feed' }}
+        secondary={{ label: c.text('hero.secondary'), href: '/games' }}
+        facts={c.text('hero.facts').split(' / ')}
+      />
+
+      {/* ── Featured: codeSplitter big, then the three games ── */}
       <PortalSection id="feed">
         <PortalSectionHead
-          as="h1"
+          small
           eyebrow={c.text('feed.eyebrow')}
           title={emphasis(c.text('feed.title'))}
           lede={c.text('feed.lede')}
         />
-        <div className="q-feed">
-          {FEED.map((key, i) => <EntryPost key={key} entry={byKey(key)} first={i === 0} />)}
+        <div className="q-features">
+          <Feature entry={lead!} big />
+          <div className="q-spotlight">
+            {rest.map((e, i) => <Feature key={e.key} entry={e} n={i + 1} />)}
+          </div>
         </div>
       </PortalSection>
 
@@ -91,7 +83,7 @@ export default function LandingPage({ ctx }: RequestInfo) {
           title={emphasis(c.text('products.title'))}
           lede={c.text('products.lede')}
         />
-        <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key === 'dev')} />
+        <Shelves entries={apps} groups={appGroups.filter((g) => g.key === 'dev')} />
       </PortalSection>
 
       {/* ── What we do ── */}
@@ -122,7 +114,7 @@ export default function LandingPage({ ctx }: RequestInfo) {
           linkHref="/games"
           linkLabel={c.text('games.link')}
         />
-        <PortalGroups bars entries={games} groups={gameGroups} />
+        <Shelves entries={games} groups={gameGroups} />
       </PortalSection>
 
       {/* ── App Center ── */}
@@ -135,7 +127,7 @@ export default function LandingPage({ ctx }: RequestInfo) {
           linkHref="/apps"
           linkLabel={c.text('apps.link')}
         />
-        <PortalGroups bars entries={apps} groups={appGroups.filter((g) => g.key !== 'dev')} />
+        <Shelves entries={apps} groups={appGroups.filter((g) => g.key !== 'dev')} />
       </PortalSection>
 
       {/* ── About ── */}

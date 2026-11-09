@@ -13,10 +13,12 @@ interface PageProps {
   isLoggedIn: boolean;
   /** Which top-level portal section this page is, for the active state. */
   current?: 'home' | 'games' | 'apps';
+  /** eqosys's width and a size up in type: the column runs to 1680px instead of 1200px. */
+  wide?: boolean;
   children: ReactNode;
 }
 
-export function PortalPage({ isLoggedIn, current = 'home', children }: PageProps) {
+export function PortalPage({ isLoggedIn, current = 'home', wide, children }: PageProps) {
   const links: NavItem[] = [
     { href: '/games', label: 'Games', active: current === 'games' },
     { href: '/apps', label: 'Apps', active: current === 'apps' },
@@ -35,7 +37,7 @@ export function PortalPage({ isLoggedIn, current = 'home', children }: PageProps
   ];
 
   return (
-    <Page>
+    <Page className={wide ? 'q-wide' : undefined}>
       <ThemeScript />
       <TopBar
         links={links}

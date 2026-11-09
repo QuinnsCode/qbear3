@@ -727,3 +727,133 @@ a.q-tile:hover .q-tile-cta { color: var(--q-accent-ink); }
   .q-card, .q-best > *, .q-btn.q-card-play svg { animation: none; }
   .q-card, .q-card-links .q-btn { transition: none; }
 }
+
+/* ── Wide pages: eqosys's width, a size up in type ────────── */
+/* PortalPage `wide` (the landing page). The column runs to 1680px, as eqosys's home does (110rem), and the
+   reading sizes step up so a desktop isn't a narrow strip of 14px text in a sea of white. */
+.q-page.q-wide { font-size: 16px; }
+.q-wide .q-wrap { max-width: 1680px; padding: 0 clamp(16px, 3vw, 48px); }
+.q-wide .q-label { font-size: 12px; }
+.q-wide .q-section-head > div { max-width: 860px; gap: 12px; }
+.q-wide .q-title.q-sm { font-size: clamp(28px, 3.3vw, 52px); }
+.q-wide .q-lede { font-size: clamp(16px, 1.3vw, 20px); max-width: 62ch; }
+.q-wide .q-section-link { font-size: 15px; padding: 11px 16px 10px; }
+.q-wide .q-services li { padding: 22px 24px; }
+.q-wide .q-services h3 { font-size: 18px; }
+.q-wide .q-services p { font-size: 16px; }
+.q-wide .q-prose { font-size: clamp(16px, 1.4vw, 20px); max-width: 70ch; }
+
+/* ── Hero: eqosys's sky behind a big headline ─────────────── */
+/* The sky (landing/Sky.tsx) keeps its own day and night whatever the page theme, so the type over it is
+   white with the Playground's drop under it, readable at noon and at midnight. */
+.q-hero {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: grid; place-items: center; text-align: center;
+  min-height: clamp(540px, 82vh, 900px);
+  padding: clamp(72px, 10vh, 120px) 16px clamp(150px, 20vh, 210px);
+  color: #fff;
+}
+.q-hero-in { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: clamp(18px, 2.4vh, 28px); max-width: 1560px; }
+.q-hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 10px; padding: 7px 14px 6px; border-radius: 999px;
+  font: 500 12px/1.3 var(--q-mono); letter-spacing: 0.2em; text-transform: uppercase;
+  background: rgba(10, 14, 28, 0.38); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.q-hero-eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--q-accent); box-shadow: 0 0 10px var(--q-accent); flex: none; }
+.q-hero-title { margin: 0; font: 800 clamp(40px, 6.3vw, 124px)/1 var(--q-display); letter-spacing: -0.045em; text-wrap: balance; }
+.q-hero-title > span { display: block; text-shadow: 0 3px 0 var(--q-accent), 0 6px 0 rgba(0, 0, 0, 0.25), 0 12px 34px rgba(0, 0, 0, 0.35); }
+.q-hero-title > .q-hero-accent { color: #ff8b3d; text-shadow: 0 3px 0 #7a2a05, 0 6px 0 rgba(0, 0, 0, 0.25), 0 12px 34px rgba(0, 0, 0, 0.4); }
+.q-hero-lede {
+  margin: 0; max-width: 46ch; padding: 10px 18px; border-radius: 10px;
+  font: 400 clamp(17px, 1.5vw, 23px)/1.5 var(--q-serif); text-wrap: pretty;
+  background: rgba(15, 22, 40, 0.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+.q-hero-lede b { color: #ffb47e; font-weight: 700; }
+.q-hero-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.q-hero-cta .q-btn { gap: 10px; padding: 16px 22px 15px; font-size: 16px; font-weight: 700; border-radius: 7px; transition: transform 0.12s, box-shadow 0.12s, background 0.12s; }
+.q-hero-cta .q-btn svg { width: 18px; height: 18px; }
+.q-hero-cta .q-btn:hover { transform: translateY(-2px) rotate(-1.5deg); }
+.q-hero-cta .q-btn:active { transform: translateY(1px); }
+.q-btn.q-hero-go { color: #fff; background: var(--q-grain), var(--q-accent); border-color: var(--q-accent-ink); box-shadow: 0 3px 0 #9a3208; }
+.q-btn.q-hero-go:hover { background: var(--q-grain), #ff7a2e; border-color: var(--q-accent-ink); box-shadow: 0 5px 0 #9a3208; }
+.q-btn.q-hero-go svg { animation: q-bob 1.8s ease-in-out infinite; }
+@keyframes q-bob { 50% { transform: translateY(3px); } }
+.q-btn.q-hero-alt { color: #fff; background: rgba(10, 14, 28, 0.5); border-color: rgba(255, 255, 255, 0.28); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); }
+.q-btn.q-hero-alt:hover { background: rgba(10, 14, 28, 0.68); border-color: rgba(255, 255, 255, 0.5); }
+.q-hero-facts { list-style: none; margin: 0; padding: 8px 16px; border-radius: 999px; background: rgba(10, 14, 28, 0.42); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 0; font: 500 12.5px/1.4 var(--q-mono); letter-spacing: 0.04em; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7); }
+.q-hero-facts li + li::before { content: "/"; margin: 0 12px; opacity: 0.55; }
+@media (max-width: 560px) { .q-hero-facts { flex-direction: column; border-radius: 14px; } .q-hero-facts li + li::before { display: none; } }
+@media (prefers-reduced-motion: reduce) { .q-btn.q-hero-go svg { animation: none; } .q-hero-cta .q-btn { transition: none; } }
+
+/* ── Feature panels: eqosys's "the big one" ───────────────── */
+.q-features { display: grid; gap: clamp(16px, 1.6vw, 24px); }
+.q-spotlight { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: clamp(16px, 1.6vw, 24px); }
+.q-feature {
+  position: relative; min-width: 0; display: grid; grid-template-rows: auto 1fr;
+  border-radius: 20px; overflow: hidden; color: var(--q-fg);
+  background: var(--q-grain), var(--q-paper); border: 1px solid var(--q-border-2);
+  box-shadow: 0 3px 0 var(--q-border-2), 0 22px 44px -28px rgba(0, 0, 0, 0.5);
+  transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+}
+.q-feature.q-big { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); grid-template-rows: none; }
+.q-feature:hover, .q-feature:focus-within, .q-shelf-tile:hover, .q-shelf-tile:focus-within {
+  transform: translateY(-3px); border-color: color-mix(in oklab, var(--q-accent) 60%, transparent);
+  box-shadow: 0 5px 0 var(--q-accent), 0 30px 50px -26px rgba(0, 0, 0, 0.55);
+}
+.q-feature:has(.q-feature-link:focus-visible), .q-shelf-tile:has(.q-feature-link:focus-visible) { outline: 2px solid var(--q-accent); outline-offset: 3px; }
+.q-feature-link { color: inherit; text-decoration: none; }
+.q-feature-link:focus-visible { outline: none; }
+.q-feature-link::after { content: ""; position: absolute; inset: 0; z-index: 2; }
+.q-shot { position: relative; display: block; aspect-ratio: 16 / 9; overflow: hidden; background: var(--q-canvas); color: #fff; }
+.q-feature.q-big .q-shot { aspect-ratio: auto; min-height: clamp(320px, 32vw, 560px); }
+.q-shot > img, .q-shot > svg:not(.q-shot-icon) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.5s; }
+.q-shot-art { display: grid; place-items: center; }
+.q-shot-art::after { content: ""; position: absolute; inset: 0; background: var(--q-grain); pointer-events: none; }
+.q-shot-icon { position: relative; width: 44px; height: 44px; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35)); }
+.q-feature:hover .q-shot > img, .q-feature:hover .q-shot > svg:not(.q-shot-icon), .q-shelf-tile:hover .q-shot > img { transform: scale(1.035); }
+.q-feature-cap { display: flex; flex-direction: column; justify-content: flex-start; gap: 12px; padding: clamp(20px, 2.2vw, 40px); min-width: 0; }
+.q-feature.q-big .q-feature-cap { justify-content: center; }
+.q-feature-kick { font: 500 12px/1.3 var(--q-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--q-accent-ink); }
+.q-feature-name { margin: 0; font: 800 clamp(24px, 1.9vw, 32px)/1.05 var(--q-display); letter-spacing: -0.03em; text-wrap: balance; }
+.q-feature.q-big .q-feature-name { font-size: clamp(34px, 3.6vw, 60px); }
+.q-feature-tagline { margin: 0; font: 700 clamp(16px, 1.25vw, 20px)/1.3 var(--q-sans); color: var(--q-fg); }
+.q-feature.q-big .q-feature-tagline { font-size: clamp(18px, 1.5vw, 24px); }
+.q-feature-pitch { display: grid; gap: 10px; }
+.q-feature-pitch p { margin: 0; color: var(--q-muted); font: 400 clamp(15px, 1.1vw, 18px)/1.55 var(--q-serif); text-wrap: pretty; }
+.q-feature.q-big .q-feature-pitch p:first-child { color: var(--q-fg); }
+.q-feature-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; margin-top: auto; padding-top: 6px; }
+.q-feature-facts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.q-feature-go {
+  display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px 10px; border-radius: 999px;
+  font: 700 15px/1 var(--q-sans); color: #fff; background: var(--q-accent); box-shadow: 0 2px 0 var(--q-accent-ink); white-space: nowrap;
+}
+.q-feature-go svg { width: 16px; height: 16px; }
+.q-feature:hover .q-feature-go { background: #ff7a2e; }
+.q-feature:hover .q-feature-go svg { animation: q-nudge 1.6s ease-in-out infinite; }
+@media (max-width: 960px) {
+  .q-feature.q-big { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .q-feature.q-big .q-shot { aspect-ratio: 16 / 9; min-height: 0; }
+}
+
+/* ── Shelves: eqosys's genre rows of screenshot tiles ─────── */
+.q-shelves { display: grid; gap: clamp(24px, 2.6vw, 36px); }
+.q-shelf-head { margin: 0 0 14px 4px; font: 600 13px/1.2 var(--q-sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--q-fg); opacity: 0.85; }
+.q-shelf-head em { font-style: normal; font-weight: 400; opacity: 0.6; margin-left: 8px; font-variant-numeric: tabular-nums; }
+.q-shelf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: 16px; }
+.q-shelf-tile {
+  position: relative; min-width: 0; display: grid; grid-template-rows: auto 1fr;
+  border-radius: 16px; overflow: hidden; color: var(--q-fg);
+  background: var(--q-grain), var(--q-paper); border: 1px solid var(--q-border-2);
+  box-shadow: 0 3px 0 var(--q-border-2), 0 18px 36px -26px rgba(0, 0, 0, 0.45);
+  transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+}
+.q-shelf-cap { display: grid; gap: 6px; align-content: start; padding: 12px 14px 14px; }
+.q-shelf-name { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.q-shelf-name h4 { margin: 0; min-width: 0; font: 700 17px/1.15 var(--q-display); letter-spacing: -0.02em; }
+.q-shelf-name .q-pips b { width: 12px; height: 6px; }
+.q-shelf-cap small { color: var(--q-muted); font: 400 14px/1.4 var(--q-serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.q-shelf-tile.q-off { filter: grayscale(1); opacity: 0.6; }
+@media (prefers-reduced-motion: reduce) {
+  .q-feature, .q-shelf-tile, .q-shot > img, .q-shot > svg { transition: none; }
+  .q-feature:hover .q-feature-go svg { animation: none; }
+}
