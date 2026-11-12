@@ -1,7 +1,7 @@
 {
-  "name": "@redwoodjs/starter-standard",
+  "name": "qntbr",
   "version": "1.0.0",
-  "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime. ",
+  "description": "Magic: The Gathering virtual tabletop for Commander multiplayer, on Cloudflare Workers and Durable Objects.",
   "main": "index.js",
   "type": "module",
   "keywords": [],

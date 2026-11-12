@@ -3,7 +3,7 @@
 
 import { env } from "cloudflare:workers"
 import { migrateDeck, type Deck } from '@/app/types/Deck'
-import starterDeckData from '@/heibaideck.json'
+import starterDeckData from '@/app/data/heibaideck.json'
 
 // ============================================
 // HARDCODED STARTER DECK KEY

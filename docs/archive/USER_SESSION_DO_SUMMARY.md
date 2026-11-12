@@ -16,7 +16,7 @@ A hibernating Durable Object that provides **real-time cross-device state synchr
    - Auto-reconnect with exponential backoff
    - Heartbeat ping every 30 seconds
 
-3. **`src/durableObjects/README-UserSessionDO.md`** (Comprehensive docs)
+3. **`docs/USER_SESSION_DO.md`** (Comprehensive docs)
    - Usage examples
    - Message types
    - Performance metrics

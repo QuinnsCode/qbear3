@@ -1,4 +1,4 @@
-// src/vttDurableObject.ts
+// src/durableObjects/vttDurableObject.ts
 
 import { DurableObject } from 'cloudflare:workers'
 import type {
