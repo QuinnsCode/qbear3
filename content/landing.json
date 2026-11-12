@@ -1,73 +1,73 @@
 {
   "hero": {
-    "eyebrow": "QNTBR · Solutions architecture · Web apps & web solutions",
-    "line1": "Built for the fleet.",
-    "line2": "Then we play.",
-    "lede": "We build tools we actually use and ship them on *Rusty Buns*, the runtime we wrote for it. Everything below is running right now, and every picture is the real thing.",
-    "primary": "See what is running",
-    "secondary": "Open Game Center",
+    "eyebrow": "QNTBR · Custom software · Web, desktop and phone",
+    "line1": "Tell us the problem.",
+    "line2": "We build the software.",
+    "lede": "QNTBR is a software studio. You tell us what slows your work down, and we design and build the app that fixes it. We make our apps with *Rusty Buns*, our own open-source toolkit. Every app on this page is live right now, and every picture is a real screenshot.",
+    "primary": "See our work",
+    "secondary": "Play a game",
     "facts": "Browser · Desktop · Phone / Built on Cloudflare Workers / Open source on GitHub"
   },
   "feed": {
-    "eyebrow": "Running now",
-    "title": "The one we are *proudest of.*",
-    "lede": "A code host for agents, then the three games we built on the same stack."
+    "eyebrow": "Live now",
+    "title": "Work you can *try today.*",
+    "lede": "The first is codeSplitter, a home for the code that AI agents write. Below it are three games that we built with the same tools."
   },
   "lab": {
     "eyebrow": "The lab",
-    "title": "Combine words. *Get software.*",
-    "lede": "Every game and app we ship is a verb and a noun. Drop one on the other and it appears; click it to go. The whole shelf is in the bag if you would rather just pick."
+    "title": "Put two words together. *Get an app.*",
+    "lede": "We gave each game and app two words: an action and a thing. Drag one word onto the other and the app appears. Click the app to open it. Every app is also in the bag, if you want to pick one directly."
   },
   "products": {
     "eyebrow": "Products",
-    "title": "What we *build.*",
-    "lede": "A code host for agents, the runtime it ships on, and everything we've built with them."
+    "title": "Tools for people who *write code.*",
+    "lede": "codeSplitter keeps the code that AI agents write. Rusty Buns is the toolkit that we build and release our apps with. The other tools here are made with both."
   },
   "services": {
     "eyebrow": "What we do",
-    "title": "We *wire it up.*",
-    "lede": "The work we take on for a business, built on the same stack as everything on this page.",
+    "title": "Work we do *for your business.*",
+    "lede": "This is the work that businesses hire us for. We use the same tools that made everything on this page.",
     "items": {
       "webapps": {
-        "title": "Web apps & web solutions",
-        "text": "Full-stack apps on Cloudflare Workers and Durable Objects, real-time when they need to be."
+        "title": "Web apps",
+        "text": "An app that your team or your customers open in a browser, with nothing to install. When one person makes a change, everyone else sees it immediately."
       },
       "architecture": {
         "title": "Solutions architecture",
-        "text": "Pick the pieces, draw the lines, and ship something that stays up and stays cheap."
+        "text": "Before we write code, we choose the parts of your system and decide how they connect. The result stays online and costs little to operate."
       },
       "warehouse": {
         "title": "Custom warehouse integrations",
-        "text": "Your warehouse system talking to your store, your CRM and your carriers, without a spreadsheet in the middle."
+        "text": "We connect your warehouse system to your store, your customer records (CRM) and your shipping carriers. Nobody copies data through a spreadsheet."
       },
       "threepl": {
         "title": "3PL app integrations",
-        "text": "Orders out to your third-party logistics partner, tracking and inventory back, on every channel you sell through."
+        "text": "A 3PL is a company that stores and ships your products for you. We send your orders to it, and bring tracking numbers and stock counts back to every place where you sell."
       },
       "dropship": {
         "title": "Drop shipping integrations",
-        "text": "Each order line routed to the supplier that ships it, with stock and tracking kept in step with your storefront."
+        "text": "In drop shipping, the supplier sends the product directly to your customer. We send each item in an order to the supplier that ships it, and keep stock and tracking correct in your store."
       },
       "desktop": {
         "title": "Desktop apps from web apps",
-        "text": "Your web app as one double-clickable file with *Rusty Buns*, its server moving with it."
+        "text": "With *Rusty Buns*, your web app becomes one file. Double-click the file and the app runs on your computer, with its server inside."
       }
     }
   },
   "games": {
     "eyebrow": "Game Center",
-    "title": "The *tables.*",
-    "lede": "The games shipped on Rusty Buns, and a draft of the cube where QNTBR started.",
+    "title": "Games you can *play now.*",
+    "lede": "The games that we built with Rusty Buns. You can also draft the Magic: The Gathering cube, the project where QNTBR started.",
     "link": "Open Game Center"
   },
   "apps": {
     "eyebrow": "App Center",
-    "title": "The *rest.*",
-    "lede": "A proof-of-concept CRM, packing and fulfillment tools, Qlave calls, Flareup and Staticflare, one login for everything, and a workshop of smaller apps.",
+    "title": "Apps for *real work.*",
+    "lede": "A sample CRM for customer records, packing and shipping tools, Qlave for calls, Flareup to monitor Cloudflare costs, Staticflare for hosting, one login for every app, and a workshop of smaller apps.",
     "link": "Open App Center"
   },
   "about": {
     "label": "About",
-    "text": "QNTBR is a *solutions architecture studio* focused on web apps and web solutions. We build tools we actually use, and ship them on the runtime we wrote for it. The goal is software that works, ships fast, and stays out of your way."
+    "text": "QNTBR is a *software studio*. A person or a business tells us about a problem, and we design and build the software that solves it. We use our own tools every day, so we know that they work. Our goal is software that works, arrives quickly and is easy to use."
   }
 }

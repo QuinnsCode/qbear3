@@ -20,7 +20,7 @@ test("landing page is a sky hero, the featured apps, then the lab and the shelve
   for (const id of ["feed", "lab", "products", "services", "games", "apps"]) expect(hasSection(page.body, id)).toBe(true);
   // The hero: eqosys's sky behind the headline, and its two buttons.
   expect(page.body).toContain('class="q-sky"');
-  expect(headings(page.body)).toEqual(expect.arrayContaining(["Built for the fleet.Then we play."]));
+  expect(headings(page.body)).toEqual(expect.arrayContaining(["Tell us the problem.We build the software."]));
   expect(links(page.body, { href: "#feed", class: "q-hero-go" })).toHaveLength(1);
   expect(links(page.body, { href: "/games", class: "q-hero-alt" })).toHaveLength(1);
   // What we do includes the commerce integrations.
