@@ -1,4 +1,4 @@
-// src/draftDurableObject.ts
+// src/durableObjects/draftDurableObject.ts
 import { DurableObject } from "cloudflare:workers";
 import type { DraftState, DraftConfig, DraftPlayer, CubeCard, DraftAction } from "@/app/types/Draft";
 import { DraftManager } from '@/app/services/draft/DraftManager'

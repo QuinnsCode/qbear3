@@ -50,14 +50,14 @@ import AppCenterPage from "@/app/pages/portal/AppCenterPage";
 
 export { SessionDurableObject } from "./session/durableObject";
 export { PresenceDurableObject as RealtimeDurableObject } from "./durableObjects/presenceDurableObject";
-export { GameStateDO } from "./gameDurableObject";
-export { CardGameDO } from './cardGameDurableObject'
-export { DraftDO } from './draftDurableObject'
+export { GameStateDO } from "./durableObjects/gameDurableObject";
+export { CardGameDO } from './durableObjects/cardGameDurableObject'
+export { DraftDO } from './durableObjects/draftDurableObject'
 export { UserSessionDO } from './durableObjects/userSessionDO'
 export { MatchmakingDO } from './durableObjects/MatchmakingDO'
 export { CacheWarmingDO } from './durableObjects/CacheWarmingDO'
 
-export { VTTDO } from './vttDurableObject'
+export { VTTDO } from './durableObjects/vttDurableObject'
 export { SyncedStateServer };
 
 

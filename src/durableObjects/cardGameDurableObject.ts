@@ -1,4 +1,4 @@
-// src/cardGameDurableObject.ts
+// src/durableObjects/cardGameDurableObject.ts
 /**
  * MTG COMMANDER VIRTUAL TABLETOP - Durable Object Game State Manager
  */
@@ -25,10 +25,10 @@ import { ZoneManager } from '@/app/services/cardGame/managers/ZoneManager';
 import { DeckImportManager } from '@/app/services/cardGame/managers/DeckImportManager';
 import { SandboxManager } from '@/app/services/cardGame/managers/SandboxManager';
 import { TokenManager } from '@/app/services/cardGame/managers/TokenManager';
-import { getStarterDeck } from './app/serverActions/cardGame/starterDecks';
-import { WebSocketHelper } from './app/services/cardGame/WebSocketHelper';
-import { DeltaManager } from './app/services/cardGame/DeltaManager';
-import type { Delta } from './app/services/cardGame/DeltaManager';
+import { getStarterDeck } from '@/app/serverActions/cardGame/starterDecks';
+import { WebSocketHelper } from '@/app/services/cardGame/WebSocketHelper';
+import { DeltaManager } from '@/app/services/cardGame/DeltaManager';
+import type { Delta } from '@/app/services/cardGame/DeltaManager';
 import { env } from "cloudflare:workers";
 
 // ✅ Storage-only state (actions stored separately)
